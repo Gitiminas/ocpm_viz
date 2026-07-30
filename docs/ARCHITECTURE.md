@@ -71,7 +71,10 @@ tests/
 importable and exercised without rendering anything. If a function needs the DOM to be tested, it is
 in the wrong folder.
 
-This structure is a proposal, not settled — see open question O8.
+This structure is **settled** — adopted as proposed by decision 16 (was open question O8).
+
+Note that `render/` has no lane module for every object type: `actor` and `repo` are objects without
+lanes (decision 15), so they are rendered by the sidebar and info cards, not by `layout/lanes.js`.
 
 ## Object-centric implications for the renderer
 
@@ -98,7 +101,7 @@ timebox forces a choice, ship correct behaviour with honest notes on what was le
 
 Modifying or extending the shared MVs · bot/human classification · the real OCEL 2.0 tables · labels,
 forks, reviews, review comments, branch/ref lifecycle · auth, rate limiting, XSS hardening · render
-optimisation, virtualisation, canvas · bundler, framework, TypeScript · generalizing beyond the four object types · restyling away from Nocturne tokens.
+optimisation, virtualisation, canvas · bundler, framework, TypeScript · generalizing beyond the five object types · restyling away from Nocturne tokens.
 
 Sub-logs are small. If a real one actually breaks the renderer, **report it** rather than
 pre-optimising.

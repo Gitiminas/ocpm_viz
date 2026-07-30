@@ -3,3 +3,9 @@ CLAUDE.local.md
 *.local
 .thumbnail
 .idea/
+
+# Windows "downloaded from the internet" markers, created when files are
+# copied into WSL from the Windows filesystem
+*:Zone.Identifier
+
+node_modules/

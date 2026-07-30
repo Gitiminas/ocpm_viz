@@ -1,0 +1,14 @@
+{
+  "name": "ocpm-viz",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Visualizing issue-to-merge processes using object-centric event logs",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "test:watch": "node --test --watch"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

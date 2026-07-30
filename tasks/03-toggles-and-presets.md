@@ -2,7 +2,7 @@
 
 Independent toggles for:
 
-- each **object type / lane** (issue, pull_request, commit, actor)
+- each **object type / lane** (issue, pull_request, commit, actor, repo)
 - each **link class**, split by qualifier *and* by evidence (validated vs extracted)
 - each of the **4 link detection methods** (`pr_body`, `branch_name`, `pr_title`, `issue_comment`)
   so any single method can be excluded without code changes
