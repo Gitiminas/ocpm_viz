@@ -47,25 +47,48 @@ src/
     fixtures.js        load an ObjectGraph from a local file
     api.js             load an ObjectGraph from PostgREST (added later)
   model/
-    objectGraph.js     shape validation; fail loudly on a malformed bundle
+    objectGraph.js     shape validation, normalization, indexing
     activities.js      the closed activity vocabulary + milestone set
     evidence.js        validated / extracted classification
-    graph.js           crossAdj construction, focus BFS
+    graph.js           adjacency construction, focus BFS
+    bursts.js          ✚ burst derivation from push_id
   layout/
     scales.js          the three time modes and the coordinate dispatcher
-    packing.js         per-object row and sub-lane allocation
+    packing.js         row allocation (per-object sub-lanes: Task 2)
     lanes.js           lane geometry
+    nodes.js           ✚ node model construction — which nodes exist, in what order
   render/
     timeline.js  nodes.js  links.js  axis.js  minimap.js  tooltip.js  legend.js
+    theme.js           ✚ colours, shapes, glyphs shared by every renderer
+    format.js          ✚ the one place a timestamp becomes text
+    sidebar.js         ✚ track / relationship / actor rows and the search combos
+    actorCard.js       ✚ the actor profile card
+    stats.js           ✚ presentation for the statistics page
   state/
-    state.js           the st object
-    presets.js         serialize, save, load, URL encode
+    state.js           the st object and the derived relationship toggles
+    labels.js          ✚ type labels, so state derivation stays DOM-free
+    presets.js         serialize, save, load, URL encode (Task 3)
   stats/
     metrics.js         durations, counts, gaps — pure functions over an ObjectGraph
+scripts/
+  build-f1.mjs         ocel-data.json → tests/fixtures/F1.json
+  serve.mjs            zero-dependency static server (npm start)
 tests/
-  fixtures/            F1 … F10
+  fixtures/            F1 … F12
   *.test.js
 ```
+
+✚ marks modules added beyond the structure settled in decision 16. Each exists because the
+alternative was a module doing two jobs:
+
+- `layout/nodes.js` — node *construction* is pure and must be testable without a DOM;
+  `render/nodes.js` is the drawing. Splitting them is what keeps "how many nodes, in which lane,
+  in what order" checkable in isolation.
+- `model/bursts.js` — burst grouping is a data derivation, not layout.
+- `render/format.js` — Task 5's UTC fix must be a one-file change, so every formatter lives here.
+- `render/theme.js`, `sidebar.js`, `actorCard.js`, `stats.js` — otherwise `timeline.js` becomes the
+  same god-module the rewrite was meant to break up.
+- `state/labels.js` — lets `state.js` derive toggle labels without importing a render module.
 
 **The test that the seams are right:** every module under `model/`, `layout/`, `stats/` must be
 importable and exercised without rendering anything. If a function needs the DOM to be tested, it is

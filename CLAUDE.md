@@ -43,12 +43,20 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 
 | Path | What | Rules |
 |---|---|---|
-| `OCEL Timeline.dc.html` | The app. ~1300 lines. Inlined data blob + all logic in one `run(DATA)` closure | **Work here.** May be restructured into modules — see `ARCHITECTURE.md` |
-| `support.js` | Generated `dc-runtime` bundle, needed only by the `.dc.html` format | **Never edit.** Delete wholesale if the app migrates off `.dc.html`; otherwise leave untouched |
+| `index.html` | The app shell: markup, CSS, and the one `<script type="module">` entry | **Work here** for anything structural in the page |
+| `src/` | The application, as ES modules. Structure and rationale in `ARCHITECTURE.md` | **Work here.** Keep `model/`, `layout/` and `stats/` DOM-free |
+| `scripts/build-f1.mjs` | Builds `tests/fixtures/F1.json` from `ocel-data.json` | Re-runnable. `--check` fails if the committed fixture is stale |
+| `scripts/serve.mjs` | Zero-dependency static server (`npm start`) | Needed because ES modules and `fetch` are blocked on `file://` |
+| `tests/` | `node --test` suites plus `tests/fixtures/` | Run with `npm test`. See `tests/fixtures/README.md` |
 | `_ds/nocturne-*/` | Design system CSS tokens | Consume via `var(--token)`. Don't restyle |
-| `ocel-data.json` | Standalone copy of the inlined data (hyphen — confirmed in Task 0) | Seed for fixture F1. Never edit; F1 is built from it by script |
+| `ocel-data.json` | The untouched original data blob (hyphen — confirmed in Task 0) | **Never edit.** F1 is built from it by script |
+| `screenshots/` | Pre-change reference renders of the original app | **Visual regression baseline. Read-only — never regenerate or overwrite.** Inventory in `screenshots/README.md` |
+| `OCEL Timeline.dc.html` | The superseded mockup, frozen | **Do not edit, do not run as a second version.** Kept only as an A/B reference until Task 6 signs off, then deleted |
+| `support.js` | Generated `dc-runtime` bundle, needed only by `.dc.html` | **Never edit.** Deleted together with the `.dc.html` after Task 6 |
 | `.thumbnail` | Claude Design artifact | Ignore |
-| `screenshots/` | Pre-change reference renders of the original app | **Visual regression baseline. Read-only — never regenerate or overwrite** |
+
+**Running it:** `npm start`, then open `http://localhost:8000`. Opening `index.html` from disk
+does not work — browsers block both ES modules and `fetch` on `file://` origins.
 
 ## Hard rules
 

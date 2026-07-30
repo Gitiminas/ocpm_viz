@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issue-to-merge OCEL timeline</title>
+<link rel="stylesheet" href="_ds/nocturne-90dff482-d3ab-493c-9c6f-cf149f916d6f/styles.css">
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+html,body{height:100%;margin:0;overflow:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+#scroll{scrollbar-width:none}
+#scroll::-webkit-scrollbar:horizontal{display:none}
+#scroll::-webkit-scrollbar{width:10px}
+#scroll::-webkit-scrollbar-track{background:transparent}
+#scroll::-webkit-scrollbar-thumb{background:var(--color-neutral-700);border-radius:6px}
+.sideRow{cursor:pointer;transition:background .15s ease,border-color .15s ease;border:1px solid transparent}
+.sideRow:hover{background:color-mix(in srgb, var(--color-text) 6%, transparent)}
+.sideRow.on{background:color-mix(in srgb, var(--color-accent) 14%, transparent);border-color:var(--color-accent)}
+#tip{position:absolute;display:none;pointer-events:none;z-index:100;width:300px;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow:hidden;transform:translateY(4px);opacity:0;transition:opacity .15s ease,transform .15s ease}
+#tip.show{transform:translateY(0);opacity:1}
+#tip .tip-accent{height:3px;width:100%}
+#tip .tip-header{padding:12px 14px 10px;border-bottom:1px solid var(--color-neutral-800)}
+#tip .tip-kicker{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-400);margin-bottom:5px}
+#tip .tip-title{font-size:14px;font-weight:500;color:var(--color-text);line-height:1.4;word-break:break-word;font-family:var(--font-heading)}
+#tip .tip-body{padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+#tip .tip-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:3px 0;border-bottom:1px dashed var(--color-neutral-800)}
+#tip .tip-row:last-child{border-bottom:none}
+#tip .tip-row .k{font-size:10px;font-weight:500;color:var(--color-neutral-500);text-transform:uppercase;letter-spacing:.05em}
+#tip .tip-row .v{font-size:12px;color:var(--color-text);text-align:right;word-break:break-word}
+#tip .tip-row .v.time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--color-neutral-300)}
+#tip .tip-row .v.mono{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--color-neutral-900);padding:2px 6px;border-radius:4px;color:var(--color-accent-300)}
+#tip .tip-footer{padding:10px 14px;background:var(--color-neutral-900);border-top:1px solid var(--color-neutral-800)}
+#tip .tip-note{display:flex;gap:7px;font-size:11px;color:var(--color-neutral-400);line-height:1.4}
+#tip .tip-close{display:none;position:absolute;top:8px;right:8px;width:18px;height:18px;border:none;background:none;color:var(--color-neutral-500);cursor:pointer;font-size:14px;line-height:1;padding:0}
+#tip .tip-close:hover{color:var(--color-text)}
+#tip.pinned .tip-close{display:block}
+#tip .pin-hint{display:none;padding:6px 14px;font-size:10px;color:var(--color-neutral-500);border-top:1px solid var(--color-neutral-800);background:var(--color-neutral-900)}
+#tip.pinned .pin-hint{display:block}
+#tip.pinned .tip-title{cursor:pointer}
+#tip.pinned .tip-title:hover{text-decoration:underline}
+#tip.pinned .tip-row{cursor:pointer}
+#tip.pinned .tip-row:hover{background:color-mix(in srgb, var(--color-text) 8%, transparent)}
+.badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:1px solid currentColor}
+#minimap{cursor:pointer;display:block;width:100%}
+#modeSeg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
+#modeSeg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
+#modeSeg .seg-opt{cursor:pointer}
+</style>
+</head>
+<body>
+<div style="display:flex;height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);overflow:hidden">
+<aside style="width:300px;flex:0 0 auto;background:var(--color-surface);border-right:1px solid var(--color-neutral-800);display:flex;flex-direction:column;overflow-y:auto;padding:var(--space-6)">
+<div style="display:flex;gap:8px;padding-bottom:var(--space-6);margin-bottom:var(--space-6);border-bottom:1px solid var(--color-neutral-800)">
+<button class="pageTab on" data-page="timeline" style="box-sizing:border-box;border:1px solid var(--color-accent);background:color-mix(in srgb, var(--color-accent) 16%, transparent);cursor:pointer;font-size:13px;font-weight:500;color:var(--color-text);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>Timeline</button>
+<button class="pageTab" data-page="stats" style="box-sizing:border-box;border:1px solid transparent;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-neutral-400);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><line x1="4" x2="4" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="20" x2="20" y1="20" y2="14"></line></svg>Stats</button>
+</div>
+<div style="margin-bottom:var(--space-8)">
+<!-- "OCEL case" in the mockup. There is no case in OCPM (decision 1). -->
+<div class="mono" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-300);margin-bottom:6px">Sub-log</div>
+<div style="margin-bottom:10px">
+<div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Source</div>
+<div style="position:relative">
+<input autocomplete="off" class="mono" id="repoInput" placeholder="Search sub-logs…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
+<div id="repoDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow:hidden"></div>
+</div>
+</div>
+<div>
+<div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Focus object</div>
+<div style="position:relative">
+<input autocomplete="off" class="mono" id="objectInput" placeholder="Search issue / PR / commit…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
+<div id="objectDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow-y:auto;max-height:220px"></div>
+</div>
+</div>
+</div>
+<div id="timelineSidebarSections" style="display:flex;flex-direction:column">
+<div style="margin-bottom:var(--space-8)">
+<div class="collapseHeader" data-target="tracks" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Tracks</span>
+<span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
+</div>
+<div id="tracks" style="display:flex;flex-direction:column;gap:4px"></div>
+</div>
+<div style="margin-bottom:var(--space-8)">
+<div class="collapseHeader" data-target="relationships" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Relationships</span>
+<span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
+</div>
+<div id="relationships" style="display:flex;flex-direction:column;gap:4px"></div>
+</div>
+<div style="margin-bottom:var(--space-8)">
+<div class="collapseHeader" data-target="actorsWrap" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Actors</span>
+<span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
+</div>
+<div id="actorsWrap" style="display:flex;flex-direction:column">
+<input autocomplete="off" class="mono" id="actorSearch" placeholder="Search actors…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:12px;padding:6px 9px;margin-bottom:6px"/>
+<div id="actors" style="display:flex;flex-direction:column;gap:4px"></div>
+</div>
+</div>
+<div>
+<div class="collapseHeader" data-target="legend" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Legend</span>
+<span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
+</div>
+<div id="legend" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+</div>
+<div id="statsSidebarSections" style="display:none;flex-direction:column">
+<div style="margin-bottom:var(--space-8)">
+<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500);margin-bottom:var(--space-3)">Dashboards</div>
+<div id="dashboards" style="display:flex;flex-direction:column;gap:4px"></div>
+</div>
+</div>
+</aside>
+<div id="actorCard" style="display:none;position:fixed;z-index:200;width:290px;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow:hidden"></div>
+<div id="degreeStepper" style="display:none;position:fixed;align-items:center;gap:2px;background-color:var(--color-neutral-800);border:1px solid var(--color-neutral-700);border-radius:999px;box-shadow:var(--shadow-md);padding:3px 4px;z-index:9999">
+<span id="degMinus" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--color-neutral-300);font-size:14px;user-select:none">&minus;</span>
+<span class="mono" style="font-size:11px;color:var(--color-text);min-width:34px;text-align:center">Deg <span id="degVal">1</span></span>
+<span id="degPlus" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--color-neutral-300);font-size:14px;user-select:none">+</span>
+</div>
+<main id="timelinePage" style="flex:1;min-width:0;display:flex;flex-direction:column;padding:var(--space-6) var(--space-8);gap:var(--space-4);overflow:hidden">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-6);flex:0 0 auto;flex-wrap:wrap">
+<div style="flex:1 1 auto;min-width:0">
+<h1 style="font-size:20px;margin:0 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Issue-to-merge OCEL timeline</h1>
+<div class="mono" id="breadcrumb" style="font-size:12px;color:var(--color-neutral-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">…</div>
+</div>
+<div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
+<div class="mono" id="focusInfo" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
+<div class="seg" id="modeSeg">
+<div class="seg-opt on" data-mode="real"><span>Real</span></div>
+<div class="seg-opt" data-mode="highlights"><span>Highlights</span></div>
+<div class="seg-opt" data-mode="ordinal"><span>Ordinal</span></div>
+</div>
+<div style="display:flex;gap:2px;border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);padding:2px">
+<button aria-label="Zoom out" class="btn btn-icon" id="zout"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line></svg></button>
+<button aria-label="Reset zoom" class="btn btn-icon" id="zrst"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
+<button aria-label="Zoom in" class="btn btn-icon" id="zin"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><line x1="12" x2="12" y1="5" y2="19"></line></svg></button>
+</div>
+</div>
+</div>
+<div style="flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 10px">
+<svg id="minimap"></svg>
+</div>
+<div id="wrap" style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">
+<div id="scroll" style="flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-bg)">
+<div id="chart"></div>
+</div>
+<div id="tip"></div>
+</div>
+</main>
+<main id="statsPage" style="flex:1;min-width:0;display:none;flex-direction:column;padding:var(--space-8);overflow:auto">
+<h1 style="font-size:20px;margin:0 0 6px">Sub-log statistics</h1>
+<div class="mono" style="font-size:12px;color:var(--color-neutral-400);margin-bottom:var(--space-6)" id="statsBreadcrumb">…</div>
+<div style="display:flex;flex-wrap:wrap;gap:var(--space-6);align-items:flex-start">
+<div class="card elev-sm" id="statsCard" style="flex:1 1 260px;min-width:260px;padding:var(--space-6)">
+<div class="card-kicker">Dashboard</div>
+<div class="card-title" style="margin-bottom:var(--space-4)">Sub-log statistics</div>
+<div id="statsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px"></div>
+</div>
+<div class="card elev-sm" id="milestonesCard" style="flex:1 1 260px;min-width:260px;padding:var(--space-6)">
+<div class="card-kicker">Dashboard</div>
+<div class="card-title" style="margin-bottom:var(--space-4)">Milestones</div>
+<div id="statsMilestones" style="position:relative;display:flex;flex-direction:column"></div>
+</div>
+<!--
+  The mockup's third card was a blurred activity heatmap filled with Math.random(),
+  behind an "In progress / This dashboard isn't built yet" overlay, plus a disabled
+  "Activity heatmap · Soon" sidebar row and a "•••" placeholder. All removed:
+  fabricated placeholder UI is forbidden, and in a task-based usability evaluation a
+  fake dashboard invites participants to critique something that does not exist.
+-->
+</div>
+</main>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

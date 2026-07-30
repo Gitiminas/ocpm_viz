@@ -5,8 +5,10 @@
   "description": "Visualizing issue-to-merge processes using object-centric event logs",
   "type": "module",
   "scripts": {
+    "start": "node scripts/serve.mjs",
     "test": "node --test",
-    "test:watch": "node --test --watch"
+    "test:watch": "node --test --watch",
+    "build:fixtures": "node scripts/build-f1.mjs"
   },
   "engines": {
     "node": ">=20"
