@@ -39,6 +39,52 @@ function makeAnchorResolver(burstsByCommit, expandedBursts) {
   };
 }
 
+/**
+ * Lateral separation between links that would otherwise be drawn on top of one
+ * another. Small enough to stay within the source glyph, large enough to read.
+ */
+const LINK_SPREAD_PX = 5;
+/** Target x values closer than this are treated as the same column. */
+const SAME_COLUMN_PX = 2;
+
+/**
+ * Fan links that leave the same node and arrive in the same column.
+ *
+ * This is not cosmetic. A commit inside two overlapping PRs' spans produces two
+ * *straight vertical* links at the identical x; the one reaching the nearer band is
+ * a strict sub-segment of the one reaching the farther band, so it is completely
+ * hidden. In F5 the buried link was the extracted one — meaning the dashed line and
+ * its "?" badge, the uncertainty cue this tool exists to show, disappeared under a
+ * solid line.
+ *
+ * Only links that actually coincide are spread, so a source whose links already
+ * diverge is left exactly where it was.
+ *
+ * @returns {Map<object, number>} link → lateral offset in px
+ */
+function computeLinkOffsets(entries) {
+  const offsets = new Map();
+  const bundles = new Map();
+
+  for (const entry of entries) {
+    const column = Math.round(entry.tx / SAME_COLUMN_PX);
+    const key = `${entry.sourceAnchor.id}|${column}`;
+    if (!bundles.has(key)) bundles.set(key, []);
+    bundles.get(key).push(entry);
+  }
+
+  for (const bundle of bundles.values()) {
+    if (bundle.length < 2) continue;
+    // Order by where each link is going, so the fan reads top-to-bottom rather
+    // than in whatever order the links happened to arrive.
+    bundle.sort((a, b) => a.ty - b.ty);
+    bundle.forEach((entry, i) => {
+      offsets.set(entry.link, (i - (bundle.length - 1) / 2) * LINK_SPREAD_PX);
+    });
+  }
+  return offsets;
+}
+
 export function renderLinks({
   gLink,
   defs,
@@ -49,6 +95,7 @@ export function renderLinks({
   focus,
   burstsByCommit,
   tooltip,
+  objectColors = new Map(),
 }) {
   const resolve = makeAnchorResolver(burstsByCommit, state.expandedBursts);
   const drawn = new Set();
@@ -62,10 +109,9 @@ export function renderLinks({
     return state.relPairs[linkPairKey(link, byId)] !== false;
   });
 
-  // Gradients are rebuilt every render because both endpoints move. One per drawn
-  // link, keyed by the *anchored* endpoints so folded links share a gradient.
-  defs.selectAll('*').remove();
-
+  // Resolve every endpoint first, so overlapping links can be detected and fanned
+  // before any of them is drawn.
+  const entries = [];
   for (const link of visible) {
     const source = byId.get(link.source);
     const target = byId.get(link.target);
@@ -88,7 +134,24 @@ export function renderLinks({
     // the nearest point rather than always at its start.
     const tx = anchors.clampToLifecycle(targetAnchor.id, target, sx);
 
-    const gradientId = `grad_${cssId(sourceAnchor.id)}_${cssId(targetAnchor.id)}_${link.qualifier}`;
+    entries.push({ link, source, target, sourceAnchor, targetAnchor, folded, sx, sy, tx, ty });
+  }
+
+  const offsets = computeLinkOffsets(entries);
+
+  // Gradients are rebuilt every render because both endpoints move. One per drawn
+  // link, keyed by the *anchored* endpoints so folded links share a gradient.
+  defs.selectAll('*').remove();
+
+  for (const entry of entries) {
+    const { link, source, target, sourceAnchor, targetAnchor, folded, sy, ty } = entry;
+    // Shift the whole line sideways rather than only one end, so fanned links stay
+    // parallel instead of converging again at the top.
+    const offset = offsets.get(link) || 0;
+    const sx = entry.sx + offset;
+    const tx = entry.tx + offset;
+
+    const gradientId = `grad_${cssId(sourceAnchor.id)}_${cssId(targetAnchor.id)}_${link.qualifier}_${link.evidence}`;
     const gradient = defs
       .append('linearGradient')
       .attr('id', gradientId)
@@ -97,8 +160,17 @@ export function renderLinks({
       .attr('y1', sy)
       .attr('x2', tx)
       .attr('y2', ty);
-    gradient.append('stop').attr('offset', '0%').attr('stop-color', typeColor(source.type));
-    gradient.append('stop').attr('offset', '100%').attr('stop-color', qualifierColor(link.qualifier));
+    const targetColor = objectColors.get(target.id) || qualifierColor(link.qualifier);
+    gradient
+      .append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', objectColors.get(sourceAnchor.id) || typeColor(source.type));
+    // The target's shade is reached at 45% rather than 100%, so most of the line
+    // carries it. The far end is where links converge and overlap, so a colour that
+    // only appears there is a colour you cannot use to trace a line back to its
+    // object — which is the whole point of shading them.
+    gradient.append('stop').attr('offset', '45%').attr('stop-color', targetColor);
+    gradient.append('stop').attr('offset', '100%').attr('stop-color', targetColor);
 
     const isExtracted = link.evidence === 'extracted';
     const style = evidenceStyle(link.evidence);
@@ -123,7 +195,9 @@ export function renderLinks({
       .attr('stroke-dasharray', style.dash);
 
     if (isExtracted && inFocus) {
-      const color = qualifierColor(link.qualifier);
+      // The badge takes the target's shade too, so two "?" markers sitting near each
+      // other are still attributable to the objects they belong to.
+      const color = objectColors.get(target.id) || qualifierColor(link.qualifier);
       group
         .append('circle')
         .attr('cx', tx)

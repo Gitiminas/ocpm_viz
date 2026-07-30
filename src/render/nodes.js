@@ -27,6 +27,7 @@ export function renderLifecycleBars({
   focus,
   laneTypes,
   objectRow = new Map(),
+  objectColors = new Map(),
 }) {
   for (const laneType of laneTypes) {
     if (laneType === 'commit' || !state.tracks[laneType]) continue;
@@ -38,6 +39,9 @@ export function renderLifecycleBars({
       // reopened issue reads as several bars belonging to one object and two
       // concurrent issues never share a row.
       const row = objectRow.get(object.id) ?? 0;
+      // Shade by object, not by type: with two PRs in a lane the hue says "pull
+      // request" but only the shade says *which* pull request.
+      const color = objectColors.get(object.id) || typeColor(laneType);
 
       for (const interval of object.intervals) {
         if (!interval.start || !interval.end) continue;
@@ -59,9 +63,9 @@ export function renderLifecycleBars({
           .attr('width', width)
           .attr('height', 6)
           .attr('rx', 3)
-          .attr('fill', typeColor(laneType))
+          .attr('fill', color)
           .attr('fill-opacity', state.mode === 'ordinal' ? 0.08 : 0.18)
-          .attr('stroke', typeColor(laneType))
+          .attr('stroke', color)
           .attr('stroke-width', 1);
 
         // Ordinal mode discards real durations, so state the span in text instead.
@@ -95,7 +99,7 @@ export function renderLifecycleBars({
  * per-object would draw nothing at all; the chronological spine through the commit
  * stream is the meaningful reading there.
  */
-export function renderSequenceLines({ gSeq, nodes, laneTypes, focus }) {
+export function renderSequenceLines({ gSeq, nodes, laneTypes, focus, objectColors = new Map() }) {
   for (const laneType of laneTypes) {
     const inLane = nodes.filter((n) => n.lane === laneType);
     const groups =
@@ -114,7 +118,7 @@ export function renderSequenceLines({ gSeq, nodes, laneTypes, focus }) {
           .attr('data-legend', isComment ? 'comments' : null)
           .attr('d', curve(a, b))
           .attr('fill', 'none')
-          .attr('stroke', typeColor(laneType))
+          .attr('stroke', objectColors.get(a.objectId) || typeColor(laneType))
           .attr('stroke-width', 2)
           .attr('stroke-dasharray', isComment ? '1 5' : null)
           .attr('stroke-linecap', 'round')
@@ -163,7 +167,17 @@ export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
   }
 }
 
-export function renderNodes({ gNode, nodes, state, focus, tooltip, tweenFrom, handlers, actorLogin }) {
+export function renderNodes({
+  gNode,
+  nodes,
+  state,
+  focus,
+  tooltip,
+  tweenFrom,
+  handlers,
+  actorLogin,
+  objectColors = new Map(),
+}) {
   // Thin commit labels so only well-separated ones are drawn.
   const showLabel = new Set();
   let lastX = -1e9;
@@ -213,24 +227,25 @@ export function renderNodes({ gNode, nodes, state, focus, tooltip, tweenFrom, ha
       continue;
     }
 
+    const nodeColor = objectColors.get(node.objectId) || typeColor(node.lane);
+
     if (node.milestone) {
       group
         .append('circle')
         .attr('r', (node.isComment ? 6 : 8) + 6)
         .attr('fill', 'none')
-        .attr('stroke', typeColor(node.lane))
+        .attr('stroke', nodeColor)
         .attr('stroke-width', 1.5)
         .attr('stroke-opacity', 0.7);
     }
 
     const size = node.isComment ? 6 : 8;
-    const color = typeColor(node.lane);
     drawSymbol(
       group.append('g'),
       TYPE[node.lane].shape,
       size,
-      node.isComment ? 'var(--color-bg)' : color,
-      color,
+      node.isComment ? 'var(--color-bg)' : nodeColor,
+      nodeColor,
       node.isComment ? 2.5 : 2,
     );
 

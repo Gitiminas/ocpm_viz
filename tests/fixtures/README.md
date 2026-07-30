@@ -14,6 +14,7 @@ through `loadObjectGraph()` exactly as a real sub-log would be.
 | F7 | Two bursts plus loose commits | burst handling works for N, not 1 | built |
 | F8 | A PR with no linked issue | nothing may assume an issue exists | built |
 | F9 | An issue opened, closed, reopened, closed | two bars on one row | built |
+| F13 | Two concurrent PRs, several commits each, one commit shared | many links into one lane stay individually readable | built |
 | F10 | Deliberately large sub-log (few hundred commits) | render behaviour at scale | Task 6 |
 | F11 | All four issue↔PR detection methods present | per-method toggles | Task 6 |
 | F12 | Mixed evidence on one object pair, `n_methods > 1` | multi-method agreement | Task 6 |

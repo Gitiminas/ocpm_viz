@@ -34,7 +34,7 @@ import {
   renderBurstHandles,
   renderGroupBoxes,
 } from './nodes.js';
-import { TYPE, drawSymbol, typeColor } from './theme.js';
+import { TYPE, drawSymbol, typeColor, objectShade } from './theme.js';
 
 export const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
 const MIN_PLOT_WIDTH = 820;
@@ -82,9 +82,33 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       burstsByCommit: indexBurstsByCommit(bursts),
       adjacency: buildAdjacency(graph.links, bursts),
       instants: collectInstants(graph),
+      objectColors: assignObjectColors(index, laneTypes),
     };
     lastNodes = [];
     pendingTween = null;
+  }
+
+  /**
+   * One colour per object, so a link's colour says which object it reaches.
+   *
+   * Computed once per sub-log rather than per render: it is keyed on lifecycle
+   * order alone, so toggling comments or hiding a lane cannot make an object change
+   * colour underneath the reader.
+   */
+  function assignObjectColors(index, lanes) {
+    const colors = new Map();
+    for (const laneType of lanes) {
+      const ordered = index
+        .objectsOfType(laneType)
+        .slice()
+        .sort((a, b) => {
+          const aStart = a.intervals?.[0]?.start ? +a.intervals[0].start : Infinity;
+          const bStart = b.intervals?.[0]?.start ? +b.intervals[0].start : Infinity;
+          return aStart - bStart || (a.id < b.id ? -1 : 1);
+        });
+      ordered.forEach((object, i) => colors.set(object.id, objectShade(laneType, i)));
+    }
+    return colors;
   }
 
   /** Capture current positions so the next render animates from them. */
@@ -94,7 +118,8 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
   function render() {
     if (!context) return;
-    const { graph, index, bursts, burstsByCommit, adjacency, instants, actorColors } = context;
+    const { graph, index, bursts, burstsByCommit, adjacency, instants, actorColors, objectColors } =
+      context;
 
     const tweenFrom = pendingTween;
     pendingTween = null;
@@ -167,6 +192,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       focus,
       laneTypes,
       objectRow,
+      objectColors,
     });
     renderGroupBoxes({ gBG: layers.bg, nodes });
 
@@ -194,7 +220,13 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       axisY: height - MARGIN.bottom + 24,
     });
 
-    renderSequenceLines({ gSeq: layers.seq, nodes, laneTypes: visibleLanes, focus });
+    renderSequenceLines({
+      gSeq: layers.seq,
+      nodes,
+      laneTypes: visibleLanes,
+      focus,
+      objectColors,
+    });
     renderLinks({
       gLink: layers.link,
       defs,
@@ -205,6 +237,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       focus,
       burstsByCommit,
       tooltip,
+      objectColors,
     });
     renderActorTrails({ gHalo: layers.halo, nodes, state, actorColors });
     renderNodes({
@@ -215,6 +248,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       tooltip,
       tweenFrom,
       handlers,
+      objectColors,
       actorLogin: (id) => index.byId.get(id)?.vmap?.login ?? id,
     });
     renderBurstHandles({

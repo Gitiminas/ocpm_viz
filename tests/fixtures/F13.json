@@ -1,0 +1,580 @@
+{
+  "meta": {
+    "repo": "synthetic/fixture",
+    "repo_id": 1,
+    "seed": [
+      {
+        "id": "issue:13",
+        "type": "issue"
+      }
+    ],
+    "traversal_degree": 2,
+    "active_object_types": [
+      "actor",
+      "commit",
+      "issue",
+      "pull_request"
+    ],
+    "active_link_methods": [
+      "branch_name",
+      "head_sha",
+      "pr_body",
+      "ref_match"
+    ],
+    "generated_at": "2026-07-30T00:00:00Z",
+    "activity_scope": "OCEL-strict + comments",
+    "data_honesty": {
+      "synthetic": "SYNTHESIZED FIXTURE — not real GitHub data. Exists to exhibit one structural property; never use it for any figure or claim about behaviour.",
+      "commit_time": "first-seen in PushEvent, NOT real git commit time"
+    },
+    "source": {
+      "fixture": "F13",
+      "built_by": "scripts/build-synthetic-fixtures.mjs",
+      "property": "Two concurrent PRs with several commits each, plus a commit shared by both — links into one lane must stay individually readable."
+    }
+  },
+  "objects": [
+    {
+      "id": "issue:13",
+      "type": "issue",
+      "label": "#13",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->closed",
+      "vmap": {
+        "issue_number": 13,
+        "issue_id": 900013,
+        "title": "Synthetic issue 13"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-01T00:00:00Z",
+          "end": "2025-01-20T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "pr:80",
+      "type": "pull_request",
+      "label": "PR #80",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 80,
+        "pull_request_id": 800080,
+        "title": "Synthetic PR 80"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-02T00:00:00Z",
+          "end": "2025-01-12T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "pr:81",
+      "type": "pull_request",
+      "label": "PR #81",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 81,
+        "pull_request_id": 800081,
+        "title": "Synthetic PR 81"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-04T00:00:00Z",
+          "end": "2025-01-16T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "actor:alice",
+      "type": "actor",
+      "label": "@alice",
+      "repo": "synthetic/fixture",
+      "time_semantics": "static",
+      "vmap": {
+        "login": "alice"
+      },
+      "intervals": []
+    },
+    {
+      "id": "actor:bob",
+      "type": "actor",
+      "label": "@bob",
+      "repo": "synthetic/fixture",
+      "time_semantics": "static",
+      "vmap": {
+        "login": "bob"
+      },
+      "intervals": []
+    },
+    {
+      "id": "commit:pr0c0000000000000",
+      "type": "commit",
+      "label": "pr0c000",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "pr0c0000000000000",
+        "push_id": 8100,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:pr0c1000000000000",
+      "type": "commit",
+      "label": "pr0c100",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "pr0c1000000000000",
+        "push_id": 8101,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-07T00:00:00Z",
+          "end": "2025-01-07T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:pr0c2000000000000",
+      "type": "commit",
+      "label": "pr0c200",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "pr0c2000000000000",
+        "push_id": 8102,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-09T00:00:00Z",
+          "end": "2025-01-09T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:pr0c3000000000000",
+      "type": "commit",
+      "label": "pr0c300",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "pr0c3000000000000",
+        "push_id": 8103,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-11T00:00:00Z",
+          "end": "2025-01-11T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:pr1c0000000000000",
+      "type": "commit",
+      "label": "pr1c000",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "pr1c0000000000000",
+        "push_id": 8110,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-06T00:00:00Z",
+          "end": "2025-01-06T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:pr1c1000000000000",
+      "type": "commit",
+      "label": "pr1c100",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "pr1c1000000000000",
+        "push_id": 8111,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-08T00:00:00Z",
+          "end": "2025-01-08T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:pr1c2000000000000",
+      "type": "commit",
+      "label": "pr1c200",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "pr1c2000000000000",
+        "push_id": 8112,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-10T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:pr1c3000000000000",
+      "type": "commit",
+      "label": "pr1c300",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "pr1c3000000000000",
+        "push_id": 8113,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-12T00:00:00Z",
+          "end": "2025-01-12T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:sharedcommit00000",
+      "type": "commit",
+      "label": "sharedc",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "sharedcommit00000",
+        "push_id": 8199,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-09T00:00:00Z",
+          "end": "2025-01-09T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "activity": "IssueOpened",
+      "time": "2025-01-01T00:00:00Z",
+      "object_id": "issue:13",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e2",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-02T00:00:00Z",
+      "object_id": "pr:80",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e3",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-04T00:00:00Z",
+      "object_id": "pr:81",
+      "actor_id": "actor:bob",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e4",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:pr0c0000000000000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e5",
+      "activity": "CommitObserved",
+      "time": "2025-01-07T00:00:00Z",
+      "object_id": "commit:pr0c1000000000000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e6",
+      "activity": "CommitObserved",
+      "time": "2025-01-09T00:00:00Z",
+      "object_id": "commit:pr0c2000000000000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e7",
+      "activity": "CommitObserved",
+      "time": "2025-01-11T00:00:00Z",
+      "object_id": "commit:pr0c3000000000000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e8",
+      "activity": "CommitObserved",
+      "time": "2025-01-06T00:00:00Z",
+      "object_id": "commit:pr1c0000000000000",
+      "actor_id": "actor:bob",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e9",
+      "activity": "CommitObserved",
+      "time": "2025-01-08T00:00:00Z",
+      "object_id": "commit:pr1c1000000000000",
+      "actor_id": "actor:bob",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e10",
+      "activity": "CommitObserved",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "commit:pr1c2000000000000",
+      "actor_id": "actor:bob",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e11",
+      "activity": "CommitObserved",
+      "time": "2025-01-12T00:00:00Z",
+      "object_id": "commit:pr1c3000000000000",
+      "actor_id": "actor:bob",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e12",
+      "activity": "CommitObserved",
+      "time": "2025-01-09T00:00:00Z",
+      "object_id": "commit:sharedcommit00000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e13",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-12T00:00:00Z",
+      "object_id": "pr:80",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e14",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-16T00:00:00Z",
+      "object_id": "pr:81",
+      "actor_id": "actor:bob",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e15",
+      "activity": "IssueClosed",
+      "time": "2025-01-20T00:00:00Z",
+      "object_id": "issue:13",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    }
+  ],
+  "links": [
+    {
+      "source": "pr:80",
+      "target": "issue:13",
+      "qualifier": "related_issue",
+      "evidence": "validated",
+      "method": "pr_body",
+      "link_methods": [
+        "pr_body"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "pr:81",
+      "target": "issue:13",
+      "qualifier": "related_issue",
+      "evidence": "extracted",
+      "method": "branch_name",
+      "link_methods": [
+        "branch_name"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:pr0c0000000000000",
+      "target": "pr:80",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:pr0c1000000000000",
+      "target": "pr:80",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:pr0c2000000000000",
+      "target": "pr:80",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:pr0c3000000000000",
+      "target": "pr:80",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:pr1c0000000000000",
+      "target": "pr:81",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:pr1c1000000000000",
+      "target": "pr:81",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:pr1c2000000000000",
+      "target": "pr:81",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:pr1c3000000000000",
+      "target": "pr:81",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:sharedcommit00000",
+      "target": "pr:80",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:sharedcommit00000",
+      "target": "pr:81",
+      "qualifier": "referenced_pull_request",
+      "evidence": "extracted",
+      "method": "ref_match",
+      "link_methods": [
+        "ref_match"
+      ],
+      "n_methods": 1
+    }
+  ]
+}

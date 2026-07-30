@@ -34,6 +34,68 @@ export const QUALIFIER = {
   referenced_issue: { color: COLORS.extracted, label: 'referenced_issue' },
 };
 
+/**
+ * Per-object shades within a type's hue.
+ *
+ * When a lane holds several objects, hue alone no longer identifies anything: two
+ * PRs are both orange, so a link arriving in the PR lane does not say *which* PR it
+ * reaches. Shade supplies that missing channel — hue still reads as the object
+ * type, lightness and chroma separate the individuals.
+ *
+ * **Index 0 is exactly the type's base colour**, deliberately. A sub-log with one
+ * issue and one PR therefore renders identically to before this existed, which is
+ * what keeps the F1 regression baseline valid.
+ *
+ * Later shades are stated in OKLCH on the same perceptual lightness scale the
+ * design system uses, staying inside each role's hue family and inside the light
+ * range that reads on the dark ground (see the Nocturne readme). The issue family
+ * cannot be derived from `var(--color-accent)` at runtime, so its variants are
+ * pinned to the accent's own blurple; if the theme's accent hue ever moves, index 0
+ * follows it and the rest need re-picking.
+ */
+const OBJECT_SHADES = {
+  // Ordered by distance from the base, not by hue: index 1 is the *most* separable
+  // shade, because two objects in a lane is by far the commonest case and those two
+  // need to be told apart at a glance. Orange versus gold does that; two adjacent
+  // oranges do not.
+  pull_request: [
+    COLORS.pull_request, // base orange
+    'oklch(88% 0.12 101)', // gold — maximum separation from the base
+    'oklch(67% 0.14 38)', // deep red-orange
+    'oklch(79% 0.16 85)', // saturated amber
+    'oklch(72% 0.07 58)', // muted brown-orange
+    'oklch(84% 0.09 120)', // pale yellow-green edge of the family
+  ],
+  issue: [
+    COLORS.issue, // the accent token itself
+    'oklch(78% 0.13 330)', // pink-lilac — maximum separation from the accent
+    'oklch(58% 0.15 268)', // deep indigo
+    'oklch(84% 0.08 300)', // pale lilac
+    'oklch(66% 0.17 305)', // saturated violet
+    'oklch(72% 0.06 282)', // muted periwinkle
+  ],
+  // Commits are one node each rather than spans, so they never need separating
+  // from a sibling in the same lane.
+  commit: [COLORS.commit],
+};
+
+/**
+ * The colour for a specific object.
+ *
+ * `index` is the object's stable position among the objects of its lane, so the
+ * same object keeps the same shade across renders and across time modes.
+ */
+export function objectShade(objectType, index = 0) {
+  const shades = OBJECT_SHADES[objectType];
+  if (!shades) return typeColor(objectType);
+  return shades[index % shades.length];
+}
+
+/** How many distinct shades a type can show before the palette repeats. */
+export function shadeCount(objectType) {
+  return (OBJECT_SHADES[objectType] || [null]).length;
+}
+
 /** Actor trail palette, assigned by index. */
 export const ACTOR_PALETTE = [
   'oklch(74% 0.12 150)',

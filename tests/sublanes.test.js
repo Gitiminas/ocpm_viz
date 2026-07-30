@@ -9,6 +9,41 @@ import { buildNodes, assignRanks } from '../src/layout/nodes.js';
 import { createScales } from '../src/layout/scales.js';
 import { packRows, assignSubLanes, objectExtent, collisionThreshold } from '../src/layout/packing.js';
 import { computeLaneGeometry } from '../src/layout/lanes.js';
+import { objectShade, shadeCount, COLORS } from '../src/render/theme.js';
+import { renderLinks } from '../src/render/links.js';
+
+/**
+ * A stand-in for a d3 selection that records the attributes written to it.
+ *
+ * The link renderer only ever chains `append`, `attr`, `style`, `text` and `on`, so
+ * this is enough to exercise its geometry without a DOM — which is the point: the
+ * fan is a arithmetic property of the paths, and arithmetic should be testable
+ * without a browser.
+ */
+function fakeSelection(recorded) {
+  const make = () => {
+    const node = { attrs: {} };
+    recorded.push(node);
+    const selection = {
+      append: () => make(),
+      attr(key, value) {
+        node.attrs[key] = value;
+        return selection;
+      },
+      style: () => selection,
+      text: () => selection,
+      on: () => selection,
+      selectAll: () => ({ remove() {} }),
+      node: () => ({}),
+    };
+    return selection;
+  };
+  return {
+    append: () => make(),
+    attr: () => undefined,
+    selectAll: () => ({ remove() {} }),
+  };
+}
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture}.json`, import.meta.url), 'utf8'));
@@ -237,8 +272,93 @@ describe('sub-lane allocation in isolation', () => {
 // Invariants that must hold for every fixture, in every mode.
 // ---------------------------------------------------------------------------
 
+describe('objects in one lane are visually distinguishable', () => {
+  test('a lone object of a type keeps the base colour, so F1 is unchanged', () => {
+    assert.equal(objectShade('pull_request', 0), COLORS.pull_request);
+    assert.equal(objectShade('issue', 0), COLORS.issue);
+  });
+
+  test('objects sharing a lane get different shades', () => {
+    assert.notEqual(objectShade('pull_request', 0), objectShade('pull_request', 1));
+    assert.notEqual(objectShade('issue', 0), objectShade('issue', 1));
+  });
+
+  test('the palette cycles rather than running out', () => {
+    const n = shadeCount('pull_request');
+    assert.ok(n >= 4, 'need enough shades to be useful');
+    assert.equal(objectShade('pull_request', n), objectShade('pull_request', 0));
+  });
+
+  test('commits are not shaded — each is its own node, never a sibling span', () => {
+    assert.equal(objectShade('commit', 0), objectShade('commit', 3));
+  });
+});
+
+describe('links that would coincide are fanned apart', () => {
+  // The defect: a commit inside two overlapping PRs' spans produces two straight
+  // vertical links at the same x, and the one reaching the nearer band is a strict
+  // sub-segment of the other — completely hidden. In F5 the buried link was the
+  // extracted one, so the "?" uncertainty badge vanished under a solid line.
+  // The commit sits below both PR bands, and both links land at the same x —
+  // exactly the geometry that made one of them invisible.
+  const COMMIT_Y = 300;
+  const anchorsFor = (targets) => ({
+    x: () => 500,
+    y: (id) => targets[id]?.y ?? COMMIT_Y,
+    xAt: () => 500,
+    clampToLifecycle: (id, object, sx) => sx,
+    xOfTime: () => 500,
+  });
+
+  test('two links from one commit into the same column are separated', async () => {
+    const graph = await load('F5');
+    const index = indexObjectGraph(graph);
+    const drawn = [];
+    const gLink = fakeSelection(drawn);
+
+    renderLinks({
+      gLink,
+      defs: fakeSelection([]),
+      links: graph.links,
+      byId: index.byId,
+      anchors: anchorsFor({ 'pr:40': { y: 100 }, 'pr:41': { y: 140 } }),
+      state: {
+        tracks: { issue: true, pull_request: true, commit: true },
+        relPairs: {},
+        expandedBursts: new Set(),
+      },
+      focus: null,
+      burstsByCommit: new Map(),
+      tooltip: { bind: (s) => s },
+      objectColors: new Map(),
+    });
+
+    const paths = drawn.filter((d) => d.attrs.d).map((d) => d.attrs.d);
+    const startXs = [...new Set(paths.map((d) => d.match(/^M([-\d.]+),/)[1]))];
+    assert.equal(startXs.length, 2, 'the two links must not start at the same x');
+    const separation = Math.abs(Number(startXs[0]) - Number(startXs[1]));
+    assert.ok(separation >= 4, `links only ${separation}px apart`);
+  });
+
+  test('a source whose links already diverge is left where it was', async () => {
+    // F1's one multi-link commit reaches the issue and the PR at different x, so
+    // nothing coincides and nothing should move — this is what keeps F1 identical.
+    const graph = await load('F1');
+    const index = indexObjectGraph(graph);
+    const multi = graph.links.filter(
+      (l) => l.source === 'commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3',
+    );
+    assert.equal(multi.length, 2);
+    assert.notEqual(multi[0].target, multi[1].target);
+    // Their targets sit in different lanes with different spans, so clampToLifecycle
+    // puts them in different columns and the fan does not engage.
+    const targets = multi.map((l) => index.byId.get(l.target));
+    assert.notEqual(targets[0].type, targets[1].type);
+  });
+});
+
 describe('layout invariants across all fixtures and modes', () => {
-  const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9'];
+  const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F13'];
 
   for (const fixture of ALL) {
     test(`${fixture}: no two nodes overlap within a row`, async () => {

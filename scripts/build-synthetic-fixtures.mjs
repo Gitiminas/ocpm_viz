@@ -355,6 +355,68 @@ FIXTURES.F9 = () => {
   });
 };
 
+/**
+ * F13 — two concurrent PRs, each with its own run of commits, plus one commit
+ * shared by both. The dense case: many links converging into one lane at once.
+ */
+FIXTURES.F13 = () => {
+  eventSeq = 0;
+  const objects = [
+    issue(13, { from: t(1), to: t(20) }),
+    pr(80, { from: t(2), to: t(12) }),
+    pr(81, { from: t(4), to: t(16) }),
+    actor('alice'),
+    actor('bob'),
+  ];
+  const events = [
+    event('IssueOpened', t(1), 'issue:13'),
+    event('PullRequestOpened', t(2), 'pr:80'),
+    event('PullRequestOpened', t(4), 'pr:81', { actorId: 'actor:bob' }),
+  ];
+  const links = [
+    link('pr:80', 'issue:13', 'related_issue', 'pr_body'),
+    link('pr:81', 'issue:13', 'related_issue', 'branch_name'),
+  ];
+
+  // Four commits per PR, interleaved in time so their links cross.
+  for (const [prIndex, prId] of ['pr:80', 'pr:81'].entries()) {
+    for (let i = 0; i < 4; i++) {
+      const sha = `pr${prIndex}c${i}`.padEnd(17, '0');
+      const day = 5 + i * 2 + prIndex;
+      objects.push(commit(sha, { at: t(day), pushId: 8100 + prIndex * 10 + i }));
+      events.push(
+        event('CommitObserved', t(day), `commit:${sha}`, {
+          actorId: prIndex ? 'actor:bob' : 'actor:alice',
+        }),
+      );
+      links.push(link(`commit:${sha}`, prId, 'referenced_pull_request', 'head_sha'));
+    }
+  }
+
+  // One commit inside both PRs' spans, linked to both — the case where two links
+  // would otherwise be drawn exactly on top of each other.
+  const shared = 'sharedcommit00000';
+  objects.push(commit(shared, { at: t(9), pushId: 8199 }));
+  events.push(event('CommitObserved', t(9), `commit:${shared}`));
+  links.push(link(`commit:${shared}`, 'pr:80', 'referenced_pull_request', 'head_sha'));
+  links.push(link(`commit:${shared}`, 'pr:81', 'referenced_pull_request', 'ref_match'));
+
+  events.push(event('PullRequestMerged', t(12), 'pr:80'));
+  events.push(event('PullRequestMerged', t(16), 'pr:81', { actorId: 'actor:bob' }));
+  events.push(event('IssueClosed', t(20), 'issue:13'));
+
+  return graph({
+    id: 'F13',
+    property:
+      'Two concurrent PRs with several commits each, plus a commit shared by both — ' +
+      'links into one lane must stay individually readable.',
+    seed: [{ id: 'issue:13', type: 'issue' }],
+    objects,
+    events,
+    links,
+  });
+};
+
 // ---------------------------------------------------------------------------
 
 const checkOnly = process.argv.includes('--check');
