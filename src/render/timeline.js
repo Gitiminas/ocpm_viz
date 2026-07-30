@@ -127,7 +127,11 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     lastNodes = nodes;
 
     // ---- vertical position ----------------------------------------------------
-    const maxRowByLane = packRows(nodes, visibleLanes);
+    // Objects are passed in so a lane can allocate sub-lanes when two of its
+    // objects overlap in time; without them the packer can only see nodes, and an
+    // object's *span* is what decides whether it needs its own band.
+    const laneObjects = new Map(visibleLanes.map((lane) => [lane, index.objectsOfType(lane)]));
+    const { maxRowByLane, objectRow } = packRows(nodes, visibleLanes, { laneObjects });
     const { lanes: geometry, height } = computeLaneGeometry(visibleLanes, maxRowByLane, MARGIN);
     for (const node of nodes) {
       const lane = geometry.get(node.lane);
@@ -154,7 +158,16 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
     // ---- draw -----------------------------------------------------------------
     drawLaneChrome({ layers, geometry, visibleLanes, index, width });
-    renderLifecycleBars({ gBG: layers.bg, index, geometry, state, anchors, focus, laneTypes });
+    renderLifecycleBars({
+      gBG: layers.bg,
+      index,
+      geometry,
+      state,
+      anchors,
+      focus,
+      laneTypes,
+      objectRow,
+    });
     renderGroupBoxes({ gBG: layers.bg, nodes });
 
     renderAxis({

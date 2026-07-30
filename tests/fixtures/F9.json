@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "repo": "synthetic/fixture",
+    "repo_id": 1,
+    "seed": [
+      {
+        "id": "issue:9",
+        "type": "issue"
+      }
+    ],
+    "traversal_degree": 2,
+    "active_object_types": [
+      "actor",
+      "issue"
+    ],
+    "active_link_methods": [],
+    "generated_at": "2026-07-30T00:00:00Z",
+    "activity_scope": "OCEL-strict + comments",
+    "data_honesty": {
+      "synthetic": "SYNTHESIZED FIXTURE — not real GitHub data. Exists to exhibit one structural property; never use it for any figure or claim about behaviour.",
+      "commit_time": "first-seen in PushEvent, NOT real git commit time"
+    },
+    "source": {
+      "fixture": "F9",
+      "built_by": "scripts/build-synthetic-fixtures.mjs",
+      "property": "A reopened issue — must render as two bars on one row, not one span."
+    }
+  },
+  "objects": [
+    {
+      "id": "issue:9",
+      "type": "issue",
+      "label": "#9",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->closed",
+      "vmap": {
+        "issue_number": 9,
+        "issue_id": 900009,
+        "title": "Synthetic issue 9"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-01T00:00:00Z",
+          "end": "2025-01-04T00:00:00Z"
+        },
+        {
+          "start": "2025-01-09T00:00:00Z",
+          "end": "2025-01-14T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "actor:alice",
+      "type": "actor",
+      "label": "@alice",
+      "repo": "synthetic/fixture",
+      "time_semantics": "static",
+      "vmap": {
+        "login": "alice"
+      },
+      "intervals": []
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "activity": "IssueOpened",
+      "time": "2025-01-01T00:00:00Z",
+      "object_id": "issue:9",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e2",
+      "activity": "IssueClosed",
+      "time": "2025-01-04T00:00:00Z",
+      "object_id": "issue:9",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e3",
+      "activity": "IssueReopened",
+      "time": "2025-01-09T00:00:00Z",
+      "object_id": "issue:9",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e4",
+      "activity": "IssueClosed",
+      "time": "2025-01-14T00:00:00Z",
+      "object_id": "issue:9",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    }
+  ],
+  "links": []
+}

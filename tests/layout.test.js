@@ -178,12 +178,12 @@ describe('row packing', () => {
 
   test('colliding nodes stack into successive rows', () => {
     const nodes = [node('a', 'commit', 0), node('b', 'commit', 5), node('c', 'commit', 10)];
-    const maxRow = packRows(nodes, ['commit']);
+    const { maxRowByLane } = packRows(nodes, ['commit']);
     assert.deepEqual(
       nodes.map((n) => n.row),
       [0, 1, 2],
     );
-    assert.equal(maxRow.get('commit'), 2);
+    assert.equal(maxRowByLane.get('commit'), 2);
   });
 
   test('no two nodes in one row sit closer than the collision threshold', async () => {

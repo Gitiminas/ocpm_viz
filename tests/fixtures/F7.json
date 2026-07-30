@@ -1,0 +1,624 @@
+{
+  "meta": {
+    "repo": "synthetic/fixture",
+    "repo_id": 1,
+    "seed": [
+      {
+        "id": "pr:60",
+        "type": "pull_request"
+      }
+    ],
+    "traversal_degree": 2,
+    "active_object_types": [
+      "actor",
+      "commit",
+      "pull_request"
+    ],
+    "active_link_methods": [],
+    "generated_at": "2026-07-30T00:00:00Z",
+    "activity_scope": "OCEL-strict + comments",
+    "data_honesty": {
+      "synthetic": "SYNTHESIZED FIXTURE — not real GitHub data. Exists to exhibit one structural property; never use it for any figure or claim about behaviour.",
+      "commit_time": "first-seen in PushEvent, NOT real git commit time"
+    },
+    "source": {
+      "fixture": "F7",
+      "built_by": "scripts/build-synthetic-fixtures.mjs",
+      "property": "Two separate bursts plus loose commits — burst handling must work for N, not 1."
+    }
+  },
+  "objects": [
+    {
+      "id": "pr:60",
+      "type": "pull_request",
+      "label": "PR #60",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 60,
+        "pull_request_id": 800060,
+        "title": "Synthetic PR 60"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-01T00:00:00Z",
+          "end": "2025-01-20T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "actor:alice",
+      "type": "actor",
+      "label": "@alice",
+      "repo": "synthetic/fixture",
+      "time_semantics": "static",
+      "vmap": {
+        "login": "alice"
+      },
+      "intervals": []
+    },
+    {
+      "id": "commit:burst0commit00000",
+      "type": "commit",
+      "label": "burst0c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst0commit00000",
+        "push_id": 7001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst0commit10000",
+      "type": "commit",
+      "label": "burst0c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst0commit10000",
+        "push_id": 7001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst0commit20000",
+      "type": "commit",
+      "label": "burst0c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst0commit20000",
+        "push_id": 7001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst0commit30000",
+      "type": "commit",
+      "label": "burst0c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst0commit30000",
+        "push_id": 7001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst0commit40000",
+      "type": "commit",
+      "label": "burst0c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst0commit40000",
+        "push_id": 7001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst0commit50000",
+      "type": "commit",
+      "label": "burst0c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst0commit50000",
+        "push_id": 7001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst0commit60000",
+      "type": "commit",
+      "label": "burst0c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst0commit60000",
+        "push_id": 7001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst0commit70000",
+      "type": "commit",
+      "label": "burst0c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst0commit70000",
+        "push_id": 7001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst1commit00000",
+      "type": "commit",
+      "label": "burst1c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst1commit00000",
+        "push_id": 7002,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-10T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst1commit10000",
+      "type": "commit",
+      "label": "burst1c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst1commit10000",
+        "push_id": 7002,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-10T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst1commit20000",
+      "type": "commit",
+      "label": "burst1c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst1commit20000",
+        "push_id": 7002,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-10T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst1commit30000",
+      "type": "commit",
+      "label": "burst1c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst1commit30000",
+        "push_id": 7002,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-10T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst1commit40000",
+      "type": "commit",
+      "label": "burst1c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst1commit40000",
+        "push_id": 7002,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-10T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst1commit50000",
+      "type": "commit",
+      "label": "burst1c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst1commit50000",
+        "push_id": 7002,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-10T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst1commit60000",
+      "type": "commit",
+      "label": "burst1c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst1commit60000",
+        "push_id": 7002,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-10T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:burst1commit70000",
+      "type": "commit",
+      "label": "burst1c",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "burst1commit70000",
+        "push_id": 7002,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-10T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:loose000000000000",
+      "type": "commit",
+      "label": "loose00",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "loose000000000000",
+        "push_id": 7100,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-03T00:00:00Z",
+          "end": "2025-01-03T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:loose100000000000",
+      "type": "commit",
+      "label": "loose10",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "loose100000000000",
+        "push_id": 7101,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-18T00:00:00Z",
+          "end": "2025-01-18T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-01T00:00:00Z",
+      "object_id": "pr:60",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e2",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:burst0commit00000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e3",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:burst0commit10000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e4",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:burst0commit20000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e5",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:burst0commit30000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e6",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:burst0commit40000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e7",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:burst0commit50000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e8",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:burst0commit60000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e9",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:burst0commit70000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e10",
+      "activity": "CommitObserved",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "commit:burst1commit00000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e11",
+      "activity": "CommitObserved",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "commit:burst1commit10000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e12",
+      "activity": "CommitObserved",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "commit:burst1commit20000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e13",
+      "activity": "CommitObserved",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "commit:burst1commit30000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e14",
+      "activity": "CommitObserved",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "commit:burst1commit40000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e15",
+      "activity": "CommitObserved",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "commit:burst1commit50000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e16",
+      "activity": "CommitObserved",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "commit:burst1commit60000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e17",
+      "activity": "CommitObserved",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "commit:burst1commit70000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e18",
+      "activity": "CommitObserved",
+      "time": "2025-01-03T00:00:00Z",
+      "object_id": "commit:loose000000000000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e19",
+      "activity": "CommitObserved",
+      "time": "2025-01-18T00:00:00Z",
+      "object_id": "commit:loose100000000000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e20",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-20T00:00:00Z",
+      "object_id": "pr:60",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    }
+  ],
+  "links": []
+}

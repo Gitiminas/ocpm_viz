@@ -1,0 +1,185 @@
+{
+  "meta": {
+    "repo": "synthetic/fixture",
+    "repo_id": 1,
+    "seed": [
+      {
+        "id": "pr:30",
+        "type": "pull_request"
+      }
+    ],
+    "traversal_degree": 2,
+    "active_object_types": [
+      "actor",
+      "issue",
+      "pull_request"
+    ],
+    "active_link_methods": [
+      "pr_body"
+    ],
+    "generated_at": "2026-07-30T00:00:00Z",
+    "activity_scope": "OCEL-strict + comments",
+    "data_honesty": {
+      "synthetic": "SYNTHESIZED FIXTURE — not real GitHub data. Exists to exhibit one structural property; never use it for any figure or claim about behaviour.",
+      "commit_time": "first-seen in PushEvent, NOT real git commit time"
+    },
+    "source": {
+      "fixture": "F4",
+      "built_by": "scripts/build-synthetic-fixtures.mjs",
+      "property": "Two overlapping issues closed by one PR — the issue lane must split into two sub-lanes."
+    }
+  },
+  "objects": [
+    {
+      "id": "issue:3",
+      "type": "issue",
+      "label": "#3",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->closed",
+      "vmap": {
+        "issue_number": 3,
+        "issue_id": 900003,
+        "title": "Synthetic issue 3"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-01T00:00:00Z",
+          "end": "2025-01-12T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "issue:4",
+      "type": "issue",
+      "label": "#4",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->closed",
+      "vmap": {
+        "issue_number": 4,
+        "issue_id": 900004,
+        "title": "Synthetic issue 4"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-04T00:00:00Z",
+          "end": "2025-01-12T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "pr:30",
+      "type": "pull_request",
+      "label": "PR #30",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 30,
+        "pull_request_id": 800030,
+        "title": "Synthetic PR 30"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-06T00:00:00Z",
+          "end": "2025-01-12T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "actor:alice",
+      "type": "actor",
+      "label": "@alice",
+      "repo": "synthetic/fixture",
+      "time_semantics": "static",
+      "vmap": {
+        "login": "alice"
+      },
+      "intervals": []
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "activity": "IssueOpened",
+      "time": "2025-01-01T00:00:00Z",
+      "object_id": "issue:3",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e2",
+      "activity": "IssueOpened",
+      "time": "2025-01-04T00:00:00Z",
+      "object_id": "issue:4",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e3",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-06T00:00:00Z",
+      "object_id": "pr:30",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e4",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-12T00:00:00Z",
+      "object_id": "pr:30",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e5",
+      "activity": "IssueClosed",
+      "time": "2025-01-12T00:00:00Z",
+      "object_id": "issue:3",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e6",
+      "activity": "IssueClosed",
+      "time": "2025-01-12T00:00:00Z",
+      "object_id": "issue:4",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    }
+  ],
+  "links": [
+    {
+      "source": "pr:30",
+      "target": "issue:3",
+      "qualifier": "related_issue",
+      "evidence": "validated",
+      "method": "pr_body",
+      "link_methods": [
+        "pr_body"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "pr:30",
+      "target": "issue:4",
+      "qualifier": "related_issue",
+      "evidence": "validated",
+      "method": "pr_body",
+      "link_methods": [
+        "pr_body"
+      ],
+      "n_methods": 1
+    }
+  ]
+}

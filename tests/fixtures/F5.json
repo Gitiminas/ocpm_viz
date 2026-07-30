@@ -1,0 +1,178 @@
+{
+  "meta": {
+    "repo": "synthetic/fixture",
+    "repo_id": 1,
+    "seed": [
+      {
+        "id": "commit:aaaa111bbbb222ccc",
+        "type": "commit"
+      }
+    ],
+    "traversal_degree": 2,
+    "active_object_types": [
+      "actor",
+      "commit",
+      "pull_request"
+    ],
+    "active_link_methods": [
+      "head_sha",
+      "ref_match"
+    ],
+    "generated_at": "2026-07-30T00:00:00Z",
+    "activity_scope": "OCEL-strict + comments",
+    "data_honesty": {
+      "synthetic": "SYNTHESIZED FIXTURE — not real GitHub data. Exists to exhibit one structural property; never use it for any figure or claim about behaviour.",
+      "commit_time": "first-seen in PushEvent, NOT real git commit time"
+    },
+    "source": {
+      "fixture": "F5",
+      "built_by": "scripts/build-synthetic-fixtures.mjs",
+      "property": "One commit referenced by two PRs — one commit node, two edges, no layout change."
+    }
+  },
+  "objects": [
+    {
+      "id": "pr:40",
+      "type": "pull_request",
+      "label": "PR #40",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 40,
+        "pull_request_id": 800040,
+        "title": "Synthetic PR 40"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-01T00:00:00Z",
+          "end": "2025-01-06T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "pr:41",
+      "type": "pull_request",
+      "label": "PR #41",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 41,
+        "pull_request_id": 800041,
+        "title": "Synthetic PR 41"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-02T00:00:00Z",
+          "end": "2025-01-07T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:aaaa111bbbb222ccc",
+      "type": "commit",
+      "label": "aaaa111",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "aaaa111bbbb222ccc",
+        "push_id": 5001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-03T00:00:00Z",
+          "end": "2025-01-03T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "actor:alice",
+      "type": "actor",
+      "label": "@alice",
+      "repo": "synthetic/fixture",
+      "time_semantics": "static",
+      "vmap": {
+        "login": "alice"
+      },
+      "intervals": []
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-01T00:00:00Z",
+      "object_id": "pr:40",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e2",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-02T00:00:00Z",
+      "object_id": "pr:41",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e3",
+      "activity": "CommitObserved",
+      "time": "2025-01-03T00:00:00Z",
+      "object_id": "commit:aaaa111bbbb222ccc",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e4",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-06T00:00:00Z",
+      "object_id": "pr:40",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e5",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-07T00:00:00Z",
+      "object_id": "pr:41",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    }
+  ],
+  "links": [
+    {
+      "source": "commit:aaaa111bbbb222ccc",
+      "target": "pr:40",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:aaaa111bbbb222ccc",
+      "target": "pr:41",
+      "qualifier": "referenced_pull_request",
+      "evidence": "extracted",
+      "method": "ref_match",
+      "link_methods": [
+        "ref_match"
+      ],
+      "n_methods": 1
+    }
+  ]
+}

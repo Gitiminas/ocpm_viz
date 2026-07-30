@@ -1,0 +1,136 @@
+{
+  "meta": {
+    "repo": "synthetic/fixture",
+    "repo_id": 1,
+    "seed": [
+      {
+        "id": "issue:5",
+        "type": "issue"
+      }
+    ],
+    "traversal_degree": 2,
+    "active_object_types": [
+      "actor",
+      "issue",
+      "pull_request"
+    ],
+    "active_link_methods": [
+      "pr_body"
+    ],
+    "generated_at": "2026-07-30T00:00:00Z",
+    "activity_scope": "OCEL-strict + comments",
+    "data_honesty": {
+      "synthetic": "SYNTHESIZED FIXTURE — not real GitHub data. Exists to exhibit one structural property; never use it for any figure or claim about behaviour.",
+      "commit_time": "first-seen in PushEvent, NOT real git commit time"
+    },
+    "source": {
+      "fixture": "F6",
+      "built_by": "scripts/build-synthetic-fixtures.mjs",
+      "property": "Zero commits — the renderer must not assume the commit lane has content."
+    }
+  },
+  "objects": [
+    {
+      "id": "issue:5",
+      "type": "issue",
+      "label": "#5",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->closed",
+      "vmap": {
+        "issue_number": 5,
+        "issue_id": 900005,
+        "title": "Synthetic issue 5"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-01T00:00:00Z",
+          "end": "2025-01-04T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "pr:50",
+      "type": "pull_request",
+      "label": "PR #50",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 50,
+        "pull_request_id": 800050,
+        "title": "Synthetic PR 50"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-02T00:00:00Z",
+          "end": "2025-01-04T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "actor:alice",
+      "type": "actor",
+      "label": "@alice",
+      "repo": "synthetic/fixture",
+      "time_semantics": "static",
+      "vmap": {
+        "login": "alice"
+      },
+      "intervals": []
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "activity": "IssueOpened",
+      "time": "2025-01-01T00:00:00Z",
+      "object_id": "issue:5",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e2",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-02T00:00:00Z",
+      "object_id": "pr:50",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e3",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-04T00:00:00Z",
+      "object_id": "pr:50",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e4",
+      "activity": "IssueClosed",
+      "time": "2025-01-04T00:00:00Z",
+      "object_id": "issue:5",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    }
+  ],
+  "links": [
+    {
+      "source": "pr:50",
+      "target": "issue:5",
+      "qualifier": "related_issue",
+      "evidence": "validated",
+      "method": "pr_body",
+      "link_methods": [
+        "pr_body"
+      ],
+      "n_methods": 1
+    }
+  ]
+}

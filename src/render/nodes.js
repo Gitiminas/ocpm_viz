@@ -13,27 +13,39 @@
 import { formatInstant, formatDuration, escapeHtml } from './format.js';
 import { TYPE, COLORS, drawSymbol, typeColor } from './theme.js';
 import { objectOpacity } from '../model/graph.js';
+import { ROW_HEIGHT } from '../layout/packing.js';
 
 /** Commit labels are thinned so they never collide. */
 const COMMIT_LABEL_MIN_GAP_PX = 64;
 
-export function renderLifecycleBars({ gBG, index, geometry, state, anchors, focus, laneTypes }) {
+export function renderLifecycleBars({
+  gBG,
+  index,
+  geometry,
+  state,
+  anchors,
+  focus,
+  laneTypes,
+  objectRow = new Map(),
+}) {
   for (const laneType of laneTypes) {
     if (laneType === 'commit' || !state.tracks[laneType]) continue;
     const lane = geometry.get(laneType);
     if (!lane) continue;
 
     for (const object of index.objectsOfType(laneType)) {
+      // An object draws one bar per interval, all on its own sub-lane row, so a
+      // reopened issue reads as several bars belonging to one object and two
+      // concurrent issues never share a row.
+      const row = objectRow.get(object.id) ?? 0;
+
       for (const interval of object.intervals) {
         if (!interval.start || !interval.end) continue;
 
         const x1 = anchors.xAt(object, interval.start);
         const x2 = anchors.xAt(object, interval.end);
         const width = Math.max(2, x2 - x1);
-        // Every object of a lane currently draws its bar on the lane's first row, so
-        // two issues whose lifetimes overlap would draw overlapping bars. Allocating
-        // a sub-lane when — and only when — temporal overlap forces it is Task 2.
-        const y = lane.contentTop;
+        const y = lane.contentTop + row * ROW_HEIGHT;
 
         const group = gBG
           .append('g')
@@ -69,26 +81,57 @@ export function renderLifecycleBars({ gBG, index, geometry, state, anchors, focu
   }
 }
 
-/** The dotted spine connecting consecutive nodes within a lane. */
+/**
+ * The spine connecting consecutive nodes.
+ *
+ * Grouped **per object** in the issue and PR lanes, not per lane. With one issue
+ * and one PR the two are the same thing, which is why the mockup could get away
+ * with per-lane — but as soon as a lane holds two objects, a per-lane spine
+ * zigzags between them and draws a sequence between unrelated PRs that does not
+ * exist. Per object, the line is what it claims to be: this object's own history,
+ * traceable across the whole timeline.
+ *
+ * The commit lane stays per-lane deliberately. Each commit is its own object, so
+ * per-object would draw nothing at all; the chronological spine through the commit
+ * stream is the meaningful reading there.
+ */
 export function renderSequenceLines({ gSeq, nodes, laneTypes, focus }) {
   for (const laneType of laneTypes) {
-    const inLane = nodes.filter((n) => n.lane === laneType).sort((a, b) => a.t - b.t);
-    for (let i = 1; i < inLane.length; i++) {
-      const a = inLane[i - 1];
-      const b = inLane[i];
-      const isComment = a.isComment || b.isComment;
-      gSeq
-        .append('path')
-        .attr('data-legend', isComment ? 'comments' : null)
-        .attr('d', curve(a, b))
-        .attr('fill', 'none')
-        .attr('stroke', typeColor(laneType))
-        .attr('stroke-width', 2)
-        .attr('stroke-dasharray', isComment ? '1 5' : null)
-        .attr('stroke-linecap', 'round')
-        .attr('opacity', focus ? 0.15 : 0.35);
+    const inLane = nodes.filter((n) => n.lane === laneType);
+    const groups =
+      laneType === 'commit'
+        ? [inLane]
+        : [...groupBy(inLane, (node) => node.objectId ?? '·').values()];
+
+    for (const group of groups) {
+      const ordered = group.slice().sort((a, b) => a.t - b.t);
+      for (let i = 1; i < ordered.length; i++) {
+        const a = ordered[i - 1];
+        const b = ordered[i];
+        const isComment = a.isComment || b.isComment;
+        gSeq
+          .append('path')
+          .attr('data-legend', isComment ? 'comments' : null)
+          .attr('d', curve(a, b))
+          .attr('fill', 'none')
+          .attr('stroke', typeColor(laneType))
+          .attr('stroke-width', 2)
+          .attr('stroke-dasharray', isComment ? '1 5' : null)
+          .attr('stroke-linecap', 'round')
+          .attr('opacity', focus ? 0.15 : 0.35);
+      }
     }
   }
+}
+
+function groupBy(items, keyOf) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = keyOf(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  return groups;
 }
 
 export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
@@ -293,7 +336,7 @@ export function renderBurstHandles({ gNode, bursts, state, geometry, anchors, to
       .attr('x1', x)
       .attr('x2', x)
       .attr('y1', y + 12)
-      .attr('y2', lane.contentTop + (lane.rows - 1) * 36)
+      .attr('y2', lane.contentTop + (lane.rows - 1) * ROW_HEIGHT)
       .attr('stroke', color)
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', '4 4')

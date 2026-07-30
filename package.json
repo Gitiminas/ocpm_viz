@@ -8,7 +8,7 @@
     "start": "node scripts/serve.mjs",
     "test": "node --test",
     "test:watch": "node --test --watch",
-    "build:fixtures": "node scripts/build-f1.mjs"
+    "build:fixtures": "node scripts/build-f1.mjs && node scripts/build-synthetic-fixtures.mjs"
   },
   "engines": {
     "node": ">=20"

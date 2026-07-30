@@ -358,15 +358,30 @@ for (const dashboard of [
 // search combos — wired, unlike the mockup where selecting did nothing
 // ---------------------------------------------------------------------------
 
+/**
+ * The initial sub-log comes from the URL when one is named.
+ *
+ * `?fixture=F3` makes a given view reproducible by link, which is what the
+ * task-based evaluation needs and what makes headless verification of a specific
+ * fixture possible at all. Task 3 extends the same mechanism to encode a whole
+ * preset, not just the selection.
+ */
+function queryFromUrl() {
+  const requested = new URLSearchParams(window.location.search).get('fixture');
+  return { fixture: requested && FIXTURES[requested] ? requested : 'F1' };
+}
+
+const initialQuery = queryFromUrl();
+
 setupCombo({
   input: elements.repoInput,
   dropdown: elements.repoDropdown,
   options: Object.values(FIXTURES).map((fixture) => ({
     label: fixture.label,
     fixture: fixture.id,
-    active: true,
+    active: fixture.id === initialQuery.fixture,
   })),
-  initialLabel: Object.values(FIXTURES)[0].label,
+  initialLabel: FIXTURES[initialQuery.fixture].label,
   onSelect: (option) => reload({ fixture: option.fixture }),
 });
 
@@ -430,4 +445,4 @@ window.addEventListener('resize', () => {
   }, 150);
 });
 
-reload({ fixture: 'F1' });
+reload(initialQuery);

@@ -3,14 +3,36 @@
 Every fixture is a complete `ObjectGraph` (`docs/ADAPTER_AND_API.md` §4) that can be loaded
 through `loadObjectGraph()` exactly as a real sub-log would be.
 
-| ID | Sub-log | Status |
-|---|---|---|
-| F1 | The vscode example the mockup was built around — **regression baseline** | built |
-| F2–F9, F11, F12 | Synthesized property fixtures | Task 6 |
-| F10 | Deliberately large sub-log | Task 6 |
+| ID | Sub-log | Property it exists to exhibit | Status |
+|---|---|---|---|
+| F1 | The vscode example the mockup was built around | **regression baseline** — real data | built |
+| F2 | One issue, two PRs, sequential | they must share one sub-lane | built |
+| F3 | One issue, two PRs, overlapping | each must get its own sub-lane | built |
+| F4 | Two overlapping issues, one PR | the same rule applies to issues | built |
+| F5 | One commit referenced by two PRs | extra edges, no extra layout | built |
+| F6 | Zero commits | the commit lane may be empty | built |
+| F7 | Two bursts plus loose commits | burst handling works for N, not 1 | built |
+| F8 | A PR with no linked issue | nothing may assume an issue exists | built |
+| F9 | An issue opened, closed, reopened, closed | two bars on one row | built |
+| F10 | Deliberately large sub-log (few hundred commits) | render behaviour at scale | Task 6 |
+| F11 | All four issue↔PR detection methods present | per-method toggles | Task 6 |
+| F12 | Mixed evidence on one object pair, `n_methods > 1` | multi-method agreement | Task 6 |
 
-Synthesized fixtures (Task 6) must each ship with an assertion proving they exhibit their
-property. An "overlapping PRs" fixture whose PRs do not overlap passes while testing nothing.
+**Every synthesized fixture ships with an assertion proving it exhibits its property**
+(`tests/sublanes.test.js`, first describe block). This is not ceremony: an "overlapping PRs"
+fixture whose PRs do not actually overlap passes every layout test while verifying nothing, and
+that failure mode is completely invisible.
+
+### F2–F9 are synthetic — never cite them
+
+```
+npm run build:fixtures      # regenerate F1 and F2–F9
+```
+
+Built by `scripts/build-synthetic-fixtures.mjs`. They are **not real GitHub data**; each carries
+`meta.data_honesty.synthetic` saying so, and the sidebar labels them. They exist to exercise
+structures F1 cannot reach. No figure, count or claim about real workflow behaviour may come from
+them.
 
 ---
 

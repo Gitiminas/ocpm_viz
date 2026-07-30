@@ -9,12 +9,28 @@
 /** Where fixture JSON is served from, relative to the page. */
 const FIXTURE_BASE = './tests/fixtures/';
 
+/**
+ * The fixture registry, which doubles as the sidebar's source list.
+ *
+ * F1 is real data. Everything else is synthesized to exhibit one structural
+ * property F1 cannot, and is labelled `synthetic: true` so the UI can say so —
+ * a reader must never mistake a synthesized sub-log for observed behaviour.
+ */
 export const FIXTURES = {
   F1: {
     id: 'F1',
     label: 'vscode · issue #242864 → PR #243221',
     file: 'F1.json',
+    synthetic: false,
   },
+  F2: { id: 'F2', label: 'F2 · sequential PRs', file: 'F2.json', synthetic: true },
+  F3: { id: 'F3', label: 'F3 · overlapping PRs', file: 'F3.json', synthetic: true },
+  F4: { id: 'F4', label: 'F4 · two issues, one PR', file: 'F4.json', synthetic: true },
+  F5: { id: 'F5', label: 'F5 · commit in two PRs', file: 'F5.json', synthetic: true },
+  F6: { id: 'F6', label: 'F6 · no commits', file: 'F6.json', synthetic: true },
+  F7: { id: 'F7', label: 'F7 · two bursts', file: 'F7.json', synthetic: true },
+  F8: { id: 'F8', label: 'F8 · orphan PR', file: 'F8.json', synthetic: true },
+  F9: { id: 'F9', label: 'F9 · reopened issue', file: 'F9.json', synthetic: true },
 };
 
 export async function fixtureTransport(query) {

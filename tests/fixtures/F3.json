@@ -1,0 +1,186 @@
+{
+  "meta": {
+    "repo": "synthetic/fixture",
+    "repo_id": 1,
+    "seed": [
+      {
+        "id": "issue:2",
+        "type": "issue"
+      }
+    ],
+    "traversal_degree": 2,
+    "active_object_types": [
+      "actor",
+      "issue",
+      "pull_request"
+    ],
+    "active_link_methods": [
+      "branch_name",
+      "pr_body"
+    ],
+    "generated_at": "2026-07-30T00:00:00Z",
+    "activity_scope": "OCEL-strict + comments",
+    "data_honesty": {
+      "synthetic": "SYNTHESIZED FIXTURE — not real GitHub data. Exists to exhibit one structural property; never use it for any figure or claim about behaviour.",
+      "commit_time": "first-seen in PushEvent, NOT real git commit time"
+    },
+    "source": {
+      "fixture": "F3",
+      "built_by": "scripts/build-synthetic-fixtures.mjs",
+      "property": "One issue, two temporally overlapping PRs — each must get its own sub-lane."
+    }
+  },
+  "objects": [
+    {
+      "id": "issue:2",
+      "type": "issue",
+      "label": "#2",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->closed",
+      "vmap": {
+        "issue_number": 2,
+        "issue_id": 900002,
+        "title": "Synthetic issue 2"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-01T00:00:00Z",
+          "end": "2025-01-20T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "pr:20",
+      "type": "pull_request",
+      "label": "PR #20",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 20,
+        "pull_request_id": 800020,
+        "title": "Synthetic PR 20"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-02T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "pr:21",
+      "type": "pull_request",
+      "label": "PR #21",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 21,
+        "pull_request_id": 800021,
+        "title": "Synthetic PR 21"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-14T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "actor:alice",
+      "type": "actor",
+      "label": "@alice",
+      "repo": "synthetic/fixture",
+      "time_semantics": "static",
+      "vmap": {
+        "login": "alice"
+      },
+      "intervals": []
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "activity": "IssueOpened",
+      "time": "2025-01-01T00:00:00Z",
+      "object_id": "issue:2",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e2",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-02T00:00:00Z",
+      "object_id": "pr:20",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e3",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "pr:21",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e4",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "pr:20",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e5",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-14T00:00:00Z",
+      "object_id": "pr:21",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e6",
+      "activity": "IssueClosed",
+      "time": "2025-01-20T00:00:00Z",
+      "object_id": "issue:2",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    }
+  ],
+  "links": [
+    {
+      "source": "pr:20",
+      "target": "issue:2",
+      "qualifier": "related_issue",
+      "evidence": "validated",
+      "method": "pr_body",
+      "link_methods": [
+        "pr_body"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "pr:21",
+      "target": "issue:2",
+      "qualifier": "related_issue",
+      "evidence": "extracted",
+      "method": "branch_name",
+      "link_methods": [
+        "branch_name"
+      ],
+      "n_methods": 1
+    }
+  ]
+}
