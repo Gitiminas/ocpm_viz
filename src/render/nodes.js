@@ -35,6 +35,7 @@ export function renderLifecycleBars({
     if (!lane) continue;
 
     for (const object of index.objectsOfType(laneType)) {
+      if (state.hiddenObjects?.has(object.id)) continue;
       // An object draws one bar per interval, all on its own sub-lane row, so a
       // reopened issue reads as several bars belonging to one object and two
       // concurrent issues never share a row.

@@ -10,6 +10,13 @@ import { createScales } from '../src/layout/scales.js';
 import { packRows, assignSubLanes, objectExtent, collisionThreshold } from '../src/layout/packing.js';
 import { computeLaneGeometry } from '../src/layout/lanes.js';
 import { objectShade, shadeCount, COLORS } from '../src/render/theme.js';
+import {
+  createState,
+  resetToggles,
+  deriveRelGroups,
+  deriveQualifiers,
+  deriveMethods,
+} from '../src/state/state.js';
 import { renderLinks } from '../src/render/links.js';
 
 /**
@@ -322,11 +329,13 @@ describe('links that would coincide are fanned apart', () => {
       links: graph.links,
       byId: index.byId,
       anchors: anchorsFor({ 'pr:40': { y: 100 }, 'pr:41': { y: 140 } }),
-      state: {
-        tracks: { issue: true, pull_request: true, commit: true },
-        relPairs: {},
-        expandedBursts: new Set(),
-      },
+      // A real state object, so the link renderer sees every filter it consults
+      // rather than a stub that happens to satisfy today's implementation.
+      state: resetToggles(createState(), {
+        relGroups: deriveRelGroups(graph.links, index.byId),
+        qualifiers: deriveQualifiers(graph.links),
+        methods: deriveMethods(graph.links),
+      }),
       focus: null,
       burstsByCommit: new Map(),
       tooltip: { bind: (s) => s },

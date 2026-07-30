@@ -13,7 +13,7 @@
 
 import { escapeHtml } from './format.js';
 import { qualifierColor, typeColor, evidenceStyle, COLORS } from './theme.js';
-import { linkPairKey } from '../state/state.js';
+import { isLinkVisible } from '../state/state.js';
 
 const EXTRACTED_NOTE =
   'Parsed from an unenforced convention — a branch-ref or commit-message match, ' +
@@ -96,18 +96,14 @@ export function renderLinks({
   burstsByCommit,
   tooltip,
   objectColors = new Map(),
+  groupsByCommit = new Map(),
 }) {
   const resolve = makeAnchorResolver(burstsByCommit, state.expandedBursts);
   const drawn = new Set();
 
-  const visible = links.filter((link) => {
-    if (link.qualifier === 'actor') return false;
-    const source = byId.get(link.source);
-    const target = byId.get(link.target);
-    if (!source || !target) return false;
-    if (!state.tracks[source.type] || !state.tracks[target.type]) return false;
-    return state.relPairs[linkPairKey(link, byId)] !== false;
-  });
+  // Every filter lives in one predicate in state.js, so a link's absence is always
+  // attributable to a single named control.
+  const visible = links.filter((link) => isLinkVisible(link, byId, state, groupsByCommit));
 
   // Resolve every endpoint first, so overlapping links can be detected and fanned
   // before any of them is drawn.

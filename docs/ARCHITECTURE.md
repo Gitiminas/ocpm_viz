@@ -52,6 +52,7 @@ src/
     evidence.js        validated / extracted classification
     graph.js           adjacency construction, focus BFS
     bursts.js          ✚ burst derivation from push_id
+    commitGroups.js    ✚ commits grouped by the PR they reach
   layout/
     scales.js          the three time modes and the coordinate dispatcher
     packing.js         row allocation (per-object sub-lanes: Task 2)
@@ -61,13 +62,14 @@ src/
     timeline.js  nodes.js  links.js  axis.js  minimap.js  tooltip.js  legend.js
     theme.js           ✚ colours, shapes, glyphs shared by every renderer
     format.js          ✚ the one place a timestamp becomes text
-    sidebar.js         ✚ track / relationship / actor rows and the search combos
+    sidebar.js         ✚ track / relationship / burst / actor rows and the combos
+    controls.js        ✚ preset panel and the always-visible hidden-state banner
     actorCard.js       ✚ the actor profile card
     stats.js           ✚ presentation for the statistics page
   state/
     state.js           the st object and the derived relationship toggles
     labels.js          ✚ type labels, so state derivation stays DOM-free
-    presets.js         serialize, save, load, URL encode (Task 3)
+    presets.js         serialize, save, load, URL encode, built-in views
   stats/
     metrics.js         durations, counts, gaps — pure functions over an ObjectGraph
 scripts/
@@ -89,6 +91,16 @@ alternative was a module doing two jobs:
 - `render/theme.js`, `sidebar.js`, `actorCard.js`, `stats.js` — otherwise `timeline.js` becomes the
   same god-module the rewrite was meant to break up.
 - `state/labels.js` — lets `state.js` derive toggle labels without importing a render module.
+- `model/commitGroups.js` — grouping commits by the PR they reach is a data derivation, and the
+  union visibility rule (decision 26) has to be testable on its own.
+- `render/controls.js` — the preset panel and the hidden-state banner are two halves of one
+  bargain (decision 27) and belong together, away from the per-lane sidebar rows.
+
+**Where visibility is decided.** All of it lives in `state/state.js` as pure predicates —
+`isObjectVisible`, `isNodeVisible`, `isLinkVisible`. `layout/` takes a predicate rather than the
+state object, so it never learns about lanes, hidden objects or commit groups; `render/` calls the
+predicates rather than re-deriving them. Adding a filter therefore means editing one file and its
+tests, not hunting through the renderers.
 
 **The test that the seams are right:** every module under `model/`, `layout/`, `stats/` must be
 importable and exercised without rendering anything. If a function needs the DOM to be tested, it is

@@ -6,7 +6,13 @@ import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
 import { indexObjectGraph, normalizeGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { buildNodes, assignRanks, filterNodes } from '../src/layout/nodes.js';
-import { deriveRelGroups, createState, resetRelPairs, linkPairKey } from '../src/state/state.js';
+import {
+  deriveRelGroups,
+  createState,
+  resetToggles,
+  linkPairKey,
+  isNodeVisible,
+} from '../src/state/state.js';
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture || 'F1'}.json`, import.meta.url), 'utf8'));
@@ -165,7 +171,7 @@ describe('ranking and filtering', () => {
     const { nodes } = await f1Context();
     const state = createState();
     state.tracks.commit = false;
-    const filtered = filterNodes(nodes, state);
+    const filtered = filterNodes(nodes, (node) => isNodeVisible(node, state));
     assert.equal(filtered.filter((n) => n.lane === 'commit').length, 0);
     assert.ok(filtered.length > 0);
   });
@@ -174,7 +180,7 @@ describe('ranking and filtering', () => {
     const { nodes } = await f1Context();
     const state = createState();
     state.showComments.issue = false;
-    const filtered = filterNodes(nodes, state);
+    const filtered = filterNodes(nodes, (node) => isNodeVisible(node, state));
     assert.equal(filtered.filter((n) => n.lane === 'issue' && n.isComment).length, 0);
     assert.ok(filtered.some((n) => n.lane === 'issue'), 'issue events must survive');
     assert.ok(filtered.some((n) => n.lane === 'pull_request' && n.isComment), 'PR comments untouched');
@@ -198,7 +204,7 @@ describe('relationship toggles are derived, not enumerated', () => {
     const graph = await loadF1();
     const index = indexObjectGraph(graph);
     const groups = deriveRelGroups(graph.links, index.byId);
-    const state = resetRelPairs(createState(), groups);
+    const state = resetToggles(createState(), { relGroups: groups });
     assert.equal(Object.keys(state.relPairs).length, 4);
     assert.ok(Object.values(state.relPairs).every(Boolean));
   });
@@ -207,7 +213,7 @@ describe('relationship toggles are derived, not enumerated', () => {
     const graph = await loadF1();
     const index = indexObjectGraph(graph);
     const groups = deriveRelGroups(graph.links, index.byId);
-    const state = resetRelPairs(createState(), groups);
+    const state = resetToggles(createState(), { relGroups: groups });
     for (const link of graph.links) {
       if (link.qualifier === 'actor') continue;
       const key = linkPairKey(link, index.byId);

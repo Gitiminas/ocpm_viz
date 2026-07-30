@@ -20,6 +20,7 @@
 import { collectInstants } from '../model/objectGraph.js';
 import { deriveBursts, indexBurstsByCommit } from '../model/bursts.js';
 import { buildAdjacency, focusSet } from '../model/graph.js';
+import { deriveCommitGroups } from '../model/commitGroups.js';
 import { buildNodes, assignRanks, filterNodes } from '../layout/nodes.js';
 import { createScales } from '../layout/scales.js';
 import { packRows, ROW_HEIGHT } from '../layout/packing.js';
@@ -35,6 +36,7 @@ import {
   renderGroupBoxes,
 } from './nodes.js';
 import { TYPE, drawSymbol, typeColor, objectShade } from './theme.js';
+import { isNodeVisible, isObjectVisible } from '../state/state.js';
 
 export const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
 const MIN_PLOT_WIDTH = 820;
@@ -83,9 +85,11 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       adjacency: buildAdjacency(graph.links, bursts),
       instants: collectInstants(graph),
       objectColors: assignObjectColors(index, laneTypes),
+      ...deriveCommitGroups(index.objectsOfType('commit'), graph.links, index.byId),
     };
     lastNodes = [];
     pendingTween = null;
+    return context.objectColors;
   }
 
   /**
@@ -118,8 +122,8 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
   function render() {
     if (!context) return;
-    const { graph, index, bursts, burstsByCommit, adjacency, instants, actorColors, objectColors } =
-      context;
+    const { graph, index, bursts, burstsByCommit, adjacency, instants, actorColors, objectColors,
+      groupsByCommit } = context;
 
     const tweenFrom = pendingTween;
     pendingTween = null;
@@ -136,7 +140,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       mode: state.mode,
       laneTypes,
     });
-    const nodes = filterNodes(allNodes, state);
+    const nodes = filterNodes(allNodes, (node) => isNodeVisible(node, state, groupsByCommit));
     const { rankOrder, rankMax, rankTimes } = assignRanks(nodes);
 
     // ---- horizontal position --------------------------------------------------
@@ -182,7 +186,27 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     const anchors = createAnchors({ nodes, nodeByObject, geometry, scales });
 
     // ---- draw -----------------------------------------------------------------
-    drawLaneChrome({ layers, geometry, visibleLanes, index, width });
+    // Which objects actually survived the filters, so the lane caption can say so.
+    const visibleObjectIds = new Set();
+    for (const node of nodes) {
+      if (node.isGroup) node.members.forEach((m) => visibleObjectIds.add(m.objectId));
+      else if (node.objectId) visibleObjectIds.add(node.objectId);
+    }
+    for (const burst of bursts) {
+      if (!visibleObjectIds.has(burst.id)) continue;
+      for (const id of burst.commitIds) visibleObjectIds.add(id);
+    }
+    // An issue or PR with no events of its own still draws a lifecycle bar, so it
+    // counts as visible even though it contributed no node. Commits are excluded:
+    // they have no bar, and their group filter is only reflected in their nodes.
+    for (const laneType of visibleLanes) {
+      if (laneType === 'commit') continue;
+      for (const object of index.objectsOfType(laneType)) {
+        if (isObjectVisible(object, state)) visibleObjectIds.add(object.id);
+      }
+    }
+
+    drawLaneChrome({ layers, geometry, visibleLanes, index, width, visibleObjectIds });
     renderLifecycleBars({
       gBG: layers.bg,
       index,
@@ -238,6 +262,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       burstsByCommit,
       tooltip,
       objectColors,
+      groupsByCommit,
     });
     renderActorTrails({ gHalo: layers.halo, nodes, state, actorColors });
     renderNodes({
@@ -266,7 +291,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   }
 
   /** Lane backgrounds, separators and the sticky lane labels. */
-  function drawLaneChrome({ layers, geometry, visibleLanes, index, width }) {
+  function drawLaneChrome({ layers, geometry, visibleLanes, index, width, visibleObjectIds }) {
     visibleLanes.forEach((laneType, i) => {
       const lane = geometry.get(laneType);
       layers.bg
@@ -320,7 +345,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         .attr('font-size', 11)
         .attr('fill', 'var(--color-neutral-500)')
         .attr('class', 'mono')
-        .text(laneSubtitle(laneType, index));
+        .text(laneSubtitle(laneType, index, visibleObjectIds));
     });
   }
 
@@ -330,11 +355,23 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
    * The mockup printed the single issue's and single PR's labels here. With N
    * objects a label no longer identifies the lane, so it names the one object when
    * there is exactly one and counts them otherwise.
+   *
+   * When some are filtered out it reads "1 of 2 objects" rather than "2 objects".
+   * A count that ignores the filters would contradict what is on screen, and a
+   * reader resolving that contradiction by trusting the caption would draw exactly
+   * the wrong conclusion about how much the sub-log contains.
    */
-  function laneSubtitle(laneType, index) {
+  function laneSubtitle(laneType, index, visibleObjectIds) {
     const objects = index.objectsOfType(laneType);
-    if (objects.length === 1 && laneType !== 'commit') return objects[0].label;
-    return `${objects.length} object${objects.length === 1 ? '' : 's'}`;
+    const visible = objects.filter((object) => visibleObjectIds.has(object.id));
+
+    if (objects.length === 1 && laneType !== 'commit') {
+      return visible.length === 1 ? objects[0].label : `${objects[0].label} · hidden`;
+    }
+    const noun = `object${objects.length === 1 ? '' : 's'}`;
+    return visible.length === objects.length
+      ? `${objects.length} ${noun}`
+      : `${visible.length} of ${objects.length} ${noun}`;
   }
 
   /** Lane labels live inside the SVG, so they are translated rather than CSS-sticky. */

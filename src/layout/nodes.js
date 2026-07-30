@@ -211,16 +211,17 @@ export function assignRanks(nodes) {
 }
 
 /**
- * Filter nodes by the active track and comment toggles.
+ * Filter nodes by visibility.
+ *
+ * Takes a predicate rather than the state object so this layer stays independent of
+ * how visibility is decided — the rules live in `state/state.js`, where they are
+ * testable on their own, and layout does not need to know about lanes, hidden
+ * objects, commit groups or any control added later.
  *
  * Kept separate from construction so the toggles cannot accidentally change ranks:
- * hiding comments must remove nodes *before* ranking, or ordinal positions would
- * shift under a filter that is supposed to be purely subtractive.
+ * hiding a node must happen *before* ranking, or ordinal positions would shift
+ * under a filter that is supposed to be purely subtractive.
  */
-export function filterNodes(nodes, { tracks, showComments }) {
-  return nodes.filter((node) => {
-    if (!tracks[node.lane]) return false;
-    if (node.isComment && showComments[node.lane] === false) return false;
-    return true;
-  });
+export function filterNodes(nodes, isVisible) {
+  return nodes.filter((node) => isVisible(node));
 }

@@ -13,7 +13,20 @@ import { FIXTURES } from './data/fixtures.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
-import { createState, deriveRelGroups, resetRelPairs, MIN_ZOOM, MAX_ZOOM } from './state/state.js';
+import {
+  createState,
+  deriveRelGroups,
+  deriveQualifiers,
+  deriveMethods,
+  resetToggles,
+  summarizeHidden,
+  MIN_ZOOM,
+  MAX_ZOOM,
+} from './state/state.js';
+import { deriveCommitGroups } from './model/commitGroups.js';
+import { deriveBursts } from './model/bursts.js';
+import { applyState, decodePreset } from './state/presets.js';
+import { renderHiddenBanner, renderPresetPanel } from './render/controls.js';
 import { actorColor } from './render/theme.js';
 import { createTooltip } from './render/tooltip.js';
 import { createMinimap } from './render/minimap.js';
@@ -25,6 +38,7 @@ import {
   renderTrackRows,
   renderRelationshipRows,
   renderActorRows,
+  renderBurstControls,
   setupCombo,
 } from './render/sidebar.js';
 
@@ -45,6 +59,10 @@ const elements = {
   actors: el('actors'),
   actorSearch: el('actorSearch'),
   legend: el('legend'),
+  bursts: el('bursts'),
+  presets: el('presets'),
+  hiddenBanner: el('hiddenBanner'),
+  toast: el('toast'),
   statsGrid: el('statsGrid'),
   statsMilestones: el('statsMilestones'),
   statsBreadcrumb: el('statsBreadcrumb'),
@@ -158,49 +176,141 @@ async function load(query) {
   for (const actor of actors) actor.eventCount = index.eventCountByActor.get(actor.id) || 0;
 
   const description = describeSubLog(graph);
-  current = { graph, index, actorColors, description, query };
 
+  // The toggle vocabulary is derived from what this sub-log actually contains,
+  // never enumerated — a different sub-log gets different controls.
   const relGroups = deriveRelGroups(graph.links, index.byId);
-  resetRelPairs(state, relGroups);
+  const qualifiers = deriveQualifiers(graph.links);
+  const methods = deriveMethods(graph.links);
+  const { groups: commitGroups } = deriveCommitGroups(
+    index.objectsOfType('commit'),
+    graph.links,
+    index.byId,
+  );
+
+  resetToggles(state, { relGroups, qualifiers, methods });
+  // A preset in the URL is applied after the vocabulary is derived, so it can only
+  // set toggles this sub-log actually has.
+  if (query?.preset) {
+    const snapshot = decodePreset(query.preset);
+    if (snapshot) applyState(state, snapshot);
+    else showToast('The link carried an unreadable view — showing defaults');
+  }
   state.focus = null;
   state.expandedBursts = new Set();
   state.expandedGroups = new Set();
+
+  const objectColors = timeline.setGraph(graph, index, actorColors);
+  const toggleContext = { relGroups, qualifiers, methods, commitGroups, objectsById: index.byId };
+  current = { graph, index, actorColors, description, query, toggleContext, objectColors, commitGroups };
 
   elements.breadcrumb.textContent = description;
   elements.breadcrumb.title = description;
   updateFocusLabel();
 
+  renderSidebar();
+  renderLegend(elements.legend);
+  wireObjectCombo(graph);
+
+  timeline.measure();
+  redraw();
+  refreshStats();
+}
+
+/**
+ * Rebuild every sidebar control from the current sub-log.
+ *
+ * Called on load and after a preset is applied, because a preset can change any
+ * toggle and the controls must show the truth rather than what they were left at.
+ */
+function renderSidebar() {
+  if (!current) return;
+  const { graph, index, actorColors, objectColors, commitGroups, toggleContext, query } = current;
+
   renderTrackRows({
     container: elements.tracks,
     state,
     laneTypes: LANE_TYPES,
-    onChange: () => timeline.render(),
+    index,
+    objectColors,
+    commitGroups,
+    onChange: redraw,
     relSync: () => relSync(),
   });
   relSync = renderRelationshipRows({
     container: elements.relationships,
     state,
-    relGroups,
-    onChange: () => timeline.render(),
+    relGroups: toggleContext.relGroups,
+    qualifiers: toggleContext.qualifiers,
+    methods: toggleContext.methods,
+    onChange: redraw,
+  });
+  renderBurstControls({
+    container: elements.bursts,
+    state,
+    bursts: deriveBursts(index.objectsOfType('commit'), { threshold: state.burstThreshold }),
+    // The threshold changes which pushes are bursts at all, so the graph context
+    // has to be rebuilt, not merely redrawn.
+    onChange: () => {
+      timeline.setGraph(graph, index, actorColors);
+      renderSidebar();
+      redraw();
+    },
   });
   renderActorRows({
     container: elements.actors,
     searchInput: elements.actorSearch,
-    actors,
+    actors: index.objectsOfType('actor'),
     actorColors,
     state,
-    onChange: () => timeline.render(),
+    onChange: redraw,
     onProfile: (actor, anchor) =>
       actorCard.open(actor, anchor, { graph, index, color: actorColors.get(actor.id) }),
   });
-  renderLegend(elements.legend);
+  renderPresetPanel({
+    container: elements.presets,
+    state,
+    context: toggleContext,
+    fixtureId: query?.fixture || 'F1',
+    onApply: (snapshot) => {
+      applyState(state, snapshot);
+      renderSidebar();
+      redraw();
+    },
+    onToast: showToast,
+  });
+}
 
-  wireObjectCombo(graph);
-
-  timeline.setGraph(graph, index, actorColors);
-  timeline.measure();
+/**
+ * Draw the timeline and refresh the hidden-state banner together.
+ *
+ * Deliberately one function: every path that can subtract from the picture must
+ * also update what the app says it is hiding. Splitting them would make it possible
+ * to filter something without declaring it, which is the exact failure the banner
+ * exists to prevent.
+ */
+function redraw() {
   timeline.render();
-  refreshStats();
+  if (!current) return;
+  renderHiddenBanner({
+    container: elements.hiddenBanner,
+    summary: summarizeHidden(state, current.toggleContext),
+    state,
+    onRestore: () => {
+      renderSidebar();
+      redraw();
+    },
+  });
+}
+
+let toastTimer = null;
+function showToast(message) {
+  elements.toast.textContent = message;
+  elements.toast.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    elements.toast.style.display = 'none';
+  }, 1800);
 }
 
 function refreshStats() {
@@ -367,8 +477,12 @@ for (const dashboard of [
  * preset, not just the selection.
  */
 function queryFromUrl() {
-  const requested = new URLSearchParams(window.location.search).get('fixture');
-  return { fixture: requested && FIXTURES[requested] ? requested : 'F1' };
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get('fixture');
+  return {
+    fixture: requested && FIXTURES[requested] ? requested : 'F1',
+    preset: params.get('preset') || null,
+  };
 }
 
 const initialQuery = queryFromUrl();
@@ -379,6 +493,7 @@ setupCombo({
   options: Object.values(FIXTURES).map((fixture) => ({
     label: fixture.label,
     fixture: fixture.id,
+    synthetic: fixture.synthetic,
     active: fixture.id === initialQuery.fixture,
   })),
   initialLabel: FIXTURES[initialQuery.fixture].label,
