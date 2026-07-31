@@ -486,13 +486,17 @@ export function setupCombo({ input, dropdown, options, initialLabel, onSelect })
         `font-size:12.5px;cursor:${disabled ? 'not-allowed' : 'pointer'};` +
         `color:${disabled ? 'var(--color-neutral-600)' : 'var(--color-text)'};` +
         `opacity:${disabled ? 0.55 : 1}`;
+      if (option.title) row.title = option.title;
+      // A note carries what the option *yields* or why it is unavailable — the
+      // information that makes the choice meaningful rather than a bare id.
       row.innerHTML =
-        `<span>${escapeHtml(option.label)}</span>` +
-        (option.synthetic
-          ? '<span style="font-size:9px;border:1px solid var(--color-neutral-700);padding:1px 5px;' +
-            'border-radius:999px;color:var(--color-neutral-500)">synthetic</span>'
+        `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${escapeHtml(option.label)}</span>` +
+        (option.note
+          ? `<span style="font-size:9px;border:1px solid var(--color-neutral-700);padding:1px 5px;` +
+            `border-radius:999px;color:var(--color-neutral-500);flex:0 0 auto;white-space:nowrap">` +
+            `${escapeHtml(option.note)}</span>`
           : option.active
-            ? '<span style="color:var(--color-accent);font-size:11px">✓</span>'
+            ? '<span style="color:var(--color-accent);font-size:11px;flex:0 0 auto">✓</span>'
             : '');
 
       if (!disabled) {

@@ -1,57 +1,93 @@
 /**
- * Fixture transport: load a raw `ObjectGraph` bundle from a local JSON file.
+ * Fixture transport: serve a sub-log for a `{repo, seed}` query from local JSON.
  *
- * This is the transport used until the RPC exists. Swapping to PostgREST means
- * adding a sibling transport in `api.js` and passing it to `loadObjectGraph` —
- * nothing above the data layer changes.
+ * This is the transport used until the RPC exists, and it is deliberately shaped
+ * like the real thing rather than like a file picker. A query names **a repository
+ * and a seed object**; what comes back is the sub-log reached by traversing
+ * outwards from that seed. Swapping to PostgREST means writing a sibling transport
+ * that answers the same query against `get_object_graph` — nothing above the data
+ * layer changes.
+ *
+ * ⚠️ The honest limitation: there is no traversal here. A fixture is a sub-log that
+ * was *already* built, so a seed can only be served if someone pre-built it. The
+ * catalogue therefore lists only servable seeds and the UI offers only those. A
+ * picker that accepted any object and quietly returned something else would be
+ * worse than one that admits its range.
  */
 
-/** Where fixture JSON is served from, relative to the page. */
-const FIXTURE_BASE = './tests/fixtures/';
+/** Where fixture JSON and the catalogue are served from, relative to the page. */
+const BASE = './tests/fixtures/';
+
+let cataloguePromise = null;
 
 /**
- * The fixture registry, which doubles as the sidebar's source list.
+ * The selection catalogue: repositories, and the seeds each can serve.
  *
- * F1 is real data. Everything else is synthesized to exhibit one structural
- * property F1 cannot, and is labelled `synthetic: true` so the UI can say so —
- * a reader must never mistake a synthesized sub-log for observed behaviour.
+ * Cached, because repopulating the combos would otherwise refetch it. It stands in
+ * for what becomes a search endpoint — a real picker cannot enumerate every object
+ * in kubernetes, so it will search, and modelling that now keeps the interaction
+ * honest.
  */
-export const FIXTURES = {
-  F1: {
-    id: 'F1',
-    label: 'vscode · issue #242864 → PR #243221',
-    file: 'F1.json',
-    synthetic: false,
-  },
-  F2: { id: 'F2', label: 'F2 · sequential PRs', file: 'F2.json', synthetic: true },
-  F3: { id: 'F3', label: 'F3 · overlapping PRs', file: 'F3.json', synthetic: true },
-  F4: { id: 'F4', label: 'F4 · two issues, one PR', file: 'F4.json', synthetic: true },
-  F5: { id: 'F5', label: 'F5 · commit in two PRs', file: 'F5.json', synthetic: true },
-  F6: { id: 'F6', label: 'F6 · no commits', file: 'F6.json', synthetic: true },
-  F7: { id: 'F7', label: 'F7 · two bursts', file: 'F7.json', synthetic: true },
-  F8: { id: 'F8', label: 'F8 · orphan PR', file: 'F8.json', synthetic: true },
-  F9: { id: 'F9', label: 'F9 · reopened issue', file: 'F9.json', synthetic: true },
-  F10: { id: 'F10', label: 'F10 · large (300 commits)', file: 'F10.json', synthetic: true },
-  F11: { id: 'F11', label: 'F11 · all four detection methods', file: 'F11.json', synthetic: true },
-  F12: { id: 'F12', label: 'F12 · mixed evidence, multi-method', file: 'F12.json', synthetic: true },
-  F13: { id: 'F13', label: 'F13 · concurrent PRs, many commits', file: 'F13.json', synthetic: true },
-};
+export function loadCatalogue() {
+  if (!cataloguePromise) {
+    cataloguePromise = fetch(`${BASE}catalogue.json`).then((response) => {
+      if (!response.ok) {
+        throw new Error(
+          `Could not load the sub-log catalogue (HTTP ${response.status}). ` +
+            `The app must be served over http — ES modules and fetch are both blocked ` +
+            `on file:// . Run: npm start`,
+        );
+      }
+      return response.json();
+    });
+  }
+  return cataloguePromise;
+}
 
-export async function fixtureTransport(query) {
-  const id = query?.fixture || 'F1';
-  const fixture = FIXTURES[id];
-  if (!fixture) {
-    throw new Error(`Unknown fixture "${id}". Known fixtures: ${Object.keys(FIXTURES).join(', ')}`);
+/** Drop the cached catalogue. */
+export function clearCatalogueCache() {
+  cataloguePromise = null;
+}
+
+/**
+ * Resolve a query to the fixture that serves it.
+ *
+ * Accepts either a real query (`{repo, seed}`) or a direct fixture address
+ * (`{fixture}`). The latter exists for tests and for `?fixture=` links and is a
+ * property of *this* transport only — the RPC transport will understand the query
+ * and nothing else.
+ */
+export function resolveSeed(catalogue, query) {
+  if (query?.fixture) return { fixture: query.fixture };
+
+  const available = catalogue.repos.filter((repo) => repo.available);
+  const repo = query?.repo ? available.find((entry) => entry.name === query.repo) : available[0];
+
+  if (!repo) {
+    const known = catalogue.repos.map((entry) => entry.name).join(', ');
+    throw new Error(`No sub-log available for repository "${query?.repo}". Known: ${known}`);
   }
 
-  const url = FIXTURE_BASE + fixture.file;
+  const seed = query?.seed ? repo.seeds.find((entry) => entry.id === query.seed) : repo.seeds[0];
+
+  if (!seed) {
+    throw new Error(
+      `No sub-log has been built from seed "${query?.seed}" in ${repo.name}. ` +
+        `Seeding from an arbitrary object needs the get_object_graph RPC; until then ` +
+        `only these are servable: ${repo.seeds.map((entry) => entry.id).join(', ')}`,
+    );
+  }
+  return { fixture: seed.fixture, repo, seed };
+}
+
+export async function fixtureTransport(query) {
+  const catalogue = await loadCatalogue();
+  const { fixture } = resolveSeed(catalogue, query);
+
+  const url = `${BASE}${fixture}.json`;
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(
-      `Could not load fixture ${id} from ${url} (HTTP ${response.status}). ` +
-        `The app must be served over http — ES modules and fetch are both blocked on file:// . ` +
-        `Run: npm start`,
-    );
+    throw new Error(`Could not load sub-log ${fixture} from ${url} (HTTP ${response.status}).`);
   }
   return response.json();
 }

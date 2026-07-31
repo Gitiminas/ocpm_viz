@@ -288,13 +288,32 @@ describe('presets', () => {
     assert.equal(decodePreset(''), null);
   });
 
-  test('a shareable URL carries both the sub-log and the configuration', async () => {
+  test('a shareable URL carries the query and the configuration', async () => {
     const c = await context('F1');
     c.state.tracks.commit = false;
-    const url = presetUrl('http://localhost:8000/', 'F3', serializeState(c.state));
+    const url = presetUrl(
+      'http://localhost:8000/',
+      { repo: 'microsoft/vscode', seed: 'issue:242864' },
+      serializeState(c.state),
+    );
     const params = new URL(url).searchParams;
-    assert.equal(params.get('fixture'), 'F3');
+    // Both halves of what someone else needs: what was selected, and how it was
+    // filtered.
+    assert.equal(params.get('repo'), 'microsoft/vscode');
+    assert.equal(params.get('seed'), 'issue:242864');
     assert.equal(decodePreset(params.get('preset')).tracks.commit, false);
+  });
+
+  test('a share URL replaces the previous query rather than appending to it', async () => {
+    const c = await context('F1');
+    const url = presetUrl(
+      'http://localhost:8000/?repo=old&seed=stale&preset=xxx',
+      { repo: 'microsoft/vscode', seed: 'issue:242864' },
+      serializeState(c.state),
+    );
+    const params = new URL(url).searchParams;
+    assert.equal(params.getAll('repo').length, 1);
+    assert.equal(params.get('repo'), 'microsoft/vscode');
   });
 
   test('an old preset applies what it can to a different sub-log', async () => {

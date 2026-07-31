@@ -77,6 +77,23 @@ Single adapter `loadObjectGraph(query) -> ObjectGraph` is the **only** data entr
 first against local fixtures; swapping to `fetch()` must be a one-function change.
 
 ```
+query = {
+  repo,              // repository name — identity by id once the RPC exists
+  seed,              // object id to traverse out from; ANY object type is valid
+  traversalDegree,   // how far to expand. Fixed by the fixture today
+}
+```
+
+The UI states exactly this (decision 33): pick a repository, then pick the object to start
+from. A commit is as valid a seed as an issue — no object type is privileged, which is the
+whole point. The seed is privileged in the *query* only, never in the returned data, so
+`meta.seed` records it and nothing about the objects marks them as special.
+
+Until the RPC exists, the fixture transport can only serve seeds that were pre-built, so it
+also answers a `{fixture}` address for tests. The RPC transport will understand the query and
+nothing else.
+
+```
 ObjectGraph = {
   meta:    { repo, seed object(s), traversal_degree, active types/links, generated_at },
   objects: [ { id, type, label, repo, intervals:[{start,end}], time_semantics, vmap:{…} } ],

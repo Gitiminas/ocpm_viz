@@ -7,7 +7,7 @@ every claim here is backed either by an assertion that runs in `npm test` or by 
 render that was looked at. Where neither was possible, this document says so
 rather than implying coverage that does not exist.
 
-**288 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
+**303 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
 
 ---
 
@@ -38,6 +38,9 @@ is exercised without a browser.
 | Metrics respond to toggles; folding is not filtering | `stats-table.test.js` | F1, F3, F13 |
 | All times UTC under any `TZ` | `timezone.test.js` | verified under UTC+9, −8, +14 |
 | Fixtures are byte-reproducible from their build scripts | `fixtures.test.js` | F1–F13 |
+| A `{repo, seed}` query resolves to the sub-log it names | `selection.test.js` | catalogue |
+| A query that cannot be honoured fails loudly, and says why | `selection.test.js` | catalogue |
+| The catalogue matches the fixtures and cannot drift | `selection.test.js` | all seeds |
 
 Each synthesized fixture additionally **asserts that it exhibits its own property**
 (`sublanes.test.js`, first block). Without that, an "overlapping PRs" fixture whose
@@ -129,6 +132,10 @@ Stated plainly rather than left to inference.
   not by measurement. Sub-logs are small; if a real one is slow, report it.
 - **No screen size other than 1920×1200** has been checked, deliberately: sizing is
   deferred until the aspect-ratio pass.
+- **No traversal has ever been performed.** Selecting a repository and a seed resolves to a
+  *pre-built* sub-log; the expansion from a seed outwards is what `get_object_graph` will do
+  and has never run. Only the seeds listed in the catalogue can be served, which is why the
+  picker offers only those.
 
 ---
 

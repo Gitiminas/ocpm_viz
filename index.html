@@ -61,18 +61,24 @@ html,body{height:100%;margin:0;overflow:hidden}
 <!-- "OCEL case" in the mockup. There is no case in OCPM (decision 1). -->
 <div class="mono" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-300);margin-bottom:6px">Sub-log</div>
 <div style="margin-bottom:10px">
-<div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Source</div>
+<div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Repo</div>
 <div style="position:relative">
-<input autocomplete="off" class="mono" id="repoInput" placeholder="Search sub-logs…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
+<input autocomplete="off" class="mono" id="repoInput" placeholder="Search repositories…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
 <div id="repoDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow:hidden"></div>
 </div>
 </div>
 <div>
-<div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Focus object</div>
+<div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Start from</div>
 <div style="position:relative">
 <input autocomplete="off" class="mono" id="objectInput" placeholder="Search issue / PR / commit…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
 <div id="objectDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow-y:auto;max-height:220px"></div>
 </div>
+<!--
+  Read-only, not a control. Traversal degree is fixed when the sub-log is built, so
+  a stepper here would be a control that silently does nothing - forbidden. It
+  becomes editable when get_object_graph can honour it.
+-->
+<div id="traversalInfo" class="mono" style="font-size:10px;color:var(--color-neutral-500);margin-top:6px;line-height:1.5"></div>
 </div>
 </div>
 <div id="timelineSidebarSections" style="display:flex;flex-direction:column">

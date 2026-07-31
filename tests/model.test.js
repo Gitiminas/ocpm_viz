@@ -58,8 +58,11 @@ describe('F1 loads and validates', () => {
   test('the sub-log is described by its query, with no case notion', async () => {
     const graph = await loadF1();
     const description = describeSubLog(graph);
-    assert.match(description, /seed #242864/);
-    assert.match(description, /traversal degree 2/);
+    // The query is repo + seed + traversal degree — exactly what get_object_graph
+    // is asked, and what a reader needs to reproduce the selection.
+    assert.match(description, /microsoft\/vscode/);
+    assert.match(description, /from issue #242864/);
+    assert.match(description, /degree 2/);
     assert.doesNotMatch(description, /case/i);
   });
 });

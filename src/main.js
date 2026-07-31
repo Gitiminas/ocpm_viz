@@ -9,7 +9,7 @@
 /* global d3 */
 
 import { loadObjectGraph, describeSubLog } from './data/loadObjectGraph.js';
-import { FIXTURES } from './data/fixtures.js';
+import { loadCatalogue } from './data/fixtures.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
@@ -71,6 +71,7 @@ const elements = {
   repoDropdown: el('repoDropdown'),
   objectInput: el('objectInput'),
   objectDropdown: el('objectDropdown'),
+  traversalInfo: el('traversalInfo'),
 };
 
 const state = createState();
@@ -218,10 +219,11 @@ async function load(query) {
   elements.breadcrumb.textContent = description;
   elements.breadcrumb.title = description;
   updateFocusLabel();
+  updateTraversalInfo(graph);
 
   renderSidebar();
   renderLegend(elements.legend);
-  wireObjectCombo(graph);
+  wireSelectors(graph.meta.repo, graph.meta.seed?.[0]?.id);
 
   timeline.measure();
   redraw();
@@ -282,7 +284,7 @@ function renderSidebar() {
     container: elements.presets,
     state,
     context: toggleContext,
-    fixtureId: query?.fixture || 'F1',
+    query: { repo: graph.meta.repo, seed: graph.meta.seed?.[0]?.id, fixture: query?.fixture },
     onApply: (snapshot) => {
       applyState(state, snapshot);
       renderSidebar();
@@ -493,18 +495,20 @@ for (const dashboard of [
 // ---------------------------------------------------------------------------
 
 /**
- * The initial sub-log comes from the URL when one is named.
+ * The selection is a **query**: a repository, and a seed object to traverse out
+ * from. That is the `get_object_graph` contract, and the UI now names it rather
+ * than picking a file.
  *
- * `?fixture=F3` makes a given view reproducible by link, which is what the
- * task-based evaluation needs and what makes headless verification of a specific
- * fixture possible at all. Task 3 extends the same mechanism to encode a whole
- * preset, not just the selection.
+ * `?repo=` and `?seed=` make a selection reproducible by link, which the
+ * task-based evaluation needs. `?fixture=` is kept as a direct address for tests
+ * and for the links already written down.
  */
 function queryFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const requested = params.get('fixture');
   return {
-    fixture: requested && FIXTURES[requested] ? requested : 'F1',
+    repo: params.get('repo') || null,
+    seed: params.get('seed') || null,
+    fixture: params.get('fixture') || null,
     preset: params.get('preset') || null,
     page: params.get('page') === 'stats' ? 'stats' : 'timeline',
   };
@@ -512,43 +516,52 @@ function queryFromUrl() {
 
 const initialQuery = queryFromUrl();
 
-setupCombo({
-  input: elements.repoInput,
-  dropdown: elements.repoDropdown,
-  options: Object.values(FIXTURES).map((fixture) => ({
-    label: fixture.label,
-    fixture: fixture.id,
-    synthetic: fixture.synthetic,
-    active: fixture.id === initialQuery.fixture,
-  })),
-  initialLabel: FIXTURES[initialQuery.fixture].label,
-  onSelect: (option) => reload({ fixture: option.fixture }),
-});
+let catalogue = null;
 
 /**
- * The object combo focuses an object rather than reloading.
+ * Populate the two selectors from the catalogue.
  *
- * Selecting an object *within* the loaded sub-log is a focus change. Selecting one
- * outside it would need a new traversal from the RPC, which does not exist yet — so
- * the list is scoped to what is loaded, rather than offering choices that cannot be
- * honoured.
+ * Repositories with no loadable sub-log are listed and disabled with their reason
+ * rather than omitted: their absence is itself a finding — the RQ2 limitation is
+ * precisely about react and kubernetes — and a picker that never mentioned them
+ * would hide that.
  */
-function wireObjectCombo(graph) {
-  const options = graph.objects
-    .filter((object) => object.type !== 'actor')
-    .map((object) => ({ label: `${object.type}: ${object.label}`, id: object.id }));
+function wireSelectors(activeRepoName, activeSeedId) {
+  const repos = catalogue.repos;
+  const activeRepo =
+    repos.find((repo) => repo.name === activeRepoName) || repos.find((repo) => repo.available);
+
+  setupCombo({
+    input: elements.repoInput,
+    dropdown: elements.repoDropdown,
+    options: repos.map((repo) => ({
+      label: repo.name,
+      repo: repo.name,
+      disabled: !repo.available,
+      note: repo.available ? (repo.synthetic ? 'synthetic' : null) : 'no data',
+      title: repo.reason,
+      active: repo.name === activeRepo?.name,
+    })),
+    initialLabel: activeRepo?.name ?? '',
+    // Changing repository loads that repository's first servable seed; there is no
+    // meaningful "same seed" across repositories.
+    onSelect: (option) => reload({ repo: option.repo }),
+  });
+
+  const seeds = activeRepo?.seeds ?? [];
+  const activeSeed = seeds.find((seed) => seed.id === activeSeedId) || seeds[0];
 
   setupCombo({
     input: elements.objectInput,
     dropdown: elements.objectDropdown,
-    options,
-    initialLabel: options[0]?.label ?? '',
-    onSelect: (option) => {
-      state.focus = option.id;
-      state.focusDegree = 1;
-      updateFocusLabel();
-      timeline.render();
-    },
+    options: seeds.map((seed) => ({
+      label: `${seed.type.replace('_', ' ')} ${seed.label}`,
+      seed: seed.id,
+      note: seed.yields,
+      active: seed.id === activeSeed?.id,
+    })),
+    initialLabel: activeSeed ? `${activeSeed.type.replace('_', ' ')} ${activeSeed.label}` : '',
+    onSelect: (option) => reload({ repo: activeRepo.name, seed: option.seed }),
   });
 }
 
@@ -558,6 +571,23 @@ async function reload(query) {
   } catch (error) {
     showFatal(error);
   }
+}
+
+/**
+ * State the traversal degree, and say plainly what can and cannot be seeded.
+ *
+ * Read-only by design: the degree is fixed when a sub-log is built, so a stepper
+ * here would be a control that silently does nothing.
+ */
+function updateTraversalInfo(graph) {
+  const degree = graph.meta?.traversal_degree;
+  const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
+  const servable = repo?.seeds.length ?? 0;
+
+  elements.traversalInfo.innerHTML =
+    (degree == null ? '' : `Traversal degree ${degree} · fixed by the query<br>`) +
+    `${servable} seed${servable === 1 ? '' : 's'} servable here — seeding from any ` +
+    `object needs the RPC`;
 }
 
 // ---------------------------------------------------------------------------
@@ -585,6 +615,16 @@ window.addEventListener('resize', () => {
   }, 150);
 });
 
-reload(initialQuery).then(() => {
-  if (initialQuery.page === 'stats') showPage('stats');
-});
+/**
+ * Startup: fetch the catalogue first, because the selectors describe what can be
+ * asked for and the sub-log is the answer to one such question.
+ */
+loadCatalogue()
+  .then((loaded) => {
+    catalogue = loaded;
+    return reload(initialQuery);
+  })
+  .then(() => {
+    if (initialQuery.page === 'stats') showPage('stats');
+  })
+  .catch(showFatal);

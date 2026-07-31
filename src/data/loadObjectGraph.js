@@ -38,12 +38,14 @@ export async function loadObjectGraph(query = {}, { transport = fixtureTransport
 }
 
 /**
- * Human-readable description of the sub-log, derived from the query.
+ * Human-readable description of the sub-log, derived from the query that produced
+ * it: **repository, seed, traversal degree, and what came back**.
  *
  * This replaces the mockup's `meta.case` string, which hardcoded
  * "Issue #242864 -> PR #243221 -> commits" and reintroduced exactly the case notion
- * decision 1 removes. Describing the selection instead of naming it keeps the
- * breadcrumb honest when the same events appear in a different sub-log.
+ * decision 1 removes. Naming the query rather than the result keeps the breadcrumb
+ * honest when the same events appear in a different sub-log — which, under OCPM,
+ * they legitimately can.
  */
 export function describeSubLog(graph) {
   const meta = graph.meta || {};
@@ -52,22 +54,36 @@ export function describeSubLog(graph) {
 
   const seedLabels = seeds.map((seed) => {
     const object = byId.get(seed.id);
-    return object ? object.label : seed.id;
+    return object ? `${seed.type.replace('_', ' ')} ${object.label}` : seed.id;
   });
 
   const parts = [];
-  parts.push(seedLabels.length ? `seed ${seedLabels.join(', ')}` : 'no seed recorded');
-  if (meta.traversal_degree != null) parts.push(`traversal degree ${meta.traversal_degree}`);
+  if (meta.repo) parts.push(meta.repo);
+  parts.push(seedLabels.length ? `from ${seedLabels.join(', ')}` : 'no seed recorded');
+  if (meta.traversal_degree != null) parts.push(`degree ${meta.traversal_degree}`);
 
   const counts = new Map();
   for (const object of graph.objects) {
     counts.set(object.type, (counts.get(object.type) || 0) + 1);
   }
-  const composition = [...counts.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([type, n]) => `${n} ${type}${n === 1 ? '' : 's'}`)
-    .join(', ');
-  parts.push(composition);
+  parts.push(
+    [...counts.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([type, n]) => `${n} ${type}${n === 1 ? '' : 's'}`)
+      .join(', '),
+  );
 
   return parts.join(' · ');
+}
+
+/**
+ * The seed objects of a loaded sub-log, for the UI to mark as its origin.
+ *
+ * The seed is not privileged in the data — OCPM has no case, and every object in
+ * the bundle is equally an object. It is privileged only in the *query*, which is
+ * why this reads from `meta` rather than from anything about the objects.
+ */
+export function seedObjects(graph) {
+  const byId = new Map(graph.objects.map((o) => [o.id, o]));
+  return (graph.meta?.seed || []).map((seed) => byId.get(seed.id)).filter(Boolean);
 }

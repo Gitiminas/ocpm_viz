@@ -88,7 +88,7 @@ export function renderHiddenBanner({ container, summary, state, onRestore }) {
  * The preset panel: built-ins, saved views, save / rename / delete, and a copyable
  * shareable link.
  */
-export function renderPresetPanel({ container, state, context, fixtureId, onApply, onToast }) {
+export function renderPresetPanel({ container, state, context, query, onApply, onToast }) {
   container.innerHTML = '';
   container.style.cssText = 'display:flex;flex-direction:column;gap:4px';
 
@@ -209,9 +209,9 @@ export function renderPresetPanel({ container, state, context, fixtureId, onAppl
 
   const shareButton = button('Copy link');
   shareButton.title =
-    'A URL that reproduces this exact configuration — the reproducibility mechanism for the evaluation';
+    'A URL carrying both the query and the filters — the reproducibility mechanism for the evaluation';
   shareButton.addEventListener('click', async () => {
-    const url = presetUrl(window.location.href, fixtureId, serializeState(state));
+    const url = presetUrl(window.location.href, query, serializeState(state));
     try {
       await navigator.clipboard.writeText(url);
       onToast('Link copied');
@@ -224,6 +224,6 @@ export function renderPresetPanel({ container, state, context, fixtureId, onAppl
   container.appendChild(actions);
 
   function rerender() {
-    renderPresetPanel({ container, state, context, fixtureId, onApply, onToast });
+    renderPresetPanel({ container, state, context, query, onApply, onToast });
   }
 }

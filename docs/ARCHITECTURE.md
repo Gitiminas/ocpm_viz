@@ -44,7 +44,7 @@ src/
   main.js              wiring only — no logic
   data/
     loadObjectGraph.js the sole data entry point
-    fixtures.js        load an ObjectGraph from a local file
+    fixtures.js        serve a {repo, seed} query from local JSON, via a catalogue
     api.js             load an ObjectGraph from PostgREST (added later)
   model/
     objectGraph.js     shape validation, normalization, indexing
@@ -74,6 +74,7 @@ src/
     metrics.js         durations, counts, gaps — pure functions over an ObjectGraph
 scripts/
   build-f1.mjs         ocel-data.json → tests/fixtures/F1.json
+  build-catalogue.mjs  which repos exist and which seeds can be served
   serve.mjs            zero-dependency static server (npm start)
 tests/
   fixtures/            F1 … F12

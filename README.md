@@ -10,7 +10,7 @@ graded by how much the evidence for each link is worth.
 
 ```
 npm start        # then open http://localhost:8000
-npm test         # 288 assertions, no browser needed
+npm test         # 303 assertions, no browser needed
 ```
 
 > Opening `index.html` from disk will not work. Browsers block both ES modules and
@@ -21,6 +21,24 @@ Requires Node 20+. There are **no dependencies** — no bundler, no framework, n
 TypeScript, no test library. D3 is loaded from a CDN by `index.html`.
 
 ---
+
+## How you select what to look at
+
+Two fields, in this order:
+
+1. **Repo** — the repository to work in.
+2. **Start from** — an object in it to seed from. A commit, a PR, an issue: any object type
+   is a valid starting point, because no type is privileged.
+
+The sub-log on screen is what a traversal outwards from that seed returns, and the breadcrumb
+states the query that produced it — `microsoft/vscode · from issue #242864 · degree 2 · …`.
+There is deliberately no "case": the same event may belong to many sub-logs.
+
+`?repo=&seed=` reproduces a selection by link; add `?preset=` to carry the filters too.
+
+⚠️ Until the `get_object_graph` RPC exists there is no traversal, so **only seeds with a
+pre-built sub-log are offered**. `facebook/react` and `kubernetes/kubernetes` appear in the
+repo list, disabled, because their absence is itself the RQ2 finding.
 
 ## What you are looking at
 
@@ -119,18 +137,19 @@ to `isNodeVisible` or `isLinkVisible`, and report it in `summarizeHidden` so the
 banner declares it. The renderers call those predicates rather than re-deriving
 anything.
 
-**Add a fixture.** `scripts/build-synthetic-fixtures.mjs`, then register it in
-`src/data/fixtures.js` and add an assertion in `tests/sublanes.test.js` proving it
-exhibits the property it claims. That assertion is not optional: a fixture that does
-not exhibit its property passes every test while verifying nothing.
+**Add a fixture.** `scripts/build-synthetic-fixtures.mjs`, then `npm run build:fixtures`.
+The catalogue that populates the pickers is generated from the fixtures, so it cannot drift
+from what is actually servable. Add an assertion in `tests/sublanes.test.js` proving the
+fixture exhibits the property it claims — that is not optional: a fixture that does not
+exhibit its property passes every test while verifying nothing.
 
 **Connect the real database.** Write `src/data/api.js` exporting a transport with the
 same shape as `fixtureTransport`, and pass it to `loadObjectGraph`. The adapter views
 and the RPC contract are specified in `docs/ADAPTER_AND_API.md`.
 
 **Verify a rendering change.** `npm test` covers the maths; it cannot see the
-picture. Render it and look — `?fixture=F13` selects a sub-log, `?page=stats` the
-statistics page, `?preset=…` a saved configuration.
+picture. Render it and look — `?repo=…&seed=…` selects a sub-log (`?fixture=F13` still works
+as a direct address), `?page=stats` the statistics page, `?preset=…` a saved configuration.
 
 ---
 

@@ -99,10 +99,19 @@ export function decodePreset(encoded) {
   }
 }
 
-/** The shareable URL for a configuration. */
-export function presetUrl(baseUrl, fixtureId, snapshot) {
+/**
+ * The shareable URL for a configuration.
+ *
+ * Carries the *query* — repository and seed — alongside the toggles, so the link
+ * reproduces both what was selected and how it was filtered. Those are the two
+ * halves of what someone else needs to see the same screen.
+ */
+export function presetUrl(baseUrl, query, snapshot) {
   const url = new URL(baseUrl);
-  url.searchParams.set('fixture', fixtureId);
+  url.search = '';
+  if (query?.repo) url.searchParams.set('repo', query.repo);
+  if (query?.seed) url.searchParams.set('seed', query.seed);
+  if (query?.fixture && !query.repo) url.searchParams.set('fixture', query.fixture);
   url.searchParams.set('preset', encodePreset(snapshot));
   return url.toString();
 }
