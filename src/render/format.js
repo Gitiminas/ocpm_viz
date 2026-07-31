@@ -1,46 +1,80 @@
 /**
  * Time and duration formatting — the single place a timestamp becomes text.
  *
- * ⚠️ Timezone: the mockup parsed UTC but rendered with `d3.timeFormat`, which is
- * *local* time, so every displayed instant and every duration shifted with the
- * viewer's machine. Decision 9 requires UTC everywhere, labelled.
+ * **All times are UTC** (decision 9), and labelled as such.
  *
- * The switch is deliberately not made yet: it belongs to Task 5, and making it here
- * would add a second visible difference to the Task 1 baseline comparison on top of
- * the evidence reclassification, muddying exactly the check that is meant to catch a
- * regression. Task 5 is then a one-line change — `d3.timeFormat` → `d3.utcFormat` in
- * `timeFormatter` below — plus a "UTC" label in the axis and tooltips.
+ * The mockup parsed UTC but rendered with `d3.timeFormat`, which is *local* time, so
+ * every displayed instant shifted with the viewer's machine — the `screenshots/`
+ * baseline was captured at UTC+01:00 and shows an issue opening at 06:15:54 that the
+ * data records as 05:15:54Z. Evaluation numbers have to reproduce across whoever
+ * runs the study, so that had to go.
  *
- * Formatters are built lazily rather than at module load, so this module imports
- * cleanly in Node without d3 present. That keeps the pure duration helpers, which
- * are the parts worth testing, testable.
+ * ⚠️ It was **not** the one-line formatter swap an earlier version of this comment
+ * promised. `d3.scaleTime()` also *chooses* ticks on local midnights, and the axis
+ * decided whether a tick was a date boundary with `getHours()`; a UTC formatter over
+ * locally-chosen ticks would have labelled "Mar 09 23:00" as a day boundary. Those
+ * two live in `render/axis.js`, which now uses `d3.scaleUtc` and `getUTCHours`.
+ *
+ * These formatters are hand-written rather than `d3.utcFormat` for one reason that
+ * earns the extra twenty lines: it makes the guarantee **structural and testable**.
+ * Nothing here can reach a local-time API, so `grep -rn 'get[A-Z]' src/ | grep -v
+ * getUTC` is a complete audit — and the module imports in Node without d3, so the
+ * timezone behaviour is covered by tests that pass under any TZ rather than by a
+ * promise in a comment.
  */
 
-/* global d3 */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const formatterCache = new Map();
+const pad = (value) => String(value).padStart(2, '0');
 
-function timeFormatter(specifier) {
-  let formatter = formatterCache.get(specifier);
-  if (!formatter) {
-    formatter = d3.timeFormat(specifier);
-    formatterCache.set(specifier, formatter);
-  }
-  return formatter;
+const utcParts = (date) => ({
+  month: MONTHS[date.getUTCMonth()],
+  day: pad(date.getUTCDate()),
+  year: date.getUTCFullYear(),
+  hour: pad(date.getUTCHours()),
+  minute: pad(date.getUTCMinutes()),
+  second: pad(date.getUTCSeconds()),
+});
+
+/**
+ * Tooltip and milestone timestamps, carrying their zone.
+ *
+ * The suffix is on every instant rather than in a legend somewhere, because a bare
+ * "21:47:52" is precisely what a reader will unconsciously read as local time.
+ */
+export function formatInstant(date) {
+  const { month, day, year, hour, minute, second } = utcParts(date);
+  return `${month} ${day}, ${year} · ${hour}:${minute}:${second} UTC`;
 }
 
-/** Tooltip and milestone timestamps. */
-export const formatInstant = (date) => timeFormatter('%b %d, %Y · %H:%M:%S')(date);
+/** Axis tick labels, coarsest first. The axis carries a single "UTC" of its own. */
+export function formatDate(date) {
+  const { month, day } = utcParts(date);
+  return `${month} ${day}`;
+}
 
-/** Axis tick label variants, coarsest first. */
-export const formatDate = (date) => timeFormatter('%b %d')(date);
-export const formatTime = (date) => timeFormatter('%H:%M')(date);
-export const formatDateMinute = (date) => timeFormatter('%b %d  %H:%M')(date);
-export const formatDateSecond = (date) => timeFormatter('%b %d  %H:%M:%S')(date);
+export function formatTime(date) {
+  const { hour, minute } = utcParts(date);
+  return `${hour}:${minute}`;
+}
+
+export function formatDateMinute(date) {
+  const { month, day, hour, minute } = utcParts(date);
+  return `${month} ${day}  ${hour}:${minute}`;
+}
+
+export function formatDateSecond(date) {
+  const { month, day, hour, minute, second } = utcParts(date);
+  return `${month} ${day}  ${hour}:${minute}:${second}`;
+}
 
 /**
  * Exact duration, e.g. "4d 16h". Minutes appear only when the duration is under a
  * day, where they carry information; below a minute it reads "<1m".
+ *
+ * Durations are differences, so they were never affected by the timezone defect —
+ * which is why the baseline's "4d 16h" was right even while its clock times were
+ * wrong, and why fixing the zone does not move any duration in the stats table.
  */
 export function formatDuration(ms) {
   const seconds = Math.round(ms / 1000);

@@ -90,7 +90,7 @@ export function computeTicks({ mode, scales, zoom, highlightInstants, rankOrder,
   if (mode === 'real') {
     const idealCount = Math.max(3, Math.min(200, Math.round(6 * zoom)));
     return d3
-      .scaleTime()
+      .scaleUtc()
       .domain([new Date(scales.first), new Date(scales.last)])
       .ticks(idealCount)
       .map((t) => ({ x: scales.x(t), t }));
@@ -116,7 +116,7 @@ export function computeTicks({ mode, scales, zoom, highlightInstants, rankOrder,
 function buildLabels(ticks, mode) {
   return ticks.map((tick, i) => {
     if (mode === 'real') {
-      const isMidnight = tick.t.getHours() === 0 && tick.t.getMinutes() === 0;
+      const isMidnight = tick.t.getUTCHours() === 0 && tick.t.getUTCMinutes() === 0;
       return i === 0 || isMidnight ? formatDate(tick.t) : formatTime(tick.t);
     }
     const minuteLabel = formatDateMinute(tick.t);
@@ -166,6 +166,18 @@ export function renderAxis({
     .attr('stroke', 'var(--color-neutral-700)')
     .attr('stroke-width', 1);
 
+  // One zone label on the axis rather than a suffix on every tick, which at this
+  // density would be unreadable. Tooltips carry "UTC" on each instant instead.
+  gAxis
+    .append('text')
+    .attr('x', marginLeft - 10)
+    .attr('y', axisY + 4)
+    .attr('text-anchor', 'end')
+    .attr('font-size', 10)
+    .attr('class', 'mono')
+    .attr('fill', 'var(--color-neutral-500)')
+    .text('UTC');
+
   const ticks = computeTicks({
     mode,
     scales,
@@ -179,7 +191,7 @@ export function renderAxis({
   const merged = mergeTicks(ticks, buildLabels(ticks, mode));
 
   const hasHourTicks =
-    mode === 'real' && ticks.some((t) => t.t.getHours() !== 0 || t.t.getMinutes() !== 0);
+    mode === 'real' && ticks.some((t) => t.t.getUTCHours() !== 0 || t.t.getUTCMinutes() !== 0);
 
   let lastX = -1e9;
   let staggered = false;
