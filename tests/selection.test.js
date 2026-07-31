@@ -15,7 +15,12 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 import { resolveSeed, searchSeeds } from '../src/data/fixtures.js';
-import { parseSeedRef, matchesSeedRef, describeSeedRef } from '../src/data/seedQuery.js';
+import {
+  parseSeedRef,
+  matchesSeedRef,
+  scoreSeedRef,
+  describeSeedRef,
+} from '../src/data/seedQuery.js';
 import { loadObjectGraph, describeSubLog, seedObjects } from '../src/data/loadObjectGraph.js';
 
 const run = promisify(execFile);
@@ -210,12 +215,41 @@ describe('the seed box is a search, because there is no list to enumerate', () =
     assert.equal(ref('   '), null);
   });
 
-  test('a number matches only its own object, never a prefix of one', async () => {
+  test('a partial number finds the object, as a typeahead should', async () => {
     const cat = await catalogue();
-    // 242 must not match #242864: silently loading a near-miss is worse than no
-    // match at all.
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', '242').length, 0);
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', '242864').length, 1);
+    // Nothing auto-loads: results appear in a list and the user picks one, so a
+    // surplus candidate costs a glance while a missing one costs the search.
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', '242')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', '2428')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', '2864')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', '242864')[0].id, 'issue:242864');
+  });
+
+  test('a number that appears nowhere still finds nothing', async () => {
+    const cat = await catalogue();
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', '999999').length, 0);
+  });
+
+  test('an exact match outranks a prefix, which outranks a substring', () => {
+    const seeds = [
+      { id: 'issue:1242864', type: 'issue', label: '#1242864' },
+      { id: 'issue:242864', type: 'issue', label: '#242864' },
+      { id: 'issue:2428640', type: 'issue', label: '#2428640' },
+    ];
+    const ref = parseSeedRef('242864');
+    const ranked = seeds
+      .map((seed) => ({ seed, score: scoreSeedRef(ref, seed) }))
+      .sort((a, b) => b.score - a.score);
+    assert.equal(ranked[0].seed.id, 'issue:242864', 'the exact match must come first');
+    assert.equal(ranked[1].seed.id, 'issue:2428640', 'then the prefix match');
+    assert.equal(ranked[2].seed.id, 'issue:1242864', 'then the substring match');
+  });
+
+  test('a SHA is still matched from the front, as git abbreviates them', () => {
+    const seed = { id: 'commit:aaaa111bbbb222ccc', type: 'commit', label: 'aaaa111' };
+    assert.ok(scoreSeedRef(parseSeedRef('aaaa'), seed) >= 0);
+    // A mid-SHA hit is noise rather than intent.
+    assert.equal(scoreSeedRef(parseSeedRef('bbbb'), seed), -1);
   });
 
   test('searching finds a seed by number, by type, and by title', async () => {

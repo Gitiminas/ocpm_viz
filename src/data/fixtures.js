@@ -15,7 +15,7 @@
  * worse than one that admits its range.
  */
 
-import { parseSeedRef, matchesSeedRef } from './seedQuery.js';
+import { parseSeedRef, scoreSeedRef } from './seedQuery.js';
 
 /** Where fixture JSON and the catalogue are served from, relative to the page. */
 const BASE = './tests/fixtures/';
@@ -67,7 +67,14 @@ export function searchSeeds(catalogue, repoName, input, { limit = 20 } = {}) {
   if (!repo) return [];
 
   const ref = parseSeedRef(input);
-  return repo.seeds.filter((seed) => matchesSeedRef(ref, seed)).slice(0, limit);
+  return repo.seeds
+    .map((seed) => ({ seed, score: scoreSeedRef(ref, seed) }))
+    .filter((entry) => entry.score >= 0)
+    // Best match first, then a stable alphabetical order so equal scores do not
+    // shuffle between keystrokes.
+    .sort((a, b) => b.score - a.score || a.seed.label.localeCompare(b.seed.label, undefined, { numeric: true }))
+    .slice(0, limit)
+    .map((entry) => entry.seed);
 }
 
 /**

@@ -9,7 +9,7 @@
  *
  * Accepted forms, all case-insensitive:
  *
- *   242864            a number — an issue or a PR (see below)
+ *   242864            a number — an issue or a PR (see below); matches by substring
  *   #242864           the same, written the way GitHub writes it
  *   issue 242864      constrained to an issue
  *   pr #243221        constrained to a pull request
@@ -65,42 +65,65 @@ export function parseSeedRef(input) {
   return { raw, type, number, shaPrefix, text: rest };
 }
 
+/** Scores, highest first. Only the ordering matters, not the absolute values. */
+const SCORE = { exact: 100, prefix: 60, substring: 30, title: 20, typeOnly: 10, none: -1 };
+
 /**
- * Does this catalogue entry satisfy the reference?
+ * How well a catalogue entry satisfies the reference. `-1` means it does not.
  *
- * Matching is deliberately generous on identity and strict on type: a stated type
- * is honoured exactly, while an unstated one lets a number match an issue or a PR.
+ * Matching is generous on identity and strict on type: a stated type is honoured
+ * exactly, while an unstated one lets a number match an issue or a PR.
+ *
+ * **Numbers match by substring**, so `242` finds `#242864` — that is how every
+ * typeahead behaves and it is what people expect. An earlier version required the
+ * whole number, on the reasoning that a near-miss might load the wrong sub-log;
+ * that reasoning was wrong, because nothing auto-loads. Results appear in a list
+ * and the user picks one, so a surplus candidate costs a glance while a missing one
+ * costs the search. Ranking is what keeps it usable: an exact match outranks a
+ * prefix, which outranks a substring, so typing `242864` still puts `#242864` first
+ * even where `#1242864` also exists.
+ *
+ * SHAs stay **prefix**-matched, because abbreviating a SHA from the front is the git
+ * convention and a mid-SHA substring hit would be noise rather than intent.
  */
-export function matchesSeedRef(ref, seed) {
-  if (!ref) return true;
-  if (ref.type && ref.type !== seed.type) return false;
+export function scoreSeedRef(ref, seed) {
+  if (!ref) return SCORE.typeOnly;
+  if (ref.type && ref.type !== seed.type) return SCORE.none;
 
   const label = String(seed.label ?? '').toLowerCase();
   const id = String(seed.id ?? '').toLowerCase();
   const title = String(seed.title ?? '').toLowerCase();
 
   if (ref.number != null) {
-    // Numbers are matched on the label rather than by substring, so 242 does not
-    // match #242864 — a near-miss that silently loads the wrong sub-log is worse
-    // than no match at all.
-    const labelNumber = label.match(/\d+/);
-    if (labelNumber && Number(labelNumber[0]) === ref.number) return true;
+    const digits = (label.match(/\d+/) || [''])[0];
+    const needle = String(ref.number);
+    if (digits === needle) return SCORE.exact;
+    if (digits.startsWith(needle)) return SCORE.prefix;
+    if (digits.includes(needle)) return SCORE.substring;
   }
 
   if (ref.shaPrefix && seed.type === 'commit') {
-    if (id.includes(`:${ref.shaPrefix}`) || label.startsWith(ref.shaPrefix)) return true;
+    const sha = id.includes(':') ? id.slice(id.indexOf(':') + 1) : id;
+    if (sha === ref.shaPrefix) return SCORE.exact;
+    if (sha.startsWith(ref.shaPrefix) || label.startsWith(ref.shaPrefix)) return SCORE.prefix;
   }
 
   if (ref.number == null && ref.shaPrefix == null) {
     // A type word alone has already passed the type check above, so everything of
     // that type matches.
-    if (!ref.text) return true;
+    if (!ref.text) return SCORE.typeOnly;
     // Free text falls back to the title, which is what makes "mcp" find the issue
     // about MCP servers.
-    return title.includes(ref.text) || label.includes(ref.text) || id.includes(ref.text);
+    if (label.includes(ref.text) || id.includes(ref.text)) return SCORE.substring;
+    if (title.includes(ref.text)) return SCORE.title;
   }
 
-  return false;
+  return SCORE.none;
+}
+
+/** Whether the entry matches at all. */
+export function matchesSeedRef(ref, seed) {
+  return scoreSeedRef(ref, seed) >= 0;
 }
 
 /** Human-readable description of a reference, for the "nothing found" message. */
