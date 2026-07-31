@@ -15,6 +15,8 @@
  * worse than one that admits its range.
  */
 
+import { parseSeedRef, matchesSeedRef } from './seedQuery.js';
+
 /** Where fixture JSON and the catalogue are served from, relative to the page. */
 const BASE = './tests/fixtures/';
 
@@ -47,6 +49,25 @@ export function loadCatalogue() {
 /** Drop the cached catalogue. */
 export function clearCatalogueCache() {
   cataloguePromise = null;
+}
+
+/**
+ * Search a repository's seeds.
+ *
+ * This is the operation the seed box performs on every keystroke, and it is the one
+ * that has to survive contact with a real repository: there is no list to
+ * enumerate, so the interaction is "name the object you want". Against fixtures the
+ * search runs locally over what is servable; against the RPC it becomes a query,
+ * and nothing above the data layer notices.
+ *
+ * `limit` exists because a real search returns the top matches, never all of them.
+ */
+export function searchSeeds(catalogue, repoName, input, { limit = 20 } = {}) {
+  const repo = catalogue.repos.find((entry) => entry.name === repoName && entry.available);
+  if (!repo) return [];
+
+  const ref = parseSeedRef(input);
+  return repo.seeds.filter((seed) => matchesSeedRef(ref, seed)).slice(0, limit);
 }
 
 /**

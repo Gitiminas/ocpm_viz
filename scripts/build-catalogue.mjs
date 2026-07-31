@@ -5,11 +5,15 @@
  *   node scripts/build-catalogue.mjs
  *   node scripts/build-catalogue.mjs --check
  *
- * The app's two selectors — repo, then seed — are populated from this. It stands in
- * for what will become a **search query** against the database: a real picker cannot
- * list every object in kubernetes, so it will search. Modelling that as a catalogue
- * now keeps the interaction honest and makes the eventual swap a change of
- * transport rather than a change of interaction.
+ * The repository selector is populated from this, and the seed box searches it. It
+ * stands in for what becomes a **search query** against the database.
+ *
+ * ⚠️ It carries only what a search result could cheaply return about an object —
+ * its type, its number or SHA, its title. It deliberately does **not** say what a
+ * seed *yields*, because working that out means running the traversal, and no
+ * system can do that for every candidate in a repository holding hundreds of
+ * thousands of objects. A catalogue that summarised its results would be a design
+ * that quietly cannot scale.
  *
  * ⚠️ It lists **only seeds that can actually be served.** With fixtures, a sub-log
  * exists only where one was pre-built; there is no traversal, so an arbitrary commit
@@ -47,17 +51,6 @@ const UNAVAILABLE_REPOS = [
   },
 ];
 
-function summarize(graph) {
-  const counts = new Map();
-  for (const object of graph.objects) {
-    counts.set(object.type, (counts.get(object.type) || 0) + 1);
-  }
-  return [...counts.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([type, n]) => `${n} ${type}${n === 1 ? '' : 's'}`)
-    .join(', ');
-}
-
 function build() {
   const files = readdirSync(FIXTURE_DIR)
     .filter((name) => /^F\d+\.json$/.test(name))
@@ -91,9 +84,10 @@ function build() {
         id: seed.id,
         type: seed.type,
         label: object?.label || seed.id,
+        // The object's own title — cheap for a search to return, unlike anything
+        // about the sub-log it would produce.
+        title: object?.vmap?.title ?? null,
         fixture: id,
-        traversal_degree: graph.meta.traversal_degree ?? null,
-        yields: summarize(graph),
       });
     }
   }

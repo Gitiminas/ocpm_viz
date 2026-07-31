@@ -7,7 +7,7 @@ every claim here is backed either by an assertion that runs in `npm test` or by 
 render that was looked at. Where neither was possible, this document says so
 rather than implying coverage that does not exist.
 
-**303 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
+**319 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
 
 ---
 
@@ -41,6 +41,8 @@ is exercised without a browser.
 | A `{repo, seed}` query resolves to the sub-log it names | `selection.test.js` | catalogue |
 | A query that cannot be honoured fails loudly, and says why | `selection.test.js` | catalogue |
 | The catalogue matches the fixtures and cannot drift | `selection.test.js` | all seeds |
+| Seed search parses numbers, SHAs, type words and titles | `selection.test.js` | catalogue |
+| A near-miss number does not silently load the wrong sub-log | `selection.test.js` | F1 |
 
 Each synthesized fixture additionally **asserts that it exhibits its own property**
 (`sublanes.test.js`, first block). Without that, an "overlapping PRs" fixture whose

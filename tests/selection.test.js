@@ -14,7 +14,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
-import { resolveSeed } from '../src/data/fixtures.js';
+import { resolveSeed, searchSeeds } from '../src/data/fixtures.js';
+import { parseSeedRef, matchesSeedRef, describeSeedRef } from '../src/data/seedQuery.js';
 import { loadObjectGraph, describeSubLog, seedObjects } from '../src/data/loadObjectGraph.js';
 
 const run = promisify(execFile);
@@ -77,12 +78,17 @@ describe('the catalogue describes what can be asked for', () => {
     assert.equal(synthetic.synthetic, true);
   });
 
-  test('every seed says what it yields, so the choice is informed', async () => {
+  test('a seed carries only what a search could cheaply return', async () => {
     const cat = await catalogue();
     for (const repo of cat.repos.filter((entry) => entry.available)) {
       for (const seed of repo.seeds) {
-        assert.match(seed.yields, /\d+ \w/, `${seed.id} must summarise its sub-log`);
         assert.ok(seed.type, `${seed.id} must state its object type`);
+        assert.ok(seed.label, `${seed.id} must have a label`);
+        // Deliberately absent: what the seed *yields*. Computing that means running
+        // the traversal, and no system can do that for every candidate in a
+        // repository holding hundreds of thousands of objects. A catalogue that
+        // summarised its results would be a design that quietly cannot scale.
+        assert.equal('yields' in seed, false, `${seed.id} must not precompute a traversal`);
       }
     }
   });
@@ -167,5 +173,111 @@ describe('a query that cannot be honoured fails loudly', () => {
   test('a direct fixture address still works, for tests and existing links', async () => {
     const cat = await catalogue();
     assert.deepEqual(resolveSeed(cat, { fixture: 'F7' }), { fixture: 'F7' });
+  });
+});
+
+
+describe('the seed box is a search, because there is no list to enumerate', () => {
+  const ref = (text) => parseSeedRef(text);
+
+  test('a bare number is read as a number', () => {
+    assert.equal(ref('242864').number, 242864);
+    assert.equal(ref('#242864').number, 242864);
+    assert.equal(ref('242864').type, null, 'an unstated type stays unstated');
+  });
+
+  test('a stated type constrains the search', () => {
+    assert.equal(ref('issue 242864').type, 'issue');
+    assert.equal(ref('PR #243221').type, 'pull_request');
+    assert.equal(ref('pull request 12').type, 'pull_request');
+    assert.equal(ref('commit dcc7479').type, 'commit');
+  });
+
+  test('a bare hex string is read as a SHA prefix', () => {
+    assert.equal(ref('dcc7479').shaPrefix, 'dcc7479');
+    assert.equal(ref('dcc7479').number, null);
+  });
+
+  test('a digit string is both a plausible number and a plausible SHA', () => {
+    // Refusing to guess between them is better than picking one.
+    const parsed = ref('123456');
+    assert.equal(parsed.number, 123456);
+    assert.equal(parsed.shaPrefix, '123456');
+  });
+
+  test('empty input names nothing', () => {
+    assert.equal(ref(''), null);
+    assert.equal(ref('   '), null);
+  });
+
+  test('a number matches only its own object, never a prefix of one', async () => {
+    const cat = await catalogue();
+    // 242 must not match #242864: silently loading a near-miss is worse than no
+    // match at all.
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', '242').length, 0);
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', '242864').length, 1);
+  });
+
+  test('searching finds a seed by number, by type, and by title', async () => {
+    const cat = await catalogue();
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', '#242864')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', 'issue 242864')[0].id, 'issue:242864');
+    // The title is cheap for a search to return, so it is searchable.
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', 'MCP')[0].id, 'issue:242864');
+  });
+
+  test('a stated type excludes objects of other types', async () => {
+    const cat = await catalogue();
+    assert.equal(searchSeeds(cat, 'microsoft/vscode', 'commit 242864').length, 0);
+  });
+
+  test('a commit is findable by SHA prefix', async () => {
+    const cat = await catalogue();
+    const hits = searchSeeds(cat, 'synthetic/fixture', 'aaaa111');
+    assert.equal(hits.length, 1);
+    assert.equal(hits[0].type, 'commit');
+  });
+
+  test('an empty search offers what is servable rather than nothing', async () => {
+    const cat = await catalogue();
+    assert.ok(searchSeeds(cat, 'synthetic/fixture', '').length > 1);
+  });
+
+  test('results are capped, because a real search returns top matches', async () => {
+    const cat = await catalogue();
+    assert.ok(searchSeeds(cat, 'synthetic/fixture', '', { limit: 2 }).length <= 2);
+  });
+
+  test('an unavailable repository yields no results at all', async () => {
+    const cat = await catalogue();
+    assert.deepEqual(searchSeeds(cat, 'kubernetes/kubernetes', '123'), []);
+  });
+
+  test('a failed search can say what was looked for', () => {
+    assert.equal(describeSeedRef(ref('issue 12')), 'issue #12');
+    assert.equal(describeSeedRef(ref('dcc7479')), 'commit dcc7479');
+    assert.match(describeSeedRef(ref('mcp')), /matching "mcp"/);
+  });
+});
+
+describe('a type word on its own narrows rather than matching everything', () => {
+  test('"pr" returns only pull requests', async () => {
+    const cat = await catalogue();
+    const hits = searchSeeds(cat, 'synthetic/fixture', 'pr');
+    assert.ok(hits.length > 0);
+    assert.equal(hits.every((seed) => seed.type === 'pull_request'), true);
+  });
+
+  test('"commit" returns only commits', async () => {
+    const cat = await catalogue();
+    const hits = searchSeeds(cat, 'synthetic/fixture', 'commit');
+    assert.ok(hits.length > 0);
+    assert.equal(hits.every((seed) => seed.type === 'commit'), true);
+  });
+
+  test('a bare type word parses to a type filter, not to nothing', () => {
+    assert.equal(parseSeedRef('pr').type, 'pull_request');
+    assert.equal(parseSeedRef('issue').type, 'issue');
+    assert.equal(describeSeedRef(parseSeedRef('pr')), 'any pull request');
   });
 });

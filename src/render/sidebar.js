@@ -457,7 +457,86 @@ export function renderActorRows({
 }
 
 /**
- * A filterable combo box.
+ * A search box whose options come from a query, not from a list.
+ *
+ * The difference from `setupCombo` is the whole point rather than a detail. A combo
+ * filters options it already holds; this one *asks* on every keystroke, because the
+ * thing being searched cannot be held. A repository has hundreds of thousands of
+ * issues and pull requests and millions of commits — there is no list to filter and
+ * nothing useful to precompute about the results, since knowing what a seed yields
+ * means running the traversal.
+ *
+ * `search` is therefore the seam that becomes a database query, and `emptyMessage`
+ * matters as much as the results: "no match" must say *what* was looked for and
+ * why it might not be available.
+ */
+export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyMessage, onSelect }) {
+  input.value = initialLabel;
+  input.setAttribute('value', initialLabel);
+
+  function renderResults(text) {
+    const results = search(text);
+    dropdown.innerHTML = '';
+
+    if (!results.length) {
+      dropdown.innerHTML =
+        `<div style="padding:10px 12px;font-size:11.5px;color:var(--color-neutral-500);` +
+        `line-height:1.5">${escapeHtml(emptyMessage(text))}</div>`;
+      return;
+    }
+
+    for (const option of results) {
+      const row = document.createElement('div');
+      row.className = 'mono';
+      row.style.cssText =
+        'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;' +
+        'font-size:12.5px;cursor:pointer;color:var(--color-text)';
+      row.innerHTML =
+        `<span style="flex:0 0 auto">${escapeHtml(option.label)}</span>` +
+        (option.note
+          ? `<span style="font-size:10.5px;color:var(--color-neutral-500);min-width:0;` +
+            `overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(option.note)}</span>`
+          : option.active
+            ? '<span style="color:var(--color-accent);font-size:11px">✓</span>'
+            : '');
+
+      row.addEventListener('mouseenter', () => {
+        row.style.background = 'color-mix(in srgb, var(--color-text) 6%, transparent)';
+      });
+      row.addEventListener('mouseleave', () => {
+        row.style.background = '';
+      });
+      row.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        input.value = option.label;
+        input.setAttribute('value', option.label);
+        dropdown.style.display = 'none';
+        onSelect?.(option);
+      });
+      dropdown.appendChild(row);
+    }
+  }
+
+  input.addEventListener('focus', () => {
+    renderResults('');
+    dropdown.style.display = 'block';
+  });
+  input.addEventListener('input', () => {
+    renderResults(input.value);
+    dropdown.style.display = 'block';
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      dropdown.style.display = 'none';
+      // Restore the loaded seed's label: a half-typed search left in the box would
+      // misstate what is on screen.
+      input.value = initialLabel;
+    }, 120);
+  });
+}
+
+/**
+ * A filterable combo box, for lists small enough to hold — the repository picker.
  *
  * The mockup built these but never passed an `onSelect`, so choosing an entry did
  * nothing at all.

@@ -10,7 +10,7 @@ graded by how much the evidence for each link is worth.
 
 ```
 npm start        # then open http://localhost:8000
-npm test         # 303 assertions, no browser needed
+npm test         # 319 assertions, no browser needed
 ```
 
 > Opening `index.html` from disk will not work. Browsers block both ES modules and
@@ -27,8 +27,14 @@ TypeScript, no test library. D3 is loaded from a CDN by `index.html`.
 Two fields, in this order:
 
 1. **Repo** — the repository to work in.
-2. **Start from** — an object in it to seed from. A commit, a PR, an issue: any object type
-   is a valid starting point, because no type is privileged.
+2. **Start from** — search for the object to seed from. Type `242864`, `#242864`,
+   `issue 242864`, `PR #243221`, a commit SHA prefix like `dcc7479`, or just `pr` to narrow
+   by type. A commit, a PR, an issue: any object type is a valid starting point, because no
+   type is privileged.
+
+   It is a *search*, not a list, and that is structural: a repository holds hundreds of
+   thousands of objects, and nothing about what a seed *yields* can be shown before loading
+   it — that would mean running the traversal for every candidate.
 
 The sub-log on screen is what a traversal outwards from that seed returns, and the breadcrumb
 states the query that produced it — `microsoft/vscode · from issue #242864 · degree 2 · …`.

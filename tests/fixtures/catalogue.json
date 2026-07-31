@@ -13,9 +13,8 @@
           "id": "issue:242864",
           "type": "issue",
           "label": "#242864",
-          "fixture": "F1",
-          "traversal_degree": 2,
-          "yields": "4 actors, 32 commits, 1 issue, 1 pull_request"
+          "title": "Discover and run MCP servers",
+          "fixture": "F1"
         }
       ]
     },
@@ -29,97 +28,85 @@
           "id": "commit:aaaa111bbbb222ccc",
           "type": "commit",
           "label": "aaaa111",
-          "fixture": "F5",
-          "traversal_degree": 2,
-          "yields": "1 actor, 1 commit, 2 pull_requests"
+          "title": null,
+          "fixture": "F5"
         },
         {
           "id": "issue:1",
           "type": "issue",
           "label": "#1",
-          "fixture": "F2",
-          "traversal_degree": 2,
-          "yields": "1 actor, 1 issue, 2 pull_requests"
+          "title": "Synthetic issue 1",
+          "fixture": "F2"
         },
         {
           "id": "issue:100",
           "type": "issue",
           "label": "#100",
-          "fixture": "F10",
-          "traversal_degree": 2,
-          "yields": "2 actors, 300 commits, 1 issue, 3 pull_requests"
+          "title": "Synthetic issue 100",
+          "fixture": "F10"
         },
         {
           "id": "issue:110",
           "type": "issue",
           "label": "#110",
-          "fixture": "F11",
-          "traversal_degree": 2,
-          "yields": "1 actor, 1 issue, 4 pull_requests"
+          "title": "Synthetic issue 110",
+          "fixture": "F11"
         },
         {
           "id": "issue:120",
           "type": "issue",
           "label": "#120",
-          "fixture": "F12",
-          "traversal_degree": 2,
-          "yields": "1 actor, 1 commit, 1 issue, 1 pull_request"
+          "title": "Synthetic issue 120",
+          "fixture": "F12"
         },
         {
           "id": "issue:13",
           "type": "issue",
           "label": "#13",
-          "fixture": "F13",
-          "traversal_degree": 2,
-          "yields": "2 actors, 9 commits, 1 issue, 2 pull_requests"
+          "title": "Synthetic issue 13",
+          "fixture": "F13"
         },
         {
           "id": "issue:2",
           "type": "issue",
           "label": "#2",
-          "fixture": "F3",
-          "traversal_degree": 2,
-          "yields": "1 actor, 1 issue, 2 pull_requests"
+          "title": "Synthetic issue 2",
+          "fixture": "F3"
         },
         {
           "id": "issue:5",
           "type": "issue",
           "label": "#5",
-          "fixture": "F6",
-          "traversal_degree": 2,
-          "yields": "1 actor, 1 issue, 1 pull_request"
+          "title": "Synthetic issue 5",
+          "fixture": "F6"
         },
         {
           "id": "issue:9",
           "type": "issue",
           "label": "#9",
-          "fixture": "F9",
-          "traversal_degree": 2,
-          "yields": "1 actor, 1 issue"
+          "title": "Synthetic issue 9",
+          "fixture": "F9"
         },
         {
           "id": "pr:30",
           "type": "pull_request",
           "label": "PR #30",
-          "fixture": "F4",
-          "traversal_degree": 2,
-          "yields": "1 actor, 2 issues, 1 pull_request"
+          "title": "Synthetic PR 30",
+          "fixture": "F4"
         },
         {
           "id": "pr:60",
           "type": "pull_request",
           "label": "PR #60",
-          "fixture": "F7",
-          "traversal_degree": 2,
-          "yields": "1 actor, 18 commits, 1 pull_request"
+          "title": "Synthetic PR 60",
+          "fixture": "F7"
         },
         {
           "id": "pr:70",
           "type": "pull_request",
           "label": "PR #70",
-          "fixture": "F8",
-          "traversal_degree": 2,
-          "yields": "1 actor, 1 pull_request"
+          "title": "Synthetic PR 70",
+          "fixture": "F8"
         }
       ]
     },

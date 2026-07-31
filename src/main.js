@@ -9,7 +9,8 @@
 /* global d3 */
 
 import { loadObjectGraph, describeSubLog } from './data/loadObjectGraph.js';
-import { loadCatalogue } from './data/fixtures.js';
+import { loadCatalogue, searchSeeds } from './data/fixtures.js';
+import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
@@ -41,6 +42,7 @@ import {
   renderActorRows,
   renderBurstControls,
   setupCombo,
+  setupSearchCombo,
 } from './render/sidebar.js';
 
 const el = (id) => document.getElementById(id);
@@ -548,22 +550,31 @@ function wireSelectors(activeRepoName, activeSeedId) {
     onSelect: (option) => reload({ repo: option.repo }),
   });
 
-  const seeds = activeRepo?.seeds ?? [];
-  const activeSeed = seeds.find((seed) => seed.id === activeSeedId) || seeds[0];
+  const activeSeed = (activeRepo?.seeds ?? []).find((seed) => seed.id === activeSeedId);
 
-  setupCombo({
+  // The seed box is a **search**, not a list. A real repository holds hundreds of
+  // thousands of objects, so there is nothing to enumerate: you name what you want.
+  setupSearchCombo({
     input: elements.objectInput,
     dropdown: elements.objectDropdown,
-    options: seeds.map((seed) => ({
-      label: `${seed.type.replace('_', ' ')} ${seed.label}`,
-      seed: seed.id,
-      note: seed.yields,
-      active: seed.id === activeSeed?.id,
-    })),
-    initialLabel: activeSeed ? `${activeSeed.type.replace('_', ' ')} ${activeSeed.label}` : '',
+    initialLabel: activeSeed ? seedLabel(activeSeed) : '',
+    search: (text) =>
+      searchSeeds(catalogue, activeRepo?.name, text).map((seed) => ({
+        label: seedLabel(seed),
+        note: seed.title || null,
+        seed: seed.id,
+        active: seed.id === activeSeed?.id,
+      })),
+    emptyMessage: (text) =>
+      text.trim()
+        ? `No sub-log built from ${describeSeedRef(parseSeedRef(text))} in ${activeRepo?.name}. ` +
+          `Seeding from an arbitrary object needs the RPC.`
+        : 'Type an issue or PR number, or a commit SHA.',
     onSelect: (option) => reload({ repo: activeRepo.name, seed: option.seed }),
   });
 }
+
+const seedLabel = (seed) => `${seed.type.replace('_', ' ')} ${seed.label}`;
 
 async function reload(query) {
   try {
