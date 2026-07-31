@@ -20,6 +20,7 @@ import {
   deriveMethods,
   resetToggles,
   summarizeHidden,
+  selectVisible,
   MIN_ZOOM,
   MAX_ZOOM,
 } from './state/state.js';
@@ -182,7 +183,7 @@ async function load(query) {
   const relGroups = deriveRelGroups(graph.links, index.byId);
   const qualifiers = deriveQualifiers(graph.links);
   const methods = deriveMethods(graph.links);
-  const { groups: commitGroups } = deriveCommitGroups(
+  const { groups: commitGroups, groupsByCommit } = deriveCommitGroups(
     index.objectsOfType('commit'),
     graph.links,
     index.byId,
@@ -202,7 +203,17 @@ async function load(query) {
 
   const objectColors = timeline.setGraph(graph, index, actorColors);
   const toggleContext = { relGroups, qualifiers, methods, commitGroups, objectsById: index.byId };
-  current = { graph, index, actorColors, description, query, toggleContext, objectColors, commitGroups };
+  current = {
+    graph,
+    index,
+    actorColors,
+    description,
+    query,
+    toggleContext,
+    objectColors,
+    commitGroups,
+    groupsByCommit,
+  };
 
   elements.breadcrumb.textContent = description;
   elements.breadcrumb.title = description;
@@ -313,15 +324,26 @@ function showToast(message) {
   }, 1800);
 }
 
+/**
+ * Recompute the statistics over the **visible** sub-log.
+ *
+ * Not over the whole bundle: metrics must respond to the toggles (decision 12), so
+ * hiding comments genuinely recomputes the gaps. The stats page has no sidebar
+ * controls and no banner of its own, so it is also handed the hidden summary and
+ * says up front that its figures describe a filtered view.
+ */
 function refreshStats() {
   if (!current) return;
+  const { graph, index, groupsByCommit, toggleContext, description } = current;
   renderStats({
-    graph: current.graph,
-    index: current.index,
+    graph: selectVisible(graph, state, groupsByCommit),
+    index,
     gridEl: elements.statsGrid,
     milestonesEl: elements.statsMilestones,
     breadcrumbEl: elements.statsBreadcrumb,
-    description: current.description,
+    description,
+    hiddenSummary: summarizeHidden(state, toggleContext),
+    onRerender: refreshStats,
   });
 }
 
@@ -417,36 +439,38 @@ for (const header of document.querySelectorAll('.collapseHeader')) {
   });
 }
 
+/** Switch pages. Extracted so `?page=stats` can drive it as a click would. */
+function showPage(page) {
+  for (const other of document.querySelectorAll('.pageTab')) {
+    const isThis = other.dataset.page === page;
+    other.classList.toggle('on', isThis);
+    other.style.color = isThis ? 'var(--color-text)' : 'var(--color-neutral-400)';
+    other.style.background = isThis
+      ? 'color-mix(in srgb, var(--color-accent) 16%, transparent)'
+      : 'none';
+    other.style.border = isThis ? '1px solid var(--color-accent)' : '1px solid transparent';
+  }
+
+  const isTimeline = page === 'timeline';
+  el('timelinePage').style.display = isTimeline ? 'flex' : 'none';
+  el('statsPage').style.display = isTimeline ? 'none' : 'flex';
+  el('timelineSidebarSections').style.display = isTimeline ? 'flex' : 'none';
+  el('statsSidebarSections').style.display = isTimeline ? 'none' : 'flex';
+
+  if (isTimeline) {
+    timeline.measure();
+    redraw();
+  } else {
+    refreshStats();
+  }
+}
+
 for (const tab of document.querySelectorAll('.pageTab')) {
-  tab.addEventListener('click', () => {
-    for (const other of document.querySelectorAll('.pageTab')) {
-      other.classList.remove('on');
-      other.style.color = 'var(--color-neutral-400)';
-      other.style.background = 'none';
-      other.style.border = '1px solid transparent';
-    }
-    tab.classList.add('on');
-    tab.style.color = 'var(--color-text)';
-    tab.style.background = 'color-mix(in srgb, var(--color-accent) 16%, transparent)';
-    tab.style.border = '1px solid var(--color-accent)';
-
-    const isTimeline = tab.dataset.page === 'timeline';
-    el('timelinePage').style.display = isTimeline ? 'flex' : 'none';
-    el('statsPage').style.display = isTimeline ? 'none' : 'flex';
-    el('timelineSidebarSections').style.display = isTimeline ? 'flex' : 'none';
-    el('statsSidebarSections').style.display = isTimeline ? 'none' : 'flex';
-
-    if (isTimeline) {
-      timeline.measure();
-      timeline.render();
-    } else {
-      refreshStats();
-    }
-  });
+  tab.addEventListener('click', () => showPage(tab.dataset.page));
 }
 
 for (const dashboard of [
-  ['statsCard', 'Sub-log statistics'],
+  ['statsCard', 'Per-object statistics'],
   ['milestonesCard', 'Milestones'],
 ]) {
   const row = document.createElement('label');
@@ -482,6 +506,7 @@ function queryFromUrl() {
   return {
     fixture: requested && FIXTURES[requested] ? requested : 'F1',
     preset: params.get('preset') || null,
+    page: params.get('page') === 'stats' ? 'stats' : 'timeline',
   };
 }
 
@@ -560,4 +585,6 @@ window.addEventListener('resize', () => {
   }, 150);
 });
 
-reload(initialQuery);
+reload(initialQuery).then(() => {
+  if (initialQuery.page === 'stats') showPage('stats');
+});

@@ -240,6 +240,49 @@ export function isLinkVisible(link, byId, state, groupsByCommit = new Map()) {
   return true;
 }
 
+/**
+ * The sub-log as currently filtered: only the objects, events and links on screen.
+ *
+ * Metrics are computed over *this*, not over the whole bundle, because they must
+ * respond to the toggles (decision 12). Hiding comments has to recompute gaps — a
+ * gap analysis that silently counts events you have switched off answers a question
+ * nobody asked, and would answer "no" to "does this change the bottleneck?" without
+ * ever saying so.
+ *
+ * ⚠️ Folding is **not** filtering. A collapsed burst still contributes all twenty of
+ * its commits here, because collapsing is a display choice about density, not a
+ * statement that those commits are out of scope. Conflating the two would make the
+ * commit count jump when you fold a push.
+ */
+export function selectVisible(graph, state, groupsByCommit = new Map()) {
+  const objects = graph.objects.filter((object) => {
+    if (object.type === 'actor' || object.type === 'repo') return true; // laneless
+    if (!isObjectVisible(object, state)) return false;
+    if (object.type === 'commit') {
+      return isCommitInVisibleGroup(object.id, groupsByCommit, state.hiddenCommitGroups);
+    }
+    return true;
+  });
+
+  const visibleIds = new Set(objects.map((object) => object.id));
+  const byId = new Map(graph.objects.map((object) => [object.id, object]));
+
+  const events = graph.events.filter((event) => {
+    if (!visibleIds.has(event.object_id)) return false;
+    const type = byId.get(event.object_id)?.type;
+    if (event.comment && state.showComments[type] === false) return false;
+    return true;
+  });
+
+  const links = graph.links.filter((link) =>
+    link.qualifier === 'actor'
+      ? visibleIds.has(link.target)
+      : isLinkVisible(link, byId, state, groupsByCommit),
+  );
+
+  return { meta: graph.meta, objects, events, links };
+}
+
 // ---------------------------------------------------------------------------
 // what is hidden — the mitigation that makes all this filtering safe
 // ---------------------------------------------------------------------------

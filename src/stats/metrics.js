@@ -161,8 +161,8 @@ export function milestones(graph) {
 /**
  * Idle gaps between consecutive events, per object.
  *
- * Computed over whatever events are currently loaded and visible, so the answer
- * follows the toggles — which is the whole reason this is not precomputed in SQL.
+ * Computed over whatever events are currently visible, so the answer follows the
+ * toggles — which is the whole reason this is not precomputed in SQL.
  */
 export function perObjectGaps(events, objectId) {
   const mine = events
@@ -179,4 +179,203 @@ export function perObjectGaps(events, objectId) {
     });
   }
   return gaps;
+}
+
+// ---------------------------------------------------------------------------
+// the per-object table (decision 8)
+// ---------------------------------------------------------------------------
+
+/** How a PR ended. `null` for anything that is not a PR. */
+export function prOutcome(object, events) {
+  if (object.type !== 'pull_request') return null;
+  const activities = new Set(
+    events.filter((event) => event.object_id === object.id).map((event) => event.activity),
+  );
+  if (activities.has('PullRequestMergedOffPlatform')) return 'merged off-platform';
+  if (activities.has('PullRequestMerged')) return 'merged';
+  if (activities.has('PullRequestClosed')) return 'closed unmerged';
+  return 'open';
+}
+
+/**
+ * One row per object — the table that replaces the mockup's nine scalar cards.
+ *
+ * Those cards assumed exactly one issue and one PR: with two of either they would
+ * have reported one arbitrary object's numbers as if they described the sub-log.
+ * A per-object row cannot make that mistake, and aggregates are derived from the
+ * rows on demand rather than being the only thing available.
+ */
+export function perObjectMetrics(graph) {
+  const eventsByObject = new Map();
+  for (const event of graph.events) {
+    if (!eventsByObject.has(event.object_id)) eventsByObject.set(event.object_id, []);
+    eventsByObject.get(event.object_id).push(event);
+  }
+
+  const linkCountByObject = new Map();
+  for (const link of graph.links) {
+    if (link.qualifier === 'actor') continue;
+    for (const id of [link.source, link.target]) {
+      linkCountByObject.set(id, (linkCountByObject.get(id) || 0) + 1);
+    }
+  }
+
+  return graph.objects
+    .filter((object) => object.type !== 'actor' && object.type !== 'repo')
+    .map((object) => {
+      const events = (eventsByObject.get(object.id) || []).slice().sort((a, b) => a.time - b.time);
+      const gaps = perObjectGaps(graph.events, object.id);
+      const lifetime = objectLifetime(object);
+      const actors = new Set(events.map((event) => event.actor_id).filter(Boolean));
+
+      return {
+        id: object.id,
+        type: object.type,
+        label: object.label || object.id,
+        lifetime: lifetime.total,
+        complete: lifetime.complete,
+        intervals: object.intervals.length,
+        events: events.length,
+        comments: events.filter((event) => event.comment).length,
+        actors: actors.size,
+        first: events[0]?.time ?? object.intervals[0]?.start ?? null,
+        last: events[events.length - 1]?.time ?? object.intervals[0]?.end ?? null,
+        links: linkCountByObject.get(object.id) || 0,
+        maxGapHours: gaps.length ? Math.max(...gaps.map((gap) => gap.hours)) : null,
+        handoffs: gaps.filter((gap) => gap.actorChanged).length,
+        outcome: prOutcome(object, graph.events),
+      };
+    });
+}
+
+/**
+ * Aggregate a set of rows — the "on demand" half of decision 8.
+ *
+ * Reports median *and* range rather than a mean. Process durations are strongly
+ * right-skewed, so a mean sits between the typical case and the outlier and
+ * describes neither; the range is what tells you whether the median means anything.
+ */
+export function aggregateRows(rows) {
+  const durations = rows.map((row) => row.lifetime).filter((value) => value != null);
+  const sorted = durations.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+
+  return {
+    n: rows.length,
+    withDuration: durations.length,
+    median: sorted.length
+      ? sorted.length % 2
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2
+      : null,
+    min: sorted.length ? sorted[0] : null,
+    max: sorted.length ? sorted[sorted.length - 1] : null,
+    events: rows.reduce((sum, row) => sum + row.events, 0),
+    comments: rows.reduce((sum, row) => sum + row.comments, 0),
+    links: rows.reduce((sum, row) => sum + row.links, 0),
+    handoffs: rows.reduce((sum, row) => sum + row.handoffs, 0),
+  };
+}
+
+/** Group rows by object type, preserving the lane order. */
+export function groupRowsByType(rows, order = ['issue', 'pull_request', 'commit']) {
+  const groups = new Map();
+  for (const row of rows) {
+    if (!groups.has(row.type)) groups.set(row.type, []);
+    groups.get(row.type).push(row);
+  }
+  return order
+    .filter((type) => groups.has(type))
+    .map((type) => ({ type, rows: groups.get(type), aggregate: aggregateRows(groups.get(type)) }));
+}
+
+/**
+ * How the PRs in this sub-log ended.
+ *
+ * A distribution rather than a count, because "3 merged" alone hides whether the
+ * other two were closed unmerged or are still open — and closed-unmerged is a
+ * conformance deviation worth seeing.
+ */
+export function prOutcomeDistribution(graph) {
+  const counts = new Map();
+  for (const object of graph.objects) {
+    const outcome = prOutcome(object, graph.events);
+    if (!outcome) continue;
+    counts.set(outcome, (counts.get(outcome) || 0) + 1);
+  }
+  return [...counts.entries()].map(([outcome, count]) => ({ outcome, count }));
+}
+
+/**
+ * Cross-object lead times, from `DATA_REQUIREMENTS.md` §9.
+ *
+ * ⚠️ These are the metrics that do **not** generalize cleanly. "Issue → PR opened"
+ * is one number only when there is one issue and one PR; with several of either
+ * there are many such intervals and no principled way to pick one. Rather than drop
+ * them or quietly report an arbitrary pair, each is computed **earliest to
+ * earliest** and labelled as such, so the reader knows exactly which two instants
+ * were subtracted. Per-object figures in the table are the honest unit; these are a
+ * summary of the sub-log's overall shape.
+ */
+export function leadTimes(graph) {
+  const earliestStart = (type) => {
+    const starts = graph.objects
+      .filter((object) => object.type === type)
+      .flatMap((object) => object.intervals.map((interval) => interval.start))
+      .filter(Boolean)
+      .map((time) => +time);
+    return starts.length ? Math.min(...starts) : null;
+  };
+
+  const earliestActivity = (activity) => {
+    const times = graph.events
+      .filter((event) => event.activity === activity)
+      .map((event) => +event.time);
+    return times.length ? Math.min(...times) : null;
+  };
+
+  const issueOpened = earliestStart('issue');
+  const prOpened = earliestStart('pull_request');
+  const { first: firstCommit } = commitStats(graph);
+  const prMerged = earliestActivity('PullRequestMerged');
+  const issueClosed = earliestActivity('IssueClosed');
+
+  const between = (from, to) => (from == null || to == null ? null : to - from);
+
+  return [
+    {
+      label: 'First issue → first commit',
+      value: between(issueOpened, firstCommit ? +firstCommit : null),
+    },
+    { label: 'First issue → first PR', value: between(issueOpened, prOpened) },
+    { label: 'First merge → first issue close', value: between(prMerged, issueClosed) },
+  ].filter((entry) => entry.value != null);
+}
+
+/**
+ * The largest idle gaps anywhere in the sub-log, longest first.
+ *
+ * The bottleneck view: where did this process actually wait? `actorChanged` marks a
+ * gap that spans a handoff, which is a different phenomenon from one person simply
+ * being slow.
+ */
+export function largestGaps(graph, limit = 5) {
+  const byId = new Map(graph.objects.map((object) => [object.id, object]));
+  const gaps = [];
+
+  for (const object of graph.objects) {
+    if (object.type === 'actor' || object.type === 'repo') continue;
+    for (const gap of perObjectGaps(graph.events, object.id)) {
+      gaps.push({
+        objectId: object.id,
+        label: byId.get(object.id)?.label || object.id,
+        type: object.type,
+        hours: gap.hours,
+        from: gap.from.time,
+        to: gap.to.time,
+        actorChanged: gap.actorChanged,
+      });
+    }
+  }
+  return gaps.sort((a, b) => b.hours - a.hours).slice(0, limit);
 }
