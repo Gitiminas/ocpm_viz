@@ -79,7 +79,6 @@ All times are **UTC**, labelled.
 | `screenshots/` | Pre-change visual baseline. **Read-only** |
 | `ocel-data.json` | The original data blob. **Never edit**; fixture F1 is built from it |
 | `_ds/` | Nocturne design tokens. Consume via `var(--token)` |
-| `OCEL Timeline.dc.html`, `support.js` | The superseded mockup, frozen for reference |
 
 ### Where to start reading
 

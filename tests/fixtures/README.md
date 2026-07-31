@@ -24,11 +24,17 @@ through `loadObjectGraph()` exactly as a real sub-log would be.
 fixture whose PRs do not actually overlap passes every layout test while verifying nothing, and
 that failure mode is completely invisible.
 
-### F2–F9 are synthetic — never cite them
+### F2–F13 are synthetic — never cite them
 
 ```
-npm run build:fixtures      # regenerate F1 and F2–F9
+npm run build:fixtures      # regenerate F1 and F2–F13
 ```
+
+**F1 is the only fixture built from real GitHub data.** Everything else — F2 through F13, which is
+every other row in the table above — is synthesized. The heading previously read "F2–F9", which
+left F10, F11, F12 and F13 outside the warning even though they sit in the same table and are built
+by the same script. F10 in particular carries a "300 commits" figure and F11 "one PR per detection
+method": exactly the shape of number that could be quoted into a results chapter by mistake.
 
 Built by `scripts/build-synthetic-fixtures.mjs`. They are **not real GitHub data**; each carries
 `meta.data_honesty.synthetic` saying so, and the sidebar labels them. They exist to exercise

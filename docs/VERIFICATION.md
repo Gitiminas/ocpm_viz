@@ -96,6 +96,11 @@ close tick. Ticking both is a two-line change if preferred.
 
 ## 3. What each fixture renders
 
+> **F1 is the only fixture built from real GitHub data.** F2–F13 are synthetic structures built to
+> exercise layout and toggle behaviour; the counts below are properties of those constructions, not
+> observations about real workflows, and none of them may be cited as a finding. See
+> `tests/fixtures/README.md`.
+
 | ID | Renders | Verified by |
 |---|---|---|
 | F1 | The vscode sub-log: 1 issue, 1 PR, 32 commits, one folded burst of 20 | assertions + all three modes rendered and compared |

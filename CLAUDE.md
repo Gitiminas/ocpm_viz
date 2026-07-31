@@ -53,9 +53,11 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | `_ds/nocturne-*/` | Design system CSS tokens | Consume via `var(--token)`. Don't restyle |
 | `ocel-data.json` | The untouched original data blob (hyphen — confirmed in Task 0) | **Never edit.** F1 is built from it by script |
 | `screenshots/` | Pre-change reference renders of the original app | **Visual regression baseline. Read-only — never regenerate or overwrite.** Inventory in `screenshots/README.md` |
-| `OCEL Timeline.dc.html` | The superseded mockup, frozen | **Do not edit, do not run as a second version.** Kept only as an A/B reference until Task 6 signs off, then deleted |
-| `support.js` | Generated `dc-runtime` bundle, needed only by `.dc.html` | **Never edit.** Deleted together with the `.dc.html` after Task 6 |
 | `.thumbnail` | Claude Design artifact | Ignore |
+
+The superseded mockup (`OCEL Timeline.dc.html`) and its `support.js` runtime were deleted once
+Task 6 signed off, as this table previously mandated. `docs/MOCKUP_OVERVIEW.md` remains as the
+written record of what they contained; `screenshots/` remains as the visual baseline.
 
 **Running it:** `npm start`, then open `http://localhost:8000`. Opening `index.html` from disk
 does not work — browsers block both ES modules and `fetch` on `file://` origins.
@@ -71,6 +73,9 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
 - **Never modify the shared upstream.** Base tables and the 17 MVs are owned by other researchers
   (a PhD student is building real OCEL tables; another MSc student is building bot classification).
   Read-only. No `UPDATE`/`DELETE`/`DROP`/`TRUNCATE`, no refreshes, no altering their definitions.
+  **This includes indexes.** `CREATE INDEX` requires ownership of the relation, so any index on an
+  upstream view is a request to its owner, not a task — see `DATA_CONTRACT.md` §2 and open
+  question O9.
 - **Do not build other people's theses.** Bot/human classification, OCEL 2.0 tables, labels, forks,
   reviews, review comments, branch/ref lifecycle — all out of scope.
 - **Never fabricate data.** No placeholder rows, no `Math.random()`, no mock UI. Fixtures live in
@@ -84,10 +89,19 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
 
 ## Conventions
 
-- Analysis and metrics in **SQL**, not JS. The frontend fetches and renders.
+- **Metrics are computed in JS over the loaded sub-log** (decision 12) — durations, counts, gaps —
+  so they respond to toggles. SQL is only for figures spanning data that is *not* loaded, such as
+  per-repo link coverage for RQ2. Precomputing sub-log metrics in SQL would answer "comments hidden
+  → gaps unchanged" silently, which is the failure decision 12 exists to prevent.
 - My derived views live in **my own schema**, never in the shared namespace. Plain `VIEW` by default;
   `MATERIALIZED VIEW` only where a measured query justifies it (see `docs/ADAPTER_AND_API.md`).
 - Identity by numeric id, never by `login` or repo `name` — both are renameable.
+  **Two dated exceptions, both blocked on the RPC, neither to be widened:**
+  actor objects are keyed `actor:<login>` and the query addresses a repo by name, because
+  `ocel-data.json` — the frozen source blob F1 is built from — carries no numeric actor id and no
+  other source is reachable yet. `actor.id` exists upstream (`DATA_CONTRACT.md` §0), so both expire
+  when the RPC lands. Until then a renamed account silently splits into two actors across a
+  re-extraction; note it if actor counts are reported.
 - **Modularity is a hard requirement.** Data access, layout, rendering and stats stay separable.
   `loadObjectGraph(query) -> ObjectGraph` is the only data entry point.
 - No bundler, framework or TypeScript. A test runner is required; native ES modules need no build
@@ -98,8 +112,9 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
   and is on `PATH` via `~/.bashrc` and `~/.profile`; `package.json` sets `"type": "module"`.
 - Every module must be importable and testable in isolation. If a function can only be exercised by
   rendering the whole app, the seam is in the wrong place.
-- Extend the existing `st` state object and `REL_GROUPS` structure rather than inventing parallel
-  mechanisms.
+- Extend the existing `st` state object and the derived toggle vocabulary from
+  `deriveRelGroups()` (`src/state/state.js`) rather than inventing parallel mechanisms. Do not
+  reintroduce a hardcoded relationship-group enumeration — `deriveRelGroups` replaced one.
 - Two distinct notions of degree — keep them named apart: **traversal degree** (server-side, what is
   *in* the sub-log) vs **focus degree** (client-side BFS, what is *highlighted*).
 

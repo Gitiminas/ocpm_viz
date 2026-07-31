@@ -158,26 +158,29 @@ PushEvents reshaped into generic activity records.
 > `repo_id`, `issue_id`, `issue_number`, `pull_request_id`, `pr_number`, `validation_status`,
 > `link_method`, `issue_created_at_utc`, `pr_created_at_utc`, `pr_merged_at_utc`, `issue_closed_at_utc`
 
+> **Evidence classification is not recorded here.** Nothing upstream pre-classifies a link, so a
+> class is a research judgement rather than an existence fact, and this document's remit is what
+> exists. The single mapping from detection method to `validated` / `extracted` lives in
+> `ADAPTER_AND_API.md` §3 (decision 7). Earlier revisions of this section carried "suggested
+> evidence class" lines; they disagreed with that mapping and have been removed rather than
+> corrected, so there is one place to look and one place to change.
+
 #### `mv_issue_pr_links_pr_body`
 Links from closing keywords in the PR body (e.g. "Closes #242864").
 *Depends on:* `issues_identity`, `mv_pull_request_events_full`, `prs_identity`
-**Suggested evidence class: `validated`** — explicit closing keyword, the strongest available signal.
 
 #### `mv_issue_pr_links_branch_name`
 Links from the PR's head branch name (e.g. `fix/123`).
 *Depends on:* `issues_identity`, `mv_pull_request_events_full`, `prs_identity`
-**Suggested evidence class: `validated`**
 
 #### `mv_issue_pr_links_pr_title`
 Links from issue references in the PR title.
 *Depends on:* `issues_identity`, `mv_pull_request_events_full`, `prs_identity`
-**Suggested evidence class: `inferred`**
 
 #### `mv_issue_pr_links_issue_comment`
 Links from PR references inside issue comments.
 *Depends on:* `issues_identity`, `mv_issue_comments_full`, `mv_pull_request_events_full`,
 `prs_identity`
-**Suggested evidence class: `inferred`**
 
 #### `mv_commit_message_issue_links_all`
 Issue references parsed out of commit messages by regex, tagged by convention
@@ -186,20 +189,35 @@ Issue references parsed out of commit messages by regex, tagged by convention
 **Columns (7):** `source_repo_id`, `commit_sha`, `issue_number`, `ref_scope`, `link_convention`,
 `push_created_at`, `actor_id`
 **Why:** the commit↔issue link source — the `referenced_issue` qualifier.
-**Suggested evidence class: `inferred`** (the ~9.38% SHA-match reliability class). Use `ref_scope`
-and `link_convention` to sub-grade: cross-repo refs are weaker than same-repo `fixes #N`.
+**Sub-grading inputs:** `ref_scope` and `link_convention` — cross-repo refs are weaker than
+same-repo `fixes #N`. The evidence class itself is assigned in `ADAPTER_AND_API.md` §3.
 
 ---
 
 ## 2. What this project builds on top
 
-Four derivations are not materialized anywhere upstream. Their specification, form (plain view vs
-materialized) and rationale live in `ADAPTER_AND_API.md` §2 — deliberately kept out of this document
-so the frozen contract and my own work are never confused.
+Three derivations are not materialized anywhere upstream — `commit_pr_links`, `issue_pr_links`
+and `object_lifecycles`. Their specification, form (plain view vs materialized) and rationale live
+in `ADAPTER_AND_API.md` §2 — deliberately kept out of this document so the frozen contract and my
+own work are never confused. (A fourth, `process_gaps`, was specified there and then superseded by
+decision 12: gaps are computed in JS over the loaded sub-log so they follow the toggles.)
 
 **Indexes** are the first performance lever, ahead of any materialization: `repo_id`, `issue_id`,
 `pull_request_id`, `commit_sha`, `push_id`. With ~14 GB and 3–4M rows in the largest views, query
 latency is the real risk, not render latency.
+
+> ⚠️ **This is not something this project can do unilaterally, and it conflicts with the read-only
+> rule above.** `CREATE INDEX` requires ownership of the relation; a role holding only `SELECT`
+> gets `must be owner of materialized view`. `ANALYZE` is worse — a non-owner gets
+> `WARNING: permission denied to analyze …, skipping it` and the command still **reports success**,
+> so a maintenance script can appear to work while the planner stays blind. There is no grantable
+> privilege for either before PostgreSQL 17's `MAINTAIN`.
+>
+> So an index on an upstream view is a **request to its owner**, with lead time, and it sits on the
+> critical path at this data volume. Before asking, check what already exists (`pg_indexes`) and
+> whether `pg_class.reltuples` is populated or still `-1` for the large views. Indexes on *this
+> project's own* views in its own schema are unaffected — those we own. Tracked as open question
+> O9 in `DECISIONS.md`.
 
 ---
 
@@ -237,5 +255,5 @@ rather than real behaviour.
 
 **Mitigation:** report per-repo issue↔PR link counts broken down by detection method, and state the
 coverage gap numerically. If it turns out large, consider adding commit-message-based issue→PR
-linking by joining `mv_commit_message_issue_links_all` through `mv_thesis_commit_pr_links`, which
+linking by joining `mv_commit_message_issue_links_all` through the adapter's `commit_pr_links` view, which
 would recover some of the missing recall.

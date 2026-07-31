@@ -15,7 +15,8 @@ Note: this document predates decisions 7 and 12; where it says `inferred`, read 
 
 Legend for the **Need** column:
 `R` = required, the view breaks without it · `D` = derived, compute don't store ·
-`O` = optional / nice-to-have
+`O` = optional / nice-to-have · `P` = planned — the upstream column exists and the adapter will
+carry it, but nothing populates it yet, so no code may assume it is present
 
 ---
 
@@ -26,7 +27,7 @@ Two tiers, and the distinction matters:
 | Tier | What | Query directly? |
 |---|---|---|
 | **Base tables** | `actor` (id, login, display_login, url, updated_at) · `org` (id, login, url, avatar_url, updated_at) · `repo` (id, name, url, updated_at) · `event` (id, type, actor_id, repo_id, org_id, public, created_at, `payload` jsonb) | ✅ Yes — normal tables |
-| **Materialized views** | Per-event-type extractions of `event.payload`, cached so the JSONB isn't re-parsed per query | ✅ Yes — see `MV_REFERENCE_TRIMMED.md` |
+| **Materialized views** | Per-event-type extractions of `event.payload`, cached so the JSONB isn't re-parsed per query | ✅ Yes — enumerated in `DATA_CONTRACT.md` §1 |
 
 **Consequence — the `event` table is already the event-log skeleton.** It carries `id`, `type`,
 `actor_id`, `repo_id`, `created_at` for every event. So the event stream is *not* assembled by
@@ -220,22 +221,28 @@ and `PullRequestMergedOffPlatform`.
 
 ## 7. Links (object ↔ object)
 
+> Fields marked `P` are named here and in the sub-grading promise of `ADAPTER_AND_API.md` §3, but
+> are **not** in the `ObjectGraph` contract and no fixture populates them. They were marked `R`
+> until the audit of 2026-07-31 found a required field with nowhere to live. They land with the
+> RPC. `link_methods` went the other way — it was already produced by the fixtures and consumed by
+> the app, and is now in the contract.
+
 | Field | Need | Source | Used for |
 |---|---|---|---|
 | `source` / `target` | R | link views | edge endpoints |
-| `qualifier` | R | derived | `related_issue` / `referenced_issue` / `referenced_pull_request` |
+| `qualifier` | R | derived | `related_issue` / `referenced_issue` / `referenced_pull_request` / `actor` |
 | `evidence` | R | **derived** from `link_method` | solid vs dashed (shortcoming S8) |
 | `link_method` / `primary_link_method` | R | link views | evidence classification, per-method toggle |
-| `validation_status` | R | link views | temporal sanity of the link |
+| `validation_status` | P | link views | temporal sanity of the link |
 | `n_methods` / `link_methods` | R | your dedup view | multi-method agreement = confidence |
 | temporal columns | O | `issue_created_at_utc`, `pr_created_at_utc`, `pr_merged_at_utc`, `issue_closed_at_utc` | validation display |
-| `ref_scope` / `link_convention` | R | `mv_commit_message_issue_links_all` | cross-repo vs same-repo refs; convention sub-classing |
+| `ref_scope` / `link_convention` | P | `mv_commit_message_issue_links_all` | cross-repo vs same-repo refs; convention sub-classing |
 
 ### Link types needed
 
 | Pair | Qualifier | Source |
 |---|---|---|
-| Issue ↔ PR | `related_issue` | the 4 detection-method views, deduped by `mv_thesis_issue_pr_links` |
+| Issue ↔ PR | `related_issue` | the 4 detection-method views, deduped by the adapter's `issue_pr_links` view |
 | Commit → PR | `referenced_pull_request` | rebuilt from `head_sha` / `merge_commit_sha` / `head_ref` matching |
 | Commit → Issue | `referenced_issue` | `mv_commit_message_issue_links_all` |
 | Event → Actor | `actor` | `actor_id` on each event |
@@ -281,7 +288,7 @@ Compute in SQL, not JS. With N issues and M PRs each becomes per-object *and* ag
 
 ## 10. Open decisions
 
-Moved to `DECISIONS.md`. Four of the five questions this document originally raised are now settled:
+Moved to `DECISIONS.md`. All five questions this document originally raised are now settled:
 
 | Original question | Resolution |
 |---|---|
@@ -291,4 +298,6 @@ Moved to `DECISIONS.md`. Four of the five questions this document originally rai
 | Object lifecycle spans vs events | **Settled** (decision 4): SQL-derived intervals on the object; the renderer does not recompute spans |
 | `link_method` → `evidence` mapping | **Settled** (decision 7): two classes, `validated` and `extracted`, by the platform-asserts-it rule in `ADAPTER_AND_API.md` §3 |
 
-Remaining open questions are O2, O4 and O8, in `DECISIONS.md`.
+Of the questions raised across the project, only **O2** (the commit→PR admission rule) remains
+open from the original set; O9 and O10 were opened later. O4 and O8 are resolved — see the
+struck-through rows in `DECISIONS.md` §2, which is the register of record.

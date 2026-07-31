@@ -7,6 +7,11 @@ I cannot reliably eyeball D3 correctness, so prove it. This is not optional and 
 F1 comes from the conversion script built in Task 1. F2–F9 are synthesized. F10 and any real
 vscode / react / kubernetes sub-logs need database access and wait until the RPC exists.
 
+> **Correction, 2026-07-31.** The range above is stale and was written before F10–F13 existed. It
+> is left in place because this is a dated work package, but do not rely on it: **F1 is the only
+> fixture built from real data. F2 through F13 are all synthetic.** F10 was ultimately synthesized
+> rather than sourced from the database. See `tests/fixtures/README.md`, which is authoritative.
+
 **Every synthesized fixture ships with an assertion proving it exhibits its property.** An
 "overlapping PRs" fixture whose PRs do not overlap passes while testing nothing — that failure mode
 is invisible and defeats the purpose of the whole set.

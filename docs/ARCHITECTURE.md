@@ -1,7 +1,9 @@
 # Architecture
 
-Intent, boundaries and rationale. Not a description of the current code — for that see
-`MOCKUP_OVERVIEW.md`.
+Intent, boundaries and rationale. Not a walkthrough of the current code — for that see
+`README.md`, which holds the orientation material, and the module tree below.
+(`MOCKUP_OVERVIEW.md` describes the *superseded* mockup and is historical; do not read it as a
+description of what runs today.)
 
 ## Layers
 
@@ -77,7 +79,7 @@ scripts/
   build-catalogue.mjs  which repos exist and which seeds can be served
   serve.mjs            zero-dependency static server (npm start)
 tests/
-  fixtures/            F1 … F12
+  fixtures/            F1 … F13
   *.test.js
 ```
 
@@ -123,15 +125,19 @@ Not single-case process mining, so the usual vocabulary does not transfer:
 - The sub-lane rule (decision 3) is the layout consequence: an object's identity must stay visually
   traceable across the whole timeline, and links must stay readable when N > 1 on both ends.
 
-## Known structural debt in the current app
+## Structural debt — resolved, retained as rationale
 
-One ~1110-line `run(DATA)` closure: nothing is unit-testable in isolation, `render()` tears down and
-rebuilds the entire SVG on every interaction, and state is one mutable
+> **Historical as of Task 1 (2026-07-30).** The code described below no longer exists; the module
+> tree above replaced it. Kept because it is the reason the tree looks the way it does.
+
+The mockup was one ~1110-line `run(DATA)` closure: nothing was unit-testable in isolation,
+`render()` tore down and rebuilt the entire SVG on every interaction, and state was one mutable
 object written from ~30 sites.
 
-**Restructuring is in scope** — modularity is graded and the tool will be maintained by others. But
-correctness comes first: a clean architecture that still assumes one issue is a failure. If the
-timebox forces a choice, ship correct behaviour with honest notes on what was left coarse.
+**Restructuring was in scope** — modularity is graded and the tool will be maintained by others.
+But correctness came first: a clean architecture that still assumes one issue is a failure. That
+ordering still governs any remaining work; if the timebox forces a choice, ship correct behaviour
+with honest notes on what was left coarse.
 
 ## Deliberately out of scope
 
