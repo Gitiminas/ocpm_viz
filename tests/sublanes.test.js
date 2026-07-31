@@ -157,8 +157,54 @@ describe('fixtures exhibit the properties they claim', () => {
     assert.ok(+issue.intervals[0].end < +issue.intervals[1].start, 'intervals must be disjoint');
   });
 
+  test('F10 really is large enough to exercise density behaviour', async () => {
+    const graph = await load('F10');
+    const commits = graph.objects.filter((o) => o.type === 'commit');
+    assert.equal(commits.length, 300);
+    assert.equal(graph.objects.filter((o) => o.type === 'pull_request').length, 3);
+    // Pushes of varying size, so some fold and some do not — a fixture where every
+    // push folded would not exercise the mixed case.
+    const index = indexObjectGraph(graph);
+    const bursts = deriveBursts(index.objectsOfType('commit'));
+    assert.ok(bursts.length >= 3, 'several pushes must exceed the threshold');
+    assert.ok(
+      bursts.length < new Set(commits.map((c) => c.vmap.push_id)).size,
+      'and several must not, or the mixed case is untested',
+    );
+  });
+
+  test('F11 really does carry all four issue-PR detection methods', async () => {
+    const graph = await load('F11');
+    const methods = new Set(
+      graph.links.filter((l) => l.qualifier === 'related_issue').map((l) => l.method),
+    );
+    assert.deepEqual(
+      [...methods].sort(),
+      ['branch_name', 'issue_comment', 'pr_body', 'pr_title'],
+    );
+  });
+
+  test('F12 really does have multi-method agreement and mixed evidence on one pair', async () => {
+    const graph = await load('F12');
+    const multi = graph.links.filter((l) => l.n_methods > 1);
+    assert.ok(multi.length >= 1, 'at least one link must have several methods agreeing');
+    assert.equal(multi[0].evidence, 'validated', 'one validating method is enough');
+
+    // The same commit-PR pair, asserted once by identity and once by convention.
+    const pairs = new Map();
+    for (const link of graph.links.filter((l) => l.qualifier !== 'actor')) {
+      const key = `${link.source}|${link.target}`;
+      if (!pairs.has(key)) pairs.set(key, new Set());
+      pairs.get(key).add(link.evidence);
+    }
+    assert.ok(
+      [...pairs.values()].some((classes) => classes.size > 1),
+      'one object pair must carry both evidence classes',
+    );
+  });
+
   test('every synthetic fixture is labelled as synthetic', async () => {
-    for (const id of ['F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9']) {
+    for (const id of ['F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13']) {
       const graph = await load(id);
       assert.match(graph.meta.data_honesty.synthetic, /SYNTHESIZED FIXTURE/);
       assert.ok(graph.meta.source.property, `${id} must declare its property`);
@@ -367,7 +413,7 @@ describe('links that would coincide are fanned apart', () => {
 });
 
 describe('layout invariants across all fixtures and modes', () => {
-  const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F13'];
+  const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13'];
 
   for (const fixture of ALL) {
     test(`${fixture}: no two nodes overlap within a row`, async () => {

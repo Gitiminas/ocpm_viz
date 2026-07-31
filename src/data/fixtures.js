@@ -31,6 +31,9 @@ export const FIXTURES = {
   F7: { id: 'F7', label: 'F7 · two bursts', file: 'F7.json', synthetic: true },
   F8: { id: 'F8', label: 'F8 · orphan PR', file: 'F8.json', synthetic: true },
   F9: { id: 'F9', label: 'F9 · reopened issue', file: 'F9.json', synthetic: true },
+  F10: { id: 'F10', label: 'F10 · large (300 commits)', file: 'F10.json', synthetic: true },
+  F11: { id: 'F11', label: 'F11 · all four detection methods', file: 'F11.json', synthetic: true },
+  F12: { id: 'F12', label: 'F12 · mixed evidence, multi-method', file: 'F12.json', synthetic: true },
   F13: { id: 'F13', label: 'F13 · concurrent PRs, many commits', file: 'F13.json', synthetic: true },
 };
 

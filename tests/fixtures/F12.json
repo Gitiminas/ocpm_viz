@@ -1,0 +1,193 @@
+{
+  "meta": {
+    "repo": "synthetic/fixture",
+    "repo_id": 1,
+    "seed": [
+      {
+        "id": "issue:120",
+        "type": "issue"
+      }
+    ],
+    "traversal_degree": 2,
+    "active_object_types": [
+      "actor",
+      "commit",
+      "issue",
+      "pull_request"
+    ],
+    "active_link_methods": [
+      "head_sha",
+      "pr_body",
+      "ref_match"
+    ],
+    "generated_at": "2026-07-30T00:00:00Z",
+    "activity_scope": "OCEL-strict + comments",
+    "data_honesty": {
+      "synthetic": "SYNTHESIZED FIXTURE — not real GitHub data. Exists to exhibit one structural property; never use it for any figure or claim about behaviour.",
+      "commit_time": "first-seen in PushEvent, NOT real git commit time"
+    },
+    "source": {
+      "fixture": "F12",
+      "built_by": "scripts/build-synthetic-fixtures.mjs",
+      "property": "Multi-method agreement (n_methods > 1) and both evidence classes on the same object pair."
+    }
+  },
+  "objects": [
+    {
+      "id": "issue:120",
+      "type": "issue",
+      "label": "#120",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->closed",
+      "vmap": {
+        "issue_number": 120,
+        "issue_id": 900120,
+        "title": "Synthetic issue 120"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-01T00:00:00Z",
+          "end": "2025-01-12T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "pr:1201",
+      "type": "pull_request",
+      "label": "PR #1201",
+      "repo": "synthetic/fixture",
+      "time_semantics": "created_at(opened)->merged",
+      "vmap": {
+        "pr_number": 1201,
+        "pull_request_id": 801201,
+        "title": "Synthetic PR 1201"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-02T00:00:00Z",
+          "end": "2025-01-10T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "commit:mixedevidence0000",
+      "type": "commit",
+      "label": "mixedev",
+      "repo": "synthetic/fixture",
+      "time_semantics": "first_seen(push)",
+      "vmap": {
+        "commit_sha": "mixedevidence0000",
+        "push_id": 12001,
+        "commit_message": "synthetic commit",
+        "commit_author_name": "Synthetic Author",
+        "ref": "refs/heads/main"
+      },
+      "intervals": [
+        {
+          "start": "2025-01-05T00:00:00Z",
+          "end": "2025-01-05T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "actor:alice",
+      "type": "actor",
+      "label": "@alice",
+      "repo": "synthetic/fixture",
+      "time_semantics": "static",
+      "vmap": {
+        "login": "alice"
+      },
+      "intervals": []
+    }
+  ],
+  "events": [
+    {
+      "id": "e1",
+      "activity": "IssueOpened",
+      "time": "2025-01-01T00:00:00Z",
+      "object_id": "issue:120",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e2",
+      "activity": "PullRequestOpened",
+      "time": "2025-01-02T00:00:00Z",
+      "object_id": "pr:1201",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e3",
+      "activity": "CommitObserved",
+      "time": "2025-01-05T00:00:00Z",
+      "object_id": "commit:mixedevidence0000",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e4",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-10T00:00:00Z",
+      "object_id": "pr:1201",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    },
+    {
+      "id": "e5",
+      "activity": "IssueClosed",
+      "time": "2025-01-12T00:00:00Z",
+      "object_id": "issue:120",
+      "actor_id": "actor:alice",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {}
+    }
+  ],
+  "links": [
+    {
+      "source": "pr:1201",
+      "target": "issue:120",
+      "qualifier": "related_issue",
+      "evidence": "validated",
+      "method": "pr_body",
+      "link_methods": [
+        "pr_body",
+        "branch_name",
+        "pr_title"
+      ],
+      "n_methods": 3
+    },
+    {
+      "source": "commit:mixedevidence0000",
+      "target": "pr:1201",
+      "qualifier": "referenced_pull_request",
+      "evidence": "validated",
+      "method": "head_sha",
+      "link_methods": [
+        "head_sha"
+      ],
+      "n_methods": 1
+    },
+    {
+      "source": "commit:mixedevidence0000",
+      "target": "pr:1201",
+      "qualifier": "referenced_pull_request",
+      "evidence": "extracted",
+      "method": "ref_match",
+      "link_methods": [
+        "ref_match"
+      ],
+      "n_methods": 1
+    }
+  ]
+}

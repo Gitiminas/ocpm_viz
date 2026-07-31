@@ -15,9 +15,9 @@ through `loadObjectGraph()` exactly as a real sub-log would be.
 | F8 | A PR with no linked issue | nothing may assume an issue exists | built |
 | F9 | An issue opened, closed, reopened, closed | two bars on one row | built |
 | F13 | Two concurrent PRs, several commits each, one commit shared | many links into one lane stay individually readable | built |
-| F10 | Deliberately large sub-log (few hundred commits) | render behaviour at scale | Task 6 |
-| F11 | All four issue↔PR detection methods present | per-method toggles | Task 6 |
-| F12 | Mixed evidence on one object pair, `n_methods > 1` | multi-method agreement | Task 6 |
+| F10 | 1 issue, 3 PRs, 300 commits in pushes of varying size | density behaviour at a scale F1 cannot reach | built |
+| F11 | Four PRs, one per issue↔PR detection method | each per-method toggle is independently observable | built |
+| F12 | A 3-method link, and both evidence classes on one pair | multi-method agreement (`n_methods > 1`) | built |
 
 **Every synthesized fixture ships with an assertion proving it exhibits its property**
 (`tests/sublanes.test.js`, first describe block). This is not ceremony: an "overlapping PRs"

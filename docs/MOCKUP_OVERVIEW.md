@@ -1,4 +1,19 @@
-# The hardcoded mockup — architecture overview
+> # ⚠️ HISTORICAL — describes code that no longer exists
+>
+> This document dissects the original `run(DATA)` closure in `OCEL Timeline.dc.html`,
+> the pre-generalization mockup. That app has been superseded by `index.html` plus the
+> ES modules under `src/`, and every line number below refers to a file that is kept
+> only as a frozen reference.
+>
+> **It is not maintained and must not be read as current.** For the code as it is now,
+> see `ARCHITECTURE.md` and the modules themselves.
+>
+> It is kept because it is thesis material rather than documentation: it is the record
+> of the starting point, and §10 — the overfit inventory — is the problem statement the
+> generalization work was measured against. Every item in that inventory has since been
+> addressed; `DECISIONS.md` records how.
+
+# The hardcoded mockup — architecture overview (historical)
 
 Reference description of `OCEL Timeline.dc.html` as it exists today: what it renders, how it is
 built, what every function does, and which parts are real versus mocked.

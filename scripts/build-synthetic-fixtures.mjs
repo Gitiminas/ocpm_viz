@@ -97,16 +97,24 @@ function event(activity, time, objectId, { actorId = 'actor:alice', comment = fa
   };
 }
 
-function link(source, target, qualifier, method) {
-  const validated = ['pr_body', 'head_sha', 'merge_commit_sha', 'event_actor_id'].includes(method);
+const VALIDATED_METHODS = ['pr_body', 'head_sha', 'merge_commit_sha', 'event_actor_id'];
+
+/**
+ * A link detected by one or more methods.
+ *
+ * Multi-method links follow the real rule: one validating method is enough, since
+ * a platform-asserted match cannot be weakened by further convention-based ones.
+ */
+function link(source, target, qualifier, methods) {
+  const list = Array.isArray(methods) ? methods : [methods];
   return {
     source,
     target,
     qualifier,
-    evidence: validated ? 'validated' : 'extracted',
-    method,
-    link_methods: [method],
-    n_methods: 1,
+    evidence: list.some((method) => VALIDATED_METHODS.includes(method)) ? 'validated' : 'extracted',
+    method: list[0],
+    link_methods: list,
+    n_methods: list.length,
   };
 }
 
@@ -411,6 +419,152 @@ FIXTURES.F13 = () => {
       'Two concurrent PRs with several commits each, plus a commit shared by both — ' +
       'links into one lane must stay individually readable.',
     seed: [{ id: 'issue:13', type: 'issue' }],
+    objects,
+    events,
+    links,
+  });
+};
+
+/**
+ * F10 — a deliberately large sub-log: 3 PRs and 300 commits across many pushes.
+ *
+ * Not a performance benchmark. It exists so that "sub-logs are small, do not
+ * pre-optimise" is a claim someone has actually checked, and so the density
+ * behaviours — burst folding, label thinning, run grouping — are exercised at a
+ * scale F1 cannot reach.
+ */
+FIXTURES.F10 = () => {
+  eventSeq = 0;
+  const objects = [
+    issue(100, { from: t(1), to: t(120) }),
+    pr(1001, { from: t(5), to: t(45) }),
+    pr(1002, { from: t(40), to: t(80) }),
+    pr(1003, { from: t(75), to: t(115) }),
+    actor('alice'),
+    actor('bob'),
+  ];
+  const events = [event('IssueOpened', t(1), 'issue:100')];
+  const links = [
+    link('pr:1001', 'issue:100', 'related_issue', 'pr_body'),
+    link('pr:1002', 'issue:100', 'related_issue', 'branch_name'),
+    link('pr:1003', 'issue:100', 'related_issue', 'pr_title'),
+  ];
+
+  const prIds = ['pr:1001', 'pr:1002', 'pr:1003'];
+  for (const [prIndex, prId] of prIds.entries()) {
+    events.push(event('PullRequestOpened', t(5 + prIndex * 35), prId));
+
+    // 100 commits per PR, in pushes of varying size so some fold and some do not.
+    let commitNumber = 0;
+    let pushIndex = 0;
+    while (commitNumber < 100) {
+      const pushSize = [1, 3, 12, 1, 40, 2, 8, 33][pushIndex % 8];
+      const pushId = 10000 + prIndex * 100 + pushIndex;
+      const day = 6 + prIndex * 35 + Math.floor((commitNumber / 100) * 30);
+
+      for (let i = 0; i < pushSize && commitNumber < 100; i++, commitNumber++) {
+        const sha = `p${prIndex}c${String(commitNumber).padStart(3, '0')}`.padEnd(17, '0');
+        objects.push(commit(sha, { at: t(day, (commitNumber % 20) + 1), pushId }));
+        events.push(
+          event('CommitObserved', t(day, (commitNumber % 20) + 1), `commit:${sha}`, {
+            actorId: commitNumber % 3 ? 'actor:alice' : 'actor:bob',
+          }),
+        );
+        links.push(link(`commit:${sha}`, prId, 'referenced_pull_request', 'head_sha'));
+      }
+      pushIndex += 1;
+    }
+    events.push(event('PullRequestMerged', t(45 + prIndex * 35), prId));
+  }
+  events.push(event('IssueClosed', t(120), 'issue:100'));
+
+  return graph({
+    id: 'F10',
+    property: 'One issue, three PRs and 300 commits — density behaviour at a scale F1 cannot reach.',
+    seed: [{ id: 'issue:100', type: 'issue' }],
+    objects,
+    events,
+    links,
+  });
+};
+
+/**
+ * F11 — all four issue↔PR detection methods at once.
+ *
+ * F1 exercises only `pr_body`, so without this the per-method toggles could not be
+ * switched independently and observed to do anything.
+ */
+FIXTURES.F11 = () => {
+  eventSeq = 0;
+  const objects = [
+    issue(110, { from: t(1), to: t(30) }),
+    pr(1101, { from: t(2), to: t(8) }),
+    pr(1102, { from: t(10), to: t(16) }),
+    pr(1103, { from: t(18), to: t(24) }),
+    pr(1104, { from: t(25), to: t(29) }),
+    actor('alice'),
+  ];
+  const events = [event('IssueOpened', t(1), 'issue:110')];
+  const methods = ['pr_body', 'branch_name', 'pr_title', 'issue_comment'];
+  const links = [];
+
+  methods.forEach((method, i) => {
+    const prId = `pr:110${i + 1}`;
+    events.push(event('PullRequestOpened', t(2 + i * 8), prId));
+    events.push(event('PullRequestMerged', t(8 + i * 8), prId));
+    links.push(link(prId, 'issue:110', 'related_issue', method));
+  });
+  events.push(event('IssueClosed', t(30), 'issue:110'));
+
+  return graph({
+    id: 'F11',
+    property:
+      'All four issue↔PR detection methods present, one per PR — each per-method toggle can be ' +
+      'switched independently and its effect observed.',
+    seed: [{ id: 'issue:110', type: 'issue' }],
+    objects,
+    events,
+    links,
+  });
+};
+
+/**
+ * F12 — multi-method agreement, and mixed evidence on one object pair.
+ *
+ * Every link in F1 has `n_methods: 1`, so the confidence signal the tooltip carries
+ * is otherwise unexercised. The commit↔PR pair here carries both a validated and an
+ * extracted link at once, which is the case where evidence styling has to
+ * distinguish two edges between the same two objects.
+ */
+FIXTURES.F12 = () => {
+  eventSeq = 0;
+  const sha = 'mixedevidence0000';
+  const objects = [
+    issue(120, { from: t(1), to: t(12) }),
+    pr(1201, { from: t(2), to: t(10) }),
+    commit(sha, { at: t(5), pushId: 12001 }),
+    actor('alice'),
+  ];
+  const events = [
+    event('IssueOpened', t(1), 'issue:120'),
+    event('PullRequestOpened', t(2), 'pr:1201'),
+    event('CommitObserved', t(5), `commit:${sha}`),
+    event('PullRequestMerged', t(10), 'pr:1201'),
+    event('IssueClosed', t(12), 'issue:120'),
+  ];
+  const links = [
+    // Three methods agree on this one — the strongest signal the model can express.
+    link('pr:1201', 'issue:120', 'related_issue', ['pr_body', 'branch_name', 'pr_title']),
+    // The same commit↔PR pair, asserted once by identity and once by convention.
+    link(`commit:${sha}`, 'pr:1201', 'referenced_pull_request', 'head_sha'),
+    link(`commit:${sha}`, 'pr:1201', 'referenced_pull_request', 'ref_match'),
+  ];
+
+  return graph({
+    id: 'F12',
+    property:
+      'Multi-method agreement (n_methods > 1) and both evidence classes on the same object pair.',
+    seed: [{ id: 'issue:120', type: 'issue' }],
     objects,
     events,
     links,
