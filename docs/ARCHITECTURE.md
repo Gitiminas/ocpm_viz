@@ -60,6 +60,7 @@ src/
     packing.js         row allocation (per-object sub-lanes: Task 2)
     lanes.js           lane geometry
     nodes.js           ✚ node model construction — which nodes exist, in what order
+    anchors.js         ✚ where a link meets an object
   render/
     timeline.js  nodes.js  links.js  axis.js  minimap.js  tooltip.js  legend.js
     theme.js           ✚ colours, shapes, glyphs shared by every renderer
@@ -89,6 +90,10 @@ alternative was a module doing two jobs:
 - `layout/nodes.js` — node *construction* is pure and must be testable without a DOM;
   `render/nodes.js` is the drawing. Splitting them is what keeps "how many nodes, in which lane,
   in what order" checkable in isolation.
+- `layout/anchors.js` — an endpoint's position is arithmetic over rows and scales, and it decides
+  where a line lands. It lived inside `render/timeline.js` and was therefore exercised only by
+  looking at a picture, which is how it came to disagree with the lifecycle bar about which row an
+  object occupies (decision 37). One formula, one file, asserted without a DOM.
 - `model/bursts.js` — burst grouping is a data derivation, not layout.
 - `render/format.js` — Task 5's UTC fix must be a one-file change, so every formatter lives here.
 - `render/theme.js`, `sidebar.js`, `actorCard.js`, `stats.js` — otherwise `timeline.js` becomes the

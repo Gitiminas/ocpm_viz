@@ -10,7 +10,7 @@ graded by how much the evidence for each link is worth.
 
 ```
 npm start        # then open http://localhost:8000
-npm test         # 322 assertions, no browser needed
+npm test         # 340 assertions, no browser needed
 ```
 
 > Opening `index.html` from disk will not work. Browsers block both ES modules and

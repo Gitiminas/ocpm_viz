@@ -23,8 +23,9 @@ import { buildAdjacency, focusSet } from '../model/graph.js';
 import { deriveCommitGroups } from '../model/commitGroups.js';
 import { buildNodes, assignRanks, filterNodes } from '../layout/nodes.js';
 import { createScales } from '../layout/scales.js';
-import { packRows, ROW_HEIGHT } from '../layout/packing.js';
-import { computeLaneGeometry } from '../layout/lanes.js';
+import { packRows } from '../layout/packing.js';
+import { computeLaneGeometry, rowY } from '../layout/lanes.js';
+import { createAnchors } from '../layout/anchors.js';
 import { renderAxis, highlightTickInstants } from './axis.js';
 import { renderLinks } from './links.js';
 import {
@@ -162,10 +163,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     const laneObjects = new Map(visibleLanes.map((lane) => [lane, index.objectsOfType(lane)]));
     const { maxRowByLane, objectRow } = packRows(nodes, visibleLanes, { laneObjects });
     const { lanes: geometry, height } = computeLaneGeometry(visibleLanes, maxRowByLane, MARGIN);
-    for (const node of nodes) {
-      const lane = geometry.get(node.lane);
-      node.y = lane ? lane.contentTop + node.row * ROW_HEIGHT : 0;
-    }
+    for (const node of nodes) node.y = rowY(geometry, node.lane, node.row);
 
     // Which drawn node stands for which object — commits carry their packed row, so
     // a link into the commit lane must meet the node, not the lane's top.
@@ -183,7 +181,9 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     for (const layer of Object.values(layers)) layer.selectAll('*').remove();
 
     const focus = focusSet(adjacency, state.focus, state.focusDegree);
-    const anchors = createAnchors({ nodes, nodeByObject, geometry, scales });
+    // `objectRow` is what tells an edge which band its issue or PR was packed into;
+    // without it every link into a lane lands on band 0.
+    const anchors = createAnchors({ nodes, nodeByObject, geometry, scales, objectRow });
 
     // ---- draw -----------------------------------------------------------------
     // Which objects actually survived the filters, so the lane caption can say so.
@@ -400,71 +400,3 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   };
 }
 
-/**
- * Where a link should meet an object.
- *
- * A commit meets its drawn node, including the row it was packed into. Anything else
- * meets its lane, at the x of the exact node for that instant when one exists — so an
- * edge lands on the "merged" diamond rather than near it.
- */
-function createAnchors({ nodes, nodeByObject, geometry, scales }) {
-  /**
-   * The single drawn node standing for an object — but only in the commit lane.
-   *
-   * A commit (or a burst, or a fold group) is exactly one node, so an edge into the
-   * commit lane must meet that node at the row it was packed into. An issue or PR is
-   * *many* nodes, so `nodeByObject` holds whichever happened to be written last —
-   * for the vscode PR, the comment eight days after the merge. Consulting it for a
-   * non-commit object is what dragged every link to the right-hand edge.
-   */
-  function commitNode(anchorId) {
-    const node = nodeByObject.get(anchorId);
-    return node && node.lane === 'commit' ? node : null;
-  }
-
-  /** The node for this object at exactly this instant, if one is drawn. */
-  function exactNodeX(objectId, time) {
-    for (const node of nodes) {
-      if (node.objectId === objectId && +node.t === +time) return node.x;
-    }
-    return null;
-  }
-
-  function xAt(object, time) {
-    if (!object) return scales.x(time);
-    if (object.type === 'commit') {
-      const node = commitNode(object.id);
-      return node ? node.x : scales.x(time);
-    }
-    // Land on the actual glyph for this instant — the "merged" diamond rather than
-    // merely near it — falling back to the scale when no node marks that moment.
-    const exact = exactNodeX(object.id, time);
-    return exact != null ? exact : scales.x(time);
-  }
-
-  function y(anchorId, object) {
-    const node = commitNode(anchorId);
-    if (node) return node.y;
-    const lane = geometry.get(object?.type);
-    return lane ? lane.contentTop : 0;
-  }
-
-  function x(anchorId, object) {
-    const node = commitNode(anchorId);
-    if (node) return node.x;
-    return xAt(object, object?.intervals?.[0]?.start ?? scales.first);
-  }
-
-  /** Slide an endpoint along the object's lifecycle so the edge meets it side-on. */
-  function clampToLifecycle(anchorId, object, sourceX) {
-    const node = commitNode(anchorId);
-    if (node) return node.x;
-    const interval = object?.intervals?.[0];
-    if (!interval?.start || !interval?.end) return x(anchorId, object);
-    const low = xAt(object, interval.start);
-    const high = xAt(object, interval.end);
-    return Math.max(low, Math.min(high, sourceX));
-  }
-
-  return { x, y, xAt, clampToLifecycle, xOfTime: (t) => scales.x(t) };
-}

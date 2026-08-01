@@ -7,7 +7,7 @@ every claim here is backed either by an assertion that runs in `npm test` or by 
 render that was looked at. Where neither was possible, this document says so
 rather than implying coverage that does not exist.
 
-**322 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
+**340 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
 
 ---
 
@@ -28,6 +28,9 @@ is exercised without a browser.
 | Sub-lane allocated **only** on temporal overlap | `sublanes.test.js` | F1–F4 |
 | Reopened object yields multiple bars on one row | `sublanes.test.js` | F9 |
 | Every drawn link resolves to endpoints that are drawn | `verification.test.js` | all 13 |
+| Every link meets its object at the row that object is drawn at | `anchors.test.js` | 13 × 3 |
+| Sub-lane bands are anchored apart; a commit reaches the PR it names | `anchors.test.js` | F10 |
+| Commits still anchor to their node, and folded ones to their burst | `anchors.test.js` | F1 |
 | Lane geometry stacks without collision | `verification.test.js` | all 13 |
 | Each of the four issue↔PR method toggles works independently | `verification.test.js` | F11 |
 | Multi-method agreement and mixed evidence on one pair | `verification.test.js` | F12 |

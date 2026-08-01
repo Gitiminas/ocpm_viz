@@ -14,6 +14,7 @@ import { formatInstant, formatDuration, escapeHtml } from './format.js';
 import { TYPE, COLORS, drawSymbol, typeColor } from './theme.js';
 import { objectOpacity } from '../model/graph.js';
 import { ROW_HEIGHT } from '../layout/packing.js';
+import { rowY } from '../layout/lanes.js';
 
 /** Commit labels are thinned so they never collide. */
 const COMMIT_LABEL_MIN_GAP_PX = 64;
@@ -50,7 +51,10 @@ export function renderLifecycleBars({
         const x1 = anchors.xAt(object, interval.start);
         const x2 = anchors.xAt(object, interval.end);
         const width = Math.max(2, x2 - x1);
-        const y = lane.contentTop + row * ROW_HEIGHT;
+        // One formula for "the y of a row", shared with the link anchors. When this
+        // was written out here a second time, the two drifted: the bar moved down to
+        // its band while every link into it stayed at the top of the lane.
+        const y = rowY(geometry, laneType, row);
 
         const group = gBG
           .append('g')
