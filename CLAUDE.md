@@ -39,6 +39,7 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | `docs/MOCKUP_OVERVIEW.md` | The **superseded** mockup, described | **Historical.** Not maintained; describes deleted code |
 | `docs/VERIFICATION.md` | What was checked, how, and what was not | Task 6 output |
 | `README.md` | Human entry point: run, test, extend | Keep current |
+| `docs/ONBOARDING.md` | Reading path: what to read, in what order, and what to skip | Orientation |
 | `tasks/*.md` | One file per work package, in order | Per task |
 
 ## Repository map
