@@ -67,7 +67,7 @@ const elements = {
   hiddenBanner: el('hiddenBanner'),
   toast: el('toast'),
   statsGrid: el('statsGrid'),
-  statsMilestones: el('statsMilestones'),
+  statsLandmarks: el('statsLandmarks'),
   statsBreadcrumb: el('statsBreadcrumb'),
   repoInput: el('repoInput'),
   repoDropdown: el('repoDropdown'),
@@ -343,7 +343,7 @@ function refreshStats() {
     graph: selectVisible(graph, state, groupsByCommit),
     index,
     gridEl: elements.statsGrid,
-    milestonesEl: elements.statsMilestones,
+    landmarksEl: elements.statsLandmarks,
     breadcrumbEl: elements.statsBreadcrumb,
     description,
     hiddenSummary: summarizeHidden(state, toggleContext),
@@ -475,7 +475,7 @@ for (const tab of document.querySelectorAll('.pageTab')) {
 
 for (const dashboard of [
   ['statsCard', 'Per-object statistics'],
-  ['milestonesCard', 'Milestones'],
+  ['landmarksCard', 'Landmarks'],
 ]) {
   const row = document.createElement('label');
   row.className = 'sideRow on';

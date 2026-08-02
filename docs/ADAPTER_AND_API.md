@@ -177,5 +177,5 @@ Mapped in code, absent from data: `IssueReopened`, `PullRequestReopened`.
 **Must be added:** `PullRequestMergedOffPlatform` (from `mv_pr_offplatform_merges`) — a real outcome
 class and a conformance deviation.
 
-**Milestone activities** (rendered with emphasis): `IssueClosed`, `PullRequestMerged`,
+**Landmark activities** (rendered with emphasis): `IssueClosed`, `PullRequestMerged`,
 `PullRequestMergedOffPlatform`.

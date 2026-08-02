@@ -36,49 +36,49 @@ export const ACTIVITIES = {
     label: 'Issue opened',
     short: 'opened',
     objectTypes: ['issue'],
-    milestone: false,
+    landmark: false,
   },
   IssueClosed: {
     label: 'Issue closed',
     short: 'closed',
     objectTypes: ['issue'],
-    milestone: true,
+    landmark: true,
   },
   IssueReopened: {
     label: 'Issue reopened',
     short: 'reopened',
     objectTypes: ['issue'],
-    milestone: false,
+    landmark: false,
   },
   IssueCommented: {
     label: 'Comment',
     short: 'comment',
     objectTypes: ['issue', 'pull_request'],
-    milestone: false,
+    landmark: false,
   },
   PullRequestOpened: {
     label: 'PR opened',
     short: 'opened',
     objectTypes: ['pull_request'],
-    milestone: false,
+    landmark: false,
   },
   PullRequestMerged: {
     label: 'PR merged',
     short: 'merged',
     objectTypes: ['pull_request'],
-    milestone: true,
+    landmark: true,
   },
   PullRequestClosed: {
     label: 'PR closed',
     short: 'closed',
     objectTypes: ['pull_request'],
-    milestone: false,
+    landmark: false,
   },
   PullRequestReopened: {
     label: 'PR reopened',
     short: 'reopened',
     objectTypes: ['pull_request'],
-    milestone: false,
+    landmark: false,
   },
   /**
    * A PR closed without being merged on GitHub whose commits later appear in a push
@@ -89,18 +89,27 @@ export const ACTIVITIES = {
     label: 'PR merged off-platform',
     short: 'merged off-platform',
     objectTypes: ['pull_request'],
-    milestone: true,
+    landmark: true,
   },
   CommitObserved: {
     label: 'Commit observed',
     short: 'commit',
     objectTypes: ['commit'],
-    milestone: false,
+    landmark: false,
   },
 };
 
-/** Activities rendered with emphasis (a halo ring). */
-export const MILESTONE_ACTIVITIES = Object.keys(ACTIVITIES).filter((a) => ACTIVITIES[a].milestone);
+/**
+ * Activities rendered with emphasis (a halo ring) — the terminal outcomes.
+ *
+ * Called *landmarks*, not milestones, and deliberately so: GitHub has a first-class
+ * feature called a milestone, and the upstream views carry its columns verbatim
+ * (`milestone_id`, `milestone_number`, `milestone_title` on `mv_issues_full` —
+ * `DATA_CONTRACT.md` §1). Reusing the word for "an activity we draw with a ring"
+ * would collide with a real, differently-meaning field the adapter may one day read.
+ * See decision 38.
+ */
+export const LANDMARK_ACTIVITIES = Object.keys(ACTIVITIES).filter((a) => ACTIVITIES[a].landmark);
 
 export function isKnownActivity(activity) {
   return Object.prototype.hasOwnProperty.call(ACTIVITIES, activity);
@@ -127,9 +136,9 @@ export function activityShortLabel(activity) {
   return lookup(activity).short;
 }
 
-/** Whether the activity is rendered with milestone emphasis. */
-export function isMilestone(activity) {
-  return lookup(activity).milestone;
+/** Whether the activity is rendered with landmark emphasis. */
+export function isLandmark(activity) {
+  return lookup(activity).landmark;
 }
 
 /**

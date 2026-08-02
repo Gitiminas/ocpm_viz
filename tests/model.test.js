@@ -10,8 +10,8 @@ import { classifyMethod, classifyLink, LINK_METHOD, EVIDENCE } from '../src/mode
 import {
   activityLabel,
   activityShortLabel,
-  isMilestone,
-  MILESTONE_ACTIVITIES,
+  isLandmark,
+  LANDMARK_ACTIVITIES,
   LANE_TYPES,
   OBJECT_TYPES,
 } from '../src/model/activities.js';
@@ -80,7 +80,9 @@ describe('validation fails loudly on a malformed bundle', () => {
   });
 
   test('an object type outside the closed set is rejected', () => {
-    const bad = { ...valid, objects: [{ id: 'x:1', type: 'milestone', intervals: [] }] };
+    // `branch` is deliberately out of scope (CLAUDE.md), so it can never drift into
+    // the closed set and quietly make this assertion vacuous.
+    const bad = { ...valid, objects: [{ id: 'x:1', type: 'branch', intervals: [] }] };
     assert.match(findGraphProblems(bad).join('\n'), /closed set/);
   });
 
@@ -218,13 +220,13 @@ describe('activity vocabulary is closed', () => {
     assert.throws(() => activityLabel('IssueLabelled'), /vocabulary is closed/);
   });
 
-  test('milestones are exactly the three emphasised outcomes', () => {
-    assert.deepEqual(MILESTONE_ACTIVITIES.sort(), [
+  test('landmarks are exactly the three emphasised outcomes', () => {
+    assert.deepEqual(LANDMARK_ACTIVITIES.sort(), [
       'IssueClosed',
       'PullRequestMerged',
       'PullRequestMergedOffPlatform',
     ]);
-    assert.equal(isMilestone('IssueOpened'), false);
+    assert.equal(isLandmark('IssueOpened'), false);
   });
 
   test('object types are closed at five, of which three get lanes', () => {

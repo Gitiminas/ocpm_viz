@@ -109,11 +109,11 @@ These fields record the query for reproducibility, not identity.
 | `pr_number` | R | ✓ / `prs_identity` | node label (`PR #243221`), stats |
 | `pr_title` | R | ✓ | tooltip |
 | `pr_state` | R | ✓ | open / closed rendering |
-| `pr_is_merged` | R | ✓ | merged vs closed-unmerged (milestone glyph) |
+| `pr_is_merged` | R | ✓ | merged vs closed-unmerged (landmark glyph) |
 | `pr_is_draft` | R | ✓ | draft state rendering |
 | `pr_created_at` | R | ✓ | span start, lead-time metrics |
 | `pr_closed_at` | R | ✓ | span end |
-| `pr_merged_at` | R | ✓ | merge milestone, duration metrics |
+| `pr_merged_at` | R | ✓ | merge landmark, duration metrics |
 | `author_id` / `author_login` | R | ✓ | actor attribution |
 | `head_ref` | R | ✓ | commit↔PR branch matching |
 | `head_sha` | R | ✓ | commit↔PR SHA matching; `head_sha_open` vs `head_sha_merge` |
@@ -195,7 +195,7 @@ The T facet. Either assembled by UNION or taken from the pre-built activity view
 | Field | Need | Source | Used for |
 |---|---|---|---|
 | `event_id` | R | all event views | node identity |
-| `activity` | R | derived / `activity_type` | glyph, label, milestone detection |
+| `activity` | R | derived / `activity_type` | glyph, label, landmark detection |
 | `timestamp` | R | `event_created_at` / `activity_timestamp` | x-position |
 | `object_id` | R | `issue_id` / `pull_request_id` / `commit_sha` | which lane + row |
 | `object_type` | R | derived from source view | lane assignment |
@@ -214,7 +214,7 @@ Present in the hardcoded example: `IssueOpened`, `IssueCommented`, `IssueClosed`
 Mapped in code but absent from the data: `IssueReopened`, `PullRequestReopened`.
 Must be added: `PullRequestMergedOffPlatform` (from `mv_pr_offplatform_merges`).
 
-**Milestone activities** (rendered with emphasis): `IssueClosed`, `PullRequestMerged`,
+**Landmark activities** (rendered with emphasis): `IssueClosed`, `PullRequestMerged`,
 and `PullRequestMergedOffPlatform`.
 
 ---

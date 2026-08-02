@@ -17,7 +17,7 @@
  *            commits fold into a count badge between the notable ones.
  */
 
-import { activityLabel, activityShortLabel, isMilestone } from '../model/activities.js';
+import { activityLabel, activityShortLabel, isLandmark } from '../model/activities.js';
 
 /**
  * Build the node list for one render pass.
@@ -58,7 +58,7 @@ export function buildNodes({
           title: activityLabel(event.activity),
           short: activityShortLabel(event.activity),
           isComment: !!event.comment,
-          milestone: isMilestone(event.activity),
+          landmark: isLandmark(event.activity),
         });
       }
     }
@@ -99,7 +99,7 @@ function buildCommitNodes({ index, bursts, expandedBursts, expandedGroups, mode 
       actorId: index.pusherByCommit.get(commit.id) || null,
       title: commit.label,
       isComment: false,
-      milestone: false,
+      landmark: false,
       // Whether this commit belongs to a burst the user has unfolded. Anchors the
       // run-grouping pass so an expanded burst is never re-folded into a count badge.
       inBurst: memberOfExpandedBurst.has(commit.id),
@@ -118,7 +118,7 @@ function buildCommitNodes({ index, bursts, expandedBursts, expandedGroups, mode 
       actorId: null,
       title: `${burst.size} commits`,
       isComment: false,
-      milestone: false,
+      landmark: false,
       isBurst: true,
       burst,
     });

@@ -84,6 +84,12 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
   qualifiers, evidence classification. These are research decisions, not implementation details.
 - **The word is `extracted`, not `inferred`.** Two evidence classes only: `validated` and
   `extracted`. `inferred` is retired vocabulary — replace it in data, constants, comments and UI.
+- **The word is `landmark`, not `milestone`** (decision 38). The emphasised terminal activities —
+  `IssueClosed`, `PullRequestMerged`, `PullRequestMergedOffPlatform` — are landmarks. `milestone` is
+  GitHub's own feature and survives here **only** when quoting an upstream column
+  (`milestone_id` / `milestone_number` / `milestone_title` on `mv_issues_full`). Never introduce it
+  as our own term. Historical records — `screenshots/README.md`, `MOCKUP_OVERVIEW.md`, `tasks/*.md` —
+  keep the old word on purpose, because they describe artifacts that say it.
 - **All times UTC**, parsed and rendered, labelled as such.
 - **Object types are closed at five:** `issue`, `pull_request`, `commit`, `actor`, `repo`.
 

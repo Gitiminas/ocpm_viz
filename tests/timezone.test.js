@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { milestones } from '../src/stats/metrics.js';
+import { landmarks } from '../src/stats/metrics.js';
 import { formatInstant, formatDateMinute } from '../src/render/format.js';
 
 const fileTransport = async (query) =>
@@ -30,7 +30,7 @@ describe('all times render in UTC, labelled (decision 9)', () => {
     // Every formatter must give the same answer whatever TZ the viewer has set;
     // that is the whole point — evaluation numbers must reproduce across machines.
     const graph = await loadObjectGraph({ fixture: 'F1' }, { transport: fileTransport });
-    const rendered = milestones(graph).map((entry) => formatInstant(entry.time));
+    const rendered = landmarks(graph).map((entry) => formatInstant(entry.time));
     assert.ok(rendered.length > 0);
     assert.ok(rendered.every((text) => text.endsWith(' UTC')));
     assert.match(rendered[0], /Mar 07, 2025 · 05:15:54 UTC/);

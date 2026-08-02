@@ -234,7 +234,7 @@ export function renderNodes({
 
     const nodeColor = objectColors.get(node.objectId) || typeColor(node.lane);
 
-    if (node.milestone) {
+    if (node.landmark) {
       group
         .append('circle')
         .attr('r', (node.isComment ? 6 : 8) + 6)

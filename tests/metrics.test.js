@@ -11,7 +11,7 @@ import {
   commentCounts,
   linkCounts,
   leadTimeToFirstCommit,
-  milestones,
+  landmarks,
   perObjectGaps,
   perObjectDurations,
 } from '../src/stats/metrics.js';
@@ -161,12 +161,12 @@ describe('aggregation across N objects', () => {
   });
 });
 
-describe('milestones identify which object they belong to', () => {
-  test('F1 milestones are labelled and time-ordered', async () => {
+describe('landmarks identify which object they belong to', () => {
+  test('F1 landmarks are labelled and time-ordered', async () => {
     const graph = await loadF1();
-    const entries = milestones(graph);
+    const entries = landmarks(graph);
     for (let i = 1; i < entries.length; i++) {
-      assert.ok(+entries[i].time >= +entries[i - 1].time, 'milestones must be sorted');
+      assert.ok(+entries[i].time >= +entries[i - 1].time, 'landmarks must be sorted');
     }
     const labels = entries.map((e) => e.label);
     assert.ok(labels.some((l) => l.includes('First commit')));
@@ -174,7 +174,7 @@ describe('milestones identify which object they belong to', () => {
     assert.ok(labels.some((l) => l.includes('PR #243221') && l.includes('PR merged')));
   });
 
-  test('with two issues each milestone names its own object', () => {
+  test('with two issues each landmark names its own object', () => {
     const graph = normalizeGraph({
       meta: {},
       objects: [
@@ -187,7 +187,7 @@ describe('milestones identify which object they belong to', () => {
       ],
       links: [],
     });
-    const labels = milestones(graph).map((e) => e.label);
+    const labels = landmarks(graph).map((e) => e.label);
     assert.ok(labels.includes('#1 · Issue closed'));
     assert.ok(labels.includes('#2 · Issue closed'));
   });

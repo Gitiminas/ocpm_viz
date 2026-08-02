@@ -50,7 +50,7 @@ src/
     api.js             load an ObjectGraph from PostgREST (added later)
   model/
     objectGraph.js     shape validation, normalization, indexing
-    activities.js      the closed activity vocabulary + milestone set
+    activities.js      the closed activity vocabulary + landmark set
     evidence.js        validated / extracted classification
     graph.js           adjacency construction, focus BFS
     bursts.js          ✚ burst derivation from push_id

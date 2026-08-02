@@ -37,7 +37,7 @@ const utcParts = (date) => ({
 });
 
 /**
- * Tooltip and milestone timestamps, carrying their zone.
+ * Tooltip and landmark timestamps, carrying their zone.
  *
  * The suffix is on every instant rather than in a legend somewhere, because a bare
  * "21:47:52" is precisely what a reader will unconsciously read as local time.

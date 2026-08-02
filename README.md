@@ -124,7 +124,7 @@ be tested, it is in the wrong folder.
 ## Common tasks
 
 **Add an activity to the vocabulary.** `src/model/activities.js` — add an entry with
-its labels, the object types it may attach to, and whether it is a milestone. The
+its labels, the object types it may attach to, and whether it is a landmark. The
 vocabulary is closed: anything unmapped fails validation loudly rather than rendering
 a raw enum. Changing it is a research decision, so record it in `DECISIONS.md`.
 

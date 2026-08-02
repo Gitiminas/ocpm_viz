@@ -24,7 +24,7 @@ import {
   commitStats,
   commentCounts,
   linkCounts,
-  milestones,
+  landmarks,
 } from '../stats/metrics.js';
 
 const dash = (ms) => (ms == null ? '—' : formatDuration(Math.abs(ms)));
@@ -37,7 +37,7 @@ export function renderStats({
   graph,
   index,
   gridEl,
-  milestonesEl,
+  landmarksEl,
   breadcrumbEl,
   description,
   hiddenSummary,
@@ -67,7 +67,7 @@ export function renderStats({
 
   gridEl.appendChild(buildTable(groups, onRerender));
   gridEl.appendChild(buildSubLogSummary(graph, index));
-  renderMilestoneList(graph, milestonesEl);
+  renderLandmarkList(graph, landmarksEl);
 }
 
 // ---------------------------------------------------------------------------
@@ -279,9 +279,9 @@ function buildSubLogSummary(graph, index) {
   return wrap;
 }
 
-function renderMilestoneList(graph, milestonesEl) {
-  const entries = milestones(graph);
-  milestonesEl.innerHTML = '';
+function renderLandmarkList(graph, landmarksEl) {
+  const entries = landmarks(graph);
+  landmarksEl.innerHTML = '';
 
   entries.forEach((entry, i) => {
     const row = document.createElement('div');
@@ -299,6 +299,6 @@ function renderMilestoneList(graph, milestonesEl) {
       'box-shadow:0 0 0 3px var(--color-neutral-900)"></div></div>' +
       `<span style="flex:1;font-weight:500;color:var(--color-text)">${escapeHtml(entry.label)}</span>` +
       `<span class="mono" style="color:var(--color-neutral-500);font-size:11.5px">${formatInstant(entry.time)}</span>`;
-    milestonesEl.appendChild(row);
+    landmarksEl.appendChild(row);
   });
 }

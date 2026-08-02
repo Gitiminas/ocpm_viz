@@ -14,7 +14,7 @@
  * wrong object or divide by nothing as soon as there were two.
  */
 
-import { isMilestone, activityLabel } from '../model/activities.js';
+import { isLandmark, activityLabel } from '../model/activities.js';
 
 /** Total time an object was open, summed across its intervals (decision 4). */
 export function objectLifetime(object) {
@@ -125,13 +125,16 @@ export function leadTimeToFirstCommit(graph) {
 }
 
 /**
- * Milestone timeline.
+ * Landmark timeline.
  *
- * Every milestone activity in the sub-log, plus each object's opening and the first
+ * Every landmark activity in the sub-log, plus each object's opening and the first
  * and last commit — labelled with which object they belong to, since with N issues
  * "Issue closed" alone no longer identifies anything.
+ *
+ * Not "milestones": that word is taken by a GitHub feature of its own, whose columns
+ * sit on `mv_issues_full` upstream (decision 38).
  */
-export function milestones(graph) {
+export function landmarks(graph) {
   const byId = new Map(graph.objects.map((object) => [object.id, object]));
   const entries = [];
 
@@ -142,7 +145,7 @@ export function milestones(graph) {
   }
 
   for (const event of graph.events) {
-    if (!isMilestone(event.activity)) continue;
+    if (!isLandmark(event.activity)) continue;
     const object = byId.get(event.object_id);
     entries.push({
       label: `${object ? object.label : event.object_id} · ${activityLabel(event.activity)}`,
