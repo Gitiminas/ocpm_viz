@@ -20,29 +20,71 @@ export const EVIDENCE = {
 /**
  * The closed set of link detection methods.
  *
- * The first four are the issue↔PR detection methods that exist upstream as
- * materialized views (`docs/DATA_CONTRACT.md` §1) and that Task 3 must be able to
- * toggle independently. The rest are commit attribution and actor attribution.
+ * **Sixteen link methods, plus `event_actor_id`, which is not one.** Decision 42
+ * fixes `link.method` — how one object came to be linked to another — at sixteen
+ * values: the four validated and twelve extracted entries below. `EVENT_ACTOR_ID`
+ * is kept in the same enum because it flows through the same `classifyMethod` gate,
+ * but it is *attribution* (which actor performed an event), not traceability, and it
+ * is excluded from the UI's method toggles (`TOGGLEABLE_METHODS` in `state/state.js`)
+ * and from the link counts in `stats/metrics.js`. Do not count it as a seventeenth
+ * traceability method when reporting figures.
+ *
+ * `merge_commit_message` was declared here until decision 42 removed it: no upstream
+ * view emits it. `offplatform_commit_message` went with the off-platform heuristic
+ * (decision 48). Neither is to be reintroduced without a source that produces it.
  */
 export const LINK_METHOD = {
+  // --- validated: the platform asserts it, or it is an exact identity match ---
+
   /** Closing keyword in the PR body, e.g. "Closes #242864". */
   PR_BODY: 'pr_body',
-  /** PR head branch name, e.g. `fix/123`. */
-  BRANCH_NAME: 'branch_name',
-  /** Issue reference in the PR title. */
-  PR_TITLE: 'pr_title',
-  /** PR reference inside an issue comment. */
-  ISSUE_COMMENT: 'issue_comment',
   /** PR head SHA found among a push's commit SHAs. */
   HEAD_SHA: 'head_sha',
   /** PR merge commit SHA found among a push's commit SHAs. */
   MERGE_COMMIT_SHA: 'merge_commit_sha',
-  /** PR head ref matched against the push ref. A branch-naming convention. */
-  REF_MATCH: 'ref_match',
+  /** GitHub's own record that a commit closed the issue. Not parsed by us. */
+  CLOSED_VIA_COMMIT: 'closed_via_commit',
+
+  // --- extracted: we parsed a convention nobody enforces, or matched on timing ---
+
+  /** Issue reference in the PR title. */
+  PR_TITLE: 'pr_title',
   /** Issue reference parsed out of a commit message, e.g. "Refs #242864". */
   COMMIT_MESSAGE: 'commit_message',
-  /** PR reference parsed out of a merge commit message. */
-  MERGE_COMMIT_MESSAGE: 'merge_commit_message',
+  /** PR reference inside an issue comment. */
+  ISSUE_COMMENT: 'issue_comment',
+  /** PR head branch name, e.g. `fix/123`. */
+  BRANCH_NAME: 'branch_name',
+  /** Matched on closeness in time alone. The weakest thing in this enum. */
+  PROXIMITY: 'proximity',
+  /** PR head ref matched against the push ref. A branch-naming convention. */
+  REF_MATCH: 'ref_match',
+
+  /*
+   * The six extended conventions (decision 42). Project-specific issue-reference
+   * forms that GitHub does not act on — `gh-123`, `For #123`, Symfony's PR template
+   * — split by where they were found, title or body, so a repository's linking
+   * habits stay legible in the method breakdown RQ2 needs. `DATA_CONTRACT.md` §4
+   * records why they matter: kubernetes and react use these forms where vscode uses
+   * the standard ones, so treating them as absent would make a detection-coverage
+   * artifact look like a process difference.
+   */
+
+  /** `gh-123` in the PR title. */
+  PR_TITLE_GH: 'pr_title_gh',
+  /** Symfony's PR-title convention. */
+  PR_TITLE_SYMFONY: 'pr_title_symfony',
+  /** `For #123` in the PR title. */
+  PR_TITLE_FOR: 'pr_title_for',
+  /** `gh-123` in the PR body. */
+  PR_BODY_GH: 'pr_body_gh',
+  /** A "Fixed tickets" row in a PR-body template. */
+  PR_BODY_FIXED_TICKETS: 'pr_body_fixed_tickets',
+  /** `Refs #123` in the PR body — a reference, not a closing keyword. */
+  PR_BODY_REFS: 'pr_body_refs',
+
+  // --- actor attribution: in this enum, but not a link method (see above) ---
+
   /** The event's own `actor_id` column. */
   EVENT_ACTOR_ID: 'event_actor_id',
 };
@@ -54,17 +96,32 @@ export const LINK_METHOD = {
  * rather than observing GitHub's auto-close. It is admitted because the syntax is
  * documented and GitHub acts on it. See `ADAPTER_AND_API.md` §3 for the optional
  * corroboration step and the limitations note.
+ *
+ * Note what is *not* here. `pr_body_refs` and `pr_body_fixed_tickets` are also read
+ * out of the PR body, and `closed_via_commit` is also about closing — but the rule
+ * asks whether GitHub acts on it, not where the text sat. `Refs #123` closes nothing,
+ * so it is extracted; a closed-via-commit record is GitHub's own, so it is validated.
  */
 const VALIDATED_METHODS = new Set([
   LINK_METHOD.PR_BODY,
   LINK_METHOD.HEAD_SHA,
   LINK_METHOD.MERGE_COMMIT_SHA,
+  LINK_METHOD.CLOSED_VIA_COMMIT,
   LINK_METHOD.EVENT_ACTOR_ID,
 ]);
 
 const ALL_METHODS = new Set(Object.values(LINK_METHOD));
 
-/** The four issue↔PR detection methods, independently toggleable (Task 3). */
+/**
+ * The four issue↔PR detection methods, independently toggleable (Task 3).
+ *
+ * Four, not ten: these are the ones backed by their own upstream materialized view
+ * (`DATA_CONTRACT.md` §1), so a toggle for each is guaranteed to exist even when the
+ * loaded sub-log uses none of them. The six extended conventions also link issues to
+ * PRs, but they arrive through no dedicated view, so `deriveMethods` gives them a
+ * toggle only when the data actually carries one — which is the normal rule, and
+ * this list is the exception to it.
+ */
 export const ISSUE_PR_METHODS = [
   LINK_METHOD.PR_BODY,
   LINK_METHOD.BRANCH_NAME,

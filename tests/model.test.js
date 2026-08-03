@@ -125,16 +125,66 @@ describe('validation fails loudly on a malformed bundle', () => {
   });
 });
 
+/**
+ * The expected class of every method, written out by hand.
+ *
+ * Deliberately not derived from `VALIDATED_METHODS` — a test that reads the same set
+ * the implementation reads asserts only that a Set works. This table is the second
+ * opinion: changing an evidence class in `evidence.js` must fail here, because a
+ * class silently flipping is a link changing from solid to dashed in every render
+ * and a changed validated/extracted split in every figure the thesis reports.
+ *
+ * Decision 42 fixes `link.method` at sixteen values. `event_actor_id` is the
+ * seventeenth key in the enum and is actor attribution, not a link method.
+ */
+const EXPECTED_EVIDENCE = [
+  ['pr_body', 'validated'],
+  ['head_sha', 'validated'],
+  ['merge_commit_sha', 'validated'],
+  ['closed_via_commit', 'validated'],
+  ['pr_title', 'extracted'],
+  ['commit_message', 'extracted'],
+  ['issue_comment', 'extracted'],
+  ['branch_name', 'extracted'],
+  ['proximity', 'extracted'],
+  ['ref_match', 'extracted'],
+  ['pr_title_gh', 'extracted'],
+  ['pr_title_symfony', 'extracted'],
+  ['pr_title_for', 'extracted'],
+  ['pr_body_gh', 'extracted'],
+  ['pr_body_fixed_tickets', 'extracted'],
+  ['pr_body_refs', 'extracted'],
+];
+
 describe('evidence classification (decision 7)', () => {
-  test('the platform-asserts-it rule decides the class', () => {
-    assert.equal(classifyMethod(LINK_METHOD.PR_BODY), EVIDENCE.VALIDATED);
-    assert.equal(classifyMethod(LINK_METHOD.HEAD_SHA), EVIDENCE.VALIDATED);
-    assert.equal(classifyMethod(LINK_METHOD.MERGE_COMMIT_SHA), EVIDENCE.VALIDATED);
-    // The reclassification that moves most of F1 from solid to dashed.
-    assert.equal(classifyMethod(LINK_METHOD.BRANCH_NAME), EVIDENCE.EXTRACTED);
-    assert.equal(classifyMethod(LINK_METHOD.REF_MATCH), EVIDENCE.EXTRACTED);
-    assert.equal(classifyMethod(LINK_METHOD.PR_TITLE), EVIDENCE.EXTRACTED);
-    assert.equal(classifyMethod(LINK_METHOD.ISSUE_COMMENT), EVIDENCE.EXTRACTED);
+  for (const [method, expected] of EXPECTED_EVIDENCE) {
+    test(`${method} is ${expected}`, () => {
+      assert.equal(classifyMethod(method), expected);
+    });
+  }
+
+  test('event_actor_id is validated, and is attribution rather than a link method', () => {
+    assert.equal(classifyMethod(LINK_METHOD.EVENT_ACTOR_ID), EVIDENCE.VALIDATED);
+    assert.equal(
+      EXPECTED_EVIDENCE.some(([m]) => m === LINK_METHOD.EVENT_ACTOR_ID),
+      false,
+      'event_actor_id must not be counted among the sixteen link methods',
+    );
+  });
+
+  test('link.method is exactly the sixteen values of decision 42', () => {
+    const linkMethods = Object.values(LINK_METHOD)
+      .filter((method) => method !== LINK_METHOD.EVENT_ACTOR_ID)
+      .sort();
+    assert.equal(linkMethods.length, 16);
+    assert.deepEqual(linkMethods, EXPECTED_EVIDENCE.map(([m]) => m).sort());
+  });
+
+  // Removed by decision 42: no upstream view emits it. It must not merely be absent
+  // from the enum — it must reach the throw, so a stale payload fails loudly.
+  test('the retired merge_commit_message method is gone and throws', () => {
+    assert.equal(Object.values(LINK_METHOD).includes('merge_commit_message'), false);
+    assert.throws(() => classifyMethod('merge_commit_message'), /Unknown link method/);
   });
 
   test('an unknown method throws instead of defaulting to solid', () => {

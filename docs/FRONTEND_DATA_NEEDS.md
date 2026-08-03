@@ -305,33 +305,51 @@ Related closed sets in the same file: `OBJECT_TYPES` = `['issue', 'pull_request'
 'repo']` (`activities.js:9`); `LANE_TYPES` = `['issue', 'pull_request', 'commit']`
 (`activities.js:19`).
 
-## A2. `link.method` — 10 values
+## A2. `link.method` — 16 values, plus `event_actor_id`
 
-From the `LINK_METHOD` object literal, `src/model/evidence.js:27–48`. The evidence column is
-membership in `VALIDATED_METHODS` (`evidence.js:58–63`); everything not in that set is `extracted`
-by `classifyMethod` (`evidence.js:92`).
+From the `LINK_METHOD` object literal, `src/model/evidence.js:36–90`. The evidence column is
+membership in `VALIDATED_METHODS` (`evidence.js:105–111`); everything not in that set is `extracted`
+by `classifyMethod` (`evidence.js:149`).
+
+Decision 42 fixes `link.method` — how one object came to be linked to another — at **16** values.
+`event_actor_id` is a seventeenth key in the same enum, but it is actor *attribution*, not
+traceability; it is listed separately below and must not be counted among the 16.
 
 | `method` | Constant | Evidence | Defined at |
 |---|---|---|---|
-| `pr_body` | `PR_BODY` | **`validated`** | `evidence.js:29` |
-| `branch_name` | `BRANCH_NAME` | `extracted` | `evidence.js:31` |
-| `pr_title` | `PR_TITLE` | `extracted` | `evidence.js:33` |
-| `issue_comment` | `ISSUE_COMMENT` | `extracted` | `evidence.js:35` |
-| `head_sha` | `HEAD_SHA` | **`validated`** | `evidence.js:37` |
-| `merge_commit_sha` | `MERGE_COMMIT_SHA` | **`validated`** | `evidence.js:39` |
-| `ref_match` | `REF_MATCH` | `extracted` | `evidence.js:41` |
-| `commit_message` | `COMMIT_MESSAGE` | `extracted` | `evidence.js:43` |
-| `merge_commit_message` | `MERGE_COMMIT_MESSAGE` | `extracted` | `evidence.js:45` |
-| `event_actor_id` | `EVENT_ACTOR_ID` | **`validated`** | `evidence.js:47` |
+| `pr_body` | `PR_BODY` | **`validated`** | `evidence.js:40` |
+| `head_sha` | `HEAD_SHA` | **`validated`** | `evidence.js:42` |
+| `merge_commit_sha` | `MERGE_COMMIT_SHA` | **`validated`** | `evidence.js:44` |
+| `closed_via_commit` | `CLOSED_VIA_COMMIT` | **`validated`** | `evidence.js:46` |
+| `pr_title` | `PR_TITLE` | `extracted` | `evidence.js:51` |
+| `commit_message` | `COMMIT_MESSAGE` | `extracted` | `evidence.js:53` |
+| `issue_comment` | `ISSUE_COMMENT` | `extracted` | `evidence.js:55` |
+| `branch_name` | `BRANCH_NAME` | `extracted` | `evidence.js:57` |
+| `proximity` | `PROXIMITY` | `extracted` | `evidence.js:59` |
+| `ref_match` | `REF_MATCH` | `extracted` | `evidence.js:61` |
+| `pr_title_gh` | `PR_TITLE_GH` | `extracted` | `evidence.js:74` |
+| `pr_title_symfony` | `PR_TITLE_SYMFONY` | `extracted` | `evidence.js:76` |
+| `pr_title_for` | `PR_TITLE_FOR` | `extracted` | `evidence.js:78` |
+| `pr_body_gh` | `PR_BODY_GH` | `extracted` | `evidence.js:80` |
+| `pr_body_fixed_tickets` | `PR_BODY_FIXED_TICKETS` | `extracted` | `evidence.js:82` |
+| `pr_body_refs` | `PR_BODY_REFS` | `extracted` | `evidence.js:84` |
 
-Four validated, six extracted.
+Four validated, twelve extracted.
+
+| Not a link method | Constant | Evidence | Defined at |
+|---|---|---|---|
+| `event_actor_id` | `EVENT_ACTOR_ID` | **`validated`** | `evidence.js:89` |
+
+`merge_commit_message` was the tenth value here until decision 42 deleted it: no upstream view emits
+it. The one F1 link that carried it is now `commit_message` — same evidence class, so the 3/31 split
+is unchanged. `tests/model.test.js` asserts the name now throws.
 
 Two subsets are derived from this table:
 
 | Subset | Members | Defined at |
 |---|---|---|
-| `ISSUE_PR_METHODS` | `pr_body`, `branch_name`, `pr_title`, `issue_comment` | `evidence.js:68–73` |
-| `TOGGLEABLE_METHODS` | all 10 **except** `event_actor_id` | `state.js:33–35` |
+| `ISSUE_PR_METHODS` | `pr_body`, `branch_name`, `pr_title`, `issue_comment` — the four with their own upstream view | `evidence.js:125–130` |
+| `TOGGLEABLE_METHODS` | all 17 keys **except** `event_actor_id`, i.e. the 16 link methods | `state.js:33–35` |
 
 `ISSUE_PR_METHODS` is seeded into the method counts at `state.js:154` so all four toggles exist even
 when the loaded sub-log uses none of them. `event_actor_id` is excluded from the toggles because

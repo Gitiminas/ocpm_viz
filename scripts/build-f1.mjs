@@ -49,7 +49,15 @@ const METHOD_FROM_PROSE = [
   [/^ref_match$/, LINK_METHOD.REF_MATCH],
   [/head-SHA match/i, LINK_METHOD.HEAD_SHA],
   [/^PR body:/i, LINK_METHOD.PR_BODY],
-  [/^merge commit message/i, LINK_METHOD.MERGE_COMMIT_MESSAGE],
+  /*
+   * "merge commit message 'Merge pull request #243221'" once mapped to a
+   * `merge_commit_message` method of its own. Decision 42 deleted that value — no
+   * upstream view emits it — so the row folds into `commit_message`, which is what
+   * it always was: a PR reference parsed out of a commit message. The pattern must
+   * stay rather than fall through to the row below, whose `^` anchor would not
+   * match this prose, and the evidence class is unchanged (both are `extracted`).
+   */
+  [/^merge commit message/i, LINK_METHOD.COMMIT_MESSAGE],
   [/^commit message/i, LINK_METHOD.COMMIT_MESSAGE],
   [/^event_actor_id$/, LINK_METHOD.EVENT_ACTOR_ID],
 ];

@@ -19,7 +19,6 @@
       "commit_message",
       "event_actor_id",
       "head_sha",
-      "merge_commit_message",
       "pr_body",
       "ref_match"
     ],
@@ -1380,9 +1379,9 @@
       "target": "pr:243221",
       "qualifier": "referenced_pull_request",
       "evidence": "extracted",
-      "method": "merge_commit_message",
+      "method": "commit_message",
       "link_methods": [
-        "merge_commit_message"
+        "commit_message"
       ],
       "n_methods": 1
     },

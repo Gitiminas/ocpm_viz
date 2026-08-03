@@ -62,13 +62,23 @@ is the vocabulary (decision 20), and every row here must have a member there and
 | Issue ↔ PR | `pr_title` | `extracted` | Convention |
 | Issue ↔ PR | `issue_comment` | `extracted` | Convention |
 | Commit → PR | `merge_commit_sha` / `head_sha` — exact SHA match | `validated` | Identity match, not parsing |
+| Issue ↔ PR | `pr_title_gh`, `pr_body_gh` — `gh-123` in the title or body | `extracted` | Project convention; GitHub does not act on it |
+| Issue ↔ PR | `pr_title_for` — `For #123` in the title | `extracted` | Convention |
+| Issue ↔ PR | `pr_title_symfony` — Symfony's PR-title convention | `extracted` | Convention |
+| Issue ↔ PR | `pr_body_fixed_tickets` — a "Fixed tickets" row in a PR-body template | `extracted` | Convention, template-specific |
+| Issue ↔ PR | `pr_body_refs` — `Refs #123` in the body | `extracted` | Convention. In the body like `pr_body`, but a reference closes nothing, so the rule separates them |
+| Issue → Commit | `closed_via_commit` — GitHub's own closed-via-commit record | `validated` | The platform states it; nothing is parsed |
 | Commit → PR | `ref_match` — branch-ref match (`head_ref` ↔ `ref`) | `extracted` | Convention |
-| Commit → PR | `merge_commit_message` — PR reference parsed from a merge commit message | `extracted` | Convention |
+| Commit → PR | `proximity` — matched on closeness in time alone | `extracted` | The weakest method in the enum. Nothing is asserted and nothing is parsed — only two timestamps are near each other |
 | Commit → Issue | `commit_message` — regex over the message (`mv_commit_message_issue_links_all`) | `extracted` | Convention. Sub-grade with `link_convention` / `ref_scope`; cross-repo refs are weaker than same-repo `fixes #N` |
 | Event → Actor | `event_actor_id` — the event's own `actor_id` column | `validated` | Identity match on a platform-supplied column; nothing is parsed |
 
-> The last three rows were classified in `src/model/evidence.js` before this table recorded them.
-> `merge_commit_message` and `commit_message` follow the rule unambiguously (both parse text).
+> Sixteen link methods, plus `event_actor_id`, which is attribution rather than traceability
+> (decision 42). `merge_commit_message` had a row here until that decision deleted it — no upstream
+> view emits it — and `offplatform_commit_message` went with decision 48.
+>
+> The last rows were classified in `src/model/evidence.js` before this table recorded them.
+> `commit_message` follows the rule unambiguously (it parses text).
 > `event_actor_id` is the one worth a second look: it is an identity match on a column GitHub
 > supplies, so `validated` follows the rule — but it is an *attribution* edge rather than a
 > traceability link, and it carries 42 of F1's 76 links. If actor edges are ever reported alongside
