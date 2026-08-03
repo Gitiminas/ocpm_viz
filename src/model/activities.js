@@ -80,17 +80,6 @@ export const ACTIVITIES = {
     objectTypes: ['pull_request'],
     landmark: false,
   },
-  /**
-   * A PR closed without being merged on GitHub whose commits later appear in a push
-   * (`mv_pr_offplatform_merges`). A conformance deviation class and a distinct PR
-   * outcome — reality departing from issue → PR → merge → close.
-   */
-  PullRequestMergedOffPlatform: {
-    label: 'PR merged off-platform',
-    short: 'merged off-platform',
-    objectTypes: ['pull_request'],
-    landmark: true,
-  },
   CommitObserved: {
     label: 'Commit observed',
     short: 'commit',

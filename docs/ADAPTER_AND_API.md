@@ -32,7 +32,7 @@ superseded by decision 12. It stays visible because the reasoning that produced 
 |---|---|---|---|
 | `commit_pr_links` | Commit↔PR attribution | **Materialize** | Match `mv_pull_request_events_full.merge_commit_sha` / `.head_sha` against `mv_push_commits_full.commit_sha`, plus branch-ref match (`head_ref` ↔ `ref`). Expensive join across the two largest views, and a rule-based derivation that must be fixed and inspectable for the RQ2 link counts. Record **which rule matched** so evidence can be graded. Admission rule: open question O2. |
 | `issue_pr_links` | One deduplicated issue↔PR link table | Plain view first | UNION the four detection-method views; dedupe to one row per (issue, PR); keep `primary_link_method` by priority, `n_methods`, `link_methods`, `validation_status`, temporal columns. Promote to materialized only on measurement. |
-| `object_lifecycles` | Lifecycle spans per issue / PR | Plain view | Issues: `issue_created_at` → `issue_closed_at` (+ `issue_state`). PRs: `pr_created_at` → `pr_merged_at` / `pr_closed_at` (+ `pr_is_merged`). Fold in `mv_pr_offplatform_merges`. **Emit interval lists** (decision 4). Fixed property of the data, so safe to precompute. |
+| `object_lifecycles` | Lifecycle spans per issue / PR | Plain view | Issues: `issue_created_at` → `issue_closed_at` (+ `issue_state`). PRs: `pr_created_at` → `pr_merged_at` / `pr_closed_at` (+ `pr_is_merged`). Do **not** fold in `mv_pr_offplatform_merges` — decision 48 dropped it; a PR closed unmerged ends at `pr_closed_at`. **Emit interval lists** (decision 4). Fixed property of the data, so safe to precompute. |
 | ~~`process_gaps`~~ | ~~Bottleneck / idle-time analysis~~ | **Superseded by decision 12** | Retained for rationale only — do not build this. `LAG`/`LEAD` over the per-object event list → `gap_hours`, `gap_class`, `actor_changed`. The reasoning still holds: gaps depend on which events are in the sub-log, so precomputing globally answers "comments hidden → gaps unchanged" silently. Decision 12 resolves it by computing gaps **in JS over the loaded sub-log**, where they follow the toggles for free. Implemented in `src/stats/metrics.js`. |
 
 > Before building anything, **evaluate the three pre-built activity timelines**
@@ -174,8 +174,13 @@ Closed and complete. Fail visibly on anything unmapped rather than rendering a r
 Present in the current data: `IssueOpened`, `IssueCommented`, `IssueClosed`, `PullRequestOpened`,
 `PullRequestMerged`, `PullRequestClosed`, `CommitObserved`.
 Mapped in code, absent from data: `IssueReopened`, `PullRequestReopened`.
-**Must be added:** `PullRequestMergedOffPlatform` (from `mv_pr_offplatform_merges`) — a real outcome
-class and a conformance deviation.
 
-**Landmark activities** (rendered with emphasis): `IssueClosed`, `PullRequestMerged`,
-`PullRequestMergedOffPlatform`.
+**Nothing is to be added.** `PullRequestMergedOffPlatform` was once listed here as a must-add from
+`mv_pr_offplatform_merges`; decision 48 removed it. The vocabulary is the nine activities above and
+`mv_pr_offplatform_merges` is not consumed. Note the consequence for the adapter: the pre-built
+timeline `mv_pull_request_and_comment_activities_full` **depends on** that view
+(`DATA_CONTRACT.md` §3), so whichever `activity_type` it emits for an off-platform merge maps to
+`PullRequestClosed` — the GitHub fact, which is that the PR was closed unmerged. Anything else
+throws, which is the intended behaviour.
+
+**Landmark activities** (rendered with emphasis): `IssueClosed`, `PullRequestMerged`.

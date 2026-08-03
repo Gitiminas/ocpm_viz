@@ -273,7 +273,7 @@ Every literal string a data source must emit verbatim. Copied from source, not p
 
 ## A1. `event.activity` — 10 values
 
-From the `ACTIVITIES` object literal, `src/model/activities.js:34–100`. `objectTypes` and `landmark`
+From the `ACTIVITIES` object literal, `src/model/activities.js:34–89`. `objectTypes` and `landmark`
 are copied from each entry's own fields.
 
 | `activity` | `objectTypes` | `landmark` | Defined at |
@@ -286,11 +286,11 @@ are copied from each entry's own fields.
 | `PullRequestMerged` | `['pull_request']` | **`true`** | `activities.js:65` |
 | `PullRequestClosed` | `['pull_request']` | `false` | `activities.js:71` |
 | `PullRequestReopened` | `['pull_request']` | `false` | `activities.js:77` |
-| `PullRequestMergedOffPlatform` | `['pull_request']` | **`true`** | `activities.js:88` |
-| `CommitObserved` | `['commit']` | `false` | `activities.js:94` |
+| `CommitObserved` | `['commit']` | `false` | `activities.js:83` |
 
-`LANDMARK_ACTIVITIES` is derived, not written down — `activities.js:112` filters the table above,
-yielding exactly `IssueClosed`, `PullRequestMerged`, `PullRequestMergedOffPlatform`.
+`LANDMARK_ACTIVITIES` is derived, not written down — `activities.js:101` filters the table above,
+yielding exactly `IssueClosed` and `PullRequestMerged`. It yielded a third,
+`PullRequestMergedOffPlatform`, until decision 48 removed that activity from the vocabulary.
 
 `IssueCommented` is the only activity valid on two object types, and the only one whose name does not
 match its second type. `activities.js:26–32` states this is intentional: GitHub models PR comments as

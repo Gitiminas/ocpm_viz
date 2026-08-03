@@ -10,6 +10,7 @@ import { classifyMethod, classifyLink, LINK_METHOD, EVIDENCE } from '../src/mode
 import {
   activityLabel,
   activityShortLabel,
+  isKnownActivity,
   isLandmark,
   LANDMARK_ACTIVITIES,
   LANE_TYPES,
@@ -213,19 +214,24 @@ describe('activity vocabulary is closed', () => {
   test('known activities resolve to labels', () => {
     assert.equal(activityLabel('IssueClosed'), 'Issue closed');
     assert.equal(activityShortLabel('PullRequestMerged'), 'merged');
-    assert.equal(activityLabel('PullRequestMergedOffPlatform'), 'PR merged off-platform');
+    assert.equal(activityLabel('PullRequestClosed'), 'PR closed');
   });
 
   test('an unmapped activity throws instead of rendering the raw enum', () => {
     assert.throws(() => activityLabel('IssueLabelled'), /vocabulary is closed/);
   });
 
-  test('landmarks are exactly the three emphasised outcomes', () => {
-    assert.deepEqual(LANDMARK_ACTIVITIES.sort(), [
-      'IssueClosed',
-      'PullRequestMerged',
-      'PullRequestMergedOffPlatform',
-    ]);
+  // Decision 48 removed it: a ±15-minute timing heuristic drawn with the weight of a
+  // real merge. Removed from the vocabulary means it hits the closed-vocabulary throw
+  // like any other unmapped string — if a transport ever emits one again, it fails
+  // loudly here rather than being rendered.
+  test('the retired off-platform activity is no longer in the vocabulary', () => {
+    assert.equal(isKnownActivity('PullRequestMergedOffPlatform'), false);
+    assert.throws(() => activityLabel('PullRequestMergedOffPlatform'), /vocabulary is closed/);
+  });
+
+  test('landmarks are exactly the two emphasised outcomes', () => {
+    assert.deepEqual(LANDMARK_ACTIVITIES.sort(), ['IssueClosed', 'PullRequestMerged']);
     assert.equal(isLandmark('IssueOpened'), false);
   });
 

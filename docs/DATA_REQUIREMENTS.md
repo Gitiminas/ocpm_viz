@@ -121,7 +121,7 @@ These fields record the query for reproducibility, not identity.
 | `base_ref` | O | ✓ | context (which branch merged into) |
 | `base_sha` | O | ✓ | rarely needed |
 | `base_repo_full_name` | O | ✓ | context only — use `repo.name` for the repo display name |
-| **off-platform merge** | R | `mv_pr_offplatform_merges` | conformance deviation — a distinct outcome class |
+| ~~off-platform merge~~ | — | ~~`mv_pr_offplatform_merges`~~ | **Not required (decision 48).** The view exists upstream; we do not read it. A PR closed unmerged is recorded as exactly that |
 | `is_fork_pr` / `pr_origin` | O | ✓ | forks out of scope, but cheap to carry |
 
 > The hardcoded example distinguishes `head_sha_open` from `head_sha_merge`. Derive these by taking
@@ -212,10 +212,10 @@ The T facet. Either assembled by UNION or taken from the pre-built activity view
 Present in the hardcoded example: `IssueOpened`, `IssueCommented`, `IssueClosed`,
 `PullRequestOpened`, `PullRequestMerged`, `PullRequestClosed`, `CommitObserved`.
 Mapped in code but absent from the data: `IssueReopened`, `PullRequestReopened`.
-Must be added: `PullRequestMergedOffPlatform` (from `mv_pr_offplatform_merges`).
+Nothing must be added. `PullRequestMergedOffPlatform` was listed here as a must-add until
+decision 48 removed it; an off-platform merge is recorded as `PullRequestClosed`.
 
-**Landmark activities** (rendered with emphasis): `IssueClosed`, `PullRequestMerged`,
-and `PullRequestMergedOffPlatform`.
+**Landmark activities** (rendered with emphasis): `IssueClosed` and `PullRequestMerged`.
 
 ---
 
@@ -282,7 +282,7 @@ Compute in SQL, not JS. With N issues and M PRs each becomes per-object *and* ag
 | Actor count | distinct `actor_id` |
 | Link counts by evidence | your dedup view |
 | **Gap / bottleneck per event** | `LAG`/`LEAD` over the event list → `gap_hours`, `gap_class`, `actor_changed` |
-| PR outcome distribution | merged / closed-unmerged / off-platform / open |
+| PR outcome distribution | merged / closed-unmerged / open (decision 48 dropped the off-platform outcome) |
 
 ---
 

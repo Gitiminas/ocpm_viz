@@ -194,7 +194,6 @@ export function prOutcome(object, events) {
   const activities = new Set(
     events.filter((event) => event.object_id === object.id).map((event) => event.activity),
   );
-  if (activities.has('PullRequestMergedOffPlatform')) return 'merged off-platform';
   if (activities.has('PullRequestMerged')) return 'merged';
   if (activities.has('PullRequestClosed')) return 'closed unmerged';
   return 'open';

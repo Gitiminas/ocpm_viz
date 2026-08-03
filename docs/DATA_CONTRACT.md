@@ -116,8 +116,12 @@ PRs closed without being merged on GitHub whose commits later appear in a push.
 **Columns (14):** `repo_id`, `pull_request_id`, `pr_number`, `base_ref`, `pr_closed_at`,
 `closer_actor_id`, `delivering_commit_sha`, `push_id`, `pushed_at`, `pusher_actor_id`,
 `delta_seconds`, `link_convention`, `link_kind`, `link_method`
-**Why:** a **conformance deviation class** — reality departing from issue→PR→merge→close. Supplies
-the `PullRequestMergedOffPlatform` activity and a distinct PR outcome.
+**Why:** nothing, now. **Not consumed (decision 48).** It once supplied a
+`PullRequestMergedOffPlatform` activity and a distinct PR outcome; both are gone. The view is a
+`delta_seconds` timing heuristic, and drawing its output with the weight of a real merge presented
+an inference as ground truth. The view still exists upstream — this entry documents it so nobody
+rediscovers it and assumes it was overlooked. The GitHub facts it builds on (the PR was closed,
+unmerged) are already carried by `mv_pull_request_events_full`.
 
 ---
 

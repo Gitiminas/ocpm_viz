@@ -229,7 +229,7 @@ function buildSubLogSummary(graph, index) {
       outcomes.length
         ? outcomes.map((o) => `${o.count} ${escapeHtml(o.outcome)}`).join('<br>')
         : '—',
-      'Closed-unmerged and off-platform merges are conformance deviations.',
+      'A closed-unmerged PR is a conformance deviation.',
     ),
   );
 

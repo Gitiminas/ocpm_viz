@@ -136,8 +136,10 @@ Stated plainly rather than left to inference.
 - **The `repo` object type is unexercised.** No fixture contains repo objects
   (`tests/fixtures/README.md` explains why: synthesizing them would mean inventing
   relationships).
-- **`PullRequestMergedOffPlatform`** is in the vocabulary and mapped, but no fixture
-  produces one — it needs `mv_pr_offplatform_merges`.
+- ~~**`PullRequestMergedOffPlatform`** is in the vocabulary and mapped, but no fixture
+  produces one.~~ **No longer a gap:** decision 48 removed the activity outright, so there
+  is nothing left to exercise. `tests/model.test.js` now asserts that the name hits the
+  closed-vocabulary throw. The gap was closed by deletion, not by coverage.
 - **Rendering performance** is covered only by a 3-second tripwire on F10's layout,
   not by measurement. Sub-logs are small; if a real one is slow, report it.
 - **No screen size other than 1920×1200** has been checked, deliberately: sizing is
