@@ -73,13 +73,32 @@ export function findGraphProblems(graph) {
 
   problems.push(...findActivityProblems(graph.events, byId));
 
+  /*
+   * **Both endpoints of a link must be objects** (decision 49). This used to accept
+   * an event id as well, for the event→actor attribution links decision 41 deleted;
+   * with those gone the leniency only made a mistake harder to see. A link to an
+   * event id passes every downstream check quietly — `byId.get` misses, so
+   * `isLinkVisible` returns false — and the link simply never appears, which is
+   * precisely the "wrong picture, no error" failure this validator exists to catch.
+   *
+   * The event ids are still collected, but only to say *which* mistake was made:
+   * naming an event where an object belongs is the plausible error, and a bare
+   * "unknown source" would send the reader looking for a missing object.
+   */
   const eventIds = new Set(graph.events.map((e) => e.id));
   for (const link of graph.links) {
-    // A link endpoint may be an event (event→actor links) or an object.
-    const knownSource = byId[link.source] || eventIds.has(link.source);
-    const knownTarget = byId[link.target] || eventIds.has(link.target);
-    if (!knownSource) problems.push(`link references unknown source "${link.source}"`);
-    if (!knownTarget) problems.push(`link references unknown target "${link.target}"`);
+    for (const [end, id] of [
+      ['source', link.source],
+      ['target', link.target],
+    ]) {
+      if (byId[id]) continue;
+      problems.push(
+        eventIds.has(id)
+          ? `link ${link.source}→${link.target} has event "${id}" as its ${end}; both ` +
+            `endpoints must be objects (decision 49)`
+          : `link references unknown ${end} "${id}"`,
+      );
+    }
     if (link.evidence !== 'validated' && link.evidence !== 'extracted') {
       problems.push(
         `link ${link.source}→${link.target} has evidence "${link.evidence}"; the only ` +

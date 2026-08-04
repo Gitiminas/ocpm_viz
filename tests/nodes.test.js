@@ -209,13 +209,15 @@ describe('relationship toggles are derived, not enumerated', () => {
     assert.ok(Object.values(state.relPairs).every(Boolean));
   });
 
-  test('every object link resolves to a toggle key', async () => {
+  test('every link resolves to a toggle key', async () => {
     const graph = await loadF1();
     const index = indexObjectGraph(graph);
     const groups = deriveRelGroups(graph.links, index.byId);
     const state = resetToggles(createState(), { relGroups: groups });
+    // No exemption: since decision 41 every link in the bundle is object→object, so
+    // every one of them must be reachable by a control. A link nobody can switch off
+    // is as much a defect as one that switches off something else.
     for (const link of graph.links) {
-      if (link.qualifier === 'actor') continue;
       const key = linkPairKey(link, index.byId);
       assert.ok(key in state.relPairs, `link ${link.source}→${link.target} has no toggle`);
     }

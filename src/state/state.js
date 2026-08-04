@@ -16,23 +16,21 @@
  */
 
 import { DEFAULT_BURST_THRESHOLD } from '../model/bursts.js';
-import { EVIDENCE, ISSUE_PR_METHODS, LINK_METHOD } from '../model/evidence.js';
+import { EVIDENCE, ISSUE_PR_METHODS } from '../model/evidence.js';
 import { isCommitInVisibleGroup } from '../model/commitGroups.js';
 import { LANE_TYPES, TYPE_LABELS } from './labels.js';
 
 export const MIN_ZOOM = 0.55;
 export const MAX_ZOOM = 14;
 
-/**
- * Detection methods the UI offers a toggle for.
- *
- * `event_actor_id` is excluded: it is how every event reaches its actor, not a
- * traceability method, and hiding it would simply delete the actor trails that
- * already have their own control.
+/*
+ * There was a `TOGGLEABLE_METHODS` constant here — every `LINK_METHOD` except
+ * `event_actor_id`, which was actor attribution rather than a traceability method
+ * and therefore had no business in a link filter. Decision 41 deleted that method,
+ * so the exception it existed to carve out no longer exists, and an alias for
+ * "all of them" is not worth a name. The toggles are derived from the loaded
+ * sub-log by `deriveMethods` regardless.
  */
-export const TOGGLEABLE_METHODS = Object.values(LINK_METHOD).filter(
-  (method) => method !== LINK_METHOD.EVENT_ACTOR_ID,
-);
 
 export function createState() {
   return {
@@ -100,7 +98,6 @@ export function deriveRelGroups(links, byId) {
   const seen = new Map();
 
   for (const link of links) {
-    if (link.qualifier === 'actor') continue;
     const key = linkPairKey(link, byId);
     if (!key || seen.has(key)) continue;
 
@@ -132,7 +129,6 @@ export function deriveRelGroups(links, byId) {
 export function deriveQualifiers(links) {
   const counts = new Map();
   for (const link of links) {
-    if (link.qualifier === 'actor') continue;
     counts.set(link.qualifier, (counts.get(link.qualifier) || 0) + 1);
   }
   return [...counts.entries()]
@@ -153,7 +149,7 @@ export function deriveMethods(links) {
   const counts = new Map();
   for (const method of ISSUE_PR_METHODS) counts.set(method, 0);
   for (const link of links) {
-    if (link.qualifier === 'actor' || !link.method) continue;
+    if (!link.method) continue;
     counts.set(link.method, (counts.get(link.method) || 0) + 1);
   }
   return [...counts.entries()]
@@ -216,12 +212,16 @@ export function isNodeVisible(node, state, groupsByCommit = new Map()) {
 /**
  * Whether a link survives every filter.
  *
- * Six independent conditions, all of which must hold. Each is separated so that a
+ * Five independent conditions, all of which must hold. Each is separated so that a
  * link's absence is attributable to one named control rather than to "the filters".
+ *
+ * There was a sixth, first in the list: `qualifier === 'actor'` returned false
+ * unconditionally, so an actor link was never drawn under any configuration.
+ * Decision 41 removed those links from the data instead, which is the honest place
+ * for the rule — a predicate that answers "no" for a whole class regardless of state
+ * is not a filter, it is a deletion performed late.
  */
 export function isLinkVisible(link, byId, state, groupsByCommit = new Map()) {
-  if (link.qualifier === 'actor') return false;
-
   const source = byId.get(link.source);
   const target = byId.get(link.target);
   if (!source || !target) return false;
@@ -274,11 +274,7 @@ export function selectVisible(graph, state, groupsByCommit = new Map()) {
     return true;
   });
 
-  const links = graph.links.filter((link) =>
-    link.qualifier === 'actor'
-      ? visibleIds.has(link.target)
-      : isLinkVisible(link, byId, state, groupsByCommit),
-  );
+  const links = graph.links.filter((link) => isLinkVisible(link, byId, state, groupsByCommit));
 
   return { meta: graph.meta, objects, events, links };
 }

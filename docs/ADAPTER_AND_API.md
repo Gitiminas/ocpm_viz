@@ -71,26 +71,29 @@ is the vocabulary (decision 20), and every row here must have a member there and
 | Commit → PR | `ref_match` — branch-ref match (`head_ref` ↔ `ref`) | `extracted` | Convention |
 | Commit → PR | `proximity` — matched on closeness in time alone | `extracted` | The weakest method in the enum. Nothing is asserted and nothing is parsed — only two timestamps are near each other |
 | Commit → Issue | `commit_message` — regex over the message (`mv_commit_message_issue_links_all`) | `extracted` | Convention. Sub-grade with `link_convention` / `ref_scope`; cross-repo refs are weaker than same-repo `fixes #N` |
-| Event → Actor | `event_actor_id` — the event's own `actor_id` column | `validated` | Identity match on a platform-supplied column; nothing is parsed |
 
-> Sixteen link methods, plus `event_actor_id`, which is attribution rather than traceability
-> (decision 42). `merge_commit_message` had a row here until that decision deleted it — no upstream
-> view emits it — and `offplatform_commit_message` went with decision 48.
+> Sixteen link methods, and every one of them links two **objects** (decision 42). Three values have
+> been deleted and none returns without an upstream source that emits it: `merge_commit_message`
+> (decision 42 — no view emits it), `offplatform_commit_message` (decision 48) and `event_actor_id`
+> (decision 41).
 >
-> The last rows were classified in `src/model/evidence.js` before this table recorded them.
-> `commit_message` follows the rule unambiguously (it parses text).
-> `event_actor_id` is the one worth a second look: it is an identity match on a column GitHub
-> supplies, so `validated` follows the rule — but it is an *attribution* edge rather than a
-> traceability link, and it carries 42 of F1's 76 links. If actor edges are ever reported alongside
-> issue↔PR link counts, say which is which, or the validated share looks far higher than the
-> traceability story warrants.
+> These rows were classified in `src/model/evidence.js` before this table recorded them.
+> `commit_message` follows the rule unambiguously — it parses text.
+>
+> **Why `event_actor_id` is gone, and why it is the instructive one.** It was an identity match on a
+> column GitHub supplies, so `validated` followed the rule and the classification was never wrong.
+> It was *redundant*: an `Event → Actor` link restated `event.actor_id`, which the event already
+> carries and which is the only thing any renderer reads. Being redundant, it was also dangerous to
+> count — it supplied 42 of F1's 76 links, all validated, so the naive split was 45/31 where the
+> traceability story is 3/31. Ten separate call sites existed to subtract it before counting. The
+> links are deleted from the payload and attribution is single-sourced on `event.actor_id`; a link
+> now always means traceability, and no figure has to be qualified with which kind of edge it
+> counted.
 
-> ⚠️ **Expect a visible shift.** Branch-ref matching (`ref_match`) supplies 29 of the 34 object
-> links in the current example — F1 carries 76 links, of which 42 are `event_actor_id` actor
-> edges, leaving 34 object links that split 3 `validated` / 31 `extracted`. Reclassifying
-> `ref_match` moves most of the timeline from solid to dashed. That is the honest result and it
-> strengthens the S8 answer — do not treat it as a regression. Recorded as mandated baseline
-> difference #1 in `VERIFICATION.md`.
+> ⚠️ **Expect a visible shift.** Branch-ref matching (`ref_match`) supplies 29 of F1's 34 links,
+> which split 3 `validated` / 31 `extracted`. Reclassifying `ref_match` moves most of the timeline
+> from solid to dashed. That is the honest result and it strengthens the S8 answer — do not treat it
+> as a regression. Recorded as mandated baseline difference #1 in `VERIFICATION.md`.
 
 **Optional strengthening, if time allows.** `pr_body` is the one row where the rule is arguable: the
 view regex-parses the body rather than observing GitHub's auto-close. It can be corroborated by
@@ -138,9 +141,13 @@ ObjectGraph = {
 }
 ```
 
-This is the shape the fixtures actually carry — verified against `tests/fixtures/F1.json`. Two
+This is the shape the fixtures actually carry — verified against `tests/fixtures/F1.json`. Three
 notes on fields that are easy to get wrong:
 
+- **`source` and `target` are object ids.** Never an event id: the validator rejects one, by name
+  (decision 49). The RPC must therefore state who performed an event through `events[].actor_id`
+  and never as a link, which is decision 41 — a link means traceability between two objects and
+  nothing else.
 - **`data_honesty`** is not decoration. It carries the commit-time caveat (push time, not real
   commit time) and the extracted-edge caveat, and the sidebar renders them. A transport that drops
   it silently removes the S8 uncertainty disclosure from the UI.

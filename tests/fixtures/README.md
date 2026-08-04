@@ -52,11 +52,14 @@ node scripts/build-f1.mjs            # regenerate
 node scripts/build-f1.mjs --check    # fail if the committed fixture is stale
 ```
 
-38 objects (1 issue, 1 PR, 32 commits, 4 actors) · 42 events · 76 links (34 object→object,
-42 event→actor).
+38 objects (1 issue, 1 PR, 32 commits, 4 actors) · 42 events · 34 links, all object→object.
+
+The source also carries 42 event→actor links. They are **dropped** (decision 41): each one restated
+the `actor_id` the event already carries, and the build refuses to run unless it can prove that —
+see the third exception below.
 
 `ocel-data.json` stays in the repo unmodified as the source. The conversion makes **shape
-changes only, never value changes**, with two mandated exceptions noted below.
+changes only, never value changes**, with three mandated exceptions noted below.
 
 ### What the conversion does
 
@@ -68,9 +71,10 @@ changes only, never value changes**, with two mandated exceptions noted below.
 | `method` free-text prose | the `LINK_METHOD` enum, plus `link_methods` and `n_methods` |
 | `meta.case`, `meta.title`, `meta.orientation` | removed — decision 1 forbids a case notion, and the breadcrumb is derived from the query instead |
 | `meta.burst` | removed — bursts derive from `push_id` |
+| 42 `qualifier: "actor"` links | dropped — decision 41; attribution is `event.actor_id` |
 | `meta` | gains `seed`, `traversal_degree`, `active_object_types`, `active_link_methods`, `generated_at` |
 
-### The two value changes, and why they are not freehand edits
+### The three value changes, and why they are not freehand edits
 
 **Evidence reclassification.** 29 `ref_match` links move from validated to extracted, so F1 goes
 from 32 solid / 2 dashed to **3 validated / 31 extracted**. The three survivors are one `pr_body`
@@ -82,6 +86,20 @@ carried alongside it, because nothing upstream produces that prose: a field only
 could populate would make F1 an unfaithful model of a real sub-log. What is lost is which
 specific keyword or SHA matched; the adapter supplies that properly as `link_convention` /
 `ref_scope` when it lands.
+
+**Actor links dropped, and proved redundant first.** Decision 41 removes the 42 event→actor links,
+which is a deletion — normally forbidden outright by rule 2. It is admissible only because nothing
+is lost, and the script establishes that rather than asserting it: `checkActorLinksAreRedundant`
+requires a **bijection in both directions** before the fixture is written.
+
+The two halves do different jobs. *Every dropped link is one (event, that event's own `actor_id`)
+pair* is the loss check — a link naming an actor its event does not would take that attribution with
+it, and the actor would disappear from the trails and the actor card with no error anywhere.
+*Every event naming an actor had such a link* cannot prevent loss; it checks that the source is
+still the strict bijection decision 41 describes, which for a regression baseline is itself worth
+failing on. Both were confirmed to fire against a deliberately corrupted copy of the source.
+Independently confirmed against the renderer as well: the node list feeding every actor trail is
+identical before and after, in all three time modes.
 
 ### Quirks carried through unchanged
 

@@ -97,7 +97,12 @@ function event(activity, time, objectId, { actorId = 'actor:alice', comment = fa
   };
 }
 
-const VALIDATED_METHODS = ['pr_body', 'head_sha', 'merge_commit_sha', 'event_actor_id'];
+// Deliberately a literal list rather than an import from `src/model/evidence.js`:
+// the fixtures are the second opinion the evidence rule is checked against, and a
+// generator that read the same set as the implementation could only agree with it.
+// `event_actor_id` was a fourth member until decision 41 deleted the method; no
+// synthetic fixture ever used it, so no fixture changes.
+const VALIDATED_METHODS = ['pr_body', 'head_sha', 'merge_commit_sha'];
 
 /**
  * A link detected by one or more methods.

@@ -20,18 +20,18 @@ export const EVIDENCE = {
 /**
  * The closed set of link detection methods.
  *
- * **Sixteen link methods, plus `event_actor_id`, which is not one.** Decision 42
- * fixes `link.method` — how one object came to be linked to another — at sixteen
- * values: the four validated and twelve extracted entries below. `EVENT_ACTOR_ID`
- * is kept in the same enum because it flows through the same `classifyMethod` gate,
- * but it is *attribution* (which actor performed an event), not traceability, and it
- * is excluded from the UI's method toggles (`TOGGLEABLE_METHODS` in `state/state.js`)
- * and from the link counts in `stats/metrics.js`. Do not count it as a seventeenth
- * traceability method when reporting figures.
+ * **Sixteen values, and every one of them is a link between two objects.** Decision
+ * 42 fixes `link.method` — how one object came to be linked to another — at the four
+ * validated and twelve extracted entries below.
  *
- * `merge_commit_message` was declared here until decision 42 removed it: no upstream
- * view emits it. `offplatform_commit_message` went with the off-platform heuristic
- * (decision 48). Neither is to be reintroduced without a source that produces it.
+ * Three values have been removed and none may return without an upstream source that
+ * produces it: `merge_commit_message` (decision 42 — no view emits it),
+ * `offplatform_commit_message` (decision 48, with the off-platform heuristic) and
+ * `event_actor_id` (decision 41). The last is the one worth remembering, because it
+ * was not wrong so much as redundant: it recorded which actor performed an event,
+ * which `event.actor_id` already states on the event itself. Carrying it as a
+ * *link* method meant every consumer of `links` had to exclude it by hand — ten
+ * sites — to avoid counting attribution as traceability.
  */
 export const LINK_METHOD = {
   // --- validated: the platform asserts it, or it is an exact identity match ---
@@ -82,11 +82,6 @@ export const LINK_METHOD = {
   PR_BODY_FIXED_TICKETS: 'pr_body_fixed_tickets',
   /** `Refs #123` in the PR body — a reference, not a closing keyword. */
   PR_BODY_REFS: 'pr_body_refs',
-
-  // --- actor attribution: in this enum, but not a link method (see above) ---
-
-  /** The event's own `actor_id` column. */
-  EVENT_ACTOR_ID: 'event_actor_id',
 };
 
 /**
@@ -107,7 +102,6 @@ const VALIDATED_METHODS = new Set([
   LINK_METHOD.HEAD_SHA,
   LINK_METHOD.MERGE_COMMIT_SHA,
   LINK_METHOD.CLOSED_VIA_COMMIT,
-  LINK_METHOD.EVENT_ACTOR_ID,
 ]);
 
 const ALL_METHODS = new Set(Object.values(LINK_METHOD));
@@ -115,7 +109,7 @@ const ALL_METHODS = new Set(Object.values(LINK_METHOD));
 /**
  * The four issue↔PR detection methods, independently toggleable (Task 3).
  *
- * Four, not ten: these are the ones backed by their own upstream materialized view
+ * Four, not sixteen: these are the ones backed by their own upstream materialized view
  * (`DATA_CONTRACT.md` §1), so a toggle for each is guaranteed to exist even when the
  * loaded sub-log uses none of them. The six extended conventions also link issues to
  * PRs, but they arrive through no dedicated view, so `deriveMethods` gives them a

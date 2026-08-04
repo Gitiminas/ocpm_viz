@@ -25,7 +25,6 @@ const fileTransport = async (query) => {
 
 const loadF1 = () => loadObjectGraph({ fixture: 'F1' }, { transport: fileTransport });
 
-const objectLinks = (graph) => graph.links.filter((l) => l.qualifier !== 'actor');
 const commitsOf = (graph) => graph.objects.filter((o) => o.type === 'commit');
 
 describe('F1 loads and validates', () => {
@@ -33,8 +32,44 @@ describe('F1 loads and validates', () => {
     const graph = await loadF1();
     assert.equal(graph.objects.length, 38);
     assert.equal(graph.events.length, 42);
-    assert.equal(graph.links.length, 76);
-    assert.equal(objectLinks(graph).length, 34);
+    // 34, not 76: decision 41 dropped the 42 event→actor attribution links, so
+    // every link left is a traceability link between two objects and no consumer
+    // has to subtract a class before counting.
+    assert.equal(graph.links.length, 34);
+  });
+
+  /**
+   * Attribution survives the deletion — the point of decision 41 is that it was
+   * never carried by the links in the first place.
+   *
+   * Asserted on the *loaded* graph rather than on the build script, because the
+   * script's own bijection check could be deleted with the script. If the 42 actor
+   * ids stopped being reachable from the events, actor trails and the actor card
+   * would empty out, and no other test in this file would notice.
+   */
+  test('every actor is still reachable, from the events alone', async () => {
+    const graph = await loadF1();
+    const index = indexObjectGraph(graph);
+    const attributed = graph.events.filter((event) => event.actor_id);
+
+    assert.equal(attributed.length, 42, 'all 42 events must still name their actor');
+    assert.equal(index.eventCountByActor.size, 4);
+    for (const event of attributed) {
+      assert.ok(index.byId.has(event.actor_id), `${event.actor_id} resolves to an actor object`);
+    }
+  });
+
+  test('no link carries actor attribution any more (decision 41)', async () => {
+    const graph = await loadF1();
+    const eventIds = new Set(graph.events.map((event) => event.id));
+
+    assert.equal(graph.links.some((link) => link.qualifier === 'actor'), false);
+    assert.equal(graph.links.some((link) => link.method === 'event_actor_id'), false);
+    for (const link of graph.links) {
+      for (const endpoint of [link.source, link.target]) {
+        assert.equal(eventIds.has(endpoint), false, `${endpoint} is an event, not an object`);
+      }
+    }
   });
 
   test('timestamps parse to Date objects, in UTC', async () => {
@@ -110,6 +145,39 @@ describe('validation fails loudly on a malformed bundle', () => {
     assert.match(findGraphProblems(bad).join('\n'), /unknown activities/);
   });
 
+  /**
+   * Decision 49. The validator accepted an event id as a link endpoint while the
+   * event→actor links existed; now that both endpoints must be objects, a link into
+   * an event is a fault — and a silent one if unchecked, because it draws nothing
+   * and reports nothing.
+   */
+  test('a link endpoint that names an event is rejected, and says so', () => {
+    const bad = {
+      ...valid,
+      events: [
+        { id: 'e1', activity: 'IssueOpened', time: '2025-01-01T00:00:00Z', object_id: 'issue:1' },
+      ],
+      objects: [
+        { id: 'issue:1', type: 'issue', intervals: [] },
+        { id: 'actor:ada', type: 'actor', intervals: [] },
+      ],
+      links: [
+        { source: 'e1', target: 'actor:ada', qualifier: 'actor', evidence: 'validated' },
+      ],
+    };
+    const problems = findGraphProblems(bad).join('\n');
+    assert.match(problems, /has event "e1" as its source/);
+    assert.match(problems, /both endpoints must be objects/);
+  });
+
+  test('an endpoint that is neither an object nor an event is still rejected', () => {
+    const bad = {
+      ...valid,
+      links: [{ source: 'issue:1', target: 'ghost:9', qualifier: 'resolves', evidence: 'validated' }],
+    };
+    assert.match(findGraphProblems(bad).join('\n'), /unknown target "ghost:9"/);
+  });
+
   test('retired evidence vocabulary is rejected', () => {
     const bad = {
       ...valid,
@@ -134,8 +202,8 @@ describe('validation fails loudly on a malformed bundle', () => {
  * class silently flipping is a link changing from solid to dashed in every render
  * and a changed validated/extracted split in every figure the thesis reports.
  *
- * Decision 42 fixes `link.method` at sixteen values. `event_actor_id` is the
- * seventeenth key in the enum and is actor attribution, not a link method.
+ * Decision 42 fixes `link.method` at sixteen values, and since decision 41 removed
+ * `event_actor_id` the enum holds exactly those sixteen and nothing else.
  */
 const EXPECTED_EVIDENCE = [
   ['pr_body', 'validated'],
@@ -163,19 +231,18 @@ describe('evidence classification (decision 7)', () => {
     });
   }
 
-  test('event_actor_id is validated, and is attribution rather than a link method', () => {
-    assert.equal(classifyMethod(LINK_METHOD.EVENT_ACTOR_ID), EVIDENCE.VALIDATED);
-    assert.equal(
-      EXPECTED_EVIDENCE.some(([m]) => m === LINK_METHOD.EVENT_ACTOR_ID),
-      false,
-      'event_actor_id must not be counted among the sixteen link methods',
-    );
+  // Retired by decision 41: actor attribution is `event.actor_id`, not a link. Like
+  // `merge_commit_message` below it must reach the throw rather than merely be
+  // absent, so a payload built against the old enum fails loudly instead of having
+  // its attribution counted among the validated traceability links.
+  test('the retired event_actor_id method is gone and throws', () => {
+    assert.equal(Object.values(LINK_METHOD).includes('event_actor_id'), false);
+    assert.equal(LINK_METHOD.EVENT_ACTOR_ID, undefined);
+    assert.throws(() => classifyMethod('event_actor_id'), /Unknown link method/);
   });
 
   test('link.method is exactly the sixteen values of decision 42', () => {
-    const linkMethods = Object.values(LINK_METHOD)
-      .filter((method) => method !== LINK_METHOD.EVENT_ACTOR_ID)
-      .sort();
+    const linkMethods = Object.values(LINK_METHOD).sort();
     assert.equal(linkMethods.length, 16);
     assert.deepEqual(linkMethods, EXPECTED_EVIDENCE.map(([m]) => m).sort());
   });
@@ -204,7 +271,11 @@ describe('evidence classification (decision 7)', () => {
 
   test('F1 splits 3 validated / 31 extracted', async () => {
     const graph = await loadF1();
-    const links = objectLinks(graph);
+    // Over `graph.links` directly: the split used to be quoted over a filtered
+    // subset, because the 42 attribution links were all validated and would have
+    // turned 3/31 into 45/31. Nothing to filter now — the number the thesis reports
+    // and the number in the bundle are the same number.
+    const links = graph.links;
     assert.equal(links.filter((l) => l.evidence === 'validated').length, 3);
     assert.equal(links.filter((l) => l.evidence === 'extracted').length, 31);
     assert.equal(JSON.stringify(graph.links).includes('inferred'), false);
@@ -368,10 +439,24 @@ describe('focus BFS', () => {
     assert.equal(capped.size, atMax.size);
   });
 
-  test('actor links are excluded, or every object would share an actor', async () => {
+  /**
+   * The invariant is unchanged; what guarantees it moved. `buildAdjacency` used to
+   * skip actor links explicitly, because an actor adjacent to every event it touched
+   * would make every object reachable from every other object that shares a
+   * contributor — one focus click lighting up the whole sub-log. Decision 41 removed
+   * the links instead, so this now checks the property of the data that makes the
+   * guard unnecessary. It must stay: if actor edges ever return, focus breaks
+   * quietly, and it looks like over-eager highlighting rather than a data change.
+   */
+  test('no actor enters the object adjacency, so focus cannot leak through one', async () => {
     const graph = await loadF1();
     const adjacency = buildAdjacency(graph.links, []);
-    assert.equal(adjacency.has('actor:connor4312'), false);
+    const actors = graph.objects.filter((object) => object.type === 'actor');
+
+    assert.equal(actors.length, 4);
+    for (const actor of actors) {
+      assert.equal(adjacency.has(actor.id), false, `${actor.id} must not be an adjacency node`);
+    }
   });
 
   test('a collapsed burst inherits its members’ connections', async () => {

@@ -17,9 +17,16 @@
  *      and documented in `tests/fixtures/README.md`, because an undetectable
  *      freehand edit would silently invalidate the regression baseline.
  *
- * The two mandated exceptions to rule 2, both settled decisions rather than
- * judgement calls, are the `inferred` → `extracted` rename (decision 7) and the
- * evidence reclassification that follows from it.
+ * The three mandated exceptions to rule 2, all settled decisions rather than
+ * judgement calls, are the `inferred` → `extracted` rename (decision 7), the
+ * evidence reclassification that follows from it, and the removal of the 42
+ * event→actor attribution links (decision 41).
+ *
+ * The third is a *deletion*, which rule 2 would normally forbid outright, so it is
+ * checked rather than trusted: `selfCheck` proves the dropped links are exactly
+ * reproducible from `event.actor_id` before allowing the build to succeed. A
+ * deletion that can be reconstructed from a column that stays is a change of shape
+ * wearing a change of value's clothes; one that cannot would be data loss.
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -59,7 +66,13 @@ const METHOD_FROM_PROSE = [
    */
   [/^merge commit message/i, LINK_METHOD.COMMIT_MESSAGE],
   [/^commit message/i, LINK_METHOD.COMMIT_MESSAGE],
-  [/^event_actor_id$/, LINK_METHOD.EVENT_ACTOR_ID],
+  /*
+   * `event_actor_id` had a row here. Decision 41 deleted the method along with the
+   * links that carried it, and the row goes with it rather than being kept "just in
+   * case": the actor links are dropped by `partitionLinks` before any prose is
+   * mapped, so reaching this table with that string would mean the drop failed to
+   * catch one — and the throw below is the right answer to that.
+   */
 ];
 
 function methodFromProse(prose) {
@@ -121,6 +134,19 @@ function convertLink(source) {
 // What is lost is which specific keyword or SHA matched. When the adapter lands it supplies
 // that properly, as `link_convention` / `ref_scope` from `mv_commit_message_issue_links_all`.
 
+/**
+ * Split the source links into the ones F1 keeps and the ones decision 41 drops.
+ *
+ * The dropped set is returned rather than discarded here, so `selfCheck` can prove
+ * it was redundant instead of the script asserting so in a comment.
+ */
+function partitionLinks(sourceLinks) {
+  return {
+    kept: sourceLinks.filter((link) => link.qualifier !== 'actor'),
+    dropped: sourceLinks.filter((link) => link.qualifier === 'actor'),
+  };
+}
+
 function buildMeta(sourceMeta, objects, sourceLinks) {
   const seeds = [{ id: 'issue:242864', type: 'issue' }];
   const activeObjectTypes = [...new Set(objects.map((o) => o.type))].sort();
@@ -171,21 +197,78 @@ function buildMeta(sourceMeta, objects, sourceLinks) {
 function build() {
   const source = JSON.parse(readFileSync(SOURCE, 'utf8'));
   const objects = source.objects.map(convertObject);
+  const { kept } = partitionLinks(source.links);
 
   return {
-    meta: buildMeta(source.meta, objects, source.links),
+    meta: buildMeta(source.meta, objects, kept),
     objects,
-    // Events pass through untouched: they already match the contract.
+    // Events pass through untouched: they already match the contract. They also
+    // carry `actor_id`, which is now the only statement of who did what.
     events: source.events,
-    links: source.links.map(convertLink),
+    links: kept.map(convertLink),
   };
+}
+
+/**
+ * Prove that dropping the actor links loses nothing (decision 41).
+ *
+ * Two checks, and they do **different** jobs — worth keeping straight, because it is
+ * easy to describe the second as if it did the first's work:
+ *
+ *   1. Every dropped link is exactly one (event, that event's own `actor_id`) pair.
+ *      *This* is the loss check. A link asserting an actor the event does not name
+ *      would take that attribution with it when dropped, and the actor would vanish
+ *      from the trails and the actor card with no error anywhere.
+ *   2. Every event naming an actor was covered by one of those links. This one
+ *      cannot prevent loss — the attribution is on the event either way. It checks
+ *      the *premise* decision 41 records: that the two representations were a strict
+ *      bijection, not that one was a subset of the other. If it fails, nothing is
+ *      lost, but the source has stopped being what the decision says it is, and for a
+ *      regression baseline whose job is to be a fixed point that is worth failing on.
+ *
+ * Returns problems rather than throwing, so one run reports everything.
+ */
+function checkActorLinksAreRedundant(dropped, source) {
+  const problems = [];
+  const eventById = new Map(source.events.map((event) => [event.id, event]));
+  const actorIds = new Set(
+    source.objects.filter((object) => object.type === 'actor').map((object) => object.id),
+  );
+
+  const covered = new Set();
+  for (const link of dropped) {
+    const event = eventById.get(link.source);
+    if (!event) {
+      problems.push(`actor link ${link.source}→${link.target} does not start at a known event`);
+      continue;
+    }
+    if (!actorIds.has(link.target)) {
+      problems.push(`actor link ${link.source}→${link.target} does not end at an actor object`);
+      continue;
+    }
+    if (event.actor_id !== link.target) {
+      problems.push(
+        `actor link ${link.source}→${link.target} disagrees with the event's own ` +
+          `actor_id "${event.actor_id}" — dropping it would lose attribution`,
+      );
+      continue;
+    }
+    covered.add(event.id);
+  }
+
+  for (const event of source.events) {
+    if (event.actor_id && !covered.has(event.id)) {
+      problems.push(`event ${event.id} names an actor that no dropped link accounted for`);
+    }
+  }
+  return problems;
 }
 
 function selfCheck(graph, source) {
   const problems = [];
-  const objectLinks = graph.links.filter((l) => l.qualifier !== 'actor');
-  const validated = objectLinks.filter((l) => l.evidence === 'validated').length;
-  const extracted = objectLinks.filter((l) => l.evidence === 'extracted').length;
+  const { kept, dropped } = partitionLinks(source.links);
+  const validated = graph.links.filter((l) => l.evidence === 'validated').length;
+  const extracted = graph.links.filter((l) => l.evidence === 'extracted').length;
 
   // The reclassification is the one change that alters how F1 renders, so assert
   // the predicted split rather than trusting it. Predicted in tasks/01: of the 34
@@ -198,8 +281,14 @@ function selfCheck(graph, source) {
     problems.push('object count changed during conversion');
   if (graph.events.length !== source.events.length)
     problems.push('event count changed during conversion');
-  if (graph.links.length !== source.links.length)
-    problems.push('link count changed during conversion');
+
+  // The link count *does* change now, by exactly the actor links and nothing else.
+  if (dropped.length !== 42) problems.push(`expected 42 actor links to drop, found ${dropped.length}`);
+  if (graph.links.length !== kept.length)
+    problems.push('link count changed by something other than the actor-link drop');
+  if (graph.links.some((l) => l.qualifier === 'actor'))
+    problems.push('an actor link survived the conversion (decision 41)');
+  problems.push(...checkActorLinksAreRedundant(dropped, source));
 
   if (JSON.stringify(graph).includes('inferred'))
     problems.push('retired vocabulary "inferred" survives in the output');
@@ -241,12 +330,13 @@ if (process.argv.includes('--check')) {
 } else {
   mkdirSync(dirname(TARGET), { recursive: true });
   writeFileSync(TARGET, json);
-  const objectLinks = graph.links.filter((l) => l.qualifier !== 'actor');
+  const { dropped } = partitionLinks(source.links);
   console.log(
     `Wrote tests/fixtures/F1.json — ${graph.objects.length} objects, ` +
-      `${graph.events.length} events, ${graph.links.length} links ` +
-      `(${objectLinks.length} object→object: ` +
-      `${objectLinks.filter((l) => l.evidence === 'validated').length} validated, ` +
-      `${objectLinks.filter((l) => l.evidence === 'extracted').length} extracted).`,
+      `${graph.events.length} events, ${graph.links.length} object→object links ` +
+      `(${graph.links.filter((l) => l.evidence === 'validated').length} validated, ` +
+      `${graph.links.filter((l) => l.evidence === 'extracted').length} extracted). ` +
+      `Dropped ${dropped.length} event→actor links, each verified redundant with ` +
+      `event.actor_id (decision 41).`,
   );
 }

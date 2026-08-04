@@ -24,7 +24,8 @@ ObjectGraph = {
   objects: [ { id, type, label, intervals:[{start,end}], vmap:{…} } ],
   events:  [ { id, activity, time, object_id, actor_id, comment, attrs:{auto_closed} } ],
   links:   [ { source, target, qualifier, evidence, method, n_methods } ]
-gi```
+}
+```
 
 ### `objects[]`
 
@@ -54,7 +55,7 @@ interval to be placed at all.
 | `id` | string, unique | **yes** | validator `objectGraph.js:67`; node ids |
 | `time` | ISO 8601 UTC → `Date` | **yes** | validator `objectGraph.js:68`; x-position everywhere |
 | `object_id` | string, must resolve to an object | **yes** — validator rejects dangling | `objectGraph.js:69`; lane assignment |
-| `activity` | one of the 10 closed vocabulary values | **yes** — throws on unknown | `activities.js:121`; glyph, label, landmark |
+| `activity` | one of the 9 closed vocabulary values | **yes** — throws on unknown | `activities.js:121`; glyph, label, landmark |
 | `actor_id` | string or null | no | actor trails, handoff detection `metrics.js:181` |
 | `comment` | truthy = this event is a comment | no | comment toggle `state.js:273`, second row, `axis.js:54` |
 | `attrs.auto_closed` | string | no | the only `attrs` key read anywhere — `nodes.js:497` |
@@ -66,15 +67,16 @@ path that reads a list.
 
 | Field | Shape | Required | Consumed by |
 |---|---|---|---|
-| `source` / `target` | object id **or event id** | **yes** — validator accepts either | `objectGraph.js:79`; endpoints |
-| `qualifier` | string; `actor` is special-cased everywhere | **yes** in practice | filters, colour, adjacency `graph.js:36` |
-| `evidence` | exactly `validated` or `extracted` | **yes** — validator rejects anything else | `objectGraph.js:83`; solid vs dashed `links.js:171` |
-| `method` | a `LINK_METHOD` value | no, but validated if present | per-method toggle `state.js:238`; tooltip `links.js:226` |
+| `source` / `target` | object id — **never an event id** | **yes** — validator rejects an event endpoint by name (decision 49) | `objectGraph.js:88`; endpoints |
+| `qualifier` | string, open by construction | **yes** in practice | filters, colour, adjacency `graph.js:35` |
+| `evidence` | exactly `validated` or `extracted` | **yes** — validator rejects anything else | `objectGraph.js:104`; solid vs dashed `links.js:172` |
+| `method` | a `LINK_METHOD` value | no, but validated if present | validator `objectGraph.js:108`; per-method toggle `state.js:238`; tooltip `links.js:226` |
 | `n_methods` | integer | no | tooltip only, and only when `> 1` — `links.js:227` |
 
-`qualifier === 'actor'` is load-bearing: those links are excluded from adjacency, from every
-toggle-derivation, from link counts, and from `isLinkVisible`, but kept in `selectVisible` when
-their target is visible (`state.js:278`).
+No qualifier is load-bearing any more. `'actor'` was: those links were excluded from adjacency, from
+every toggle derivation, from both link counts and from `isLinkVisible`, yet kept in `selectVisible`
+when their target was visible — ten special cases for one value. Decision 41 deleted the links, so
+every link in a payload is now an object→object traceability edge that every consumer treats alike.
 
 ### `meta`
 
@@ -102,8 +104,8 @@ their target is visible (`state.js:278`).
 | Component | Fields consumed | Filters / params | Expected shape |
 |---|---|---|---|
 | `model/objectGraph.js` | every required field above | — | `{byId, objectsByType, eventsByObject, pusherByCommit, eventCountByActor}` |
-| `model/activities.js` | `event.activity`, `object.type` | — | closed 10-value vocabulary; **throws** on unknown |
-| `model/evidence.js` | `link.method` | — | closed 10-value method set → `validated`/`extracted`; **throws** on unknown |
+| `model/activities.js` | `event.activity`, `object.type` | — | closed 9-value vocabulary; **throws** on unknown |
+| `model/evidence.js` | `link.method` | — | closed 16-value method set → `validated`/`extracted`; **throws** on unknown |
 | `model/bursts.js` | `object.vmap.push_id`, `object.intervals[0].start` | `threshold` (default 5) | `[{id, pushId, time, size, commits, commitIds}]` |
 | `model/commitGroups.js` | `link.source/.target/.qualifier`, `object.type`, `object.label` | `hiddenCommitGroups` | `{groups, groupsByCommit}`; **not a partition** — union rule |
 | `model/graph.js` | `link.source/.target/.qualifier` | `focusDegree`, capped at 2 | `Map<objectId, hopDistance>` |
@@ -116,7 +118,7 @@ their target is visible (`state.js:278`).
 | `state/presets.js` | — (serializes state only) | `repo`, `seed`, `fixture`, `preset` | base64url JSON; `localStorage` |
 
 The filter vocabulary is **derived from the loaded sub-log**, never enumerated
-(`deriveRelGroups`/`deriveQualifiers`/`deriveMethods`, `state.js:99–162`). State keys:
+(`deriveRelGroups`/`deriveQualifiers`/`deriveMethods`, `state.js:97–158`). State keys:
 
 `k` · `mode` (`real`/`highlights`/`ordinal`) · `focus` · `focusDegree` · `actors` · `tracks` ·
 `showComments` · `trackOpen` · `hiddenObjects` · `hiddenCommitGroups` · `relPairs` · `qualifiers` ·
@@ -136,7 +138,7 @@ The filter vocabulary is **derived from the loaded sub-log**, never enumerated
 |---|---|---|---|
 | `render/timeline.js` | `object.type/.id/.intervals`, `vmap.login` | `state.tracks`, `mode`, `k`, `focus` | orchestrates; emits `objectColors` |
 | `render/nodes.js` | `vmap.commit_sha/.commit_message/.commit_author_name/.ref/.push_id`; `event.attrs.auto_closed`; `node.t/.title/.actorId` | `focus`, burst/group expansion | glyphs + tooltip specs |
-| `render/links.js` | `link.source/.target/.qualifier/.evidence/.method/.n_methods`; `object.label/.type` | `isLinkVisible` (6 ANDed conditions) | curved paths; dashed + "?" badge when `extracted` |
+| `render/links.js` | `link.source/.target/.qualifier/.evidence/.method/.n_methods`; `object.label/.type` | `isLinkVisible` (5 ANDed conditions) | curved paths; dashed + "?" badge when `extracted` |
 | `render/axis.js` | `object.intervals[].start/.end`; `event.time/.comment` | `mode` | tick marks |
 | `render/minimap.js`, `legend.js` | node positions only | zoom bounds | overview + key |
 
@@ -155,7 +157,7 @@ The filter vocabulary is **derived from the loaded sub-log**, never enumerated
 | Component | Fields consumed | Filters / params | Expected shape |
 |---|---|---|---|
 | `render/stats.js` | rows from `perObjectMetrics` | operates on `selectVisible(...)`, so **every toggle applies** | per-object table + aggregates + landmarks |
-| `stats/metrics.js` | `object.intervals/.type/.label`, `vmap.commit_author_name`; `event.time/.activity/.object_id/.actor_id/.comment`; `link.qualifier/.evidence/.source/.target` | the visible sub-log | 14 metrics; medians + ranges, never means |
+| `stats/metrics.js` | `object.intervals/.type/.label`, `vmap.commit_author_name`; `event.time/.activity/.object_id/.actor_id/.comment`; `link.evidence/.source/.target` | the visible sub-log | 14 metrics; medians + ranges, never means |
 
 ### Actor card
 
@@ -256,10 +258,12 @@ everything whose absence would produce a wrong picture rather than an empty cell
 3. **`attrs` is nearly unused** — exactly one key, `auto_closed`, at one call site.
 4. **Ten of the declared fields are dead.** Roughly a third of `meta` and two per-object fields are
    carried by every fixture and read by nothing.
-5. **Two closed vocabularies throw rather than degrade** — activities (`activities.js:121`) and link
-   methods (`evidence.js:86`). A payload with an unmapped value fails loudly and takes the render
+5. **Two closed vocabularies throw rather than degrade** — activities (`activities.js:109`) and link
+   methods (`evidence.js:137`). A payload with an unmapped value fails loudly and takes the render
    with it. This is deliberate and is the strongest constraint any data source must satisfy.
-6. **Time is `Date`-parsed once**, at `objectGraph.js:118`, from ISO strings. Nothing downstream
+   A third constraint is enforced by the validator rather than by a throw: **both link endpoints
+   must be objects** (`objectGraph.js:88`, decision 49).
+6. **Time is `Date`-parsed once**, at `objectGraph.js:143`, from ISO strings. Nothing downstream
    parses a timestamp, so anything not parseable by `new Date()` fails there.
 7. **The only many-valued relation is `links`.** `event.object_id` is singular at every one of its
    call sites, so expressing one event touching several objects would require a change to the shape,
@@ -305,15 +309,15 @@ Related closed sets in the same file: `OBJECT_TYPES` = `['issue', 'pull_request'
 'repo']` (`activities.js:9`); `LANE_TYPES` = `['issue', 'pull_request', 'commit']`
 (`activities.js:19`).
 
-## A2. `link.method` — 16 values, plus `event_actor_id`
+## A2. `link.method` — 16 values
 
-From the `LINK_METHOD` object literal, `src/model/evidence.js:36–90`. The evidence column is
-membership in `VALIDATED_METHODS` (`evidence.js:105–111`); everything not in that set is `extracted`
-by `classifyMethod` (`evidence.js:149`).
+From the `LINK_METHOD` object literal, `src/model/evidence.js:36–85`. The evidence column is
+membership in `VALIDATED_METHODS` (`evidence.js:100–105`); everything not in that set is `extracted`
+by `classifyMethod` (`evidence.js:143`).
 
-Decision 42 fixes `link.method` — how one object came to be linked to another — at **16** values.
-`event_actor_id` is a seventeenth key in the same enum, but it is actor *attribution*, not
-traceability; it is listed separately below and must not be counted among the 16.
+Decision 42 fixes `link.method` — how one object came to be linked to another — at **16** values,
+and since decision 41 removed `event_actor_id` the enum contains exactly those 16 and nothing else.
+There is no longer a key in it that is not a link method.
 
 | `method` | Constant | Evidence | Defined at |
 |---|---|---|---|
@@ -334,36 +338,37 @@ traceability; it is listed separately below and must not be counted among the 16
 | `pr_body_fixed_tickets` | `PR_BODY_FIXED_TICKETS` | `extracted` | `evidence.js:82` |
 | `pr_body_refs` | `PR_BODY_REFS` | `extracted` | `evidence.js:84` |
 
-Four validated, twelve extracted.
+Four validated, twelve extracted. **The table is the whole enum** — every key in `LINK_METHOD` is a
+row here, and there is no seventeenth.
 
-| Not a link method | Constant | Evidence | Defined at |
-|---|---|---|---|
-| `event_actor_id` | `EVENT_ACTOR_ID` | **`validated`** | `evidence.js:89` |
+Three values have been deleted, and all three now hit the throw rather than merely being absent:
 
-`merge_commit_message` was the tenth value here until decision 42 deleted it: no upstream view emits
-it. The one F1 link that carried it is now `commit_message` — same evidence class, so the 3/31 split
-is unchanged. `tests/model.test.js` asserts the name now throws.
+| Removed | By | Because |
+|---|---|---|
+| `merge_commit_message` | decision 42 | No upstream view emits it. The one F1 link that carried it is now `commit_message` — same evidence class, so the 3/31 split is unchanged |
+| `offplatform_commit_message` | decision 48 | Went with the off-platform merge heuristic |
+| `event_actor_id` | decision 41 | Actor attribution, not traceability. It duplicated `event.actor_id`, and being `validated` it inflated F1's link split from 3/31 to 45/31 unless subtracted first — which ten call sites existed to do |
 
-Two subsets are derived from this table:
+One subset is derived from this table:
 
 | Subset | Members | Defined at |
 |---|---|---|
-| `ISSUE_PR_METHODS` | `pr_body`, `branch_name`, `pr_title`, `issue_comment` — the four with their own upstream view | `evidence.js:125–130` |
-| `TOGGLEABLE_METHODS` | all 17 keys **except** `event_actor_id`, i.e. the 16 link methods | `state.js:33–35` |
+| `ISSUE_PR_METHODS` | `pr_body`, `branch_name`, `pr_title`, `issue_comment` — the four with their own upstream view | `evidence.js:119–124` |
 
-`ISSUE_PR_METHODS` is seeded into the method counts at `state.js:154` so all four toggles exist even
-when the loaded sub-log uses none of them. `event_actor_id` is excluded from the toggles because
-`state.js:31–32` states it is how every event reaches its actor, not a traceability method.
+`ISSUE_PR_METHODS` is seeded into the method counts at `state.js:150` so all four toggles exist even
+when the loaded sub-log uses none of them. There was a second subset, `TOGGLEABLE_METHODS` — all
+keys except `event_actor_id` — which decision 41 made an alias for "all of them" and which is
+therefore gone; `state.js:26–33` records why.
 
-**Enforcement.** Unknown method → `throw` at `evidence.js:86` via `classifyMethod`/`classifyLink`.
-The validator also rejects it earlier and more gently: `objectGraph.js:89` calls `isKnownMethod` and
-records a problem. `classifyLink` additionally throws on an empty method list (`evidence.js:104`).
+**Enforcement.** Unknown method → `throw` at `evidence.js:137` via `classifyMethod`/`classifyLink`.
+The validator also rejects it earlier and more gently: `objectGraph.js:108` calls `isKnownMethod` and
+records a problem. `classifyLink` additionally throws on an empty method list (`evidence.js:155`).
 
 `link.evidence` itself is a closed two-value set — `'validated'` and `'extracted'`
 (`evidence.js:15–18`) — and is the one field the validator checks by literal comparison rather than
 by lookup (`objectGraph.js:83`).
 
-## A3. `link.qualifier` — 4 values
+## A3. `link.qualifier` — 3 values
 
 No enumeration of qualifiers exists in `src/`. These are every distinct value across all 13 fixtures
 plus every qualifier literal appearing in code.
@@ -371,15 +376,20 @@ plus every qualifier literal appearing in code.
 | `qualifier` | Links in fixtures | Appears in | Colour mapped |
 |---|---|---|---|
 | `referenced_pull_request` | 346 | F1, F5, F10, F12, F13 | yes — `theme.js:33` |
-| `actor` | 42 | F1 | **no** |
 | `related_issue` | 18 | F1, F2, F3, F4, F6, F10, F11, F12, F13 | yes — `theme.js:32` |
 | `referenced_issue` | 1 | F1 | yes — `theme.js:34` |
 
-### `actor` is special-cased at ten sites
+Every one is drawn, and `theme.js:31–35` maps every one — the three qualifiers and the three colours
+are now the same list. (Decision 43 replaces these three with a different four; that is a separate,
+unimplemented change.)
 
-Every one is an exclusion, and each was written separately:
+### `actor` was a fourth value, special-cased at ten sites
 
-| Behaviour | Site |
+Deleted by decision 41 along with its 42 links. Recorded here because the shape of the problem is
+the useful part: every site below was an *exclusion*, each was written separately, and each could
+have been forgotten separately.
+
+| Behaviour | Was at |
 |---|---|
 | excluded from object adjacency / focus BFS | `graph.js:36` |
 | excluded from commit-group derivation | `commitGroups.js:35` |
@@ -390,11 +400,16 @@ Every one is an exclusion, and each was written separately:
 | kept in `selectVisible` when its **target** is visible | `state.js:278` |
 | excluded from link counts | `metrics.js:100` |
 | excluded from per-object link counts | `metrics.js:220` |
-| laneless object types skipped | `metrics.js:142`, `metrics.js:227`, `metrics.js:370` |
 
-Because `isLinkVisible` returns `false` for it unconditionally, an `actor` link is never drawn — which
-is why `theme.js:31–35` maps only the other three. It survives in `selectVisible` so the stats page
-can still see actor attribution.
+Two of those were load-bearing in opposite directions, which is the argument against carrying such a
+class at all: `isLinkVisible` said "never draw", `selectVisible` said "keep anyway". A tenth site
+that forgot the rule would not have failed — `linkCounts` forgetting it would have reported F1 as
+45 validated / 31 extracted rather than 3 / 31, in a figure the thesis quotes.
+
+What replaced them is a property of the data, asserted over all 13 fixtures in
+`verification.test.js` — "every link joins two objects" — plus the validator rejecting an event
+endpoint outright (decision 49). The laneless-object-type skips at `metrics.js:151`, `:234` and
+`:377` are unrelated and remain: `actor` is still an object type, just never a link endpoint.
 
 ### Qualifiers are **not** enforced
 

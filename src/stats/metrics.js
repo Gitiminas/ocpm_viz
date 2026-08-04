@@ -96,12 +96,21 @@ export function commentCounts(graph) {
   return { total, byType };
 }
 
+/**
+ * Link totals by evidence class.
+ *
+ * Every link counted here is a traceability link between two objects. Until decision
+ * 41 the bundle also carried event→actor attribution links, which had to be
+ * subtracted first: they were all `validated`, and on F1 there were 42 of them
+ * against 34 real links, so counting them would have reported a 45/31 split where
+ * the traceability story is 3/31. Attribution now lives on `event.actor_id` alone
+ * and cannot inflate a figure the thesis reports.
+ */
 export function linkCounts(graph) {
-  const objectLinks = graph.links.filter((link) => link.qualifier !== 'actor');
   return {
-    total: objectLinks.length,
-    validated: objectLinks.filter((link) => link.evidence === 'validated').length,
-    extracted: objectLinks.filter((link) => link.evidence === 'extracted').length,
+    total: graph.links.length,
+    validated: graph.links.filter((link) => link.evidence === 'validated').length,
+    extracted: graph.links.filter((link) => link.evidence === 'extracted').length,
   };
 }
 
@@ -216,7 +225,6 @@ export function perObjectMetrics(graph) {
 
   const linkCountByObject = new Map();
   for (const link of graph.links) {
-    if (link.qualifier === 'actor') continue;
     for (const id of [link.source, link.target]) {
       linkCountByObject.set(id, (linkCountByObject.get(id) || 0) + 1);
     }

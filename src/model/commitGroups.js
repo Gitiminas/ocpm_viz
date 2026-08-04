@@ -32,7 +32,6 @@ export function deriveCommitGroups(commits, links, byId) {
   const membersByPr = new Map();
 
   for (const link of links) {
-    if (link.qualifier === 'actor') continue;
     const source = byId.get(link.source);
     const target = byId.get(link.target);
     if (!source || !target) continue;

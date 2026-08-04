@@ -192,7 +192,7 @@ describe('fixtures exhibit the properties they claim', () => {
 
     // The same commit-PR pair, asserted once by identity and once by convention.
     const pairs = new Map();
-    for (const link of graph.links.filter((l) => l.qualifier !== 'actor')) {
+    for (const link of graph.links) {
       const key = `${link.source}|${link.target}`;
       if (!pairs.has(key)) pairs.set(key, new Set());
       pairs.get(key).add(link.evidence);

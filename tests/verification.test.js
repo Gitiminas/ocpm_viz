@@ -90,6 +90,39 @@ describe('every fixture is a valid ObjectGraph', () => {
   }
 });
 
+/**
+ * Decisions 41 and 49, as a property of every fixture rather than of one.
+ *
+ * Ten modules used to open with `if (link.qualifier === 'actor') continue;` — the
+ * adjacency builder, the commit grouping, three toggle derivations, the visibility
+ * predicate, two metric counts. Every one of them was a restatement of the same
+ * fact, and each had to be written separately and could be forgotten separately;
+ * `linkCounts` forgetting it would have reported F1 as 45 validated / 31 extracted
+ * instead of 3 / 31, in a figure the thesis quotes.
+ *
+ * They are all gone, so this is what holds the line for them: if a link that is not
+ * object→object ever re-enters a payload, it fails here rather than in whichever
+ * consumer noticed first.
+ */
+describe('every link joins two objects', () => {
+  for (const fixture of ALL_FIXTURES) {
+    test(`${fixture} carries no attribution link and no event endpoint`, async () => {
+      const raw = await fileTransport({ fixture });
+      const objectIds = new Set(raw.objects.map((object) => object.id));
+      const eventIds = new Set(raw.events.map((event) => event.id));
+
+      for (const link of raw.links) {
+        assert.notEqual(link.qualifier, 'actor', `${fixture}: actor links were deleted`);
+        assert.notEqual(link.method, 'event_actor_id', `${fixture}: the method was deleted`);
+        for (const endpoint of [link.source, link.target]) {
+          assert.ok(objectIds.has(endpoint), `${fixture}: ${endpoint} is not an object`);
+          assert.equal(eventIds.has(endpoint), false, `${fixture}: ${endpoint} is an event`);
+        }
+      }
+    });
+  }
+});
+
 describe('ordering is monotonic in every time mode, for every fixture', () => {
   for (const fixture of ALL_FIXTURES) {
     test(`${fixture} preserves temporal order in all three modes`, async () => {

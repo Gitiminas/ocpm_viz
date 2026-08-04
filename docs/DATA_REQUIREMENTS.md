@@ -229,8 +229,8 @@ decision 48 removed it; an off-platform merge is recorded as `PullRequestClosed`
 
 | Field | Need | Source | Used for |
 |---|---|---|---|
-| `source` / `target` | R | link views | edge endpoints |
-| `qualifier` | R | derived | `related_issue` / `referenced_issue` / `referenced_pull_request` / `actor` |
+| `source` / `target` | R | link views | edge endpoints — both are **object** ids; an event id is rejected (decision 49) |
+| `qualifier` | R | derived | `related_issue` / `referenced_issue` / `referenced_pull_request`. `actor` was a fourth until decision 41 deleted the attribution links; who performed an event is `event.actor_id` and nothing else |
 | `evidence` | R | **derived** from `link_method` | solid vs dashed (shortcoming S8) |
 | `link_method` / `primary_link_method` | R | link views | evidence classification, per-method toggle |
 | `validation_status` | P | link views | temporal sanity of the link |

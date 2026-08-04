@@ -7,7 +7,7 @@ every claim here is backed either by an assertion that runs in `npm test` or by 
 render that was looked at. Where neither was possible, this document says so
 rather than implying coverage that does not exist.
 
-**340 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
+**376 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
 
 ---
 
@@ -19,9 +19,12 @@ is exercised without a browser.
 | Property | Where | Scope |
 |---|---|---|
 | Bundle shape; unknown activity, object type or evidence class rejected | `model.test.js` | all 13 fixtures |
+| A link endpoint naming an event is rejected, and says so (decision 49) | `model.test.js` | synthetic bundles |
+| Every link joins two objects — no attribution link, no event endpoint | `verification.test.js` | all 13 |
 | Evidence classification follows the platform-asserts-it rule | `model.test.js` | rule + F1's 3/31 split |
 | Bursts derive from `push_id`; size is the member count; N or zero | `model.test.js` | F1, F7, F10 |
-| Focus BFS depth, cap, burst folding, actor-link exclusion | `model.test.js` | F1 |
+| Focus BFS depth, cap, burst folding, no actor in the adjacency | `model.test.js` | F1 |
+| Attribution survives the actor-link deletion: 42 events, 4 actors, all resolvable | `model.test.js` | F1 |
 | Compression maths match the reference formula | `layout.test.js` | synthetic + F1 |
 | Ordering monotonic in **every mode, every fixture** | `verification.test.js` | 13 × 3 |
 | No two nodes overlap within a row | `sublanes.test.js` | 13 × 3 |
@@ -82,6 +85,13 @@ browser: that is how Task 2 was shown not to disturb F1.
 | 4 | `OCEL CASE` → `Sub-log`; `Case statistics` → `Per-object statistics` | **Mandated** — decision 1 |
 | 5 | Links coloured by the object they reach | **Mandated** — decision 24 |
 | 6 | Highlights tick `22:47:51` → `21:47:49` | ⚠️ **Open** — decision 21, awaiting a call |
+
+**Decision 41 adds no seventh difference.** Deleting F1's 42 event→actor links changes nothing on
+screen, because nothing ever drew them: `isLinkVisible` returned false for the class
+unconditionally, and actor trails are built from `event.actor_id` by way of `node.actorId`. Checked
+rather than assumed, in the two ways available — the node list feeding every trail is byte-identical
+before and after in all three time modes, and F1, F13 and the stats page were re-rendered in
+headless Edge and compared. The links were data the renderer carried and never used.
 
 **Nothing else differs.** The strongest single piece of evidence is the ordinal
 axis: every tick label is exactly −1h from the baseline, at the *same count and the

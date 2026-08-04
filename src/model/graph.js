@@ -15,9 +15,12 @@ export const MAX_FOCUS_DEGREE = 2;
 /**
  * Build undirected adjacency between objects.
  *
- * Actor links are excluded: they connect an *event* to an actor, so including them
- * would make every object adjacent to every other object that shares an actor, and
- * focus would light up the whole graph.
+ * Every link in the bundle is object→object, so every link is an edge here. That is
+ * a property of the data since decision 41: actor links used to be skipped, because
+ * they connected an *event* to an actor and would have made every object adjacent to
+ * every other object that shared an actor — one focus click lighting up the whole
+ * graph. They no longer exist, and `findGraphProblems` rejects an event endpoint, so
+ * the guard has nothing left to guard against.
  *
  * Burst folding: a collapsed burst is drawn as one node, so whatever its members
  * connect to must also be reachable from the burst id, and vice versa. Otherwise
@@ -33,7 +36,6 @@ export function buildAdjacency(links, bursts = []) {
   };
 
   for (const link of links) {
-    if (link.qualifier === 'actor') continue;
     connect(link.source, link.target);
     connect(link.target, link.source);
   }
