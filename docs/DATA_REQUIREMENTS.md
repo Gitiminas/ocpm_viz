@@ -242,10 +242,15 @@ decision 48 removed it; an off-platform merge is recorded as `PullRequestClosed`
 
 | Pair | Qualifier | Source |
 |---|---|---|
-| Issue ↔ PR | `related_issue` | the 4 detection-method views, deduped by the adapter's `issue_pr_links` view |
-| Commit → PR | `referenced_pull_request` | rebuilt from `head_sha` / `merge_commit_sha` / `head_ref` matching |
+| Issue ↔ PR | `related_issue` | the **7** detection-method views plus `mv_issue_pr_links_extended_conventions`, deduped — possibly already by upstream's `mv_issue_to_pr_validated_all` rather than by an adapter view of ours |
+| Commit → PR | `referenced_pull_request` | `head_sha` / `merge_commit_sha` / `head_ref` matching — possibly already done by upstream's `mv_commit_pr_links` |
 | Commit → Issue | `referenced_issue` | `mv_commit_message_issue_links_all` |
-| Event → Actor | `actor` | `actor_id` on each event |
+| ~~Event → Actor~~ | ~~`actor`~~ | **Deleted (decision 41).** Attribution is `event.actor_id` and is not a link. Both endpoints of a link are objects (decision 49) |
+
+⚠️ Three of these four rows moved after this section was written. The qualifiers themselves are
+also superseded on paper by decision 43 (`resolves` / `contains_commit` / `merge_commit` /
+`references_issue`), which is recorded but not implemented — the code still emits the names above.
+And which pair each method belongs to is open question **O11**.
 
 ---
 

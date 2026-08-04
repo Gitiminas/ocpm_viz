@@ -355,7 +355,7 @@ One subset is derived from this table:
 
 | Subset | Members | Defined at |
 |---|---|---|
-| `ISSUE_PR_METHODS` | `pr_body`, `branch_name`, `pr_title`, `issue_comment` — the four with their own upstream view | `evidence.js:119–124` |
+| `ISSUE_PR_METHODS` | `pr_body`, `branch_name`, `pr_title`, `issue_comment` — seeded so their toggles exist even when unused. Chosen because they were the only methods with their own upstream view; the 2026-08-04 contract snapshot records seven, so the list is now four by history rather than by rule (see O11) | `evidence.js:128–133` |
 
 `ISSUE_PR_METHODS` is seeded into the method counts at `state.js:150` so all four toggles exist even
 when the loaded sub-log uses none of them. There was a second subset, `TOGGLEABLE_METHODS` — all

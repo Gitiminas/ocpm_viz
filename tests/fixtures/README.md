@@ -127,7 +127,7 @@ the model for id handling.** A real sub-log will not look like this.
 
 - **Only one issue and one PR**, so it cannot catch a regression in multi-object layout. That is
   what F2–F5 exist for.
-- **Only two of the four issue↔PR detection methods** appear (`pr_body`; the rest of the object
+- **Only one of the four seeded issue↔PR detection methods** appears (`pr_body`; the rest of the object
   links are commit attribution), so the per-method toggles in Task 3 are unverifiable here —
   hence F11.
 - **Every link has `n_methods: 1`**, so multi-method agreement is unexercised — hence F12.

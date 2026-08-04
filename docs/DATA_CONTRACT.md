@@ -6,11 +6,23 @@ here, either it is not in the database or it is out of scope — in both cases, 
 Scope is **issue → PR → commit, plus comments and actors**. Labels, forks, reviews, review comments,
 commit comments, branch/ref lifecycle and bot classification are deliberately out (see §3).
 
-**Total: 4 base tables + 17 materialized views.** These are owned by other researchers and are
-**read-only** for this project — no modification, no refresh, no extension. Snapshot taken
-`<date>`; if reality diverges, update this document rather than adapting the upstream.
+**Total: 4 base tables + 49 views — 22 in scope (§1) and 27 excluded (§3).** These are owned by
+other researchers and are **read-only** for this project — no modification, no refresh, no
+extension. If reality diverges, update this document rather than adapting the upstream.
 
 Views this project builds on top of them are specified in `ADAPTER_AND_API.md`, not here.
+
+> **Snapshot: 2026-08-04**, from the API hand-off inventory. This revision added **17 relations the
+> previous snapshot did not name** — six in-scope link views, the nine `ocel_*` views, and two
+> analytics views — which is worth stating plainly given the first line of this document. Anyone
+> reading the earlier revision would have concluded that `mv_commit_pr_links` and
+> `mv_issue_to_pr_validated_all` did not exist and built them from scratch. The undated placeholder
+> that stood here before is why that went unnoticed for so long; date this line on every revision.
+>
+> ⚠️ **Column lists for the six newly recorded views are not captured yet.** Their entries below say
+> so rather than guessing. Inspect before use — `\d+ <view>`, or `information_schema.columns` — and
+> record what you find here. An invented column list in a document that calls itself authoritative
+> is worse than an admitted gap.
 
 ---
 
@@ -38,7 +50,11 @@ payload's `action` field, and supply the object ids, SHAs and comment ids that l
 
 ---
 
-## 1. The 17 views you query
+## 1. The 22 views you query
+
+Identity (3) · raw flatteners (5) · pre-built activity timelines (3) · link detection (11).
+Two of the 22 — `issues_identity` and `prs_identity` — carry no `mv_` prefix; whether they are
+materialized or plain views is not recorded here because nothing in this project depends on it.
 
 ### Identity (3)
 
@@ -63,7 +79,7 @@ Use it to resolve references to issues whose opening event is outside the window
 
 ---
 
-### Object attributes & raw events (6)
+### Object attributes & raw events (5)
 
 #### `mv_issues_full`
 Flattened IssuesEvent payloads: full issue state per event.
@@ -113,18 +129,9 @@ One row per commit inside every PushEvent.
 **Why:** the entire commit layer, plus `push_id` / `size` for burst detection.
 ⚠️ `created_at` is **push time, not real commit time** — preserve this caveat in the UI.
 
-#### `mv_pr_offplatform_merges`
-PRs closed without being merged on GitHub whose commits later appear in a push.
-*Depends on:* `mv_pull_request_events_full`, `mv_push_commits_full`
-**Columns (14):** `repo_id`, `pull_request_id`, `pr_number`, `base_ref`, `pr_closed_at`,
-`closer_actor_id`, `delivering_commit_sha`, `push_id`, `pushed_at`, `pusher_actor_id`,
-`delta_seconds`, `link_convention`, `link_kind`, `link_method`
-**Why:** nothing, now. **Not consumed (decision 48).** It once supplied a
-`PullRequestMergedOffPlatform` activity and a distinct PR outcome; both are gone. The view is a
-`delta_seconds` timing heuristic, and drawing its output with the weight of a real merge presented
-an inference as ground truth. The view still exists upstream — this entry documents it so nobody
-rediscovers it and assumes it was overlooked. The GitHub facts it builds on (the PR was closed,
-unmerged) are already carried by `mv_pull_request_events_full`.
+> `mv_pr_offplatform_merges` was the sixth entry in this section. Decision 48 stopped consuming it,
+> so it now sits in §3 with the rest of what is deliberately unused — but **read that entry**, because
+> unlike the other exclusions it is a dependency of a view in scope.
 
 ---
 
@@ -159,11 +166,25 @@ PushEvents reshaped into generic activity records.
 
 ---
 
-### Link detection (5)
+### Link detection (11)
 
-> Four issue→PR detection methods are available. All four share the same 11 columns:
+**Seven issue→PR detection methods, one view of extended conventions, one union, and two commit-link
+views.** The previous snapshot recorded four method views and one commit view; the other six are the
+ones this revision adds.
+
+> The **four originally recorded** methods share the same 11 columns:
 > `repo_id`, `issue_id`, `issue_number`, `pull_request_id`, `pr_number`, `validation_status`,
 > `link_method`, `issue_created_at_utc`, `pr_created_at_utc`, `pr_merged_at_utc`, `issue_closed_at_utc`
+>
+> ⚠️ **Do not assume the other three share it.** It is likely and it is unverified, and the columns
+> are what tell you which two objects a row actually joins — see the endpoint question below.
+
+> ⚠️ **`validation_status` is not our evidence class.** Upstream it is the *temporal sanity* of a
+> link (`DATA_REQUIREMENTS.md` §7) — whether the dates line up. Our `validated` means *the platform
+> asserts the link* (decision 7). They are different questions with the same word, and
+> `mv_issue_to_pr_validated_all` puts that word in a view name. Mapping either onto
+> `link.evidence` would silently break the solid-vs-dashed uncertainty cue and make F1's
+> 3 validated / 31 extracted split mean nothing.
 
 > **Evidence classification is not recorded here.** Nothing upstream pre-classifies a link, so a
 > class is a research judgement rather than an existence fact, and this document's remit is what
@@ -189,6 +210,53 @@ Links from PR references inside issue comments.
 *Depends on:* `issues_identity`, `mv_issue_comments_full`, `mv_pull_request_events_full`,
 `prs_identity`
 
+#### `mv_issue_pr_links_closed_via_commit`
+Links derived from GitHub's own closed-via-commit record.
+**Columns:** *not captured — inspect before use.*
+**Why:** the `closed_via_commit` method, the one `validated` member of this family that GitHub
+states rather than anyone parsing.
+
+#### `mv_issue_pr_links_commit_message`
+Links derived from issue references in commit messages.
+**Columns:** *not captured — inspect before use.*
+**Why:** the `commit_message` method **as an issue↔PR link**. ⚠️ Distinct from
+`mv_commit_message_issue_links_all` below, which links a *commit* to an issue from the same raw
+text. Two views, two different relations, and the `LINK_METHOD` enum currently has one value for
+both — see the endpoint question below.
+
+#### `mv_issue_pr_links_proximity`
+Links inferred from closeness in time alone.
+**Columns:** *not captured — inspect before use.*
+**Why:** the `proximity` method — the weakest thing in the enum. Nothing is asserted and nothing is
+parsed; two timestamps are merely near each other. Report its share separately in any RQ2 link
+count, because a coverage figure that leans on it is not the same claim as one that does not.
+
+#### `mv_issue_pr_links_extended_conventions`
+Project-specific issue-reference forms GitHub does not act on — `gh-123`, `For #123`, Symfony's PR
+template, "Fixed tickets" rows — split by whether they were found in the title or the body.
+**Columns:** *not captured — inspect before use.*
+**Why:** supplies the six extended methods of decision 42 (`pr_title_gh`, `pr_title_symfony`,
+`pr_title_for`, `pr_body_gh`, `pr_body_fixed_tickets`, `pr_body_refs`). **This view materially
+changes §4's limitation** — the conventions that section calls uncovered are, in fact, detected.
+
+#### `mv_issue_to_pr_validated_all`
+The union of the issue↔PR method views, one row per (issue, PR).
+**Columns:** *not captured — inspect before use.*
+**Why:** ⚠️ **This is very likely the `issue_pr_links` derivation `ADAPTER_AND_API.md` §2 tells you
+to build.** Read its definition before building anything: if it already dedupes and carries
+`link_method` / `n_methods`, that derivation is done and the adapter's job is to consume it. Note
+the name warning above — "validated" here is upstream's word, not decision 7's.
+
+#### `mv_commit_pr_links`
+Commit↔PR attribution.
+**Columns:** *not captured — inspect before use.*
+**Why:** ⚠️ **This is very likely the `commit_pr_links` derivation `ADAPTER_AND_API.md` §2 tells you
+to build and to materialize** — the expensive join between the two largest views. If it exists, that
+work is done, **and open question O2 is already answered by whoever wrote it**: the admission rule
+for commit→PR matches is whatever this view implements. Read the definition, decide whether to
+accept the rule, and record it as *inherited* rather than chosen. It is owned by someone else and
+can change under you, so record the refresh timestamp behind any figure that depends on it.
+
 #### `mv_commit_message_issue_links_all`
 Issue references parsed out of commit messages by regex, tagged by convention
 (`fixes #N`, `gh-N`, cross-repo, …).
@@ -201,13 +269,46 @@ same-repo `fixes #N`. The evidence class itself is assigned in `ADAPTER_AND_API.
 
 ---
 
+#### ⚠️ Which two objects does a link row join? — open question O11
+
+Three method names appear on **both** sides of this family, and the two documents disagree about
+what they connect:
+
+| Method | `ADAPTER_AND_API.md` §3 says | The view name says |
+|---|---|---|
+| `closed_via_commit` | Issue → Commit | issue ↔ PR |
+| `commit_message` | Commit → Issue | issue ↔ PR (and commit → issue, via the other view) |
+| `proximity` | Commit → PR | issue ↔ PR |
+
+Both readings are coherent — "this issue links to that PR *because* a commit closed the issue" is a
+perfectly good issue↔PR method — but they cannot both be right, and the answer is load-bearing. The
+endpoint types decide the qualifier (decision 43), the toggle group (`deriveRelGroups` keys on the
+sorted type pair), which two lanes the link is drawn between, and how the RQ2 breakdown is counted.
+
+**Resolve it by reading the columns, not the names.** A row keyed on `issue_id` + `pull_request_id`
+is an issue↔PR link whatever its method is called. Then reconcile `ADAPTER_AND_API.md` §3 and, if
+`commit_message` really does name two different relations, split the `LINK_METHOD` value — one enum
+value covering both would make a per-method toggle switch off two unrelated things and would merge
+them in every figure. Tracked as **O11** in `DECISIONS.md`.
+
+---
+
 ## 2. What this project builds on top
 
-Three derivations are not materialized anywhere upstream — `commit_pr_links`, `issue_pr_links`
-and `object_lifecycles`. Their specification, form (plain view vs materialized) and rationale live
-in `ADAPTER_AND_API.md` §2 — deliberately kept out of this document so the frozen contract and my
-own work are never confused. (A fourth, `process_gaps`, was specified there and then superseded by
-decision 12: gaps are computed in JS over the loaded sub-log so they follow the toggles.)
+⚠️ **This section's premise has weakened, and it is the most expensive thing in this revision to get
+wrong.** It said three derivations "are not materialized anywhere upstream" — `commit_pr_links`,
+`issue_pr_links` and `object_lifecycles`. Two upstream views now recorded in §1,
+`mv_commit_pr_links` and `mv_issue_to_pr_validated_all`, look like exactly the first two. Until
+their definitions have been read, assume **`object_lifecycles` is the only one certainly yours to
+build**, and treat `ADAPTER_AND_API.md` §2's "three derivations to build" as two-thirds unverified.
+Building a duplicate of an upstream view would be a week spent reproducing a join that already
+exists — and worse, a second admission rule for commit→PR matching that silently disagrees with the
+one other people's figures use.
+
+(A fourth derivation, `process_gaps`, was specified in §2 there and superseded by decision 12: gaps
+are computed in JS over the loaded sub-log so they follow the toggles. An upstream `mv_process_gaps`
+also exists — see §3 — and is likewise not consumed, for the same reason and not because it is
+missing.)
 
 **Indexes** are the first performance lever, ahead of any materialization: `repo_id`, `issue_id`,
 `pull_request_id`, `commit_sha`, `push_id`. With ~14 GB and 3–4M rows in the largest views, query
@@ -230,37 +331,77 @@ latency is the real risk, not render latency.
 
 ## 3. Deliberately out of scope
 
-These views exist but are not used, because the thesis scope is issue → PR → commit plus comments
-and actors. Recorded so the choice is documented rather than accidental.
+**27 views.** They exist and are not used. Recorded so the choice is documented rather than
+accidental — and so that finding one in `pg_views` is not mistaken for a discovery.
 
-| Excluded facet | Views |
-|---|---|
-| Labels | `mv_issue_pr_labels_full`, `mv_label_snapshots_per_event`, `mv_label_lifecycle_events`, `mv_process_labels`, `mv_label_objects`, `mv_issue_pr_label_membership` |
-| Reviews / review comments | `mv_pr_reviews_full`, `mv_pr_review_comments_full`, `mv_pr_review_activities` |
-| Forks / branch provenance | `mv_fork_events_full`, `mv_pr_head_provenance`, `mv_create_events_full` |
-| Branch deletion | `mv_delete_events_full` |
-| Commit comments | `mv_commit_comment_activities` |
-| Comment classification | `mv_comment_classification` |
+| Excluded facet | Views | Why |
+|---|---|---|
+| **The other thesis's OCEL tables** (9) | `ocel_repos`, `ocel_actors`, `ocel_commits`, `ocel_events`, `ocel_c_events`, `ocel_c_objects`, `ocel_c_e2o`, `ocel_c_e2o_references`, `ocel_c_o2o` | **Off-limits by rule**, not by scope: a PhD student is building the real OCEL 2.0 tables and they are theirs. This project's adapter (decision 11) exists precisely *because* we do not read these. Note the trap — `ocel_c_e2o` is the event-to-object relation that would answer open question O10, and it is exactly the thing we may not touch. Decision 43 also records that our previous four link qualifiers were inherited from these views, which is why they were replaced |
+| Labels (6) | `mv_issue_pr_labels_full`, `mv_label_snapshots_per_event`, `mv_label_lifecycle_events`, `mv_process_labels`, `mv_label_objects`, `mv_issue_pr_label_membership` | Out of scope (decision 40, "add if time") |
+| Reviews / review comments (3) | `mv_pr_reviews_full`, `mv_pr_review_comments_full`, `mv_pr_review_activities` | Out of scope. Never implemented, and F1's own `meta.activity_scope` says so: *"OCEL-strict + comments (reviews/dismissals/review-comments excluded)"* |
+| Forks / branch provenance (3) | `mv_fork_events_full`, `mv_pr_head_provenance`, `mv_create_events_full` | Out of scope |
+| Branch deletion (1) | `mv_delete_events_full` | Out of scope |
+| Commit comments (1) | `mv_commit_comment_activities` | Out of scope |
+| Off-platform merges (1) | `mv_pr_offplatform_merges` | **Dropped by decision 48** — see below. The only exclusion that a view in scope depends on |
+| Analytics over `ocel_events` (3) | `mv_object_outcomes`, `mv_process_gaps`, `mv_comment_classification` | Read `ocel_events` throughout, so they inherit the off-limits rule above and are unsalvageable under it. Two would also be refused on their own merits: `mv_process_gaps` and `mv_object_outcomes` compute exactly what decision 12 requires be computed **in JS over the loaded sub-log**, so that they follow the toggles. A precomputed gap answers "comments hidden → gaps unchanged" silently, which is the failure decision 12 exists to prevent. `mv_comment_classification` is comment classification, out of scope |
 
-Bot / human actor classification is likewise out of scope; `actor` is used as-is.
+Bot / human actor classification is likewise out of scope (decision 47); `actor` is used as-is. That
+is a boundary of this thesis rather than a permanent judgement — when another student's
+classification lands upstream, consuming it is a one-field addition.
+
+#### `mv_pr_offplatform_merges` — excluded, but you will meet it anyway
+
+PRs closed without being merged on GitHub whose commits later appear in a push.
+*Depends on:* `mv_pull_request_events_full`, `mv_push_commits_full`
+**Columns (14):** `repo_id`, `pull_request_id`, `pr_number`, `base_ref`, `pr_closed_at`,
+`closer_actor_id`, `delivering_commit_sha`, `push_id`, `pushed_at`, `pusher_actor_id`,
+`delta_seconds`, `link_convention`, `link_kind`, `link_method`
+
+**Not consumed (decision 48).** It once supplied a `PullRequestMergedOffPlatform` activity and a
+distinct PR outcome; both are gone. The view is a `delta_seconds` timing heuristic, and drawing its
+output with the weight of a real merge presented an inference as ground truth. The GitHub facts it
+builds on — the PR was closed, unmerged — are already carried by `mv_pull_request_events_full`.
+
+⚠️ **It is a dependency of `mv_pull_request_and_comment_activities_full`, which *is* in scope.** So
+the reference is unavoidable: that timeline JOINs this view and emits an off-platform-merge
+`activity_type`. Those rows map to **`PullRequestClosed`** — the GitHub fact. Anything else throws
+against the closed vocabulary, which is the intended behaviour.
 
 ---
 
 ## 4. ⚠️ Limitation to document in the thesis
 
-The four available issue↔PR detection methods key on **GitHub's standard conventions**: closing
-keywords in the PR body, `fix/123`-style branch names, and `#N` references in PR titles and issue
-comments.
+⚠️ **This section was written against the four-method snapshot and is now half wrong. Do not quote it
+in the thesis as it stands.**
 
-**Project-specific conventions are not covered** — `gh-N`, `bug #N`, `For #N` and similar. These are
-common in **kubernetes and react, two of the three selected repositories**, while vscode largely
-follows the standard forms.
+The four originally recorded issue↔PR detection methods key on **GitHub's standard conventions**:
+closing keywords in the PR body, `fix/123`-style branch names, and `#N` references in PR titles and
+issue comments.
 
-This is a threat to **RQ2**: if link detection is systematically weaker on kubernetes and react than
-on vscode, apparent cross-repository process differences may be artifacts of detection coverage
-rather than real behaviour.
+It said project-specific conventions — `gh-N`, `bug #N`, `For #N` — are **not covered**, and that
+this threatens RQ2: if detection is systematically weaker on kubernetes and react than on vscode,
+apparent cross-repository process differences may be artifacts of coverage rather than real
+behaviour.
 
-**Mitigation:** report per-repo issue↔PR link counts broken down by detection method, and state the
-coverage gap numerically. If it turns out large, consider adding commit-message-based issue→PR
-linking by joining `mv_commit_message_issue_links_all` through the adapter's `commit_pr_links` view, which
-would recover some of the missing recall.
+**What has changed.** Those exact conventions have a dedicated view,
+`mv_issue_pr_links_extended_conventions`, and it supplies the six extended methods decision 42 added
+to the enum. Two of the three suggested mitigations also already exist upstream:
+commit-message-based issue↔PR linking (`mv_issue_pr_links_commit_message`) and commit↔PR attribution
+(`mv_commit_pr_links`). The recall this section proposed recovering may already be recovered.
+
+**What has not changed.** *Detection exists* and *coverage is comparable* are different claims, and
+only the second one bears on RQ2. Nobody has measured either. The threat is therefore **narrower and
+still open**, and the honest form of it is:
+
+- Report per-repo issue↔PR link counts **broken down by method**, now across all seven plus the
+  extended-convention set — not the original four.
+- Report what share of each repository's links comes from `proximity`, separately. It is the weakest
+  method in the enum: nothing is asserted and nothing is parsed, only two timestamps are near each
+  other. A coverage figure carried by proximity is not the same claim as one carried by
+  `closed_via_commit`, and a per-repo difference in that mix is itself a finding.
+- State the number, or state that it is unmeasured. **Do not estimate it** — an invented coverage
+  figure would undermine the very limitation it documents (`VERIFICATION.md` §5).
+
+Until the query has actually been run, the thesis should say the gap is *narrower than first
+documented and not yet quantified*, which is both true and weaker than what this section used to
+claim in either direction.

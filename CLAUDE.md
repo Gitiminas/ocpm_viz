@@ -32,7 +32,7 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | Doc | What it is | Authority |
 |---|---|---|
 | `docs/DECISIONS.md` | Settled decisions + open questions | **Binding.** Read first. |
-| `docs/DATA_CONTRACT.md` | What exists upstream: 4 base tables + 17 MVs | **Authoritative.** If a view is not in it, it does not exist. |
+| `docs/DATA_CONTRACT.md` | What exists upstream: 4 base tables + 49 views (22 in scope, 27 excluded) | **Authoritative.** If a view is not in it, it does not exist — but check its snapshot date, because the 2026-08-04 revision added 17 relations the previous one had never named. |
 | `docs/DATA_REQUIREMENTS.md` | Every field the visualization needs, by entity | Requirements side |
 | `docs/ADAPTER_AND_API.md` | The layer I build; `ObjectGraph` contract; evidence mapping | Binding |
 | `docs/ARCHITECTURE.md` | Layers, seams, OCPM implications for the renderer | Intent |
@@ -71,7 +71,7 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
   The existing data blob and UI still say "case" — that is a defect to fix, not a precedent.
 - **`docs/DATA_CONTRACT.md` is the complete list of what exists.** Do not invent views. Do not
   assume a view exists because it would be convenient. Anything else, I build in my own schema.
-- **Never modify the shared upstream.** Base tables and the 17 MVs are owned by other researchers
+- **Never modify the shared upstream.** The base tables and every view are owned by other researchers
   (a PhD student is building real OCEL tables; another MSc student is building bot classification).
   Read-only. No `UPDATE`/`DELETE`/`DROP`/`TRUNCATE`, no refreshes, no altering their definitions.
   **This includes indexes.** `CREATE INDEX` requires ownership of the relation, so any index on an

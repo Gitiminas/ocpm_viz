@@ -168,10 +168,18 @@ Stated plainly rather than left to inference.
 ## 5. RQ2: per-repo link coverage — **blocked, not skipped**
 
 `tasks/06` asks for per-repo issue↔PR link counts broken down by detection method,
-to quantify a threat to RQ2: the four available methods key on GitHub's standard
-conventions, while `gh-N`, `bug #N` and `For #N` are common in kubernetes and react.
-If detection is systematically weaker there than on vscode, apparent cross-repository
-process differences may be artifacts of detection coverage rather than real behaviour.
+to quantify a threat to RQ2: if detection is systematically weaker on kubernetes and
+react than on vscode, apparent cross-repository process differences may be artifacts
+of detection coverage rather than real behaviour.
+
+⚠️ **The threat narrowed on 2026-08-04 and did not close.** It was stated as "the four
+available methods key on GitHub's standard conventions, while `gh-N`, `bug #N` and
+`For #N` are common in kubernetes and react". The contract snapshot now records seven
+method views plus `mv_issue_pr_links_extended_conventions`, which detects exactly those
+forms. *Detection exists* and *coverage is comparable across repositories* are
+different claims, though, and only the second bears on RQ2 — neither has been measured.
+The breakdown must now cover all seven methods plus the extended set, and report the
+`proximity` share separately, since it matches on timing alone. See `DATA_CONTRACT.md` §4.
 
 **This figure cannot be produced yet.** It spans data that is not loaded, so by
 decision 12 it belongs in SQL — and there is no database connection from this

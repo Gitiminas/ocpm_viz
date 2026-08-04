@@ -107,14 +107,23 @@ const VALIDATED_METHODS = new Set([
 const ALL_METHODS = new Set(Object.values(LINK_METHOD));
 
 /**
- * The four issue↔PR detection methods, independently toggleable (Task 3).
+ * Issue↔PR detection methods whose toggle is seeded even when unused (Task 3).
  *
- * Four, not sixteen: these are the ones backed by their own upstream materialized view
- * (`DATA_CONTRACT.md` §1), so a toggle for each is guaranteed to exist even when the
- * loaded sub-log uses none of them. The six extended conventions also link issues to
- * PRs, but they arrive through no dedicated view, so `deriveMethods` gives them a
- * toggle only when the data actually carries one — which is the normal rule, and
- * this list is the exception to it.
+ * These four have a toggle whatever the loaded sub-log contains; every other method
+ * gets one only when a link actually carries it, which is the normal rule and the one
+ * `deriveMethods` implements.
+ *
+ * ⚠️ **The reason for choosing these four has expired.** It was that they alone were
+ * backed by their own upstream materialized view. The contract snapshot of 2026-08-04
+ * records **seven** issue↔PR method views plus `mv_issue_pr_links_extended_conventions`
+ * for the six extended conventions — so "has its own view" no longer picks out four,
+ * and this list is now four by history rather than by rule.
+ *
+ * Left as-is deliberately, because widening it is a judgement rather than a
+ * correction: seeding all thirteen issue↔PR methods would put ten permanently empty
+ * toggles in the sidebar of every sub-log that uses none of them, and an always-visible
+ * control that never does anything is its own kind of lie. Decide it against real data,
+ * once a sub-log from the RPC shows which methods actually occur. See O11.
  */
 export const ISSUE_PR_METHODS = [
   LINK_METHOD.PR_BODY,

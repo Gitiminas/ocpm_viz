@@ -11,14 +11,14 @@ description of what runs today.)
 GH Archive dumps
       │  (ingest — shared infrastructure, not this project)
       ▼
-  base tables  ──►  17 materialized views  ──►  adapter views  ──►  PostgREST ──►  D3
+  base tables  ──►  49 upstream views  ──►  adapter views  ──►  PostgREST ──►  D3
   actor/org/         payload extraction         OCEL-shaped        get_object_    browser
   repo/event         FROZEN, shared             MINE               graph
 
                     └──── owned by others ────┘  └──────── this thesis ────────┘
 ```
 
-**Base tables + 17 MVs — frozen.** Shared research infrastructure. Contract snapshot in
+**Base tables + the upstream views — frozen.** Shared research infrastructure. Contract snapshot in
 `DATA_CONTRACT.md`. Never modified, never refreshed from here, never extended. If a query is
 awkward, solve it in the adapter layer.
 

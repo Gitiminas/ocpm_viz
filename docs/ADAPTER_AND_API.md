@@ -24,14 +24,22 @@ The deciding criterion for precomputation is **not** performance — it is wheth
 on the sub-log selection. Fixed properties of the data can be precomputed; anything that changes
 when the user flips a toggle cannot.
 
+> ⚠️ **Read this before building any of the three.** The 2026-08-04 contract snapshot records two
+> upstream views that were not in the previous one: **`mv_commit_pr_links`** and
+> **`mv_issue_to_pr_validated_all`**. By their names they are the first two rows of this table,
+> already built by someone else. Inspect both definitions before writing a line of SQL — duplicating
+> them costs a week and, worse, creates a second commit→PR admission rule that silently disagrees
+> with the one other people's figures already use. `object_lifecycles` is the only row certainly
+> still yours.
+
 Three derivations to build. A fourth is listed struck through: it was specified here, then
 superseded by decision 12. It stays visible because the reasoning that produced it is what decision
 12 acted on, and a reader who finds only three rows will wonder what happened to gaps.
 
 | View | Purpose | Form | Notes |
 |---|---|---|---|
-| `commit_pr_links` | Commit↔PR attribution | **Materialize** | Match `mv_pull_request_events_full.merge_commit_sha` / `.head_sha` against `mv_push_commits_full.commit_sha`, plus branch-ref match (`head_ref` ↔ `ref`). Expensive join across the two largest views, and a rule-based derivation that must be fixed and inspectable for the RQ2 link counts. Record **which rule matched** so evidence can be graded. Admission rule: open question O2. |
-| `issue_pr_links` | One deduplicated issue↔PR link table | Plain view first | UNION the four detection-method views; dedupe to one row per (issue, PR); keep `primary_link_method` by priority, `n_methods`, `link_methods`, `validation_status`, temporal columns. Promote to materialized only on measurement. |
+| `commit_pr_links` ⚠️ *may exist as `mv_commit_pr_links`* | Commit↔PR attribution | **Materialize** | Match `mv_pull_request_events_full.merge_commit_sha` / `.head_sha` against `mv_push_commits_full.commit_sha`, plus branch-ref match (`head_ref` ↔ `ref`). Expensive join across the two largest views, and a rule-based derivation that must be fixed and inspectable for the RQ2 link counts. Record **which rule matched** so evidence can be graded. Admission rule: open question O2. |
+| `issue_pr_links` ⚠️ *may exist as `mv_issue_to_pr_validated_all`* | One deduplicated issue↔PR link table | Plain view first | UNION the **seven** detection-method views plus `mv_issue_pr_links_extended_conventions` (it was four when this row was written); dedupe to one row per (issue, PR); keep `primary_link_method` by priority, `n_methods`, `link_methods`, `validation_status`, temporal columns. Promote to materialized only on measurement. |
 | `object_lifecycles` | Lifecycle spans per issue / PR | Plain view | Issues: `issue_created_at` → `issue_closed_at` (+ `issue_state`). PRs: `pr_created_at` → `pr_merged_at` / `pr_closed_at` (+ `pr_is_merged`). Do **not** fold in `mv_pr_offplatform_merges` — decision 48 dropped it; a PR closed unmerged ends at `pr_closed_at`. **Emit interval lists** (decision 4). Fixed property of the data, so safe to precompute. |
 | ~~`process_gaps`~~ | ~~Bottleneck / idle-time analysis~~ | **Superseded by decision 12** | Retained for rationale only — do not build this. `LAG`/`LEAD` over the per-object event list → `gap_hours`, `gap_class`, `actor_changed`. The reasoning still holds: gaps depend on which events are in the sub-log, so precomputing globally answers "comments hidden → gaps unchanged" silently. Decision 12 resolves it by computing gaps **in JS over the loaded sub-log**, where they follow the toggles for free. Implemented in `src/stats/metrics.js`. |
 
@@ -67,10 +75,10 @@ is the vocabulary (decision 20), and every row here must have a member there and
 | Issue ↔ PR | `pr_title_symfony` — Symfony's PR-title convention | `extracted` | Convention |
 | Issue ↔ PR | `pr_body_fixed_tickets` — a "Fixed tickets" row in a PR-body template | `extracted` | Convention, template-specific |
 | Issue ↔ PR | `pr_body_refs` — `Refs #123` in the body | `extracted` | Convention. In the body like `pr_body`, but a reference closes nothing, so the rule separates them |
-| Issue → Commit | `closed_via_commit` — GitHub's own closed-via-commit record | `validated` | The platform states it; nothing is parsed |
+| ⚠️ Issue → Commit **or** Issue ↔ PR — O11 | `closed_via_commit` — GitHub's own closed-via-commit record | `validated` | The platform states it; nothing is parsed. Endpoint types disputed: the upstream view is named `mv_issue_pr_links_closed_via_commit` |
 | Commit → PR | `ref_match` — branch-ref match (`head_ref` ↔ `ref`) | `extracted` | Convention |
-| Commit → PR | `proximity` — matched on closeness in time alone | `extracted` | The weakest method in the enum. Nothing is asserted and nothing is parsed — only two timestamps are near each other |
-| Commit → Issue | `commit_message` — regex over the message (`mv_commit_message_issue_links_all`) | `extracted` | Convention. Sub-grade with `link_convention` / `ref_scope`; cross-repo refs are weaker than same-repo `fixes #N` |
+| ⚠️ Commit → PR **or** Issue ↔ PR — O11 | `proximity` — matched on closeness in time alone | `extracted` | The weakest method in the enum. Nothing is asserted and nothing is parsed — only two timestamps are near each other. Endpoint types disputed: the upstream view is named `mv_issue_pr_links_proximity`. Report its share separately in any RQ2 count |
+| ⚠️ Commit → Issue **and/or** Issue ↔ PR — O11 | `commit_message` — regex over the message | `extracted` | Convention. Sub-grade with `link_convention` / `ref_scope`; cross-repo refs are weaker than same-repo `fixes #N`. **Two upstream views emit this**: `mv_commit_message_issue_links_all` (commit → issue) and `mv_issue_pr_links_commit_message` (issue ↔ PR). One enum value cannot carry two relations — see O11 |
 
 > Sixteen link methods, and every one of them links two **objects** (decision 42). Three values have
 > been deleted and none returns without an upstream source that emits it: `merge_commit_message`
@@ -79,6 +87,15 @@ is the vocabulary (decision 20), and every row here must have a member there and
 >
 > These rows were classified in `src/model/evidence.js` before this table recorded them.
 > `commit_message` follows the rule unambiguously — it parses text.
+>
+> ⚠️ **The evidence classes above are not in doubt; the endpoint types in three rows are.** The
+> 2026-08-04 contract snapshot names `mv_issue_pr_links_closed_via_commit`,
+> `mv_issue_pr_links_proximity` and `mv_issue_pr_links_commit_message` — all in the issue↔PR family,
+> where this table says commit. Whichever way it resolves, the *class* is unaffected: the rule asks
+> whether GitHub asserts the link, not which two objects it joins. What changes is the qualifier, the
+> toggle group, the lanes the link is drawn between, and the RQ2 breakdown. Resolve by reading the
+> view columns — a row keyed on `issue_id` + `pull_request_id` is an issue↔PR link whatever its
+> method is called. Tracked as **O11**.
 >
 > **Why `event_actor_id` is gone, and why it is the instructive one.** It was an identity match on a
 > column GitHub supplies, so `validated` followed the rule and the classification was never wrong.
