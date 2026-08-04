@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 
 import { createRpcTransport, searchSeeds, DEFAULT_BASE_URL } from '../src/data/api.js';
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
+import { resolveQuery } from '../src/data/source.js';
 
 /** A fetch stub that records the request and replays a canned response. */
 function stubFetch(response) {
@@ -235,5 +236,43 @@ describe('seed search bridges display numbers to database ids', () => {
     await searchSeeds('r', '10', { transport, limit: 20 });
     assert.ok(calls[0].max_results > 20, 'trimming before ranking would discard better matches');
     assert.ok(calls[0].max_results <= 200, 'and must stay within the server cap');
+  });
+});
+
+describe('a query is resolved before anything is fetched', () => {
+  const dbSource = { defaultSeed: async () => null };
+  const fixtureSource = { defaultSeed: async (repo) => (repo === 'has-seeds' ? 'issue:1' : null) };
+
+  test('a ?fixture= address loads directly and is never asked for a seed', async () => {
+    // The regression this suite exists for: `?fixture=` carries no seed by design, and
+    // testing only for a seed made every fixture link show the "choose a seed" prompt.
+    for (const source of [dbSource, fixtureSource]) {
+      const resolved = await resolveQuery({ fixture: 'F1' }, source);
+      assert.equal(resolved.action, 'load');
+      assert.deepEqual(resolved.query, { fixture: 'F1' });
+    }
+  });
+
+  test('repo plus seed is a complete query', async () => {
+    const resolved = await resolveQuery({ repo: 'r', seed: 'pr:1' }, dbSource);
+    assert.equal(resolved.action, 'load');
+    assert.equal(resolved.query.seed, 'pr:1');
+  });
+
+  test('a repo with no seed prompts against the database, which cannot default', async () => {
+    const resolved = await resolveQuery({ repo: 'microsoft/vscode' }, dbSource);
+    assert.equal(resolved.action, 'prompt');
+    assert.equal(resolved.repo, 'microsoft/vscode');
+  });
+
+  test('a repo with no seed loads the first servable one against fixtures', async () => {
+    const resolved = await resolveQuery({ repo: 'has-seeds' }, fixtureSource);
+    assert.equal(resolved.action, 'load');
+    assert.equal(resolved.query.seed, 'issue:1');
+  });
+
+  test('a repo the fixture source cannot serve still prompts rather than failing', async () => {
+    const resolved = await resolveQuery({ repo: 'no-seeds' }, fixtureSource);
+    assert.equal(resolved.action, 'prompt');
   });
 });

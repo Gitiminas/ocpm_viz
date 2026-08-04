@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph, collectInstants } from '../src/model/objectGraph.js';
+import { indexObjectGraph, collectInstants, normalizeGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { buildNodes, assignRanks } from '../src/layout/nodes.js';
 import { createScales } from '../src/layout/scales.js';
@@ -38,7 +38,12 @@ function fakeSelection(recorded) {
         return selection;
       },
       style: () => selection,
-      text: () => selection,
+      // Recorded, not discarded: the "?" evidence badge and the "×N" crowded-bundle
+      // count are both text, and a harness that swallows it cannot check either.
+      text(value) {
+        node.text = value;
+        return selection;
+      },
       on: () => selection,
       selectAll: () => ({ remove() {} }),
       node: () => ({}),
@@ -393,6 +398,59 @@ describe('links that would coincide are fanned apart', () => {
     assert.equal(startXs.length, 2, 'the two links must not start at the same x');
     const separation = Math.abs(Number(startXs[0]) - Number(startXs[1]));
     assert.ok(separation >= 4, `links only ${separation}px apart`);
+  });
+
+
+  test('a bundle too crowded to fan is drawn coincident and declares its size', async () => {
+    /*
+     * The defect this pins: PR #116416 contains 85 commits pushed in the same hour, so
+     * 85 links land in one bundle. Fanned at 5px each that smears the shared endpoint
+     * across 425px, and the lane caption then says one pull request while the picture
+     * shows a wall of arrival points. Past MAX_FANNED_LINKS the bundle collapses to one
+     * visible line carrying a count.
+     */
+    const N = 20;
+    const objects = [
+      { id: 'pr:1', type: 'pull_request', label: 'PR #1', intervals: [{ start: '2025-01-01T00:00:00Z', end: '2025-01-02T00:00:00Z' }] },
+      ...Array.from({ length: N }, (_, i) => ({
+        id: `commit:${i}`, type: 'commit', label: `c${i}`,
+        intervals: [{ start: '2025-01-01T01:00:00Z', end: '2025-01-01T01:00:00Z' }],
+        vmap: {},
+      })),
+    ];
+    const links = Array.from({ length: N }, (_, i) => ({
+      source: 'pr:1', target: `commit:${i}`,
+      qualifier: 'contains_commit', evidence: 'validated',
+      method: 'head_sha', link_methods: ['head_sha'], n_methods: 1,
+    }));
+    const graph = normalizeGraph({ meta: {}, objects, events: [], links });
+    const index = indexObjectGraph(graph);
+    const drawn = [];
+
+    renderLinks({
+      gLink: fakeSelection(drawn),
+      defs: fakeSelection([]),
+      links: graph.links,
+      byId: index.byId,
+      anchors: anchorsFor({}),
+      state: resetToggles(createState(), {
+        relGroups: deriveRelGroups(graph.links, index.byId),
+        qualifiers: deriveQualifiers(graph.links),
+        methods: deriveMethods(graph.links),
+      }),
+      focus: null,
+      burstsByCommit: new Map(),
+      tooltip: { bind: (s) => s },
+      objectColors: new Map(),
+    });
+
+    const startXs = new Set(
+      drawn.filter((d) => d.attrs.d).map((d) => d.attrs.d.match(/^M([-\d.]+),/)[1]),
+    );
+    assert.equal(startXs.size, 1, `${N} coincident links must not be spread across ${startXs.size} positions`);
+
+    const labels = drawn.map((d) => d.text).filter((t) => typeof t === 'string' && t.startsWith('×'));
+    assert.deepEqual(labels, [`×${N}`], 'the bundle must declare how many links it stands for');
   });
 
   test('a source whose links already diverge is left where it was', async () => {

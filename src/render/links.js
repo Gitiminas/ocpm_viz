@@ -44,6 +44,14 @@ function makeAnchorResolver(burstsByCommit, expandedBursts) {
  * another. Small enough to stay within the source glyph, large enough to read.
  */
 const LINK_SPREAD_PX = 5;
+
+/**
+ * How many coincident links are worth separating before a count says it better.
+ *
+ * Six is where a fan still reads as distinct lines at LINK_SPREAD_PX (30px total) and
+ * beyond which the shared endpoint starts to look like several objects rather than one.
+ */
+const MAX_FANNED_LINKS = 6;
 /** Target x values closer than this are treated as the same column. */
 const SAME_COLUMN_PX = 2;
 
@@ -73,8 +81,37 @@ function computeLinkOffsets(entries) {
     bundles.get(key).push(entry);
   }
 
+  const crowded = new Map();
+
   for (const bundle of bundles.values()) {
     if (bundle.length < 2) continue;
+
+    /*
+     * ⚠️ **Past a point, fanning stops separating and starts lying.**
+     *
+     * The fan (decision 25) exists so a link hidden underneath another is still
+     * visible, and it was designed against F5's two coincident links. It scales
+     * badly: a pull request containing 85 commits pushed in the same hour puts 85
+     * links in one bundle, and spreading them 5px apart smears the shared endpoint
+     * across 425px. The lane caption then says *one* pull request while the picture
+     * shows a wall of arrival points — which reads as many. That is a wrong picture
+     * with no error, and it is worst exactly where a PR carries the most work.
+     *
+     * So beyond MAX_FANNED_LINKS the bundle is drawn coincident — one visible line —
+     * and its size is declared with a count badge instead. That trades "you can see
+     * each of the 85" for "you can see there are 85", which is the honest trade: at
+     * 85 you could not see each of them anyway, and the commits themselves are all
+     * drawn in the commit lane regardless. Declaring the count rather than silently
+     * overlapping is decision 27's rule applied to the renderer.
+     */
+    if (bundle.length > MAX_FANNED_LINKS) {
+      for (const entry of bundle) offsets.set(entry.link, 0);
+      // The first entry carries the badge for the whole bundle.
+      bundle.sort((a, b) => a.ty - b.ty);
+      crowded.set(bundle[0].link, bundle.length);
+      continue;
+    }
+
     // Order by where each link is going, so the fan reads top-to-bottom rather
     // than in whatever order the links happened to arrive.
     bundle.sort((a, b) => a.ty - b.ty);
@@ -82,7 +119,7 @@ function computeLinkOffsets(entries) {
       offsets.set(entry.link, (i - (bundle.length - 1) / 2) * LINK_SPREAD_PX);
     });
   }
-  return offsets;
+  return { offsets, crowded };
 }
 
 export function renderLinks({
@@ -133,7 +170,7 @@ export function renderLinks({
     entries.push({ link, source, target, sourceAnchor, targetAnchor, folded, sx, sy, tx, ty });
   }
 
-  const offsets = computeLinkOffsets(entries);
+  const { offsets, crowded } = computeLinkOffsets(entries);
 
   // Gradients are rebuilt every render because both endpoints move. One per drawn
   // link, keyed by the *anchored* endpoints so folded links share a gradient.
@@ -189,6 +226,38 @@ export function renderLinks({
       .attr('stroke', `url(#${gradientId})`)
       .attr('stroke-width', style.width)
       .attr('stroke-dasharray', style.dash);
+
+    /*
+     * A bundle too crowded to fan says how big it is. Drawn whether or not the link is
+     * in focus and whatever its evidence class, because the count is a fact about the
+     * data rather than an uncertainty cue.
+     */
+    const crowd = crowded.get(link);
+    if (crowd) {
+      const color = objectColors.get(target.id) || qualifierColor(link.qualifier);
+      const label = `×${crowd}`;
+      group
+        .append('rect')
+        .attr('x', sx - 7 - label.length * 3.2)
+        .attr('y', sy - 9)
+        .attr('width', 14 + label.length * 6.4)
+        .attr('height', 18)
+        .attr('rx', 9)
+        .attr('fill', 'var(--color-bg)')
+        .attr('stroke', color)
+        .attr('stroke-width', 1.5);
+      group
+        .append('text')
+        .attr('x', sx)
+        .attr('y', sy)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('font-size', 10)
+        .attr('font-weight', 700)
+        .attr('fill', color)
+        .attr('class', 'mono')
+        .text(label);
+    }
 
     if (isExtracted && inFocus) {
       // The badge takes the target's shade too, so two "?" markers sitting near each

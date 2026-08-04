@@ -103,3 +103,32 @@ function databaseSource() {
 export function createSource(name = sourceFromUrl()) {
   return name === 'database' ? databaseSource() : fixtureSource();
 }
+
+/**
+ * Decide what a query means before anything is fetched: load it, or ask for a seed.
+ *
+ * Extracted from `main.js` because it is a three-case decision with a trap in it, and
+ * buried in DOM code the trap was invisible. The cases:
+ *
+ *   1. `?fixture=F1`   a DIRECT ADDRESS, not a query. Carries no seed by design and
+ *                      must not be asked for one — this is how the tests and
+ *                      already-written-down links name a specific bundle.
+ *   2. repo + seed     a complete query (decision 33). Load it.
+ *   3. repo, no seed   incomplete. The fixture source may offer its first servable
+ *                      seed; the database source cannot (decision 34), so: prompt.
+ *
+ * Case 1 is the trap. The first version of the missing-seed fix tested only for a seed,
+ * so every `?fixture=` link started showing "choose something to start from" instead of
+ * the fixture — a regression caught by opening one, not by any test. Hence this
+ * function, and hence the suite around it.
+ *
+ * @returns {Promise<{action:'load'|'prompt', query?:object, repo?:string}>}
+ */
+export async function resolveQuery(query, source) {
+  if (query?.fixture) return { action: 'load', query };
+
+  const seed = query?.seed || (await source.defaultSeed(query?.repo));
+  if (!seed) return { action: 'prompt', repo: query?.repo };
+
+  return { action: 'load', query: { ...query, seed } };
+}

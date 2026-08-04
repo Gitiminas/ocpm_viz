@@ -9,7 +9,7 @@
 /* global d3 */
 
 import { describeSubLog, seedObjects } from './data/loadObjectGraph.js';
-import { createSource } from './data/source.js';
+import { createSource, resolveQuery } from './data/source.js';
 import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
@@ -610,12 +610,12 @@ async function reload(query) {
      * that opening `?source=database` with no seed, or switching repository at all,
      * produced a dead app with no selectors.
      */
-    const seed = query.seed || (await source.defaultSeed(query.repo));
-    if (!seed) {
-      showSeedPrompt(query.repo);
+    const resolved = await resolveQuery(query, source);
+    if (resolved.action === 'prompt') {
+      showSeedPrompt(resolved.repo);
       return;
     }
-    await load({ ...query, seed });
+    await load(resolved.query);
   } catch (error) {
     showFatal(error, query);
   }
