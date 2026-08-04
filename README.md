@@ -73,7 +73,8 @@ All times are **UTC**, labelled.
 | `index.html` | The app shell: markup, CSS, one `<script type="module">` |
 | `src/` | The application, as ES modules — see below |
 | `tests/` | `node --test` suites and `tests/fixtures/` |
-| `scripts/` | Fixture builders and the dev server |
+| `sql/` | **The PostgREST data layer** — `fe_layer.sql` builds schema `fe` (views) and `api.get_object_graph` |
+| `scripts/` | Fixture builders, the dev server, and the RPC tooling |
 | `docs/` | Design record — start with `DECISIONS.md` |
 | `screenshots/` | Pre-change visual baseline. **Read-only** |
 | `ocel-data.json` | The original data blob. **Never edit**; fixture F1 is built from it |
@@ -160,16 +161,65 @@ as a direct address), `?page=stats` the statistics page, `?preset=…` a saved c
 
 ---
 
+## The data layer
+
+`sql/fe_layer.sql` is the whole of it. Run it, then query the RPC:
+
+```bash
+psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql        # idempotent, ~15 s
+psql -d gharchive_ocpm_viz_wsl -Atc \
+  "SELECT api.get_object_graph('microsoft/vscode','pr:448781946',2)"
+```
+
+Seeds are **type-prefixed database ids**, not display numbers (decision 51):
+`issue:<issue_id>`, `pr:<pull_request_id>`, `commit:<sha>`. To resolve a number:
+
+```sql
+SELECT id FROM fe.object_issue WHERE repo_id = 41881900 AND issue_number = 242864;
+```
+
+**Checking it:**
+
+```bash
+node scripts/rpc-check.mjs                    # full acceptance gate on a real payload
+psql -d ... -c "SELECT * FROM fe.diag_sanity" # 6 checks, every one must read 0
+```
+
+`scripts/rpc-check.mjs` feeds a live payload through `loadObjectGraph()` and requires
+`findGraphProblems()` to return `[]` — the same gate the 13 fixtures pass — then runs the
+real layout pipeline in all three time modes.
+
+⚠️ **After any upstream materialized-view refresh, run `SELECT fe.refresh_links();`**
+(~6 s). `fe.link_mat` is the one materialized relation in the layer and it goes stale
+silently otherwise. `fe.diag_link_staleness` reports the drift.
+
+**Looking at it without a browser** — `node scripts/shot.mjs LIVE1` renders the running
+app headlessly and writes a PNG to `.shots/` (gitignored; it never touches the read-only
+`screenshots/` baseline). Uses Microsoft Edge over WSL interop, or any Chrome/Chromium via
+`BROWSER=`. It answers "did this draw at all", not "is this right".
+
+**Looking at a real sub-log** — `scripts/pull-sublog.mjs` snapshots RPC output into
+`tests/fixtures/LIVE*.json` so the app can render it before it is wired to PostgREST.
+Those are **samples, not fixtures**: nothing asserts against them, and the `LIVE*` name
+keeps them out of the `^F\d+$` test globs.
+
+---
+
 ## Status
 
-Work packages `tasks/00` through `tasks/06` are complete. What is **not** done:
+Work packages `tasks/00` through `tasks/06` are complete, and the data layer is built.
+What is **not** done:
 
-- **No connection to the real database.** Every sub-log is a fixture. The adapter
-  views, the `get_object_graph` RPC and `src/data/api.js` are all unwritten.
-- **The RQ2 link-coverage figure is unmeasured**, and the query that would produce
-  it is no longer in the tree — `sql/` was deleted in `a1e2a9c`. It has to be
-  written again against the refreshed contract, which now lists seven issue↔PR
-  detection methods rather than four.
+- **The app still loads fixtures.** `sql/fe_layer.sql` and `api.get_object_graph` exist
+  and are verified against real data, but **PostgREST is not configured and
+  `src/data/api.js` is unwritten** — that is pass 2. No role has been granted
+  `USAGE` on schema `api` yet.
+- **The RQ2 link-coverage figure is now measurable but unpublished.**
+  `fe.diag_link_methods` produces it, grouped by `(method, qualifier)` as decision 50
+  requires. It has not been written up, and two caveats must travel with it: the
+  `ref_match` narrowing (decisions 61–62) makes every commit-link count a **floor**, and
+  the per-repo spread is a fork-vs-branch contribution artifact, not a process difference.
+- **Layout does not cope with dense real sub-logs** — see open question O12.
 - **Interaction has no automated coverage** — tooltips, minimap drag, legend hover.
 - **Sizing has not been tuned** beyond 1920×1200.
 

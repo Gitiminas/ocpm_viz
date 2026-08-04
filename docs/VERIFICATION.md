@@ -133,13 +133,55 @@ close tick. Ticking both is a two-line change if preferred.
 
 ---
 
+## 3b. The data layer — verified 2026-08-04
+
+`sql/fe_layer.sql` and `api.get_object_graph` were built and checked against the live
+database (`gharchive_ocpm_viz_wsl`, MVs last refreshed 2026-08-02 19:32–19:45 UTC).
+
+**What was checked, and how.**
+
+| Check | Mechanism | Result |
+|---|---|---|
+| No dangling event objects | `fe.diag_sanity` | 0 |
+| No issue or PR object with zero events | `fe.diag_sanity` | 0 |
+| Every actor named by an event has an actor object | `fe.diag_sanity` | 0 |
+| No pair linked twice by the same qualifier | `fe.diag_sanity` | 0 |
+| Both link endpoints are objects (decision 49) | `fe.diag_sanity` | 0 |
+| Exactly 9 distinct activities (decision 40) | `fe.diag_sanity` | 9 |
+| `fe.link_mat` matches its live definition | `fe.diag_link_staleness` | drift 0 |
+| Payload satisfies the frontend contract | `scripts/rpc-check.mjs` → `findGraphProblems()` | `[]` |
+| Contract facts the validator has no opinion on | `rpc-check.mjs`: `contract_version`, parseable timestamps, the 4 qualifiers, `link_methods` an array containing `method`, no `repo` type, no `is_bot`, no `CommitsPushed` | pass |
+| Real layout pipeline, all 3 time modes | `rpc-check.mjs`: finite x/y, every issue and PR banded, one interval per commit, forward-going extents, every link endpoint anchored | pass |
+| `npm test` unaffected | 377 tests | pass |
+
+**Coverage of that gate:** six sub-logs — all three repositories, all three seed types
+(issue, pull request, commit), traversal degrees 0–3, sizes from 5 to 404 objects.
+
+**Latency:** 1.7–3.4 s per sub-log end to end, from 19.4 s before indexing and tuning.
+Step-by-step measurements are in `sql/fe_layer.sql` §0.1. `fe.refresh_links()` is ~6 s.
+
+**Defects this found**, each caught by a check rather than by reading: duplicate links
+from two branches (16,040 + 5,111 surplus rows), 3,359 objects with no events, 2 objects
+with a NULL id, a nonexistent seed returning an empty payload instead of erroring, four
+point-intervals on one commit, and — after the fix — the decision-61 narrowing reaching
+only one of the two link families (decision 62).
+
+**A visual check was also made** (see §4): the app was rendered headlessly through
+Microsoft Edge over WSL interop and the resulting PNGs inspected.
+
+---
+
 ## 4. Not verified
 
 Stated plainly rather than left to inference.
 
-- **No real sub-log has been rendered.** Every fixture is F1 (one real, hand-built
-  example) or synthetic. The RPC does not exist, so nothing has been through the
-  adapter → PostgREST → browser path end to end.
+- ~~**No real sub-log has been rendered.**~~ **No longer a gap, 2026-08-04.** Real RPC
+  payloads have been rendered and looked at, both by the author in a browser and headlessly
+  via `msedge.exe --headless=new --screenshot` over WSL interop. What has *not* run end to
+  end is the **PostgREST → `fetch()` → browser** path: the samples reach the app as
+  `tests/fixtures/LIVE*.json`, written by `scripts/pull-sublog.mjs`, because `src/data/api.js`
+  does not exist yet. So the SQL and the payload are verified against the renderer; the HTTP
+  transport between them is not.
 - **Interaction is untested by assertion.** Tooltips, pin-to-copy, minimap
   drag-to-zoom, legend hover, the degree stepper and the actor card are exercised
   only by looking at them. They have no automated coverage, because they need a DOM
@@ -158,10 +200,16 @@ Stated plainly rather than left to inference.
   not by measurement. Sub-logs are small; if a real one is slow, report it.
 - **No screen size other than 1920×1200** has been checked, deliberately: sizing is
   deferred until the aspect-ratio pass.
-- **No traversal has ever been performed.** Selecting a repository and a seed resolves to a
-  *pre-built* sub-log; the expansion from a seed outwards is what `get_object_graph` will do
-  and has never run. Only the seeds listed in the catalogue can be served, which is why the
-  picker offers only those.
+- ~~**No traversal has ever been performed.**~~ **No longer a gap, 2026-08-04.** The
+  recursive traversal in `api.get_object_graph` runs and was exercised at degrees 0–3; the
+  degree sweep on vscode PR #116416 (1 → 39 → 42 → 291 objects) is what exposed how sharply
+  a sub-log grows with degree. What is still true is that the **app's picker** offers only
+  pre-built seeds, because it reads the fixture catalogue rather than the RPC.
+- **The `commit_distinct` floor is unquantified.** Decisions 61–62 admit a `ref_match`
+  commit only when GitHub flagged it new to the repository, which also excludes a legitimate
+  force-push or rebase of the author's own commit. Every commit-link figure is therefore a
+  floor by an **unmeasured** amount. Measuring it needs commit parent data, which this
+  dataset does not carry. Do not present the figures as exact.
 
 ---
 
