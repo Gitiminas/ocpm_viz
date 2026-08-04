@@ -474,8 +474,37 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
   input.value = initialLabel;
   input.setAttribute('value', initialLabel);
 
-  function renderResults(text) {
-    const results = search(text);
+  /*
+   * Search may be synchronous (the fixture catalogue, filtered in memory) or
+   * asynchronous (the database, over HTTP). Both are supported, and the async case
+   * needs two things the sync case never did.
+   *
+   * **A race guard.** Keystrokes fire overlapping requests and they do not come back
+   * in order: type "10", then "102", and the slower "10" response can land last and
+   * overwrite the results for "102" — leaving the dropdown showing matches for text
+   * the box no longer contains. `generation` makes a stale response a no-op. This is
+   * not hypothetical; it is the normal behaviour of an unguarded typeahead.
+   *
+   * **A debounce**, below, so a five-character query is one request rather than five.
+   */
+  let generation = 0;
+
+  async function renderResults(text) {
+    const mine = ++generation;
+    let results;
+    try {
+      results = await search(text);
+    } catch (error) {
+      // A failed search must say so. Rendering "no matches" would claim the repository
+      // holds nothing like it, which is a different and wrong statement.
+      if (mine !== generation) return;
+      dropdown.innerHTML =
+        `<div style="padding:10px 12px;font-size:11.5px;color:var(--color-danger,#e5534b);` +
+        `line-height:1.5">${escapeHtml(error.message.split('\n')[0])}</div>`;
+      return;
+    }
+    if (mine !== generation) return;
+
     dropdown.innerHTML = '';
 
     if (!results.length) {
@@ -521,9 +550,14 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
     renderResults('');
     dropdown.style.display = 'block';
   });
+  // Debounced, because each keystroke may be a network round trip. 150 ms is below
+  // the ~200 ms at which typing starts to feel laggy and above a fast typist's
+  // inter-key interval, so a word becomes one request.
+  let debounce = null;
   input.addEventListener('input', () => {
-    renderResults(input.value);
     dropdown.style.display = 'block';
+    clearTimeout(debounce);
+    debounce = setTimeout(() => renderResults(input.value), 150);
   });
   input.addEventListener('blur', () => {
     setTimeout(() => {

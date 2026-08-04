@@ -1466,3 +1466,214 @@ SELECT 'link endpoints that are not objects',
 UNION ALL
 SELECT 'distinct activities (must be exactly 9)',
        (SELECT count(DISTINCT activity) FROM fe.event), 9;
+
+
+-- =====================================================================================
+-- §8 — Seed search
+--
+-- The seed picker cannot enumerate its options (decision 34): a repository holds
+-- hundreds of thousands of issues and pull requests and millions of commits, so the
+-- interaction is a *search*. This is what it searches.
+--
+-- ⚠️ **The one place this layer stores what a search could return, and nothing about
+-- what a seed would YIELD.** Decision 34 is explicit: working out what a seed yields
+-- means running the traversal for that candidate, which cannot be done for every
+-- candidate in a repository. So: type, number or SHA, title. Nothing else.
+--
+-- MATERIALIZED, and here is the measurement decision 10 asks for. Against the plain
+-- object views a single lookup cost 348 ms (issue by number), 160 ms (commit by SHA
+-- prefix) and 597 ms (title scan) — because each one rebuilds a DISTINCT ON over the
+-- identity and first-seen union before filtering. A typeahead fires that on every
+-- keystroke. Materialized and indexed it is sub-millisecond; the numbers are in §8.1.
+--
+-- A search index is also the one thing that is *unambiguously* safe to precompute here:
+-- it depends only on which objects exist, never on the sub-log selection, so decision
+-- 12's objection to precomputing does not apply.
+-- =====================================================================================
+
+DROP MATERIALIZED VIEW IF EXISTS fe.seed_lookup CASCADE;
+CREATE MATERIALIZED VIEW fe.seed_lookup AS
+-- Titles are edited over an object's life, so take the most recent one rather than the
+-- first: it is what the object is called now, which is what someone searching for it
+-- will type.
+WITH issue_title AS (
+  SELECT DISTINCT ON (issue_id) issue_id, issue_title
+  FROM mv_issues_full
+  WHERE issue_id IS NOT NULL
+  ORDER BY issue_id, event_created_at DESC
+)
+SELECT o.repo_id,
+       o.id,
+       'issue'::text        AS type,
+       o.label,
+       o.issue_number       AS number,
+       NULL::text           AS sha,
+       t.issue_title        AS title
+FROM fe.object_issue o
+LEFT JOIN issue_title t ON t.issue_id = o.issue_id
+
+UNION ALL
+SELECT o.repo_id, o.id, 'pull_request', o.label, o.pr_number, NULL, o.vmap->>'title'
+FROM fe.object_pull_request o
+
+UNION ALL
+-- A commit's "title" is the first line of its message, which is the git convention and
+-- the only part worth matching against. The full message is in the payload's vmap.
+SELECT o.repo_id, o.id, 'commit', o.label, NULL, o.commit_sha,
+       NULLIF(split_part(o.vmap->>'commit_message', E'\n', 1), '')
+FROM fe.object_commit o
+WITH DATA;
+
+-- Exact and prefix matching on a number, per repo and type.
+CREATE INDEX IF NOT EXISTS ix_seed_repo_type_number ON fe.seed_lookup (repo_id, type, number);
+-- ⚠️ `text_pattern_ops` is required for `LIKE 'abc%'` to use the index. A default btree
+-- is built for the collation's ordering and cannot answer a prefix match, so without
+-- this operator class the SHA search silently falls back to a sequential scan — fast
+-- enough to look fine on a small repo and not on a large one.
+CREATE INDEX IF NOT EXISTS ix_seed_repo_sha ON fe.seed_lookup (repo_id, sha text_pattern_ops);
+CREATE INDEX IF NOT EXISTS ix_seed_repo_type ON fe.seed_lookup (repo_id, type);
+ANALYZE fe.seed_lookup;
+
+COMMENT ON MATERIALIZED VIEW fe.seed_lookup IS
+  'What a seed search can cheaply return about an object: type, number or SHA, title. '
+  'Never what a seed would yield (decision 34). Refresh with fe.refresh_search().';
+
+CREATE OR REPLACE FUNCTION fe.refresh_search() RETURNS void
+LANGUAGE sql AS $$
+  REFRESH MATERIALIZED VIEW fe.seed_lookup;
+$$;
+
+
+-- -------------------------------------------------------------------------------------
+-- §8.1 — Measurements for fe.seed_lookup (decision 10 wants the number, not the habit)
+--
+-- Same queries, plain views versus this materialized index, 2026-08-04:
+--
+--   issue by exact number        348 ms  ->    1.2 ms
+--   number prefix, 20 results      —    ->   12.4 ms
+--   commit by SHA prefix         160 ms  ->    1.6 ms
+--   title contains, 20 results   597 ms  ->   81.8 ms
+--
+-- 529,199 rows, built in 4.2 s. Refresh with `SELECT fe.refresh_search();`
+--
+-- **`pg_trgm` was considered and declined.** It is available but not installed, and a
+-- GIN trigram index would take the title search below ~10 ms. At 82 ms behind a debounced
+-- typeahead it is not the bottleneck, and `CREATE EXTENSION` is a database-wide change
+-- that other people's work would inherit — a bigger footprint than the problem. Revisit
+-- if title search moves onto the critical path; the lever is one index.
+-- -------------------------------------------------------------------------------------
+
+
+-- =====================================================================================
+-- §9 — The search RPC
+--
+-- `api.search_seeds` takes an ALREADY-PARSED reference, not a raw string.
+--
+-- ⚠️ That is deliberate and it is the whole design of this function. `parseSeedRef` in
+-- `src/data/seedQuery.js` already turns "pr #243221" into {type, number, shaPrefix, text},
+-- it is unit-tested, and it is what the fixture path uses. Re-implementing that parse in
+-- SQL would give the two transports two different parsers to disagree about — the
+-- fixture search finding something the database search does not, or ranking it
+-- differently, with nothing to say which is right.
+--
+-- So the split is: **SQL filters, JavaScript ranks.** This function returns a permissive
+-- superset of candidates using the indexes; `scoreSeedRef` then applies exact-beats-
+-- prefix-beats-substring exactly as it does for the catalogue. One parser, one ranker,
+-- two sources.
+-- =====================================================================================
+
+CREATE OR REPLACE FUNCTION api.search_seeds(
+  repo         text,
+  seed_type    text    DEFAULT NULL,   -- 'issue' | 'pull_request' | 'commit'
+  number_query text    DEFAULT NULL,   -- digits, matched as a substring
+  sha_prefix   text    DEFAULT NULL,   -- matched from the front, as git abbreviates
+  text_query   text    DEFAULT NULL,   -- free text, matched against title and label
+  max_results  integer DEFAULT 20
+) RETURNS TABLE (id text, type text, label text, number integer, sha text, title text)
+LANGUAGE plpgsql STABLE AS $fn$
+DECLARE
+  _repo_id bigint;
+BEGIN
+  IF max_results IS NULL OR max_results < 1 OR max_results > 200 THEN
+    RAISE EXCEPTION 'max_results must be between 1 and 200, got %', max_results;
+  END IF;
+
+  -- Same deterministic name resolution as get_object_graph: repo.name is not unique in
+  -- this database, so ties break on event volume rather than on whichever row came back.
+  SELECT r.id INTO _repo_id
+  FROM repo r
+  WHERE r.name = repo
+  ORDER BY (SELECT count(*) FROM event e WHERE e.repo_id = r.id) DESC, r.id
+  LIMIT 1;
+
+  IF _repo_id IS NULL THEN
+    RAISE EXCEPTION 'no repository named %', repo
+      USING HINT = 'SELECT name FROM repo — this database holds three with data.';
+  END IF;
+
+  RETURN QUERY
+  SELECT s.id, s.type, s.label, s.number, s.sha, s.title
+  FROM fe.seed_lookup s
+  WHERE s.repo_id = _repo_id
+    AND (seed_type IS NULL OR s.type = seed_type)
+    AND (
+      -- A bare "123" is a plausible issue number AND a plausible SHA prefix, and
+      -- `parseSeedRef` refuses to guess between them — so both arrive and both are
+      -- matched. Ranking sorts it out.
+      (number_query IS NOT NULL AND s.number IS NOT NULL
+         AND s.number::text LIKE '%' || number_query || '%')
+      OR (sha_prefix IS NOT NULL AND s.sha IS NOT NULL
+         AND s.sha LIKE sha_prefix || '%')
+      OR (text_query IS NOT NULL
+         AND (s.title ILIKE '%' || text_query || '%' OR s.label ILIKE '%' || text_query || '%'))
+      -- A type word on its own ("pr") is a filter, not nothing: it should narrow to
+      -- pull requests rather than match everything or nothing.
+      OR (number_query IS NULL AND sha_prefix IS NULL AND text_query IS NULL)
+    )
+  -- A stable order before the cap, so the same query returns the same candidates. The
+  -- client ranks properly; this only decides which ones survive the limit.
+  ORDER BY s.type, s.number DESC NULLS LAST, s.id
+  LIMIT max_results;
+END;
+$fn$;
+
+COMMENT ON FUNCTION api.search_seeds(text, text, text, text, text, integer) IS
+  'Seed search. Takes an already-parsed reference (see src/data/seedQuery.js) and returns '
+  'a permissive superset of candidates; the client ranks them. Carries only what a search '
+  'can cheaply return about an object, never what a seed would yield (decision 34).';
+
+
+-- =====================================================================================
+-- §10 — Repository list
+--
+-- What the repository selector is populated from. Small, and the only enumerable thing
+-- in the API: there are three repositories, against hundreds of thousands of objects.
+--
+-- ⚠️ `available` is computed, not declared. The fixture catalogue hardcoded react and
+-- kubernetes as unavailable because no sub-log had been pre-built for them; that was
+-- true of the fixture transport and is false of this one. A repository is available here
+-- when it actually has something to seed from, which is a fact rather than a list
+-- somebody has to remember to update.
+-- =====================================================================================
+
+CREATE OR REPLACE FUNCTION api.list_repos()
+RETURNS TABLE (name text, repo_id bigint, available boolean, reason text, seeds bigint)
+LANGUAGE sql STABLE AS $$
+  SELECT r.name,
+         r.id,
+         count(s.id) > 0,
+         CASE WHEN count(s.id) > 0 THEN NULL
+              ELSE 'No issues, pull requests or commits in the window.' END,
+         count(s.id)
+  FROM repo r
+  LEFT JOIN fe.seed_lookup s ON s.repo_id = r.id
+  GROUP BY r.name, r.id
+  -- Repositories with data first, then by name, so the selector opens on something
+  -- usable. The duplicate `kubernetes/kubernetes` stub (1 event, no seeds) sorts last
+  -- rather than being hidden — its existence is why name resolution is deterministic.
+  ORDER BY count(s.id) > 0 DESC, r.name, r.id;
+$$;
+
+COMMENT ON FUNCTION api.list_repos() IS
+  'Repositories and whether anything can be seeded from them. Availability is computed '
+  'from fe.seed_lookup, not declared.';

@@ -161,6 +161,25 @@ as a direct address), `?page=stats` the statistics page, `?preset=…` a saved c
 
 ---
 
+## Live data, or fixtures
+
+The app reads **fixtures by default** and the database when asked:
+
+```
+http://localhost:8000/                                              fixtures
+http://localhost:8000/?source=database&repo=microsoft/vscode&seed=pr:448781946
+```
+
+Both stay (decision 63). The fixtures are the test corpus and the visual baseline and
+they exercise shapes real data does not conveniently contain; the database is what the
+tool is for. `src/data/source.js` is the seam — `listRepos` / `searchSeeds` /
+`loadSubLog`, implemented twice — so nothing above it branches on which is in use.
+
+⚠️ The database source needs **both** servers up: `npm start` for the app and
+`postgrest postgrest.conf` for the API.
+
+---
+
 ## Serving it over HTTP
 
 PostgREST is installed user-local at `~/.local/bin/postgrest` (v14.16, static binary — no
@@ -240,17 +259,20 @@ keeps them out of the `^F\d+$` test globs.
 Work packages `tasks/00` through `tasks/06` are complete, and the data layer is built.
 What is **not** done:
 
-- **The app still loads fixtures**, even though everything under it is live. PostgREST
-  serves the RPC and `src/data/api.js` is a working transport, verified end to end over
-  HTTP — but `src/main.js` still calls `fixtureTransport`. What is missing is not the
-  transport, it is **seed resolution**: the RPC keys on database ids
-  (`pr:448781946`) while the UI's search box takes display numbers (`#102479`), and
-  nothing bridges the two yet. `fe.seed_lookup` plus `resolveSeed()` in `api.js` is the
-  next piece; both are stubbed with the shape they need.
+- **The renderer does not cope with dense real sub-logs** — open question O12, and one
+  half of it misleads rather than merely crowds: a pull request with 37 commits draws
+  ~30 diamonds in the PR lane because the link fan spreads coincident endpoints. Fix the
+  fan before the band stacking.
 - **`scripts/build-catalogue.mjs` still lists react and kubernetes as "unavailable —
-  needs the `get_object_graph` RPC".** The RPC exists and serves both. That claim is
-  decision 34's documented behaviour, so it retires with the seed-search work rather
-  than piecemeal.
+  needs the `get_object_graph` RPC".** That is true of the *fixture* catalogue and is
+  what the fixture source still reports; the database source computes availability from
+  `fe.seed_lookup` instead and shows all three as available. The hardcoded list is now
+  fixture-only and should say so.
+- **The two servers are separate origins** (app on :8000, PostgREST on :3000), so CORS
+  applies. A reverse proxy would remove it and is closer to a real deployment; the
+  PostgREST docs have an nginx section.
+- **`fe.seed_lookup` and `fe.link_mat` both need refreshing** after an upstream MV
+  refresh — `fe.refresh_search()` and `fe.refresh_links()`. Neither is automatic.
 - **The RQ2 link-coverage figure is now measurable but unpublished.**
   `fe.diag_link_methods` produces it, grouped by `(method, qualifier)` as decision 50
   requires. It has not been written up, and two caveats must travel with it: the

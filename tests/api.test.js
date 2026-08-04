@@ -13,7 +13,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createRpcTransport, DEFAULT_BASE_URL } from '../src/data/api.js';
+import { createRpcTransport, searchSeeds, DEFAULT_BASE_URL } from '../src/data/api.js';
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
 
 /** A fetch stub that records the request and replays a canned response. */
@@ -157,5 +157,83 @@ describe('the transport is a drop-in for the fixture transport', () => {
       /closed set/,
       'a repo-typed object must be rejected however it arrived (decision 39)',
     );
+  });
+});
+
+describe('seed search bridges display numbers to database ids', () => {
+  /** A stub search transport that records the params it was asked for. */
+  function stubSearch(rows) {
+    const calls = [];
+    return {
+      calls,
+      transport: async (params) => {
+        calls.push(params);
+        return rows;
+      },
+    };
+  }
+
+  const ISSUE = { id: 'issue:655615214', type: 'issue', label: '#102358', title: 'SCM view empty' };
+  const PR = { id: 'pr:448781946', type: 'pull_request', label: 'PR #102479', title: 'fixes #102358' };
+  const COMMIT = { id: 'commit:48fd5cbf', type: 'commit', label: '48fd5cb', sha: '48fd5cbf', title: 'fixes' };
+
+  test('a bare number is sent as a number query, not as free text', async () => {
+    const { transport, calls } = stubSearch([ISSUE]);
+    await searchSeeds('microsoft/vscode', '102358', { transport });
+
+    assert.equal(calls[0].number_query, '102358');
+    assert.equal(calls[0].text_query, null, 'a number must not also be searched as text');
+    assert.equal(calls[0].repo, 'microsoft/vscode');
+  });
+
+  test('a stated type is passed through as a filter', async () => {
+    const { transport, calls } = stubSearch([PR]);
+    await searchSeeds('microsoft/vscode', 'pr 102479', { transport });
+    assert.equal(calls[0].seed_type, 'pull_request');
+    assert.equal(calls[0].number_query, '102479');
+  });
+
+  test('a hex string is sent as a SHA prefix', async () => {
+    const { transport, calls } = stubSearch([COMMIT]);
+    await searchSeeds('microsoft/vscode', '48fd5cb', { transport });
+    assert.equal(calls[0].sha_prefix, '48fd5cb');
+  });
+
+  test('every parameter is present as null rather than omitted', async () => {
+    // JSON.stringify drops undefined keys, and a dropped key makes PostgREST resolve a
+    // different function signature -- a 404 that reads as "function missing" rather than
+    // "argument absent". Pinned because the failure is so misleading.
+    const { transport, calls } = stubSearch([]);
+    await searchSeeds('r', 'mcp', { transport });
+    for (const key of ['seed_type', 'number_query', 'sha_prefix', 'text_query']) {
+      assert.ok(key in calls[0], `${key} must be sent`);
+      assert.notEqual(calls[0][key], undefined, `${key} must be null, never undefined`);
+    }
+  });
+
+  test('results are ranked here, not by the server: exact beats substring', async () => {
+    // The server returns a permissive superset in a stable but meaningless order; the
+    // ranking is scoreSeedRef, the same function the fixture catalogue search uses.
+    const { transport } = stubSearch([
+      { id: 'issue:1', type: 'issue', label: '#1102358' },
+      { id: 'issue:2', type: 'issue', label: '#102358' },
+      { id: 'issue:3', type: 'issue', label: '#1023580' },
+    ]);
+    const hits = await searchSeeds('r', '102358', { transport });
+    assert.equal(hits[0].id, 'issue:2', 'the exact match must come first');
+    assert.equal(hits[1].id, 'issue:3', 'then the prefix match');
+  });
+
+  test('non-matching rows the server returned are dropped, not shown', async () => {
+    const { transport } = stubSearch([ISSUE, { id: 'issue:9', type: 'issue', label: '#999' }]);
+    const hits = await searchSeeds('r', '102358', { transport });
+    assert.deepEqual(hits.map((h) => h.id), ['issue:655615214']);
+  });
+
+  test('it asks for more than it returns, so ranking has something to rank', async () => {
+    const { transport, calls } = stubSearch([]);
+    await searchSeeds('r', '10', { transport, limit: 20 });
+    assert.ok(calls[0].max_results > 20, 'trimming before ranking would discard better matches');
+    assert.ok(calls[0].max_results <= 200, 'and must stay within the server cap');
   });
 });

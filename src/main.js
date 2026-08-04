@@ -8,8 +8,8 @@
 
 /* global d3 */
 
-import { loadObjectGraph, describeSubLog } from './data/loadObjectGraph.js';
-import { loadCatalogue, searchSeeds } from './data/fixtures.js';
+import { describeSubLog, seedObjects } from './data/loadObjectGraph.js';
+import { createSource } from './data/source.js';
 import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
@@ -172,7 +172,7 @@ const timeline = createTimeline({
 // ---------------------------------------------------------------------------
 
 async function load(query) {
-  const graph = await loadObjectGraph(query);
+  const graph = await source.loadSubLog(query);
   const index = indexObjectGraph(graph);
 
   const actors = index.objectsOfType('actor');
@@ -225,7 +225,7 @@ async function load(query) {
 
   renderSidebar();
   renderLegend(elements.legend);
-  wireSelectors(graph.meta.repo, graph.meta.seed?.[0]?.id);
+  wireSelectors(graph.meta.repo, graph.meta.seed?.[0]?.id, seedObjects(graph)[0]);
 
   timeline.measure();
   redraw();
@@ -518,6 +518,15 @@ function queryFromUrl() {
 
 const initialQuery = queryFromUrl();
 
+/**
+ * Fixtures or the database, chosen by `?source=` and defaulting to fixtures.
+ *
+ * Defaulting to fixtures is deliberate: the database source needs PostgREST running,
+ * and an app that refuses to start because a server is down would be worse than one
+ * that starts on the corpus it ships with.
+ */
+const source = createSource();
+
 let catalogue = null;
 
 /**
@@ -528,7 +537,7 @@ let catalogue = null;
  * precisely about react and kubernetes — and a picker that never mentioned them
  * would hide that.
  */
-function wireSelectors(activeRepoName, activeSeedId) {
+function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
   const repos = catalogue.repos;
   const activeRepo =
     repos.find((repo) => repo.name === activeRepoName) || repos.find((repo) => repo.available);
@@ -550,7 +559,17 @@ function wireSelectors(activeRepoName, activeSeedId) {
     onSelect: (option) => reload({ repo: option.repo }),
   });
 
-  const activeSeed = (activeRepo?.seeds ?? []).find((seed) => seed.id === activeSeedId);
+  /*
+   * The label for the seed currently loaded.
+   *
+   * It used to be looked up in the catalogue's seed list, which only the fixture source
+   * has — the database source searches rather than enumerating (decision 34), so there
+   * is no list to look in. Reading it off the loaded sub-log instead works for both, and
+   * is more truthful anyway: it names what is actually on screen rather than what the
+   * catalogue said would be.
+   */
+  const activeSeed =
+    loadedSeed || (activeRepo?.seeds ?? []).find((seed) => seed.id === activeSeedId);
 
   // The seed box is a **search**, not a list. A real repository holds hundreds of
   // thousands of objects, so there is nothing to enumerate: you name what you want.
@@ -558,17 +577,21 @@ function wireSelectors(activeRepoName, activeSeedId) {
     input: elements.objectInput,
     dropdown: elements.objectDropdown,
     initialLabel: activeSeed ? seedLabel(activeSeed) : '',
-    search: (text) =>
-      searchSeeds(catalogue, activeRepo?.name, text).map((seed) => ({
+    // Async in both sources; `setupSearchCombo` debounces and guards against a stale
+    // response overwriting a fresher one.
+    search: async (text) =>
+      (await source.searchSeeds(activeRepo?.name, text)).map((seed) => ({
         label: seedLabel(seed),
         note: seed.title || null,
         seed: seed.id,
-        active: seed.id === activeSeed?.id,
+        active: seed.id === activeSeedId,
       })),
+    // The message differs by source because the *reason* differs: fixtures cannot
+    // traverse from an arbitrary object, the database simply has no such object.
+    // Saying "needs the RPC" once the RPC is what you are talking to would be a lie.
     emptyMessage: (text) =>
       text.trim()
-        ? `No sub-log built from ${describeSeedRef(parseSeedRef(text))} in ${activeRepo?.name}. ` +
-          `Seeding from an arbitrary object needs the RPC.`
+        ? source.emptySeedMessage(describeSeedRef(parseSeedRef(text)), activeRepo?.name)
         : 'Type an issue or PR number, or a commit SHA.',
     onSelect: (option) => reload({ repo: activeRepo.name, seed: option.seed }),
   });
@@ -587,18 +610,42 @@ async function reload(query) {
 /**
  * State the traversal degree, and say plainly what can and cannot be seeded.
  *
- * Read-only by design: the degree is fixed when a sub-log is built, so a stepper
- * here would be a control that silently does nothing.
+ * Read-only by design (decision 35): the degree is fixed when a sub-log is built, so a
+ * stepper here would be a control that silently does nothing.
+ *
+ * ⚠️ **What it says depends on the source, because what is true depends on the source.**
+ * On fixtures, only pre-built seeds can be served and the count is a real limit worth
+ * stating. Against the database the traversal runs for real, so "N seeds servable here —
+ * seeding from any object needs the RPC" is false twice over: the count is meaningless
+ * (there is no list, by decision 34) and the RPC is what you are already talking to.
+ * Leaving that text up would be exactly the kind of stale, confidently-wrong caption
+ * this project keeps finding in its own documents.
  */
 function updateTraversalInfo(graph) {
   const degree = graph.meta?.traversal_degree;
-  const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
-  const servable = repo?.seeds.length ?? 0;
+  const degreeNote =
+    degree == null ? '' : `Traversal degree ${degree} · fixed by the query<br>`;
 
+  if (source.name === 'database') {
+    const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
+    elements.traversalInfo.innerHTML =
+      degreeNote +
+      `Live from the database — seed from any issue, pull request or commit` +
+      (repo?.seeds_total ? ` (${repo.seeds_total.toLocaleString()} searchable)` : '');
+    return;
+  }
+
+  const servable = repo_seed_count(graph);
   elements.traversalInfo.innerHTML =
-    (degree == null ? '' : `Traversal degree ${degree} · fixed by the query<br>`) +
+    degreeNote +
     `${servable} seed${servable === 1 ? '' : 's'} servable here — seeding from any ` +
-    `object needs the RPC`;
+    `object needs the database source (?source=database)`;
+}
+
+/** How many seeds the fixture catalogue can actually serve for this sub-log's repo. */
+function repo_seed_count(graph) {
+  const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
+  return repo?.seeds?.length ?? 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -630,9 +677,10 @@ window.addEventListener('resize', () => {
  * Startup: fetch the catalogue first, because the selectors describe what can be
  * asked for and the sub-log is the answer to one such question.
  */
-loadCatalogue()
-  .then((loaded) => {
-    catalogue = loaded;
+source
+  .listRepos()
+  .then((repos) => {
+    catalogue = { repos };
     return reload(initialQuery);
   })
   .then(() => {
