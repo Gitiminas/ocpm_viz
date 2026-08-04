@@ -723,13 +723,34 @@ JOIN fe.activity_vocabulary v ON v.activity = r.activity;
 -- -------------------------------------------------------------------------------------
 DROP VIEW IF EXISTS fe.commit_branch_origin CASCADE;
 CREATE VIEW fe.commit_branch_origin AS
-SELECT p.repo_id,
+-- ⚠️ **WHERE the commit first appeared, not whether it ever reached master.**
+--
+-- The first version of this view asked `bool_or(ref IN ('master','main'))` — "has this
+-- SHA ever been pushed to the default branch" — and that question is **time-blind**. It
+-- is true of every commit that eventually merges, so the rule built on it discarded a
+-- merged pull request's own commits: the successful case, and the one an issue-to-merge
+-- study exists to look at. Measured on vscode PR #116416: of 85 commits that genuinely
+-- originated on its branch, 47 also reached master *because the PR merged*, and all 47
+-- were dropped. Across vscode it orphaned 22,788 commits (39% of those with an admitted
+-- link) — which is what made real sub-logs look disconnected.
+--
+-- The question that actually distinguishes the two cases is *where a commit was first
+-- seen*: a commit merged INTO the branch from trunk first appeared on trunk; a commit
+-- written ON the branch first appeared there, whatever happened to it afterwards.
+--
+-- `commit_distinct DESC` first in the ordering picks the earliest push that *declared*
+-- the commit new, rather than the earliest push mentioning it — a re-push of an older
+-- commit should not be mistaken for its origin.
+SELECT DISTINCT ON (p.repo_id, p.commit_sha)
+       p.repo_id,
        p.commit_sha,
-       bool_or(p.commit_distinct)                                    AS introduced_new,
-       bool_or(p.ref IN ('refs/heads/master','refs/heads/main'))      AS on_default_branch
+       p.ref                                                          AS first_seen_ref,
+       p.created_at AT TIME ZONE 'UTC'                                AS first_seen_at,
+       p.commit_distinct                                              AS introduced_new,
+       (p.ref NOT IN ('refs/heads/master','refs/heads/main'))          AS first_seen_on_branch
 FROM mv_push_commits_full p
 WHERE p.commit_sha IS NOT NULL
-GROUP BY p.repo_id, p.commit_sha;
+ORDER BY p.repo_id, p.commit_sha, p.commit_distinct DESC, p.created_at;
 
 COMMENT ON VIEW fe.commit_branch_origin IS
   'Per commit: was this push the first sighting of the SHA (GitHub commit_distinct), and '
@@ -754,7 +775,9 @@ LEFT JOIN fe.commit_branch_origin o
   ON o.repo_id = l.repo_id AND o.commit_sha = l.commit_sha
 WHERE l.admitted
   AND (l.link_method IN ('head_sha','merge_commit_sha')
-       OR (COALESCE(o.introduced_new, false) AND NOT COALESCE(o.on_default_branch, false)));
+       -- Decision 61, corrected: first seen on a branch other than the default one.
+       -- NOT "never reached master" — see the note on fe.commit_branch_origin.
+       OR COALESCE(o.first_seen_on_branch, false));
 
 COMMENT ON VIEW fe.commit_pr_link IS
   'mv_commit_pr_links with the decision-61 ref_match narrowing applied. The single source '
@@ -1413,17 +1436,16 @@ sha AS (
   FROM mv_commit_pr_links WHERE admitted AND link_method IN ('head_sha','merge_commit_sha')
 )
 SELECT r.name AS repo,
-       count(*)                                                       AS ref_match_pairs_upstream,
-       count(*) FILTER (WHERE o.introduced_new AND NOT o.on_default_branch) AS kept,
-       count(*) FILTER (WHERE o.on_default_branch)                     AS dropped_already_on_trunk,
-       count(*) FILTER (WHERE NOT o.on_default_branch
-                          AND NOT COALESCE(o.introduced_new, false))   AS dropped_repush,
-       count(*) FILTER (WHERE o.introduced_new AND NOT o.on_default_branch
+       count(*)                                                        AS ref_match_pairs_upstream,
+       count(*) FILTER (WHERE o.first_seen_on_branch)                   AS kept,
+       count(*) FILTER (WHERE NOT o.first_seen_on_branch)               AS dropped_first_seen_on_trunk,
+       count(*) FILTER (WHERE o.first_seen_on_branch AND NOT o.introduced_new) AS kept_though_a_repush,
+       count(*) FILTER (WHERE o.first_seen_on_branch
                           AND NOT EXISTS (SELECT 1 FROM sha s
                                 WHERE s.repo_id = rm.repo_id
                                   AND s.commit_sha = rm.commit_sha
                                   AND s.pull_request_id = rm.pull_request_id))
-                                                                       AS kept_only_by_ref_match
+                                                                        AS kept_only_by_ref_match
 FROM rm
 JOIN repo r ON r.id = rm.repo_id
 LEFT JOIN fe.commit_branch_origin o

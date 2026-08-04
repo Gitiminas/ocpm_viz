@@ -418,7 +418,8 @@ divergences from upstream in this layer. The view itself is untouched; the
 predicate lives in `fe.link`, and `fe.diag_ref_match_narrowing` reports exactly what it removes.
 Consequence for anyone comparing figures: **our commit→PR link counts are deliberately lower than
 this view yields**, by an amount that differs per repository — `ref_match` pairs go vscode
-71,470 → 15,276, kubernetes 2,895 → 1,974, react 3,934 → 1,402. Cite decision 61 beside any such
+71,470 → 32,262, kubernetes 2,895 → 2,037, react 3,934 → 2,152 (figures corrected by
+decision 65). Cite decision 61 beside any such
 number and report it as a range, with raw `ref_match` as the ceiling.
 
 **Why:** the `commit_pr_links` derivation of `ADAPTER_AND_API.md` §2, **already built** — consume

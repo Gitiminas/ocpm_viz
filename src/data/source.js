@@ -56,6 +56,14 @@ function fixtureSource() {
     loadSubLog(query) {
       return loadObjectGraph(query, { transport: fixtureTransport });
     },
+    /*
+     * The repository's first servable seed, so choosing a repository shows something.
+     * Fixtures can do this because the catalogue enumerates what it can serve.
+     */
+    async defaultSeed(repo) {
+      const entry = (await catalogue()).repos.find((r) => r.name === repo && r.available);
+      return entry?.seeds?.[0]?.id ?? null;
+    },
     // Fixtures were built at a fixed traversal degree; nothing can change it.
     traversalEditable: false,
     emptySeedMessage: (described, repo) =>
@@ -72,6 +80,19 @@ function databaseSource() {
     searchSeeds: searchDatabaseSeeds,
     loadSubLog(query) {
       return loadObjectGraph(query, { transport: rpcTransport });
+    },
+    /*
+     * **There is no default seed, and that is the design, not a gap.**
+     *
+     * Decision 33 makes the selection a *query*: a repository AND an object to traverse
+     * out from. A repository on its own is an incomplete query, and decision 34 forbids
+     * the list a default would have to be picked from — you cannot enumerate hundreds of
+     * thousands of objects to take the first. Inventing one (the newest issue, say) would
+     * put an arbitrary sub-log on screen that the user did not ask for and cannot account
+     * for. So the app asks, which is what the seed box is for.
+     */
+    async defaultSeed() {
+      return null;
     },
     traversalEditable: true,
     emptySeedMessage: (described, repo) => `No ${described} found in ${repo}.`,

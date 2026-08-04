@@ -601,11 +601,48 @@ const seedLabel = (seed) => `${seed.type.replace('_', ' ')} ${seed.label}`;
 
 async function reload(query) {
   try {
-    await load(query);
+    /*
+     * A repository without a seed is an incomplete query (decision 33), and how to
+     * complete it depends on the source: fixtures can offer their first servable seed,
+     * the database cannot enumerate one to offer. Previously neither case was handled —
+     * `reload({repo})` went straight to the transport, which the fixture path absorbed
+     * silently by taking `repo.seeds[0]` and the RPC rightly refused. The result was
+     * that opening `?source=database` with no seed, or switching repository at all,
+     * produced a dead app with no selectors.
+     */
+    const seed = query.seed || (await source.defaultSeed(query.repo));
+    if (!seed) {
+      showSeedPrompt(query.repo);
+      return;
+    }
+    await load({ ...query, seed });
   } catch (error) {
-    showFatal(error);
+    showFatal(error, query);
   }
 }
+
+/**
+ * The state between choosing a repository and naming a seed.
+ *
+ * Not an error and not a blank page: the selectors are wired so the search box works,
+ * and the message says what to do. This is the honest shape of decision 33 — the tool
+ * cannot show a sub-log until it has been told which one.
+ */
+function showSeedPrompt(repoName) {
+  wireSelectors(repoName, null, null);
+  elements.chart.innerHTML =
+    '<div style="padding:32px;max-width:640px">' +
+    '<div style="font-size:15px;font-weight:600;color:var(--color-text);margin-bottom:8px">' +
+    `Choose something to start from${repoName ? ` in ${escapeForHtml(repoName)}` : ''}</div>` +
+    '<div style="font-size:12.5px;color:var(--color-neutral-400);line-height:1.7">' +
+    'A sub-log is a repository <em>and</em> an object to traverse out from, so there is ' +
+    'nothing to draw yet.<br>Use <strong>Start from</strong> — an issue or PR number ' +
+    '(<span class="mono">102358</span>), a commit SHA (<span class="mono">48fd5cb</span>), ' +
+    'or free text (<span class="mono">mcp server</span>).</div></div>';
+}
+
+const escapeForHtml = (value) => String(value).replace(/[&<>]/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 
 /**
  * State the traversal degree, and say plainly what can and cannot be seeded.
@@ -626,12 +663,30 @@ function updateTraversalInfo(graph) {
   const degreeNote =
     degree == null ? '' : `Traversal degree ${degree} · fixed by the query<br>`;
 
+  /*
+   * ⚠️ **Say when a seed reaches nothing.** A sub-log of one object is a legitimate
+   * answer — the object exists and no detection method connects it to anything — but on
+   * screen it is indistinguishable from a failure, and users reported exactly that
+   * ("issue 245207 loads only itself"). Verified for that issue: zero links here AND
+   * zero upstream, so the picture is right and only the silence is wrong.
+   *
+   * This is decision 27's principle one step further. That rule declares what the tool
+   * *subtracted*; this declares what the data never had, which is the other way a sparse
+   * picture misleads.
+   */
+  const isolated = graph.links.length === 0;
+  const isolatedNote = isolated
+    ? `<br>No links from this seed — nothing upstream connects it, so there is nothing ` +
+      `to traverse to. The object itself is shown.`
+    : '';
+
   if (source.name === 'database') {
     const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
     elements.traversalInfo.innerHTML =
       degreeNote +
       `Live from the database — seed from any issue, pull request or commit` +
-      (repo?.seeds_total ? ` (${repo.seeds_total.toLocaleString()} searchable)` : '');
+      (repo?.seeds_total ? ` (${repo.seeds_total.toLocaleString()} searchable)` : '') +
+      isolatedNote;
     return;
   }
 
@@ -639,7 +694,8 @@ function updateTraversalInfo(graph) {
   elements.traversalInfo.innerHTML =
     degreeNote +
     `${servable} seed${servable === 1 ? '' : 's'} servable here — seeding from any ` +
-    `object needs the database source (?source=database)`;
+    `object needs the database source (?source=database)` +
+    isolatedNote;
 }
 
 /** How many seeds the fixture catalogue can actually serve for this sub-log's repo. */
@@ -652,8 +708,15 @@ function repo_seed_count(graph) {
 // startup
 // ---------------------------------------------------------------------------
 
-function showFatal(error) {
+function showFatal(error, query) {
   console.error(error);
+  // Keep the selectors alive on failure. Stranding the user with a dead sidebar means
+  // the only way out of a bad seed is editing the URL.
+  try {
+    if (catalogue) wireSelectors(query?.repo, null, null);
+  } catch {
+    /* the selectors are a courtesy here; never let them mask the real error */
+  }
   elements.chart.innerHTML =
     '<div style="padding:32px;max-width:760px">' +
     '<div style="font-size:15px;font-weight:600;color:var(--color-text);margin-bottom:8px">' +
