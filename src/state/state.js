@@ -256,7 +256,10 @@ export function isLinkVisible(link, byId, state, groupsByCommit = new Map()) {
  */
 export function selectVisible(graph, state, groupsByCommit = new Map()) {
   const objects = graph.objects.filter((object) => {
-    if (object.type === 'actor' || object.type === 'repo') return true; // laneless
+    // `actor` is the only laneless object type since decision 39 dropped `repo`.
+    // Laneless objects survive every lane filter: there is no control that hides
+    // them here, and the actor list and actor card read this same selection.
+    if (object.type === 'actor') return true;
     if (!isObjectVisible(object, state)) return false;
     if (object.type === 'commit') {
       return isCommitInVisibleGroup(object.id, groupsByCommit, state.hiddenCommitGroups);

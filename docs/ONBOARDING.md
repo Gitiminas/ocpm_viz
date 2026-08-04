@@ -75,7 +75,7 @@ than as logic.
 
 ## 4. The tests are the executable specification
 
-Run `npm test` and read the **test names** as a list of guarantees — 376 statements about what must
+Run `npm test` and read the **test names** as a list of guarantees — 377 statements about what must
 be true, maintained in a way prose is not. Then read two files properly:
 
 - `tests/sublanes.test.js` — the layout invariants, including the "each fixture must actually exhibit

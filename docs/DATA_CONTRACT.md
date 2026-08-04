@@ -26,8 +26,11 @@ isn't re-parsed on every query.
 | `repo` | `id`, `name`, `url`, `updated_at` | Repo display name and identity |
 | `org` | `id`, `login`, `url`, `avatar_url`, `updated_at` | Available; unused for issue-to-merge |
 
-> **Actor and repo objects come from these tables, not from any view.** `actor` is complete as-is;
-> `repo.name` is the repo display name.
+> **Actor objects, and the repository's own name, come from these tables — not from any view.**
+> `actor` is complete as-is; `repo.name` is the repo display name. Note the asymmetry in what each
+> becomes downstream: `actor` supplies *objects*, `repo` supplies the **frame** the sub-log sits in
+> (`meta.repo` / `meta.repo_id`). `repo_id` is a partition key in every view below and never a
+> participant, which is why decision 39 stopped modelling it as an object type.
 
 **Pattern to use:** `event` for the backbone, MVs for the payload-derived detail. The MVs refine
 `event.type` into a specific activity (`IssueOpened` / `IssueClosed` / `IssueReopened`) via the

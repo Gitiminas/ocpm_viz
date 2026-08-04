@@ -14,7 +14,19 @@
  * wrong object or divide by nothing as soon as there were two.
  */
 
-import { isLandmark, activityLabel } from '../model/activities.js';
+import { isLandmark, activityLabel, LANE_TYPES } from '../model/activities.js';
+
+/**
+ * Objects with a lane, i.e. with a lifecycle worth tabulating.
+ *
+ * Three sites below used to spell this as "not `actor` and not `repo`". Decision 39
+ * removed `repo` as an object type, which would have left three copies of "not
+ * `actor`" — a list that happens to be right rather than a statement of what is
+ * meant. Asking `LANE_TYPES` instead means the next laneless type is handled by
+ * adding it to one array, and it says the thing: an object without a lane has no
+ * duration, no gaps and no row in the per-object table.
+ */
+const hasLane = (object) => LANE_TYPES.includes(object.type);
 
 /** Total time an object was open, summed across its intervals (decision 4). */
 export function objectLifetime(object) {
@@ -148,7 +160,9 @@ export function landmarks(graph) {
   const entries = [];
 
   for (const object of graph.objects) {
-    if (object.type === 'commit' || object.type === 'actor' || object.type === 'repo') continue;
+    // Commits are excluded on top of the lane rule: a commit is an instant, so
+    // "opened" would be the same moment as the commit itself.
+    if (!hasLane(object) || object.type === 'commit') continue;
     const start = object.intervals[0]?.start;
     if (start) entries.push({ label: `${object.label} opened`, time: start, type: object.type });
   }
@@ -231,7 +245,7 @@ export function perObjectMetrics(graph) {
   }
 
   return graph.objects
-    .filter((object) => object.type !== 'actor' && object.type !== 'repo')
+    .filter(hasLane)
     .map((object) => {
       const events = (eventsByObject.get(object.id) || []).slice().sort((a, b) => a.time - b.time);
       const gaps = perObjectGaps(graph.events, object.id);
@@ -374,7 +388,7 @@ export function largestGaps(graph, limit = 5) {
   const gaps = [];
 
   for (const object of graph.objects) {
-    if (object.type === 'actor' || object.type === 'repo') continue;
+    if (!hasLane(object)) continue;
     for (const gap of perObjectGaps(graph.events, object.id)) {
       gaps.push({
         objectId: object.id,

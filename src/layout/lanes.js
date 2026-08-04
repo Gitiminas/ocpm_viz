@@ -4,9 +4,10 @@
  * A lane's height depends on how many rows its contents needed, so geometry is
  * computed after packing, not before.
  *
- * Only three of the five object types get a lane (decision 15) — `actor` and `repo`
- * are objects without lifecycles and surface through the sidebar and info cards
- * instead. `laneTypes` is therefore passed in rather than assumed.
+ * Three of the four object types get a lane (decision 15) — `actor` has no lifecycle
+ * to draw and surfaces through the sidebar and the actor card instead. It is the only
+ * such type; `repo` was the other until decision 39 stopped treating it as an object.
+ * `laneTypes` is therefore passed in rather than assumed.
  */
 
 import { ROW_HEIGHT, LANE_PAD_TOP, LANE_PAD_BOTTOM } from './packing.js';

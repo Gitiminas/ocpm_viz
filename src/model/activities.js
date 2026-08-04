@@ -6,15 +6,27 @@
  * not an implementation detail — it defines what the event log *is*.
  */
 
-export const OBJECT_TYPES = ['issue', 'pull_request', 'commit', 'actor', 'repo'];
+/**
+ * The closed set of object types — **four** (decision 39).
+ *
+ * `repo` was a fifth. It is not an object here: in every upstream materialized view
+ * `repo_id` is a partition key rather than a participant, so no activity attaches to
+ * it, no link reaches it and it has no lifecycle to draw. The repository is the frame
+ * the sub-log is drawn inside, carried once as `meta.repo` / `meta.repo_id`, and a
+ * type with a permanently empty branch misleads more than it informs. If cross-repo
+ * views ever arrive it returns as a grouping band, not as an object.
+ */
+export const OBJECT_TYPES = ['issue', 'pull_request', 'commit', 'actor'];
 
 /**
  * Object types that get a timeline lane, in lane order.
  *
- * Not every object type gets a lane (decision 15). `actor` and `repo` are
- * first-class objects — searchable, toggleable, link endpoints — but they have no
- * lifecycle interval to draw, so they surface through the sidebar and info cards
- * instead. Object-hood and lane-hood are separate properties.
+ * Not every object type gets a lane (decision 15). `actor` is the one remaining
+ * exception: a first-class object — searchable, toggleable, a link endpoint in
+ * principle — with no lifecycle interval to draw, so it surfaces through the sidebar
+ * and the actor card instead. Object-hood and lane-hood are separate properties, and
+ * that distinction is the whole of what decision 15 still governs now that `repo` is
+ * not an object at all.
  */
 export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
 

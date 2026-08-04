@@ -93,7 +93,10 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
   as our own term. Historical records — `screenshots/README.md`, `MOCKUP_OVERVIEW.md`, `tasks/*.md` —
   keep the old word on purpose, because they describe artifacts that say it.
 - **All times UTC**, parsed and rendered, labelled as such.
-- **Object types are closed at five:** `issue`, `pull_request`, `commit`, `actor`, `repo`.
+- **Object types are closed at four:** `issue`, `pull_request`, `commit`, `actor` (decision 39).
+  `repo` is **not** an object — it is the frame the sub-log is drawn inside, carried once as
+  `meta.repo` / `meta.repo_id`. Upstream it is a partition key, never a participant: nothing
+  attaches an activity to it and no link reaches it.
 
 ## Conventions
 

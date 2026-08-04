@@ -5,12 +5,12 @@
  * unit tested — does not have to import the rendering module.
  */
 
+/** One entry per member of `OBJECT_TYPES`. `repo` had a label until decision 39. */
 export const TYPE_LABELS = {
   issue: 'Issue',
   pull_request: 'PR',
   commit: 'Commit',
   actor: 'Actor',
-  repo: 'Repo',
 };
 
 export { LANE_TYPES } from '../model/activities.js';

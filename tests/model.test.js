@@ -356,9 +356,38 @@ describe('activity vocabulary is closed', () => {
     assert.equal(isLandmark('IssueOpened'), false);
   });
 
-  test('object types are closed at five, of which three get lanes', () => {
-    assert.deepEqual(OBJECT_TYPES, ['issue', 'pull_request', 'commit', 'actor', 'repo']);
+  test('object types are closed at four, of which three get lanes', () => {
+    assert.deepEqual(OBJECT_TYPES, ['issue', 'pull_request', 'commit', 'actor']);
     assert.deepEqual(LANE_TYPES, ['issue', 'pull_request', 'commit']);
+    // `actor` is the one object type without a lane. That gap between the two lists
+    // is decision 15's whole content, and it must not close: an actor has no
+    // lifecycle interval, so a lane would draw a bar encoding nothing.
+    assert.deepEqual(
+      OBJECT_TYPES.filter((type) => !LANE_TYPES.includes(type)),
+      ['actor'],
+    );
+  });
+
+  /**
+   * Decision 39 in the only place it is observable.
+   *
+   * No fixture ever contained a repo object — the type had a permanently empty
+   * branch, which is the argument the decision makes. So the entire behavioural
+   * change is here: a payload carrying one must now fail loudly rather than be
+   * indexed into a group nothing reads. Without this test the decision would be
+   * implemented and unexercised.
+   */
+  test('a repo-typed object is now rejected, and the message names the closed set', () => {
+    const problems = findGraphProblems({
+      meta: {},
+      objects: [{ id: 'repo:microsoft/vscode', type: 'repo', intervals: [] }],
+      events: [],
+      links: [],
+    });
+    const text = problems.join('\n');
+    assert.match(text, /has type "repo"/);
+    assert.match(text, /issue, pull_request, commit, actor/);
+    assert.doesNotMatch(text, /repo,/, 'repo must not still be listed as legal');
   });
 
   test('every activity in F1 is in the vocabulary', async () => {
@@ -377,7 +406,12 @@ describe('indexing exposes collections, never a privileged first object', () => 
     assert.equal(index.objectsOfType('pull_request').length, 1);
     assert.equal(index.objectsOfType('commit').length, 32);
     assert.equal(index.objectsOfType('actor').length, 4);
-    // The fifth type is legal and simply empty in F1 — see tests/fixtures/README.md.
+    // Every type in the closed set gets a group, even an empty one, so a caller
+    // never has to distinguish "no objects of this type" from "unknown type".
+    assert.equal(index.objectsByType.size, OBJECT_TYPES.length);
+    // And a type outside the set answers with an empty list rather than throwing —
+    // `repo` was a member until decision 39, so stale callers must degrade quietly
+    // here even though a repo *object* would be rejected at validation.
     assert.deepEqual(index.objectsOfType('repo'), []);
   });
 

@@ -116,8 +116,9 @@ in the wrong folder.
 
 This structure is **settled** — adopted as proposed by decision 16 (was open question O8).
 
-Note that `render/` has no lane module for every object type: `actor` and `repo` are objects without
-lanes (decision 15), so they are rendered by the sidebar and info cards, not by `layout/lanes.js`.
+Note that `render/` has no lane module for every object type: `actor` is an object without a lane
+(decision 15), so it is rendered by the sidebar and the actor card, not by `layout/lanes.js`. It is
+the only such type — `repo` was the other until decision 39 stopped treating it as an object at all.
 
 ## Object-centric implications for the renderer
 
@@ -148,7 +149,7 @@ with honest notes on what was left coarse.
 
 Modifying or extending the shared MVs · bot/human classification · the real OCEL 2.0 tables · labels,
 forks, reviews, review comments, branch/ref lifecycle · auth, rate limiting, XSS hardening · render
-optimisation, virtualisation, canvas · bundler, framework, TypeScript · generalizing beyond the five object types · restyling away from Nocturne tokens.
+optimisation, virtualisation, canvas · bundler, framework, TypeScript · generalizing beyond the four object types · restyling away from Nocturne tokens.
 
 Sub-logs are small. If a real one actually breaks the renderer, **report it** rather than
 pre-optimising.

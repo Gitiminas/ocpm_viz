@@ -10,7 +10,7 @@ graded by how much the evidence for each link is worth.
 
 ```
 npm start        # then open http://localhost:8000
-npm test         # 376 assertions, no browser needed
+npm test         # 377 assertions, no browser needed
 ```
 
 > Opening `index.html` from disk will not work. Browsers block both ES modules and
@@ -133,9 +133,12 @@ then decide by the rule in `ADAPTER_AND_API.md` §3 whether the platform asserts
 (`validated`) or we parsed a convention (`extracted`), and add it to
 `VALIDATED_METHODS` if so. Toggles and counts derive automatically.
 
-**Add an object type.** `OBJECT_TYPES` in `src/model/activities.js`. Give it a lane
-only if it has a lifecycle worth drawing — `actor` and `repo` are objects without
-lanes (decision 15). A lane type also needs an entry in `render/theme.js`.
+**Add an object type.** `OBJECT_TYPES` in `src/model/activities.js`, plus a label in
+`src/state/labels.js`. Give it a lane only if it has a lifecycle worth drawing —
+`actor` is an object without a lane (decision 15). A lane type also needs an entry in
+`render/theme.js`. Add one only if something in the data is genuinely a participant:
+`repo` was an object type until decision 39 found it was a partition key with a
+permanently empty branch.
 
 **Add a filter.** `src/state/state.js` only: extend `createState`, add the condition
 to `isNodeVisible` or `isLinkVisible`, and report it in `summarizeHidden` so the

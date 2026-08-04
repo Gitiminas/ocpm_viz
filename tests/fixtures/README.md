@@ -117,10 +117,11 @@ the model for id handling.** A real sub-log will not look like this.
   `push_id`, which is why the burst renders with its true size of 20 and not the 21 that
   `meta.burst.n_commits` claimed. Leaving the stale fields visible is deliberate: it keeps the
   discrepancy inspectable instead of hiding the defect the derivation fixes.
-- **No `repo` objects.** `repo` is a real object type (decision 15), but the source carries the
-  repo only as a string field on each object and in `meta`. Synthesizing repo objects and their
-  links would be fabricating relationships, so F1 has none. Consequence: **the `repo` object
-  type is not exercised by F1** and needs a synthesized fixture or the real API.
+- **No `repo` objects — and this is no longer a gap.** The source carries the repo only as a string
+  field on each object and in `meta`, so synthesizing repo objects and their links would have been
+  fabricating relationships. That absence was recorded here as missing coverage; decision 39 read it
+  the other way round and removed `repo` from the closed set. The string field on each object stays
+  (values are preserved), and remains unread — the app addresses repositories by `meta.repo`.
 
 ### What F1 cannot verify
 

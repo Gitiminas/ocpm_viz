@@ -7,7 +7,7 @@ every claim here is backed either by an assertion that runs in `npm test` or by 
 render that was looked at. Where neither was possible, this document says so
 rather than implying coverage that does not exist.
 
-**376 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
+**377 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
 
 ---
 
@@ -19,6 +19,7 @@ is exercised without a browser.
 | Property | Where | Scope |
 |---|---|---|
 | Bundle shape; unknown activity, object type or evidence class rejected | `model.test.js` | all 13 fixtures |
+| A repo-typed object is rejected; object types are four, of which three get lanes (decision 39) | `model.test.js` | synthetic bundle |
 | A link endpoint naming an event is rejected, and says so (decision 49) | `model.test.js` | synthetic bundles |
 | Every link joins two objects — no attribution link, no event endpoint | `verification.test.js` | all 13 |
 | Evidence classification follows the platform-asserts-it rule | `model.test.js` | rule + F1's 3/31 split |
@@ -143,9 +144,12 @@ Stated plainly rather than left to inference.
   drag-to-zoom, legend hover, the degree stepper and the actor card are exercised
   only by looking at them. They have no automated coverage, because they need a DOM
   and a pointer; a browser-driver test suite was out of scope.
-- **The `repo` object type is unexercised.** No fixture contains repo objects
-  (`tests/fixtures/README.md` explains why: synthesizing them would mean inventing
-  relationships).
+- ~~**The `repo` object type is unexercised.** No fixture contains repo objects.~~
+  **No longer a gap:** decision 39 removed `repo` from the closed set, so there is
+  nothing to exercise. That no fixture ever contained one is the evidence for the
+  decision rather than a hole in the coverage. `tests/model.test.js` now asserts a
+  repo-typed object is *rejected*. Closed by deletion, like
+  `PullRequestMergedOffPlatform` above.
 - ~~**`PullRequestMergedOffPlatform`** is in the vocabulary and mapped, but no fixture
   produces one.~~ **No longer a gap:** decision 48 removed the activity outright, so there
   is nothing left to exercise. `tests/model.test.js` now asserts that the name hits the

@@ -47,7 +47,7 @@ export function findGraphProblems(graph) {
     if (!OBJECT_TYPE_SET.has(object.type)) {
       problems.push(
         `object "${object.id}" has type "${object.type}"; the closed set is ` +
-          `${OBJECT_TYPES.join(', ')} (decision 2)`,
+          `${OBJECT_TYPES.join(', ')} (decisions 2 and 39)`,
       );
     }
     if (!Array.isArray(object.intervals)) {

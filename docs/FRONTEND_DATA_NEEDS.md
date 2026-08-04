@@ -32,7 +32,7 @@ ObjectGraph = {
 | Field | Shape | Required | Consumed by |
 |---|---|---|---|
 | `id` | string, unique | **yes** — validator rejects a missing id | everything; `objectGraph.js:40` |
-| `type` | one of `issue`, `pull_request`, `commit`, `actor`, `repo` | **yes** — closed set, validator rejects others | `objectGraph.js:47`, lanes, colours, grouping |
+| `type` | one of `issue`, `pull_request`, `commit`, `actor` | **yes** — closed set of four, validator rejects others | `objectGraph.js:47`, lanes, colours, grouping |
 | `label` | string | effectively — falls back to `id` | node titles, sidebar, tooltips, metrics, `commitGroups.js:64` |
 | `intervals` | `[{start, end}]`, ISO strings in, `Date`s out | **yes** — array must exist; `[]` is valid | `objectGraph.js:53`, layout spans, axis, `metrics.js:23` |
 | `intervals[].start` | ISO 8601 UTC | **yes** per interval | validator `objectGraph.js:59`; commit x-position |
@@ -209,7 +209,7 @@ and `index.html`:
 | `meta.data_honesty` | every fixture | **unread** — see below |
 | `meta.source` | fixtures | unread |
 | `objects[].time_semantics` | every object | unread |
-| `objects[].repo` | objects | unread |
+| `objects[].repo` | objects | unread — and note it is a *string field*, not an object reference: `repo` has not been an object type since decision 39 |
 | `links[].link_methods` | links | unread — only the scalar `n_methods` is used |
 | `vmap.in_burst` | commit objects | **deliberately** unread — `bursts.js:87` says trusting it would reintroduce the metadata dependence that produced a wrong count. Bursts are derived from `push_id` instead. |
 | catalogue `repo_id`, `generated_at`, `built_by`, `note` | catalogue.json | unread |
@@ -305,9 +305,11 @@ issue comments, and splitting it would be an event-log semantics change.
 `objectTypes` list is reported by `findActivityProblems` (`activities.js:162`) and becomes a
 validation failure through `objectGraph.js:74`.
 
-Related closed sets in the same file: `OBJECT_TYPES` = `['issue', 'pull_request', 'commit', 'actor',
-'repo']` (`activities.js:9`); `LANE_TYPES` = `['issue', 'pull_request', 'commit']`
-(`activities.js:19`).
+Related closed sets in the same file: `OBJECT_TYPES` = `['issue', 'pull_request', 'commit',
+'actor']` (`activities.js:19`); `LANE_TYPES` = `['issue', 'pull_request', 'commit']`
+(`activities.js:31`). The one type in the first list and not the second is `actor`, and that gap is
+the content of decision 15. `repo` was in neither since decision 39 — it is `meta.repo`, not an
+object.
 
 ## A2. `link.method` — 16 values
 
