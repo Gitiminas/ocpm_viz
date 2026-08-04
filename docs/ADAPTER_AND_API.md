@@ -14,9 +14,15 @@ costs disk, a refresh story, and a staleness hazard; a plain view costs nothing 
 freely. With ~14 GB and 3–4M rows in the largest upstream views, the first lever is **indexes**
 (`repo_id`, `issue_id`, `pull_request_id`, `commit_sha`, `push_id`), not materialization.
 
-⚠️ Indexes on *upstream* views cannot be created by this project — `CREATE INDEX` requires
-ownership. Those are a request to the owner, with lead time. Indexes on this project's own views
-are unaffected. See `DATA_CONTRACT.md` §2 and open question O9.
+✅ **Corrected 2026-08-04: indexes on the upstream views are ours to create.** O9 is closed —
+`current_user` owns every relation in `public`, so `CREATE INDEX` and `ANALYZE` simply work. This is
+the first lever and it is available. What survives is that an index changes a relation other people
+read, so it is announced rather than private. The indexes actually created, and the measurements
+that justified them, are in `sql/fe_layer.sql` §0. See `DATA_CONTRACT.md` §2.
+
+⚠️ **Plain views cannot be indexed.** Since this layer is plain views by decision 10, every index
+goes on the *underlying* MVs — which is the better place anyway: one index there serves every query
+touching the table rather than one path through a copy.
 
 ## 2. The derivations
 
@@ -24,13 +30,19 @@ The deciding criterion for precomputation is **not** performance — it is wheth
 on the sub-log selection. Fixed properties of the data can be precomputed; anything that changes
 when the user flips a toggle cannot.
 
-> ⚠️ **Read this before building any of the three.** The 2026-08-04 contract snapshot records two
-> upstream views that were not in the previous one: **`mv_commit_pr_links`** and
-> **`mv_issue_to_pr_validated_all`**. By their names they are the first two rows of this table,
-> already built by someone else. Inspect both definitions before writing a line of SQL — duplicating
-> them costs a week and, worse, creates a second commit→PR admission rule that silently disagrees
-> with the one other people's figures already use. `object_lifecycles` is the only row certainly
-> still yours.
+> ✅ **Both definitions were read on 2026-08-04, and the warning below resolved as it feared.**
+> `mv_commit_pr_links` and `mv_issue_to_pr_validated_all` **are** the first two rows of this table,
+> already built. Neither is rebuilt: decision 52 records the commit→PR admission rule as *inherited*
+> from `mv_commit_pr_links.admitted`, and `mv_issue_to_pr_validated_all` already dedupes to one row
+> per (issue, PR) and carries `primary_link_method`, `n_methods` and `link_methods`. There is
+> therefore exactly one commit→PR admission rule in this project, which is the outcome that
+> mattered.
+>
+> `object_lifecycles` was the only row still ours and is built, as `fe_interval_issue` /
+> `fe_interval_pull_request` in `sql/fe_layer.sql`. **Two caveats on consuming the upstream pair:**
+> `link_methods` is a semicolon-joined `text`, not an array, and `mv_issue_to_pr_validated_all` does
+> **not** include `mv_issue_pr_links_extended_conventions` — those 205 rows are unioned separately
+> with a de-duplication guard.
 
 Three derivations to build. A fourth is listed struck through: it was specified here, then
 superseded by decision 12. It stays visible because the reasoning that produced it is what decision
@@ -75,10 +87,10 @@ is the vocabulary (decision 20), and every row here must have a member there and
 | Issue ↔ PR | `pr_title_symfony` — Symfony's PR-title convention | `extracted` | Convention |
 | Issue ↔ PR | `pr_body_fixed_tickets` — a "Fixed tickets" row in a PR-body template | `extracted` | Convention, template-specific |
 | Issue ↔ PR | `pr_body_refs` — `Refs #123` in the body | `extracted` | Convention. In the body like `pr_body`, but a reference closes nothing, so the rule separates them |
-| ⚠️ Issue → Commit **or** Issue ↔ PR — O11 | `closed_via_commit` — GitHub's own closed-via-commit record | `validated` | The platform states it; nothing is parsed. Endpoint types disputed: the upstream view is named `mv_issue_pr_links_closed_via_commit` |
-| Commit → PR | `ref_match` — branch-ref match (`head_ref` ↔ `ref`) | `extracted` | Convention |
-| ⚠️ Commit → PR **or** Issue ↔ PR — O11 | `proximity` — matched on closeness in time alone | `extracted` | The weakest method in the enum. Nothing is asserted and nothing is parsed — only two timestamps are near each other. Endpoint types disputed: the upstream view is named `mv_issue_pr_links_proximity`. Report its share separately in any RQ2 count |
-| ⚠️ Commit → Issue **and/or** Issue ↔ PR — O11 | `commit_message` — regex over the message | `extracted` | Convention. Sub-grade with `link_convention` / `ref_scope`; cross-repo refs are weaker than same-repo `fixes #N`. **Two upstream views emit this**: `mv_commit_message_issue_links_all` (commit → issue) and `mv_issue_pr_links_commit_message` (issue ↔ PR). One enum value cannot carry two relations — see O11 |
+| Issue ↔ PR ✅ *corrected 2026-08-04* | `closed_via_commit` — GitHub's own closed-via-commit record | `validated` | The platform states it; nothing is parsed. **Endpoints settled (decision 53): issue ↔ PR.** `mv_issue_pr_links_closed_via_commit` is keyed on `issue_id` + `pull_request_id` and has no `commit_sha` column. ⚠️ The view is **empty (0 rows)**, so this method contributes nothing to any current figure |
+| Commit → PR | `ref_match` — branch-ref match (`head_ref` ↔ `ref`) | `extracted` | Convention. From `mv_commit_pr_links` — a genuine commit endpoint. ⚠️ **Narrowed by decision 61**: admitted only where the commit was *first introduced* on a non-default branch, because merging `master` into a long-lived branch otherwise attributes every incoming trunk commit to the PR (vscode PR #116416: 217 → 34). It is **not** dropped — for most commits it is the only evidence there is, since GH Archive's PR payload never lists a PR's commits. Figures are a **floor**; raw `ref_match` is the ceiling |
+| Issue ↔ PR ✅ *corrected 2026-08-04* | `proximity` — matched on closeness in time alone | `extracted` | The weakest method in the enum. Nothing is asserted and nothing is parsed — only two timestamps are near each other. **Endpoints settled (decision 53): issue ↔ PR**, keyed on `issue_id` + `pull_request_id`; the view carries `close_delta_seconds`, not a commit. Report its share separately in any RQ2 count |
+| Commit → Issue **and** Issue ↔ PR | `commit_message` — regex over the message | `extracted` | Convention. Sub-grade with `link_convention` / `ref_scope`. **Two upstream views emit this**: `mv_commit_message_issue_links_all` (commit → issue, qualifier `references_issue`) and `mv_issue_pr_links_commit_message` (issue ↔ PR, qualifier `resolves`). ⚠️ The second is **derived from commit→PR attribution** (`JOIN mv_commit_pr_links … AND cpr.admitted`), so it inherits the admission rule; decision 62 narrows it to match decision 61, cutting vscode's issue↔PR pairs 11,326 → 5,934. One value, two relationships, by **decision 50** — the qualifier carries the endpoints, and every per-method count must group by `(method, qualifier)`. ⚠️ Cross-repo refs are **dropped**, not graded weaker (decision 54): the view names no target repository, so they cannot be resolved to an object |
 
 > Sixteen link methods, and every one of them links two **objects** (decision 42). Three values have
 > been deleted and none returns without an upstream source that emits it: `merge_commit_message`
@@ -88,14 +100,17 @@ is the vocabulary (decision 20), and every row here must have a member there and
 > These rows were classified in `src/model/evidence.js` before this table recorded them.
 > `commit_message` follows the rule unambiguously — it parses text.
 >
-> ⚠️ **The evidence classes above are not in doubt; the endpoint types in three rows are.** The
-> 2026-08-04 contract snapshot names `mv_issue_pr_links_closed_via_commit`,
-> `mv_issue_pr_links_proximity` and `mv_issue_pr_links_commit_message` — all in the issue↔PR family,
-> where this table says commit. Whichever way it resolves, the *class* is unaffected: the rule asks
-> whether GitHub asserts the link, not which two objects it joins. What changes is the qualifier, the
-> toggle group, the lanes the link is drawn between, and the RQ2 breakdown. Resolve by reading the
-> view columns — a row keyed on `issue_id` + `pull_request_id` is an issue↔PR link whatever its
-> method is called. Tracked as **O11**.
+> ✅ **The endpoint types are settled, 2026-08-04 (decision 53), and this table was wrong.** The
+> columns of all seven upstream method views were read from `pg_attribute`: every one is keyed on
+> `issue_id` + `pull_request_id`, and neither `mv_issue_pr_links_closed_via_commit` nor
+> `mv_issue_pr_links_proximity` carries a `commit_sha` column at all. `closed_via_commit` and
+> `proximity` are **issue ↔ PR**; the rows above have been corrected. The evidence classes were
+> never in doubt and are unchanged — the rule asks whether GitHub asserts the link, not which two
+> objects it joins.
+>
+> The only link sources with a genuine commit endpoint are `mv_commit_pr_links` (commit ↔ PR;
+> methods `merge_commit_sha`, `head_sha`, `ref_match`) and `mv_commit_message_issue_links_all`
+> (commit → issue; method `commit_message`).
 >
 > **Why `event_actor_id` is gone, and why it is the instructive one.** It was an identity match on a
 > column GitHub supplies, so `validated` followed the rule and the classification was never wrong.
@@ -111,6 +126,13 @@ is the vocabulary (decision 20), and every row here must have a member there and
 > which split 3 `validated` / 31 `extracted`. Reclassifying `ref_match` moves most of the timeline
 > from solid to dashed. That is the honest result and it strengthens the S8 answer — do not treat it
 > as a regression. Recorded as mandated baseline difference #1 in `VERIFICATION.md`.
+>
+> ⚠️ **This holds for F1, and does NOT generalise to real sub-logs — decision 61 changed the
+> proportions.** F1 is built from `ocel-data.json`, where every commit on the branch is present. On
+> real RPC payloads the narrowing keeps only 18,652 of 78,299 admitted `ref_match` pairs, so the
+> commit lane is now mostly `validated` (55,119 + 56,853 solid against 15,042 dashed) rather than
+> mostly dashed. The uncertainty cue survives and still has work to do; it is no longer the
+> dominant visual. Do not quote F1's 3/31 split as characteristic of a live sub-log.
 
 **Optional strengthening, if time allows.** `pr_body` is the one row where the rule is arguable: the
 view regex-parses the body rather than observing GitHub's auto-close. It can be corroborated by
@@ -165,9 +187,19 @@ notes on fields that are easy to get wrong:
   (decision 49). The RPC must therefore state who performed an event through `events[].actor_id`
   and never as a link, which is decision 41 — a link means traceability between two objects and
   nothing else.
-- **`data_honesty`** is not decoration. It carries the commit-time caveat (push time, not real
-  commit time) and the extracted-edge caveat, and the sidebar renders them. A transport that drops
-  it silently removes the S8 uncertainty disclosure from the UI.
+- **`data_honesty`** ⚠️ **is not rendered by the sidebar, and this bullet used to say it was.**
+  Corrected 2026-08-04 against the code: `grep -rn data_honesty src/` returns **nothing**. No module
+  under `src/` reads the field. The only consumer anywhere is `scripts/build-catalogue.mjs:72,79`,
+  which reads the single sub-key `data_honesty.synthetic` at build time to mark synthetic fixtures
+  in the catalogue; `main.js:543` then renders that catalogue flag as a "synthetic" note. The
+  commit-time and extracted-edge caveats it is supposed to carry are in fact hardcoded English in
+  the renderer — `nodes.js:468` is the commit-time one — which is precisely SPEC G11.
+
+  So the sentence to keep is the *warning*, not the claim: a transport that drops `data_honesty`
+  removes nothing from the UI today, which is exactly why G11 says a field whose removal is
+  invisible is worse than no field. `sql/fe_layer.sql` emits it, so wiring it up stays a
+  one-function change on the render side; until then do not describe it as an S8 disclosure that
+  the UI makes.
 - **`link_methods` is the array; `method` is the primary one.** Decision 20 requires both plus
   `n_methods`, and nothing free-text.
 
