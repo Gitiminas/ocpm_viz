@@ -6,9 +6,18 @@ here, either it is not in the database or it is out of scope — in both cases, 
 Scope is **issue → PR → commit, plus comments and actors**. Labels, forks, reviews, review comments,
 commit comments, branch/ref lifecycle and bot classification are deliberately out (see §3).
 
-**Total: 4 base tables + 49 views — 22 in scope (§1) and 27 excluded (§3).** These are owned by
-other researchers and are **read-only** for this project — no modification, no refresh, no
-extension. If reality diverges, update this document rather than adapting the upstream.
+**Total: 4 base tables + 49 views — 22 in scope (§1) and 27 excluded (§3).**
+
+**Ownership, corrected 2026-08-04.** The base tables and the 22 in-scope views are **this project's
+own**, and may be consumed exactly as they are — no cloning, no rebuilding, and nothing blocked on
+another researcher's lead time. The nine `ocel_*` views (§3) belong to the parallel PhD work and
+stay out by instruction rather than by permission. Earlier revisions said the whole upstream was
+owned by others; that framing produced a cloning plan for views that were already usable, and open
+question O9 (indexes) rested on it.
+
+Consuming is not the same as changing. Treat these as **stable inputs**: other people's figures and
+another thesis's tables read the same relations, so redefining or refreshing one moves numbers
+elsewhere. If reality diverges, update this document rather than adapting the upstream.
 
 Views this project builds on top of them are specified in `ADAPTER_AND_API.md`, not here.
 
@@ -277,8 +286,15 @@ what they connect:
 | Method | `ADAPTER_AND_API.md` §3 says | The view name says |
 |---|---|---|
 | `closed_via_commit` | Issue → Commit | issue ↔ PR |
-| `commit_message` | Commit → Issue | issue ↔ PR (and commit → issue, via the other view) |
 | `proximity` | Commit → PR | issue ↔ PR |
+
+`commit_message` was a third row here and is now settled (decision 50): it is one detection
+technique — a regex over a commit message — producing **two** relationships, commit→issue from
+`mv_commit_message_issue_links_all` and issue↔PR from `mv_issue_pr_links_commit_message`. It keeps a
+single `link.method` value, because `method` records how a link was found rather than what it joins,
+and the qualifier carries the endpoints. ⚠️ **Every per-method figure must therefore group by
+`(method, qualifier)`** — the RQ2 breakdown is exactly the query that would otherwise sum two
+different relations into one number.
 
 Both readings are coherent — "this issue links to that PR *because* a commit closed the issue" is a
 perfectly good issue↔PR method — but they cannot both be right, and the answer is load-bearing. The
@@ -286,10 +302,8 @@ endpoint types decide the qualifier (decision 43), the toggle group (`deriveRelG
 sorted type pair), which two lanes the link is drawn between, and how the RQ2 breakdown is counted.
 
 **Resolve it by reading the columns, not the names.** A row keyed on `issue_id` + `pull_request_id`
-is an issue↔PR link whatever its method is called. Then reconcile `ADAPTER_AND_API.md` §3 and, if
-`commit_message` really does name two different relations, split the `LINK_METHOD` value — one enum
-value covering both would make a per-method toggle switch off two unrelated things and would merge
-them in every figure. Tracked as **O11** in `DECISIONS.md`.
+is an issue↔PR link whatever its method is called. Then reconcile `ADAPTER_AND_API.md` §3. Tracked as **O11** in
+`DECISIONS.md`, now narrowed to these two methods.
 
 ---
 

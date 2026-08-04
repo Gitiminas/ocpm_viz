@@ -49,7 +49,19 @@ export const LINK_METHOD = {
 
   /** Issue reference in the PR title. */
   PR_TITLE: 'pr_title',
-  /** Issue reference parsed out of a commit message, e.g. "Refs #242864". */
+  /**
+   * Issue reference parsed out of a commit message, e.g. "Refs #242864".
+   *
+   * ⚠️ **One technique, two relationships** (decision 50). Upstream this arrives from two views:
+   * a commit→issue link, and the issue↔PR link derived from the same mention by way of the pull
+   * request carrying that commit. They stay one method because `method` records *how* a link was
+   * found — one regex over one commit message — while the qualifier records what it joins
+   * (`references_issue` vs `resolves`).
+   *
+   * The obligation that comes with that: **any figure counting links by method must group by
+   * `(method, qualifier)`.** Counting by method alone silently sums two different relations, and
+   * the RQ2 detection-coverage breakdown is exactly that figure.
+   */
   COMMIT_MESSAGE: 'commit_message',
   /** PR reference inside an issue comment. */
   ISSUE_COMMENT: 'issue_comment',
