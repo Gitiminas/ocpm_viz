@@ -10,3 +10,4 @@ CLAUDE.local.md
 *:Zone.Identifier
 
 node_modules/
+.shots/

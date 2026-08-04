@@ -15,6 +15,20 @@
           "label": "#242864",
           "title": "Discover and run MCP servers",
           "fixture": "F1"
+        },
+        {
+          "id": "pr:448781946",
+          "type": "pull_request",
+          "label": "PR #102479",
+          "title": "fixes #102358",
+          "fixture": "LIVE1"
+        },
+        {
+          "id": "pr:571599565",
+          "type": "pull_request",
+          "label": "PR #116416",
+          "title": "Execution API notes",
+          "fixture": "LIVE2"
         }
       ]
     },

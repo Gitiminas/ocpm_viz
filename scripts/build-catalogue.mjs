@@ -52,9 +52,23 @@ const UNAVAILABLE_REPOS = [
 ];
 
 function build() {
-  const files = readdirSync(FIXTURE_DIR)
+  /*
+   * Fixtures first, then any LIVE samples.
+   *
+   * `LIVE*.json` is a snapshot of real `api.get_object_graph` output written by
+   * `scripts/pull-sublog.mjs`, so the picture can be looked at before the app is wired to
+   * PostgREST in pass 2. It is listed here because a sub-log that cannot be selected
+   * cannot be rendered — but it is kept a separate name class from `F\d+` on purpose:
+   * the fixture suites and `build-f1.mjs --check` match `^F\d+\.json$` and must not pick
+   * up a snapshot that changes whenever the upstream MVs are refreshed.
+   */
+  const fixtures = readdirSync(FIXTURE_DIR)
     .filter((name) => /^F\d+\.json$/.test(name))
     .sort((a, b) => Number(a.match(/\d+/)[0]) - Number(b.match(/\d+/)[0]));
+  const samples = readdirSync(FIXTURE_DIR)
+    .filter((name) => /^LIVE\d+\.json$/.test(name))
+    .sort();
+  const files = [...fixtures, ...samples];
 
   const byRepo = new Map();
 

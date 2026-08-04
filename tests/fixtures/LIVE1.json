@@ -1,0 +1,664 @@
+{
+  "meta": {
+    "repo": "microsoft/vscode",
+    "seed": [
+      {
+        "id": "pr:448781946",
+        "type": "pull_request"
+      }
+    ],
+    "source": {
+      "rpc": "api.get_object_graph",
+      "layer": "sql/fe_layer.sql",
+      "mv_refreshed": "2026-08-02T19:45:00+00:00",
+      "sample": "LIVE1",
+      "built_by": "scripts/pull-sublog.mjs",
+      "pulled_at": "2026-08-04T19:18:37.017Z",
+      "note": "LIVE SAMPLE, not a fixture. A snapshot of api.get_object_graph output, for looking at the picture. Nothing asserts against it; re-pull rather than edit it."
+    },
+    "repo_id": 41881900,
+    "data_honesty": {
+      "truncation": "GH Archive caps PushEvent.commits at 20; events with attrs.truncated = true describe a push with more commits than are drawn.",
+      "commit_time": "first-seen in PushEvent, NOT real git commit time",
+      "extracted_edges": "Links we parsed from an unenforced human convention (branch-ref matches, commit-message references, timing proximity) render dashed with a \"?\" badge.",
+      "validated_edges": "Links the platform's own data asserts (a closing keyword in the PR body, an exact SHA match) render solid.",
+      "commit_authorship": "vmap.commit_author_name is a git identity string and is NOT joined to any GitHub account (decision 5). The actor on a CommitObserved event is the PUSHER."
+    },
+    "generated_at": "2026-08-04T19:18:34+00:00",
+    "activity_scope": "OCEL-strict + comments (reviews/dismissals/review-comments excluded)",
+    "repo_ambiguous": false,
+    "contract_version": 2,
+    "traversal_degree": 2,
+    "active_link_methods": [
+      "branch_name",
+      "commit_message",
+      "head_sha",
+      "merge_commit_sha",
+      "pr_title",
+      "ref_match"
+    ],
+    "active_object_types": [
+      "actor",
+      "commit",
+      "issue",
+      "pull_request"
+    ]
+  },
+  "links": [
+    {
+      "method": "merge_commit_sha",
+      "source": "pr:448781946",
+      "target": "commit:282ac0e481fbd41aeff01fbc3fe56070bc29c2bc",
+      "evidence": "validated",
+      "n_methods": 1,
+      "qualifier": "merge_commit",
+      "link_methods": [
+        "merge_commit_sha"
+      ]
+    },
+    {
+      "method": "head_sha",
+      "source": "pr:448781946",
+      "target": "commit:d5942ca8f601c296a895ea64e30dff07aad963b5",
+      "evidence": "validated",
+      "n_methods": 1,
+      "qualifier": "contains_commit",
+      "link_methods": [
+        "head_sha"
+      ]
+    },
+    {
+      "method": "head_sha",
+      "source": "pr:448781946",
+      "target": "commit:f38cc4e7754edda0d437b8db245e85a26ad4ad23",
+      "evidence": "validated",
+      "n_methods": 2,
+      "qualifier": "contains_commit",
+      "link_methods": [
+        "head_sha",
+        "ref_match"
+      ]
+    },
+    {
+      "method": "pr_title",
+      "source": "pr:448781946",
+      "target": "issue:655615214",
+      "evidence": "extracted",
+      "n_methods": 3,
+      "qualifier": "resolves",
+      "link_methods": [
+        "branch_name",
+        "commit_message",
+        "pr_title"
+      ]
+    },
+    {
+      "method": "commit_message",
+      "source": "commit:282ac0e481fbd41aeff01fbc3fe56070bc29c2bc",
+      "target": "issue:655615214",
+      "evidence": "extracted",
+      "n_methods": 1,
+      "qualifier": "references_issue",
+      "link_methods": [
+        "commit_message"
+      ]
+    },
+    {
+      "method": "commit_message",
+      "source": "commit:48fd5cbf665baee62083358b65b70146f1e7d6b7",
+      "target": "issue:655615214",
+      "evidence": "extracted",
+      "n_methods": 1,
+      "qualifier": "references_issue",
+      "link_methods": [
+        "commit_message"
+      ]
+    },
+    {
+      "method": "commit_message",
+      "source": "commit:d5942ca8f601c296a895ea64e30dff07aad963b5",
+      "target": "issue:655615214",
+      "evidence": "extracted",
+      "n_methods": 1,
+      "qualifier": "references_issue",
+      "link_methods": [
+        "commit_message"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "issue_act:12885367579",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T06:27:13+00:00",
+      "attrs": {},
+      "comment": false,
+      "activity": "IssueOpened",
+      "actor_id": "actor:46475675",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12886132088",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T09:01:06+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:24382922",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12886207353",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T09:07:57+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22350",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12888428553",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T13:01:04+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:46475675",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12888599887",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T13:17:35+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22350",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12888740769",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T13:30:26+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22281444",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12888788706",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T13:34:37+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22350",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12889495855",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T14:37:08+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:46475675",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12889551873",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T14:41:56+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22350",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12889859667",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T15:07:58+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:7524911",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12890157075",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-13T15:33:56+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22350",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12896348180",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T06:17:10+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22281444",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12896360403",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T06:18:52+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22281444",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12896380918",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T06:21:31+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22281444",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12896391266",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T06:22:57+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22281444",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "issue_act:12897638533",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T08:41:11+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22350",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "commit_obs:12898445976:1",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T10:02:30+00:00",
+      "attrs": {
+        "ref": "refs/heads/master",
+        "push_id": 5370957789,
+        "truncated": false,
+        "commit_count": 1,
+        "distinct_commit_count": 1
+      },
+      "comment": false,
+      "activity": "CommitObserved",
+      "actor_id": "actor:22350",
+      "object_id": "commit:48fd5cbf665baee62083358b65b70146f1e7d6b7"
+    },
+    {
+      "id": "issue_act:12898445897",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T10:02:30+00:00",
+      "attrs": {},
+      "comment": false,
+      "activity": "IssueClosed",
+      "actor_id": "actor:22350",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "commit_obs:12898456537:1",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T10:03:33+00:00",
+      "attrs": {
+        "ref": "refs/heads/electron-x.y.z",
+        "push_id": 5370963204,
+        "truncated": false,
+        "commit_count": 2,
+        "distinct_commit_count": 1
+      },
+      "comment": false,
+      "activity": "CommitObserved",
+      "actor_id": "actor:22350",
+      "object_id": "commit:48fd5cbf665baee62083358b65b70146f1e7d6b7"
+    },
+    {
+      "id": "pr_act:12898478031",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T10:05:46+00:00",
+      "attrs": {},
+      "comment": false,
+      "activity": "PullRequestOpened",
+      "actor_id": "actor:22350",
+      "object_id": "pr:448781946"
+    },
+    {
+      "id": "pr_act:12900090947",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T13:06:20+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:22350",
+      "object_id": "pr:448781946"
+    },
+    {
+      "id": "commit_obs:12900109903:1",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T13:08:12+00:00",
+      "attrs": {
+        "ref": "refs/heads/joao/release/1.47/fix-102358",
+        "push_id": 5371823876,
+        "truncated": false,
+        "commit_count": 1,
+        "distinct_commit_count": 1
+      },
+      "comment": false,
+      "activity": "CommitObserved",
+      "actor_id": "actor:22350",
+      "object_id": "commit:f38cc4e7754edda0d437b8db245e85a26ad4ad23"
+    },
+    {
+      "id": "pr_act:12900275000",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T13:24:15+00:00",
+      "attrs": {},
+      "comment": false,
+      "activity": "PullRequestMerged",
+      "actor_id": "actor:22350",
+      "object_id": "pr:448781946"
+    },
+    {
+      "id": "commit_obs:12900276094:1",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T13:24:21+00:00",
+      "attrs": {
+        "ref": "refs/heads/release/1.47",
+        "push_id": 5371908516,
+        "truncated": false,
+        "commit_count": 3,
+        "distinct_commit_count": 3
+      },
+      "comment": false,
+      "activity": "CommitObserved",
+      "actor_id": "actor:22350",
+      "object_id": "commit:d5942ca8f601c296a895ea64e30dff07aad963b5"
+    },
+    {
+      "id": "commit_obs:12900276094:2",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T13:24:21+00:00",
+      "attrs": {
+        "ref": "refs/heads/release/1.47",
+        "push_id": 5371908516,
+        "truncated": false,
+        "commit_count": 3,
+        "distinct_commit_count": 3
+      },
+      "comment": false,
+      "activity": "CommitObserved",
+      "actor_id": "actor:22350",
+      "object_id": "commit:f38cc4e7754edda0d437b8db245e85a26ad4ad23"
+    },
+    {
+      "id": "commit_obs:12900276094:3",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-14T13:24:21+00:00",
+      "attrs": {
+        "ref": "refs/heads/release/1.47",
+        "push_id": 5371908516,
+        "truncated": false,
+        "commit_count": 3,
+        "distinct_commit_count": 3
+      },
+      "comment": false,
+      "activity": "CommitObserved",
+      "actor_id": "actor:22350",
+      "object_id": "commit:282ac0e481fbd41aeff01fbc3fe56070bc29c2bc"
+    },
+    {
+      "id": "issue_act:12978592552",
+      "repo": "microsoft/vscode",
+      "time": "2020-07-21T23:21:31+00:00",
+      "attrs": {},
+      "comment": true,
+      "activity": "IssueCommented",
+      "actor_id": "actor:7355327",
+      "object_id": "issue:655615214"
+    },
+    {
+      "id": "commit_obs:13186297360:11",
+      "repo": "microsoft/vscode",
+      "time": "2020-08-12T23:42:06+00:00",
+      "attrs": {
+        "ref": "refs/heads/robo/update_electron_downloader",
+        "push_id": 5521697482,
+        "truncated": true,
+        "commit_count": 1000,
+        "distinct_commit_count": 3
+      },
+      "comment": false,
+      "activity": "CommitObserved",
+      "actor_id": "actor:964386",
+      "object_id": "commit:48fd5cbf665baee62083358b65b70146f1e7d6b7"
+    }
+  ],
+  "objects": [
+    {
+      "id": "actor:22281444",
+      "repo": "microsoft/vscode",
+      "type": "actor",
+      "vmap": {
+        "login": "hunter86bg",
+        "actor_id": 22281444
+      },
+      "label": "@hunter86bg",
+      "intervals": [],
+      "time_semantics": "static"
+    },
+    {
+      "id": "actor:22350",
+      "repo": "microsoft/vscode",
+      "type": "actor",
+      "vmap": {
+        "login": "joaomoreno",
+        "actor_id": 22350
+      },
+      "label": "@joaomoreno",
+      "intervals": [],
+      "time_semantics": "static"
+    },
+    {
+      "id": "actor:24382922",
+      "repo": "microsoft/vscode",
+      "type": "actor",
+      "vmap": {
+        "login": "skyselang",
+        "actor_id": 24382922
+      },
+      "label": "@skyselang",
+      "intervals": [],
+      "time_semantics": "static"
+    },
+    {
+      "id": "actor:46475675",
+      "repo": "microsoft/vscode",
+      "type": "actor",
+      "vmap": {
+        "login": "Sharleedah",
+        "actor_id": 46475675
+      },
+      "label": "@Sharleedah",
+      "intervals": [],
+      "time_semantics": "static"
+    },
+    {
+      "id": "actor:7355327",
+      "repo": "microsoft/vscode",
+      "type": "actor",
+      "vmap": {
+        "login": "qt1",
+        "actor_id": 7355327
+      },
+      "label": "@qt1",
+      "intervals": [],
+      "time_semantics": "static"
+    },
+    {
+      "id": "actor:7524911",
+      "repo": "microsoft/vscode",
+      "type": "actor",
+      "vmap": {
+        "login": "rohmanhm",
+        "actor_id": 7524911
+      },
+      "label": "@rohmanhm",
+      "intervals": [],
+      "time_semantics": "static"
+    },
+    {
+      "id": "actor:964386",
+      "repo": "microsoft/vscode",
+      "type": "actor",
+      "vmap": {
+        "login": "deepak1556",
+        "actor_id": 964386
+      },
+      "label": "@deepak1556",
+      "intervals": [],
+      "time_semantics": "static"
+    },
+    {
+      "id": "commit:282ac0e481fbd41aeff01fbc3fe56070bc29c2bc",
+      "repo": "microsoft/vscode",
+      "type": "commit",
+      "vmap": {
+        "ref": "refs/heads/release/1.47",
+        "push_id": 5371908516,
+        "commit_sha": "282ac0e481fbd41aeff01fbc3fe56070bc29c2bc",
+        "commit_index": 3,
+        "commit_message": "Merge pull request #102479 from microsoft/joao/release/1.47/fix-102358\n\nRelease fixes #102358",
+        "commit_author_name": "João Moreno",
+        "commit_author_email": "317cf7fae080e14973ed66b069f4365ff16d5a3b@microsoft.com"
+      },
+      "label": "282ac0e",
+      "intervals": [
+        {
+          "end": "2020-07-14T13:24:21+00:00",
+          "start": "2020-07-14T13:24:21+00:00"
+        }
+      ],
+      "time_semantics": "first_seen(push)"
+    },
+    {
+      "id": "commit:48fd5cbf665baee62083358b65b70146f1e7d6b7",
+      "repo": "microsoft/vscode",
+      "type": "commit",
+      "vmap": {
+        "ref": "refs/heads/master",
+        "push_id": 5370957789,
+        "commit_sha": "48fd5cbf665baee62083358b65b70146f1e7d6b7",
+        "commit_index": 1,
+        "commit_message": "fixes #102358",
+        "commit_author_name": "João Moreno",
+        "commit_author_email": "317cf7fae080e14973ed66b069f4365ff16d5a3b@microsoft.com"
+      },
+      "label": "48fd5cb",
+      "intervals": [
+        {
+          "end": "2020-07-14T10:02:30+00:00",
+          "start": "2020-07-14T10:02:30+00:00"
+        }
+      ],
+      "time_semantics": "first_seen(push)"
+    },
+    {
+      "id": "commit:d5942ca8f601c296a895ea64e30dff07aad963b5",
+      "repo": "microsoft/vscode",
+      "type": "commit",
+      "vmap": {
+        "ref": "refs/heads/release/1.47",
+        "push_id": 5371908516,
+        "commit_sha": "d5942ca8f601c296a895ea64e30dff07aad963b5",
+        "commit_index": 1,
+        "commit_message": "fixes #102358",
+        "commit_author_name": "João Moreno",
+        "commit_author_email": "317cf7fae080e14973ed66b069f4365ff16d5a3b@microsoft.com"
+      },
+      "label": "d5942ca",
+      "intervals": [
+        {
+          "end": "2020-07-14T13:24:21+00:00",
+          "start": "2020-07-14T13:24:21+00:00"
+        }
+      ],
+      "time_semantics": "first_seen(push)"
+    },
+    {
+      "id": "commit:f38cc4e7754edda0d437b8db245e85a26ad4ad23",
+      "repo": "microsoft/vscode",
+      "type": "commit",
+      "vmap": {
+        "ref": "refs/heads/joao/release/1.47/fix-102358",
+        "push_id": 5371823876,
+        "commit_sha": "f38cc4e7754edda0d437b8db245e85a26ad4ad23",
+        "commit_index": 1,
+        "commit_message": "scm: always call onDidChangeContentHeight\n\nrelated to #102358",
+        "commit_author_name": "João Moreno",
+        "commit_author_email": "317cf7fae080e14973ed66b069f4365ff16d5a3b@microsoft.com"
+      },
+      "label": "f38cc4e",
+      "intervals": [
+        {
+          "end": "2020-07-14T13:08:12+00:00",
+          "start": "2020-07-14T13:08:12+00:00"
+        }
+      ],
+      "time_semantics": "first_seen(push)"
+    },
+    {
+      "id": "issue:655615214",
+      "repo": "microsoft/vscode",
+      "type": "issue",
+      "vmap": {
+        "issue_id": 655615214,
+        "issue_number": 102358
+      },
+      "label": "#102358",
+      "intervals": [
+        {
+          "end": "2020-07-14T10:02:30+00:00",
+          "start": "2020-07-13T06:27:13+00:00"
+        }
+      ],
+      "time_semantics": "created_at(opened)"
+    },
+    {
+      "id": "pr:448781946",
+      "repo": "microsoft/vscode",
+      "type": "pull_request",
+      "vmap": {
+        "title": "fixes #102358",
+        "base_ref": "release/1.47",
+        "head_ref": "joao/release/1.47/fix-102358",
+        "pr_number": 102479,
+        "pull_request_id": 448781946
+      },
+      "label": "PR #102479",
+      "intervals": [
+        {
+          "end": "2020-07-14T13:24:15+00:00",
+          "start": "2020-07-14T10:05:46+00:00"
+        }
+      ],
+      "time_semantics": "created_at(opened)"
+    }
+  ]
+}
