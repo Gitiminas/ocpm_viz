@@ -161,6 +161,36 @@ as a direct address), `?page=stats` the statistics page, `?preset=…` a saved c
 
 ---
 
+## Serving it over HTTP
+
+PostgREST is installed user-local at `~/.local/bin/postgrest` (v14.16, static binary — no
+sudo, same pattern as Node). Two SQL files, in this order, then run it:
+
+```bash
+psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql        # the data layer
+psql -d gharchive_ocpm_viz_wsl -f sql/postgrest_setup.sql # roles, grants, isolation
+cp postgrest.conf.example postgrest.conf                  # then set the password
+postgrest postgrest.conf                                  # listens on :3000
+```
+
+```bash
+curl -s -X POST http://localhost:3000/rpc/get_object_graph   -H 'Content-Type: application/json'   -d '{"repo":"microsoft/vscode","seed":"pr:448781946","traversal_degree":2}'
+```
+
+**Three roles, and the third is the point** (`sql/postgrest_setup.sql` explains at length):
+`authenticator` connects, `web_anon` is what a request runs as, and `fe_owner` owns the
+layer and is what the RPC runs as via `SECURITY DEFINER`. Without that third role
+`web_anon` would need SELECT on 14 GB of raw event data; with it, `web_anon`'s entire
+privilege set is USAGE on schema `api` and EXECUTE on one function. `fe_owner` is
+deliberately **not** a superuser — a superuser-owned `SECURITY DEFINER` function reachable
+over HTTP is a privilege-escalation surface. The file ends in seven assertions that all
+have to read `ok`.
+
+⚠️ `postgrest.conf` holds the database password and is **gitignored**. Commit
+`postgrest.conf.example` instead.
+
+---
+
 ## The data layer
 
 `sql/fe_layer.sql` is the whole of it. Run it, then query the RPC:
@@ -210,10 +240,17 @@ keeps them out of the `^F\d+$` test globs.
 Work packages `tasks/00` through `tasks/06` are complete, and the data layer is built.
 What is **not** done:
 
-- **The app still loads fixtures.** `sql/fe_layer.sql` and `api.get_object_graph` exist
-  and are verified against real data, but **PostgREST is not configured and
-  `src/data/api.js` is unwritten** — that is pass 2. No role has been granted
-  `USAGE` on schema `api` yet.
+- **The app still loads fixtures**, even though everything under it is live. PostgREST
+  serves the RPC and `src/data/api.js` is a working transport, verified end to end over
+  HTTP — but `src/main.js` still calls `fixtureTransport`. What is missing is not the
+  transport, it is **seed resolution**: the RPC keys on database ids
+  (`pr:448781946`) while the UI's search box takes display numbers (`#102479`), and
+  nothing bridges the two yet. `fe.seed_lookup` plus `resolveSeed()` in `api.js` is the
+  next piece; both are stubbed with the shape they need.
+- **`scripts/build-catalogue.mjs` still lists react and kubernetes as "unavailable —
+  needs the `get_object_graph` RPC".** The RPC exists and serves both. That claim is
+  decision 34's documented behaviour, so it retires with the seed-search work rather
+  than piecemeal.
 - **The RQ2 link-coverage figure is now measurable but unpublished.**
   `fe.diag_link_methods` produces it, grouped by `(method, qualifier)` as decision 50
   requires. It has not been written up, and two caveats must travel with it: the

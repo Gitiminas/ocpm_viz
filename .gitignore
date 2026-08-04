@@ -11,3 +11,4 @@ CLAUDE.local.md
 
 node_modules/
 .shots/
+postgrest.conf
