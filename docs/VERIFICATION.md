@@ -183,9 +183,11 @@ The breakdown must now cover all seven methods plus the extended set, and report
 
 **This figure cannot be produced yet.** It spans data that is not loaded, so by
 decision 12 it belongs in SQL — and there is no database connection from this
-project. The query that produces it is written and committed at
-[`sql/rq2_link_coverage.sql`](../sql/rq2_link_coverage.sql), ready to run against
-the shared instance.
+project. A query for it once existed at `sql/rq2_link_coverage.sql`; that directory
+was deleted in `a1e2a9c` and is staying deleted, so the query has to be written
+again. Write it against the current contract, not the old one: the breakdown now
+covers seven detection methods plus the extended-convention set, and must report
+the `proximity` share separately.
 
 Until it is run, the thesis must state the limitation qualitatively and say the
 number is not yet measured. **Do not estimate it.** An invented coverage figure

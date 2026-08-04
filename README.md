@@ -74,7 +74,6 @@ All times are **UTC**, labelled.
 | `src/` | The application, as ES modules — see below |
 | `tests/` | `node --test` suites and `tests/fixtures/` |
 | `scripts/` | Fixture builders and the dev server |
-| `sql/` | Queries against the shared database (none run yet) |
 | `docs/` | Design record — start with `DECISIONS.md` |
 | `screenshots/` | Pre-change visual baseline. **Read-only** |
 | `ocel-data.json` | The original data blob. **Never edit**; fixture F1 is built from it |
@@ -167,8 +166,10 @@ Work packages `tasks/00` through `tasks/06` are complete. What is **not** done:
 
 - **No connection to the real database.** Every sub-log is a fixture. The adapter
   views, the `get_object_graph` RPC and `src/data/api.js` are all unwritten.
-- **The RQ2 link-coverage figure is unmeasured.** The query is written
-  (`sql/rq2_link_coverage.sql`) but has never been run.
+- **The RQ2 link-coverage figure is unmeasured**, and the query that would produce
+  it is no longer in the tree — `sql/` was deleted in `a1e2a9c`. It has to be
+  written again against the refreshed contract, which now lists seven issue↔PR
+  detection methods rather than four.
 - **Interaction has no automated coverage** — tooltips, minimap drag, legend hover.
 - **Sizing has not been tuned** beyond 1920×1200.
 

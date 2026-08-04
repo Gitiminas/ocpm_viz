@@ -32,7 +32,7 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | Doc | What it is | Authority |
 |---|---|---|
 | `docs/DECISIONS.md` | Settled decisions + open questions | **Binding.** Read first. |
-| `docs/DATA_CONTRACT.md` | What exists upstream: 4 base tables + 49 views (22 in scope, 27 excluded) | **Authoritative.** If a view is not in it, it does not exist — but check its snapshot date, because the 2026-08-04 revision added 17 relations the previous one had never named. |
+| `docs/DATA_CONTRACT.md` | What exists upstream: 4 base tables + 49 views (22 in scope, 27 excluded) | **The authoritative *record* — the database itself is ground truth.** Check the snapshot date: the 2026-08-04 revision added 17 relations the previous one never named. |
 | `docs/DATA_REQUIREMENTS.md` | Every field the visualization needs, by entity | Requirements side |
 | `docs/ADAPTER_AND_API.md` | The layer I build; `ObjectGraph` contract; evidence mapping | Binding |
 | `docs/ARCHITECTURE.md` | Layers, seams, OCPM implications for the renderer | Intent |
@@ -40,7 +40,7 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | `docs/VERIFICATION.md` | What was checked, how, and what was not | Task 6 output |
 | `README.md` | Human entry point: run, test, extend | Keep current |
 | `docs/ONBOARDING.md` | Reading path: what to read, in what order, and what to skip | Orientation |
-| `tasks/*.md` | One file per work package, in order | Per task |
+| ~~`tasks/*.md`~~ | Was one file per work package. **Deleted in `a1e2a9c` and staying deleted.** Work packages 00–06 are complete | Gone — do not restore |
 
 ## Repository map
 
@@ -65,12 +65,37 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
 
 ## Hard rules
 
+- **The database and the code are ground truth. The docs are a record of them, and records go
+  stale.** This governs how to read every other rule here. When wiring the tool to the database —
+  which views exist, what columns they have, what a module actually does — trust in this order:
+  **(1) the database, when you have queried it; (2) the code, when you have read or run it;
+  (3) the documentation.** A document that contradicts a verified fact is wrong. Correct the
+  document, dated, with what you observed; never bend a query, a module or a payload to match
+  prose. `DATA_CONTRACT.md` is the worked example: it called itself *the authoritative list of what
+  exists* while omitting 17 relations — including two views that are probably derivations
+  `ADAPTER_AND_API.md` instructed me to build from scratch.
+  - **This licenses nothing.** "Reality wins" applies to what has been *observed* — a `\d+`, a
+    `pg_views` row, a query that ran, a test that passed. It never applies to what would be
+    convenient. Do not assume a view exists; go and look, then write down what you found. The rule
+    against inventing data is unchanged and unconditional.
+  - **A pointer to something that is gone is a stale pointer. Fix the pointer.** The working tree is
+    the source of truth: if a file was deleted it is meant to be gone, and it is not to be restored,
+    resurrected from history, or rewritten from the description that still refers to it —
+    reconstructing content from a citation is fabrication wearing a citation. `sql/rq2_link_coverage.sql`
+    and `tasks/*.md` were deleted in `a1e2a9c`; `docs/EXAMPLE.md` and `docs/DATABASE.md`, both cited
+    by `ONBOARDING.md`, were never committed at all. Either way the action is the same and it is on
+    the document, never on the tree. History is worth a look only to know *which* of those two cases
+    you are in, so the correction can say so.
+
 - **There is no "case".** OCPM removes the case notion; an event relates to several objects and none
   is privileged. Never use `case` in variable names, function names, comments, SQL or UI labels.
   The vocabulary is `objectGraph` / `subLog`. The RPC is `get_object_graph`, never `get_case`.
   The existing data blob and UI still say "case" — that is a defect to fix, not a precedent.
-- **`docs/DATA_CONTRACT.md` is the complete list of what exists.** Do not invent views. Do not
-  assume a view exists because it would be convenient. Anything else, I build in my own schema.
+- **`docs/DATA_CONTRACT.md` is the written record of what exists**, subject to the precedence rule
+  above. Do not invent views. Do not assume a view exists because it would be convenient. Where the
+  database and the contract disagree, the database wins *and the contract gets fixed in the same
+  breath* — a divergence noticed and left unrecorded is how it grew to 17 relations. Anything not
+  upstream, I build in my own schema.
 - **Never modify the shared upstream.** The base tables and every view are owned by other researchers
   (a PhD student is building real OCEL tables; another MSc student is building bot classification).
   Read-only. No `UPDATE`/`DELETE`/`DROP`/`TRUNCATE`, no refreshes, no altering their definitions.
@@ -131,7 +156,8 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
 
 ## Working style
 
-- Tasks in order, starting with `tasks/00-*`. **Stop and check in after Task 1.**
+- Work packages `tasks/00`–`06` are done and their files are no longer in the tree (see above).
+  New work comes from `DECISIONS.md` §2 and from what I ask for — not from a task file.
 - If a fixture reveals an ambiguity the settled decisions don't cover, **ask instead of guessing.**
   A wrong guess baked into layout is expensive to unwind and hard for me to detect.
 - **Flag every place you guessed** rather than silently choosing.

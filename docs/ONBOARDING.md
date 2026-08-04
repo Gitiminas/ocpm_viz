@@ -29,16 +29,22 @@ object occupies. Only the code and the tests carry that layer.
 | Order | Doc | Read it for | How |
 |---|---|---|---|
 | 1 | `README.md` | orientation, the selection model | in full |
-| 2 | **`docs/EXAMPLE.md`** | screen → payload → database column, for one issue | **in full, slowly** |
+| 2 | **`docs/FRONTEND_DATA_NEEDS.md` §1** | the contract the code actually consumes | **§1 in full, then §4–6** |
 | 3 | `docs/ARCHITECTURE.md` | layers, module tree, where visibility is decided | in full — it is short |
 | 4 | `docs/DECISIONS.md` §1 | the traps | rationale column only |
-| 5 | `docs/FRONTEND_DATA_NEEDS.md` §1 | the contract the code actually consumes | §1, then §4–6 |
-| 6 | `docs/ADAPTER_AND_API.md` §3–4 | the evidence rule, the `ObjectGraph` shape | those two sections |
-| 7 | `docs/DATA_CONTRACT.md` | reference | skim §0 and the §1 headers; look things up later |
+| 5 | `docs/ADAPTER_AND_API.md` §3–4 | the evidence rule, the `ObjectGraph` shape | those two sections |
+| 6 | `docs/DATA_CONTRACT.md` | reference | skim §0 and the §1 headers; look things up later |
 
-If you read only one, read **`EXAMPLE.md`**. It is the only document that traverses the whole stack
-on a single concrete object, and it is where you notice that `vmap.issue_id` is `null` and learn why
-that is a dated exception rather than an oversight.
+If you read only one, read **`FRONTEND_DATA_NEEDS.md`** — §1 is the whole consumed surface, and §4
+is the list of fields that are carried and read by nothing.
+
+> ⚠️ **This table used to open with `docs/EXAMPLE.md`**, described as the one document tracing screen
+> → payload → database column for a single issue, and recommended above all others. **It does not
+> exist and never did** — `git log --all` has no record of it under that name. `docs/DATABASE.md`,
+> deferred below, is the same. Both are corrected here rather than written, because writing them
+> from their own descriptions would be inventing the content they claim to document. If someone
+> still wants the single-object trace, it is a genuinely good idea and it is unwritten work.
+> The `vmap.issue_id` quirk it promised to explain is recorded in `tests/fixtures/README.md`.
 
 Read `DECISIONS.md` for the **rationale** column, not the decision column. Most decisions are obvious
 once stated; the rationale is where the thesis argument lives, and it is the half that has to be
@@ -47,7 +53,9 @@ defended.
 **Skip `MOCKUP_OVERVIEW.md` entirely** — 457 lines describing deleted code, kept only as the written
 record of what was superseded. **Skip `DATA_REQUIREMENTS.md`** except §7 (the link table); it
 predates decisions 7 and 12 and says so in its own header, so reading it early teaches retired
-vocabulary. **Defer `DATABASE.md`** until the local replica actually needs rebuilding.
+vocabulary. ~~**Defer `DATABASE.md`** until the local replica actually needs rebuilding.~~ — see the
+note above: that file does not exist either, so whether a local replica exists at all is an open
+question for whoever next touches the database.
 
 ## 3. Then the code, following one datum
 
@@ -122,7 +130,8 @@ That class of bug is silent — the output looks fine and is wrong by an hour.
 Once through the above, the frontier is the three open questions in `DECISIONS.md` §2:
 
 - **O2** — the commit→PR admission rule. Gates commit-lane density and the RQ2 link counts.
-- **O9** — indexes on upstream views. Now measurable on the local replica (`DATABASE.md`).
+- **O9** — indexes on upstream views. Whether a local replica exists to measure them on is itself
+  unknown: the `DATABASE.md` this line used to cite was never committed.
 - **O10** — one object per event, or many. Cheapest to change *now*: 8 call sites, and the number
   grows with every renderer that depends on the current grouping.
 
