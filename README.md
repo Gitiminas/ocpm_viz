@@ -73,7 +73,8 @@ All times are **UTC**, labelled.
 | `index.html` | The app shell: markup, CSS, one `<script type="module">` |
 | `src/` | The application, as ES modules — see below |
 | `tests/` | `node --test` suites and `tests/fixtures/` |
-| `scripts/` | Fixture builders and the dev server |
+| `sql/` | **The PostgREST data layer** — `fe_layer.sql` builds schema `fe` (views) and `api.get_object_graph` |
+| `scripts/` | Fixture builders, the dev server, and the RPC tooling |
 | `docs/` | Design record — start with `DECISIONS.md` |
 | `screenshots/` | Pre-change visual baseline. **Read-only** |
 | `ocel-data.json` | The original data blob. **Never edit**; fixture F1 is built from it |
@@ -160,16 +161,133 @@ as a direct address), `?page=stats` the statistics page, `?preset=…` a saved c
 
 ---
 
+## Live data, or fixtures
+
+The **Data source** control at the top of the sidebar says which one is live and switches
+between them. The app reads **fixtures by default**; `?source=` sets it directly:
+
+```
+http://localhost:8000/                                              fixtures
+http://localhost:8000/?source=database&repo=microsoft/vscode&seed=pr:448781946
+```
+
+Both stay (decision 63). The fixtures are the test corpus and the visual baseline and
+they exercise shapes real data does not conveniently contain; the database is what the
+tool is for. `src/data/source.js` is the seam — `listRepos` / `searchSeeds` /
+`loadSubLog`, implemented twice — so nothing above it branches on which is in use.
+
+⚠️ The database source needs **both** servers up: `npm start` for the app and
+`postgrest postgrest.conf` for the API. `npm start` proxies `/rpc/*` to PostgREST so the
+two share an origin and no CORS is involved; if the API is down you get a 502 saying so.
+
+---
+
+## Serving it over HTTP
+
+PostgREST is installed user-local at `~/.local/bin/postgrest` (v14.16, static binary — no
+sudo, same pattern as Node). Two SQL files, in this order, then run it:
+
+```bash
+psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql        # the data layer
+psql -d gharchive_ocpm_viz_wsl -f sql/postgrest_setup.sql # roles, grants, isolation
+cp postgrest.conf.example postgrest.conf                  # then set the password
+postgrest postgrest.conf                                  # listens on :3000
+```
+
+```bash
+curl -s -X POST http://localhost:3000/rpc/get_object_graph   -H 'Content-Type: application/json'   -d '{"repo":"microsoft/vscode","seed":"pr:448781946","traversal_degree":2}'
+```
+
+**Three roles, and the third is the point** (`sql/postgrest_setup.sql` explains at length):
+`authenticator` connects, `web_anon` is what a request runs as, and `fe_owner` owns the
+layer and is what the RPC runs as via `SECURITY DEFINER`. Without that third role
+`web_anon` would need SELECT on 14 GB of raw event data; with it, `web_anon`'s entire
+privilege set is USAGE on schema `api` and EXECUTE on one function. `fe_owner` is
+deliberately **not** a superuser — a superuser-owned `SECURITY DEFINER` function reachable
+over HTTP is a privilege-escalation surface. The file ends in seven assertions that all
+have to read `ok`.
+
+⚠️ `postgrest.conf` holds the database password and is **gitignored**. Commit
+`postgrest.conf.example` instead.
+
+---
+
+## The data layer
+
+`sql/fe_layer.sql` is the whole of it. Run it, then query the RPC:
+
+```bash
+psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql        # idempotent, ~15 s
+psql -d gharchive_ocpm_viz_wsl -Atc \
+  "SELECT api.get_object_graph('microsoft/vscode','pr:448781946',2)"
+```
+
+Seeds are **type-prefixed database ids**, not display numbers (decision 51):
+`issue:<issue_id>`, `pr:<pull_request_id>`, `commit:<sha>`. To resolve a number:
+
+```sql
+SELECT id FROM fe.object_issue WHERE repo_id = 41881900 AND issue_number = 242864;
+```
+
+**Checking it:**
+
+```bash
+node scripts/rpc-check.mjs                    # full acceptance gate on a real payload
+psql -d ... -c "SELECT * FROM fe.diag_sanity" # 6 checks, every one must read 0
+```
+
+`scripts/rpc-check.mjs` feeds a live payload through `loadObjectGraph()` and requires
+`findGraphProblems()` to return `[]` — the same gate the 13 fixtures pass — then runs the
+real layout pipeline in all three time modes.
+
+⚠️ **After any upstream materialized-view refresh:**
+
+```sql
+SELECT fe.refresh_all();          -- ~11 s; refreshes both materialized relations
+SELECT * FROM fe.diag_staleness;  -- row counts and when each was last written
+```
+
+Two relations here are materialized — `fe.link_mat` (decision 57) and `fe.seed_lookup`
+(the seed search index) — and both go stale **silently**. A stale link table does not
+error, it answers with last week's graph; a stale search index cannot find objects that
+now exist.
+
+**Looking at it without a browser** — `node scripts/shot.mjs LIVE1` renders the running
+app headlessly and writes a PNG to `.shots/` (gitignored; it never touches the read-only
+`screenshots/` baseline). Uses Microsoft Edge over WSL interop, or any Chrome/Chromium via
+`BROWSER=`. It answers "did this draw at all", not "is this right".
+
+**Looking at a real sub-log** — `scripts/pull-sublog.mjs` snapshots RPC output into
+`tests/fixtures/LIVE*.json` so the app can render it before it is wired to PostgREST.
+Those are **samples, not fixtures**: nothing asserts against them, and the `LIVE*` name
+keeps them out of the `^F\d+$` test globs.
+
+---
+
 ## Status
 
-Work packages `tasks/00` through `tasks/06` are complete. What is **not** done:
+Work packages `tasks/00` through `tasks/06` are complete, and the data layer is built.
+What is **not** done:
 
-- **No connection to the real database.** Every sub-log is a fixture. The adapter
-  views, the `get_object_graph` RPC and `src/data/api.js` are all unwritten.
-- **The RQ2 link-coverage figure is unmeasured**, and the query that would produce
-  it is no longer in the tree — `sql/` was deleted in `a1e2a9c`. It has to be
-  written again against the refreshed contract, which now lists seven issue↔PR
-  detection methods rather than four.
+- **The renderer does not cope with dense real sub-logs** — open question O12, and one
+  half of it misleads rather than merely crowds: a pull request with 37 commits draws
+  ~30 diamonds in the PR lane because the link fan spreads coincident endpoints. Fix the
+  fan before the band stacking.
+- **`scripts/build-catalogue.mjs` still lists react and kubernetes as "unavailable —
+  needs the `get_object_graph` RPC".** That is true of the *fixture* catalogue and is
+  what the fixture source still reports; the database source computes availability from
+  `fe.seed_lookup` instead and shows all three as available. The hardcoded list is now
+  fixture-only and should say so.
+- **No deployment story beyond localhost.** The dev server's `/rpc/*` proxy is the same
+  shape nginx would take, but nothing is packaged or documented for a real host.
+- **Refresh is manual.** `fe.refresh_all()` does both materialized relations in one
+  call, but nothing triggers it when upstream refreshes.
+- **The RQ2 link-coverage figure is now measurable but unpublished.**
+  `fe.diag_link_methods` produces it, grouped by `(method, qualifier)` as decision 50
+  requires. It has not been written up, and two caveats must travel with it: the
+  `ref_match` narrowing (decisions 61–62) makes every commit-link count a **floor**, and
+  the per-repo spread is a fork-vs-branch contribution artifact, not a process difference.
+- **Layout does not cope with dense real sub-logs** — see open question O12.
 - **Interaction has no automated coverage** — tooltips, minimap drag, legend hover.
 - **Sizing has not been tuned** beyond 1920×1200.
 

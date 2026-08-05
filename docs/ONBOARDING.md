@@ -57,6 +57,28 @@ vocabulary. ~~**Defer `DATABASE.md`** until the local replica actually needs reb
 note above: that file does not exist either, so whether a local replica exists at all is an open
 question for whoever next touches the database.
 
+## 2b. The data layer (~20 min)
+
+`sql/fe_layer.sql` is where a payload comes from, and it is worth reading before the code
+that consumes one. **Read its header first** — the load-bearing conventions are listed
+there, and every one of them is a defect that was actually shipped once: type-prefixed
+object ids, remap-before-whitelist, resolving endpoints against `fe.object_*`, and the
+timestamp handling.
+
+Then run it and look at what it produces:
+
+```bash
+psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql
+psql -d gharchive_ocpm_viz_wsl -c "SELECT * FROM fe.diag_sanity"   # all 0, and 9 activities
+node scripts/rpc-check.mjs                                          # the acceptance gate
+```
+
+The `fe.diag_*` views are the fastest way to understand what the layer chooses **not** to
+carry — dropped activities, unresolvable PR comments, the `ref_match` narrowing — and each
+one exists because a silent subtraction was found and made loud.
+
+---
+
 ## 3. Then the code, following one datum
 
 Trace a single link — commit `eb70000` → issue #242864 — through the pipeline. This is the order in

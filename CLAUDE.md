@@ -48,6 +48,10 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 |---|---|---|
 | `index.html` | The app shell: markup, CSS, and the one `<script type="module">` entry | **Work here** for anything structural in the page |
 | `src/` | The application, as ES modules. Structure and rationale in `ARCHITECTURE.md` | **Work here.** Keep `model/`, `layout/` and `stats/` DOM-free |
+| `sql/fe_layer.sql` | **The PostgREST data layer**: schema `fe` (8 views + 7 diagnostics) and `api.get_object_graph`. Idempotent — re-run it to apply changes | **Work here** for anything about what the payload contains. Read its header before editing: the load-bearing conventions are listed there, and each one is a defect someone already shipped |
+| `scripts/rpc-check.mjs` | Acceptance gate: a real RPC payload through `loadObjectGraph`, then the real layout pipeline | Run after any change to `sql/fe_layer.sql`. `findGraphProblems()` must return `[]` |
+| `scripts/pull-sublog.mjs` | Snapshots RPC output to `tests/fixtures/LIVE*.json` so a real sub-log can be rendered | These are **samples, not fixtures** — nothing asserts against them |
+| `scripts/shot.mjs` | Headless screenshot of the running app, via Edge over WSL interop | Writes to `.shots/` (gitignored). **Never to `screenshots/`** — that baseline stays read-only |
 | `scripts/build-f1.mjs` | Builds `tests/fixtures/F1.json` from `ocel-data.json` | Re-runnable. `--check` fails if the committed fixture is stale |
 | `scripts/serve.mjs` | Zero-dependency static server (`npm start`) | Needed because ES modules and `fetch` are blocked on `file://` |
 | `tests/` | `node --test` suites plus `tests/fixtures/` | Run with `npm test`. See `tests/fixtures/README.md` |
@@ -131,6 +135,12 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
   → gaps unchanged" silently, which is the failure decision 12 exists to prevent.
 - My derived views live in **my own schema**, never in the shared namespace. Plain `VIEW` by default;
   `MATERIALIZED VIEW` only where a measured query justifies it (see `docs/ADAPTER_AND_API.md`).
+  Built as `sql/fe_layer.sql`: schema `fe` for the views, `api` for the one RPC. Exactly one
+  materialization, `fe.link_mat`, with its measurement beside it. **Re-run `SELECT fe.refresh_links()`
+  after any upstream refresh** — it goes stale silently, and `fe.diag_link_staleness` is what tells you.
+- **Two admission rules are ours, not upstream's** (decisions 61–62), and they are the only places
+  this project diverges from the shared views. Both narrow `ref_match`. Every commit-link and
+  issue↔PR figure is therefore a **floor**, never a point estimate — say so wherever one is quoted.
 - Identity by numeric id, never by `login` or repo `name` — both are renameable.
   **Two dated exceptions, both blocked on the RPC, neither to be widened:**
   actor objects are keyed `actor:<login>` and the query addresses a repo by name, because

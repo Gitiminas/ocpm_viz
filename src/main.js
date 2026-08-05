@@ -8,8 +8,8 @@
 
 /* global d3 */
 
-import { loadObjectGraph, describeSubLog } from './data/loadObjectGraph.js';
-import { loadCatalogue, searchSeeds } from './data/fixtures.js';
+import { describeSubLog, seedObjects } from './data/loadObjectGraph.js';
+import { createSource, resolveQuery } from './data/source.js';
 import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
@@ -49,6 +49,8 @@ const el = (id) => document.getElementById(id);
 
 const elements = {
   chart: el('chart'),
+  sourceToggle: el('sourceToggle'),
+  sourceNote: el('sourceNote'),
   scroll: el('scroll'),
   wrap: el('wrap'),
   tip: el('tip'),
@@ -172,7 +174,7 @@ const timeline = createTimeline({
 // ---------------------------------------------------------------------------
 
 async function load(query) {
-  const graph = await loadObjectGraph(query);
+  const graph = await source.loadSubLog(query);
   const index = indexObjectGraph(graph);
 
   const actors = index.objectsOfType('actor');
@@ -225,7 +227,7 @@ async function load(query) {
 
   renderSidebar();
   renderLegend(elements.legend);
-  wireSelectors(graph.meta.repo, graph.meta.seed?.[0]?.id);
+  wireSelectors(graph.meta.repo, graph.meta.seed?.[0]?.id, seedObjects(graph)[0]);
 
   timeline.measure();
   redraw();
@@ -512,11 +514,65 @@ function queryFromUrl() {
     seed: params.get('seed') || null,
     fixture: params.get('fixture') || null,
     preset: params.get('preset') || null,
+    // Server-side expansion (decision 35). Absent means "whatever the source defaults
+    // to", which for the RPC is 2 and for a fixture is whatever it was built at.
+    traversalDegree: params.get('degree') ? Number(params.get('degree')) : undefined,
     page: params.get('page') === 'stats' ? 'stats' : 'timeline',
   };
 }
 
 const initialQuery = queryFromUrl();
+
+/**
+ * Fixtures or the database, chosen by `?source=` and defaulting to fixtures.
+ *
+ * Defaulting to fixtures is deliberate: the database source needs PostgREST running,
+ * and an app that refuses to start because a server is down would be worse than one
+ * that starts on the corpus it ships with.
+ */
+const source = createSource();
+
+/**
+ * Say which data source is live, and let it be changed without editing the URL.
+ *
+ * The source is chosen by `?source=` and defaults to fixtures. Before this existed the
+ * only way to know whether you were looking at the real database or at 13 hand-built
+ * test bundles was to remember what you had typed — and an evaluation session run on
+ * fixtures by accident would measure the wrong thing while looking identical to one run
+ * on real data. Switching reloads the page rather than swapping the source in place,
+ * because a seed from one source is meaningless in the other (fixtures key on
+ * `issue:242864`, the database on `issue:2902032454`), so carrying the query across
+ * would guarantee a failed load.
+ */
+function renderSourceToggle() {
+  const OPTIONS = [
+    { id: 'fixtures', label: 'Fixtures', note: 'Pre-built test sub-logs. No database.' },
+    { id: 'database', label: 'Database', note: 'Live via PostgREST. Seed from any object.' },
+  ];
+
+  elements.sourceToggle.innerHTML = '';
+  for (const option of OPTIONS) {
+    const active = option.id === source.name;
+    const button = document.createElement('button');
+    button.className = 'mono';
+    button.textContent = option.label;
+    button.style.cssText =
+      'flex:1;cursor:pointer;border:none;padding:6px 8px;font-size:11.5px;font-weight:600;' +
+      (active
+        ? 'background:var(--color-accent-600,#5b5bd6);color:#fff'
+        : 'background:var(--color-neutral-900);color:var(--color-neutral-400)');
+    button.setAttribute('aria-pressed', String(active));
+    if (!active) {
+      button.addEventListener('click', () => {
+        // Only the source survives the switch. See above.
+        window.location.search = `?source=${option.id}`;
+      });
+    }
+    elements.sourceToggle.appendChild(button);
+  }
+  elements.sourceNote.textContent = OPTIONS.find((o) => o.id === source.name).note;
+}
+renderSourceToggle();
 
 let catalogue = null;
 
@@ -528,7 +584,7 @@ let catalogue = null;
  * precisely about react and kubernetes — and a picker that never mentioned them
  * would hide that.
  */
-function wireSelectors(activeRepoName, activeSeedId) {
+function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
   const repos = catalogue.repos;
   const activeRepo =
     repos.find((repo) => repo.name === activeRepoName) || repos.find((repo) => repo.available);
@@ -550,7 +606,17 @@ function wireSelectors(activeRepoName, activeSeedId) {
     onSelect: (option) => reload({ repo: option.repo }),
   });
 
-  const activeSeed = (activeRepo?.seeds ?? []).find((seed) => seed.id === activeSeedId);
+  /*
+   * The label for the seed currently loaded.
+   *
+   * It used to be looked up in the catalogue's seed list, which only the fixture source
+   * has — the database source searches rather than enumerating (decision 34), so there
+   * is no list to look in. Reading it off the loaded sub-log instead works for both, and
+   * is more truthful anyway: it names what is actually on screen rather than what the
+   * catalogue said would be.
+   */
+  const activeSeed =
+    loadedSeed || (activeRepo?.seeds ?? []).find((seed) => seed.id === activeSeedId);
 
   // The seed box is a **search**, not a list. A real repository holds hundreds of
   // thousands of objects, so there is nothing to enumerate: you name what you want.
@@ -558,17 +624,21 @@ function wireSelectors(activeRepoName, activeSeedId) {
     input: elements.objectInput,
     dropdown: elements.objectDropdown,
     initialLabel: activeSeed ? seedLabel(activeSeed) : '',
-    search: (text) =>
-      searchSeeds(catalogue, activeRepo?.name, text).map((seed) => ({
+    // Async in both sources; `setupSearchCombo` debounces and guards against a stale
+    // response overwriting a fresher one.
+    search: async (text) =>
+      (await source.searchSeeds(activeRepo?.name, text)).map((seed) => ({
         label: seedLabel(seed),
         note: seed.title || null,
         seed: seed.id,
-        active: seed.id === activeSeed?.id,
+        active: seed.id === activeSeedId,
       })),
+    // The message differs by source because the *reason* differs: fixtures cannot
+    // traverse from an arbitrary object, the database simply has no such object.
+    // Saying "needs the RPC" once the RPC is what you are talking to would be a lie.
     emptyMessage: (text) =>
       text.trim()
-        ? `No sub-log built from ${describeSeedRef(parseSeedRef(text))} in ${activeRepo?.name}. ` +
-          `Seeding from an arbitrary object needs the RPC.`
+        ? source.emptySeedMessage(describeSeedRef(parseSeedRef(text)), activeRepo?.name)
         : 'Type an issue or PR number, or a commit SHA.',
     onSelect: (option) => reload({ repo: activeRepo.name, seed: option.seed }),
   });
@@ -578,35 +648,177 @@ const seedLabel = (seed) => `${seed.type.replace('_', ' ')} ${seed.label}`;
 
 async function reload(query) {
   try {
-    await load(query);
+    /*
+     * A repository without a seed is an incomplete query (decision 33), and how to
+     * complete it depends on the source: fixtures can offer their first servable seed,
+     * the database cannot enumerate one to offer. Previously neither case was handled —
+     * `reload({repo})` went straight to the transport, which the fixture path absorbed
+     * silently by taking `repo.seeds[0]` and the RPC rightly refused. The result was
+     * that opening `?source=database` with no seed, or switching repository at all,
+     * produced a dead app with no selectors.
+     */
+    const resolved = await resolveQuery(query, source);
+    if (resolved.action === 'prompt') {
+      showSeedPrompt(resolved.repo);
+      return;
+    }
+    await load(resolved.query);
   } catch (error) {
-    showFatal(error);
+    showFatal(error, query);
   }
 }
 
 /**
+ * The state between choosing a repository and naming a seed.
+ *
+ * Not an error and not a blank page: the selectors are wired so the search box works,
+ * and the message says what to do. This is the honest shape of decision 33 — the tool
+ * cannot show a sub-log until it has been told which one.
+ */
+function showSeedPrompt(repoName) {
+  wireSelectors(repoName, null, null);
+  elements.chart.innerHTML =
+    '<div style="padding:32px;max-width:640px">' +
+    '<div style="font-size:15px;font-weight:600;color:var(--color-text);margin-bottom:8px">' +
+    `Choose something to start from${repoName ? ` in ${escapeForHtml(repoName)}` : ''}</div>` +
+    '<div style="font-size:12.5px;color:var(--color-neutral-400);line-height:1.7">' +
+    'A sub-log is a repository <em>and</em> an object to traverse out from, so there is ' +
+    'nothing to draw yet.<br>Use <strong>Start from</strong> — an issue or PR number ' +
+    '(<span class="mono">102358</span>), a commit SHA (<span class="mono">48fd5cb</span>), ' +
+    'or free text (<span class="mono">mcp server</span>).</div></div>';
+}
+
+const escapeForHtml = (value) => String(value).replace(/[&<>]/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+
+/**
  * State the traversal degree, and say plainly what can and cannot be seeded.
  *
- * Read-only by design: the degree is fixed when a sub-log is built, so a stepper
- * here would be a control that silently does nothing.
+ * Read-only by design (decision 35): the degree is fixed when a sub-log is built, so a
+ * stepper here would be a control that silently does nothing.
+ *
+ * ⚠️ **What it says depends on the source, because what is true depends on the source.**
+ * On fixtures, only pre-built seeds can be served and the count is a real limit worth
+ * stating. Against the database the traversal runs for real, so "N seeds servable here —
+ * seeding from any object needs the RPC" is false twice over: the count is meaningless
+ * (there is no list, by decision 34) and the RPC is what you are already talking to.
+ * Leaving that text up would be exactly the kind of stale, confidently-wrong caption
+ * this project keeps finding in its own documents.
  */
 function updateTraversalInfo(graph) {
   const degree = graph.meta?.traversal_degree;
-  const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
-  const servable = repo?.seeds.length ?? 0;
 
+  /*
+   * Editable at last, and only where it can be honoured.
+   *
+   * Decision 35 made this read-only because the degree was fixed when a fixture was
+   * built, so a stepper would have been a control that silently did nothing — the thing
+   * this project forbids. `get_object_graph` takes the degree as a parameter, so against
+   * the database the condition that decision named is met and the control is real. On
+   * fixtures it stays text, for exactly the original reason.
+   *
+   * ⚠️ The steps are labelled with what they cost, because the cost is steep and
+   * non-obvious: on vscode PR #116416 the sub-log goes 1 → 39 → 42 → 291 objects from
+   * degree 0 to 3. A stepper that hid that would invite someone to drag it to 3 on a
+   * busy seed and conclude the tool had hung.
+   */
+  const degreeNote = source.traversalEditable
+    ? `Traversal degree ${renderDegreeControl(degree)} · server-side expansion<br>`
+    : degree == null
+      ? ''
+      : `Traversal degree ${degree} · fixed by the query<br>`;
+
+  /*
+   * ⚠️ **Say when a seed reaches nothing.** A sub-log of one object is a legitimate
+   * answer — the object exists and no detection method connects it to anything — but on
+   * screen it is indistinguishable from a failure, and users reported exactly that
+   * ("issue 245207 loads only itself"). Verified for that issue: zero links here AND
+   * zero upstream, so the picture is right and only the silence is wrong.
+   *
+   * This is decision 27's principle one step further. That rule declares what the tool
+   * *subtracted*; this declares what the data never had, which is the other way a sparse
+   * picture misleads.
+   */
+  const isolated = graph.links.length === 0;
+  const isolatedNote = isolated
+    ? `<br>No links from this seed — nothing upstream connects it, so there is nothing ` +
+      `to traverse to. The object itself is shown.`
+    : '';
+
+  if (source.name === 'database') {
+    const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
+    elements.traversalInfo.innerHTML =
+      degreeNote +
+      `Live from the database — seed from any issue, pull request or commit` +
+      (repo?.seeds_total ? ` (${repo.seeds_total.toLocaleString()} searchable)` : '') +
+      isolatedNote;
+    bindDegreeControl(graph);
+    return;
+  }
+
+  const servable = repo_seed_count(graph);
   elements.traversalInfo.innerHTML =
-    (degree == null ? '' : `Traversal degree ${degree} · fixed by the query<br>`) +
+    degreeNote +
     `${servable} seed${servable === 1 ? '' : 's'} servable here — seeding from any ` +
-    `object needs the RPC`;
+    `object needs the database source (?source=database)` +
+    isolatedNote;
+  bindDegreeControl(graph);
+}
+
+/** Reload at a new degree, keeping the rest of the query. */
+function bindDegreeControl(graph) {
+  const container = document.getElementById('degreeControl');
+  if (!container) return;
+  for (const button of container.querySelectorAll('button[data-degree]')) {
+    button.addEventListener('click', () => {
+      const degree = Number(button.dataset.degree);
+      if (degree === (graph.meta?.traversal_degree ?? 2)) return;
+      reload({
+        repo: graph.meta?.repo,
+        seed: graph.meta?.seed?.[0]?.id,
+        traversalDegree: degree,
+      });
+    });
+  }
+}
+
+/**
+ * The degree stepper, as markup. Wired after the note is written, because it is rebuilt
+ * on every render and a listener bound to a replaced node would be lost.
+ */
+function renderDegreeControl(degree) {
+  const current = degree ?? 2;
+  const options = [0, 1, 2, 3]
+    .map(
+      (d) =>
+        `<button data-degree="${d}" class="mono" style="cursor:pointer;border:1px solid ` +
+        `var(--color-neutral-700);background:${d === current ? 'var(--color-accent-600,#5b5bd6)' : 'transparent'};` +
+        `color:${d === current ? '#fff' : 'var(--color-neutral-400)'};font-size:10px;` +
+        `padding:1px 5px;border-radius:3px;margin-right:2px">${d}</button>`,
+    )
+    .join('');
+  return `<span id="degreeControl">${options}</span>`;
+}
+
+/** How many seeds the fixture catalogue can actually serve for this sub-log's repo. */
+function repo_seed_count(graph) {
+  const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
+  return repo?.seeds?.length ?? 0;
 }
 
 // ---------------------------------------------------------------------------
 // startup
 // ---------------------------------------------------------------------------
 
-function showFatal(error) {
+function showFatal(error, query) {
   console.error(error);
+  // Keep the selectors alive on failure. Stranding the user with a dead sidebar means
+  // the only way out of a bad seed is editing the URL.
+  try {
+    if (catalogue) wireSelectors(query?.repo, null, null);
+  } catch {
+    /* the selectors are a courtesy here; never let them mask the real error */
+  }
   elements.chart.innerHTML =
     '<div style="padding:32px;max-width:760px">' +
     '<div style="font-size:15px;font-weight:600;color:var(--color-text);margin-bottom:8px">' +
@@ -630,9 +842,10 @@ window.addEventListener('resize', () => {
  * Startup: fetch the catalogue first, because the selectors describe what can be
  * asked for and the sub-log is the answer to one such question.
  */
-loadCatalogue()
-  .then((loaded) => {
-    catalogue = loaded;
+source
+  .listRepos()
+  .then((repos) => {
+    catalogue = { repos };
     return reload(initialQuery);
   })
   .then(() => {

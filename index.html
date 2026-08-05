@@ -60,6 +60,20 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div style="margin-bottom:var(--space-8)">
 <!-- "OCEL case" in the mockup. There is no case in OCPM (decision 1). -->
 <div class="mono" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-300);margin-bottom:6px">Sub-log</div>
+<!--
+  Which data source is live, always visible and always switchable.
+
+  Not cosmetic. The source is selected by `?source=` and defaults to fixtures, so
+  before this existed the only way to know whether you were looking at the real
+  database or at 13 hand-built test bundles was to remember what you typed into the
+  URL. An evaluation session run on fixtures by accident would measure the wrong
+  thing and look exactly like one run on real data.
+-->
+<div style="margin-bottom:10px">
+<div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Data source</div>
+<div id="sourceToggle" style="display:flex;gap:0;border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);overflow:hidden"></div>
+<div id="sourceNote" class="mono" style="font-size:10px;color:var(--color-neutral-500);margin-top:4px;line-height:1.45"></div>
+</div>
 <div style="margin-bottom:10px">
 <div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Repo</div>
 <div style="position:relative">
