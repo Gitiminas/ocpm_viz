@@ -514,6 +514,9 @@ function queryFromUrl() {
     seed: params.get('seed') || null,
     fixture: params.get('fixture') || null,
     preset: params.get('preset') || null,
+    // Server-side expansion (decision 35). Absent means "whatever the source defaults
+    // to", which for the RPC is 2 and for a fixture is whatever it was built at.
+    traversalDegree: params.get('degree') ? Number(params.get('degree')) : undefined,
     page: params.get('page') === 'stats' ? 'stats' : 'timeline',
   };
 }
@@ -704,8 +707,26 @@ const escapeForHtml = (value) => String(value).replace(/[&<>]/g, (c) =>
  */
 function updateTraversalInfo(graph) {
   const degree = graph.meta?.traversal_degree;
-  const degreeNote =
-    degree == null ? '' : `Traversal degree ${degree} · fixed by the query<br>`;
+
+  /*
+   * Editable at last, and only where it can be honoured.
+   *
+   * Decision 35 made this read-only because the degree was fixed when a fixture was
+   * built, so a stepper would have been a control that silently did nothing — the thing
+   * this project forbids. `get_object_graph` takes the degree as a parameter, so against
+   * the database the condition that decision named is met and the control is real. On
+   * fixtures it stays text, for exactly the original reason.
+   *
+   * ⚠️ The steps are labelled with what they cost, because the cost is steep and
+   * non-obvious: on vscode PR #116416 the sub-log goes 1 → 39 → 42 → 291 objects from
+   * degree 0 to 3. A stepper that hid that would invite someone to drag it to 3 on a
+   * busy seed and conclude the tool had hung.
+   */
+  const degreeNote = source.traversalEditable
+    ? `Traversal degree ${renderDegreeControl(degree)} · server-side expansion<br>`
+    : degree == null
+      ? ''
+      : `Traversal degree ${degree} · fixed by the query<br>`;
 
   /*
    * ⚠️ **Say when a seed reaches nothing.** A sub-log of one object is a legitimate
@@ -731,6 +752,7 @@ function updateTraversalInfo(graph) {
       `Live from the database — seed from any issue, pull request or commit` +
       (repo?.seeds_total ? ` (${repo.seeds_total.toLocaleString()} searchable)` : '') +
       isolatedNote;
+    bindDegreeControl(graph);
     return;
   }
 
@@ -740,6 +762,42 @@ function updateTraversalInfo(graph) {
     `${servable} seed${servable === 1 ? '' : 's'} servable here — seeding from any ` +
     `object needs the database source (?source=database)` +
     isolatedNote;
+  bindDegreeControl(graph);
+}
+
+/** Reload at a new degree, keeping the rest of the query. */
+function bindDegreeControl(graph) {
+  const container = document.getElementById('degreeControl');
+  if (!container) return;
+  for (const button of container.querySelectorAll('button[data-degree]')) {
+    button.addEventListener('click', () => {
+      const degree = Number(button.dataset.degree);
+      if (degree === (graph.meta?.traversal_degree ?? 2)) return;
+      reload({
+        repo: graph.meta?.repo,
+        seed: graph.meta?.seed?.[0]?.id,
+        traversalDegree: degree,
+      });
+    });
+  }
+}
+
+/**
+ * The degree stepper, as markup. Wired after the note is written, because it is rebuilt
+ * on every render and a listener bound to a replaced node would be lost.
+ */
+function renderDegreeControl(degree) {
+  const current = degree ?? 2;
+  const options = [0, 1, 2, 3]
+    .map(
+      (d) =>
+        `<button data-degree="${d}" class="mono" style="cursor:pointer;border:1px solid ` +
+        `var(--color-neutral-700);background:${d === current ? 'var(--color-accent-600,#5b5bd6)' : 'transparent'};` +
+        `color:${d === current ? '#fff' : 'var(--color-neutral-400)'};font-size:10px;` +
+        `padding:1px 5px;border-radius:3px;margin-right:2px">${d}</button>`,
+    )
+    .join('');
+  return `<span id="degreeControl">${options}</span>`;
 }
 
 /** How many seeds the fixture catalogue can actually serve for this sub-log's repo. */

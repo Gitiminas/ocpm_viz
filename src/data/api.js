@@ -24,13 +24,16 @@
 import { parseSeedRef, scoreSeedRef } from './seedQuery.js';
 
 /**
- * Where PostgREST is listening.
+ * Where the API is, from the browser's point of view.
  *
- * Same-origin would be better and is what a deployment behind nginx should do (the
- * PostgREST docs have a section on exactly this). Until then the dev server is on
- * :8000 and PostgREST on :3000, so this is absolute and CORS applies.
+ * **Empty, meaning same origin.** `scripts/serve.mjs` proxies `/rpc/*` to PostgREST, so
+ * the app and the API share an origin and no CORS is involved — which is also what a
+ * real deployment behind nginx does, so development and deployment stay the same shape.
+ *
+ * An absolute URL still works and is what the Node-side scripts pass, since they have no
+ * page origin to be same as.
  */
-export const DEFAULT_BASE_URL = 'http://localhost:3000';
+export const DEFAULT_BASE_URL = '';
 
 /**
  * Turn a PostgREST error body into an `Error` worth reading.

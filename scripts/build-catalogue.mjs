@@ -15,11 +15,15 @@
  * thousands of objects. A catalogue that summarised its results would be a design
  * that quietly cannot scale.
  *
- * ⚠️ It lists **only seeds that can actually be served.** With fixtures, a sub-log
- * exists only where one was pre-built; there is no traversal, so an arbitrary commit
- * cannot be seeded from. Offering seeds that cannot be honoured would be mock UI.
- * Repositories that are in scope for RQ2 but hold no data are listed explicitly as
- * unavailable, with the reason, rather than being silently absent.
+ * ⚠️ It lists **only seeds the fixture source can serve.** A fixture sub-log exists only
+ * where one was pre-built; there is no traversal, so an arbitrary commit cannot be seeded
+ * from. Offering seeds that cannot be honoured would be mock UI. Repositories with no
+ * fixture are listed explicitly as unavailable, with the reason, rather than being
+ * silently absent.
+ *
+ * ⚠️ **This file describes the fixture source alone.** The database source builds its
+ * repository list from `api.list_repos` and searches seeds through `api.search_seeds`;
+ * neither reads this catalogue.
  */
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
@@ -34,20 +38,33 @@ const TARGET = resolve(FIXTURE_DIR, 'catalogue.json');
 const GENERATED_AT = '2026-07-31T00:00:00Z';
 
 /**
- * Repositories in the thesis scope that currently hold no loadable sub-log.
+ * Repositories with no **fixture**, listed rather than omitted so the picker says why.
  *
- * Listed rather than omitted: their absence is a *finding* — the RQ2 limitation
- * about detection coverage is precisely about these two — and a picker that simply
- * did not mention them would hide that.
+ * ⚠️ **Unavailable *to the fixture source only*, and that distinction is now the point.**
+ *
+ * The previous version of this comment said their absence was itself the RQ2 finding
+ * about detection coverage. That is no longer true and should not be repeated: both
+ * repositories have data, and the database source serves them. What was a statement
+ * about the world turned out to be a statement about which fixtures had been built.
+ *
+ * These two were listed because no sub-log had been pre-built for them, and the reason
+ * used to read "needs the get_object_graph RPC". That RPC exists, and the database
+ * source serves both repositories — `api.list_repos` reports react with 38,966 seeds
+ * and kubernetes with 206,391, computed from the data rather than declared here.
+ *
+ * So this list is not wrong, it is *scoped*: it describes what the fixture catalogue can
+ * serve, which is still nothing for these two. Decision 34 requires an unavailable
+ * repository to be shown with its reason rather than omitted, so the entry stays and the
+ * reason is corrected to say which limitation it is.
  */
 const UNAVAILABLE_REPOS = [
   {
     name: 'facebook/react',
-    reason: 'No sub-log built yet — needs the get_object_graph RPC.',
+    reason: 'No fixture built for this repository. Switch Data source to Database.',
   },
   {
     name: 'kubernetes/kubernetes',
-    reason: 'No sub-log built yet — needs the get_object_graph RPC.',
+    reason: 'No fixture built for this repository. Switch Data source to Database.',
   },
 ];
 
@@ -120,9 +137,9 @@ function build() {
     generated_at: GENERATED_AT,
     built_by: 'scripts/build-catalogue.mjs',
     note:
-      'Seeds listed here are the ones a sub-log can actually be served for. Until the ' +
-      'get_object_graph RPC exists there is no traversal, so an arbitrary object cannot ' +
-      'be seeded from.',
+      'Seeds listed here are the ones the FIXTURE source can serve: a sub-log exists only ' +
+      'where one was pre-built, so an arbitrary object cannot be seeded from. The database ' +
+      'source traverses for real — switch Data source to Database, or use ?source=database.',
     repos: [
       ...repos,
       ...UNAVAILABLE_REPOS.map((repo) => ({ ...repo, available: false, synthetic: false, seeds: [] })),

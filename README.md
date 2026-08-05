@@ -177,7 +177,8 @@ tool is for. `src/data/source.js` is the seam — `listRepos` / `searchSeeds` /
 `loadSubLog`, implemented twice — so nothing above it branches on which is in use.
 
 ⚠️ The database source needs **both** servers up: `npm start` for the app and
-`postgrest postgrest.conf` for the API.
+`postgrest postgrest.conf` for the API. `npm start` proxies `/rpc/*` to PostgREST so the
+two share an origin and no CORS is involved; if the API is down you get a 502 saying so.
 
 ---
 
@@ -239,9 +240,17 @@ psql -d ... -c "SELECT * FROM fe.diag_sanity" # 6 checks, every one must read 0
 `findGraphProblems()` to return `[]` — the same gate the 13 fixtures pass — then runs the
 real layout pipeline in all three time modes.
 
-⚠️ **After any upstream materialized-view refresh, run `SELECT fe.refresh_links();`**
-(~6 s). `fe.link_mat` is the one materialized relation in the layer and it goes stale
-silently otherwise. `fe.diag_link_staleness` reports the drift.
+⚠️ **After any upstream materialized-view refresh:**
+
+```sql
+SELECT fe.refresh_all();          -- ~11 s; refreshes both materialized relations
+SELECT * FROM fe.diag_staleness;  -- row counts and when each was last written
+```
+
+Two relations here are materialized — `fe.link_mat` (decision 57) and `fe.seed_lookup`
+(the seed search index) — and both go stale **silently**. A stale link table does not
+error, it answers with last week's graph; a stale search index cannot find objects that
+now exist.
 
 **Looking at it without a browser** — `node scripts/shot.mjs LIVE1` renders the running
 app headlessly and writes a PNG to `.shots/` (gitignored; it never touches the read-only
@@ -269,11 +278,10 @@ What is **not** done:
   what the fixture source still reports; the database source computes availability from
   `fe.seed_lookup` instead and shows all three as available. The hardcoded list is now
   fixture-only and should say so.
-- **The two servers are separate origins** (app on :8000, PostgREST on :3000), so CORS
-  applies. A reverse proxy would remove it and is closer to a real deployment; the
-  PostgREST docs have an nginx section.
-- **`fe.seed_lookup` and `fe.link_mat` both need refreshing** after an upstream MV
-  refresh — `fe.refresh_search()` and `fe.refresh_links()`. Neither is automatic.
+- **No deployment story beyond localhost.** The dev server's `/rpc/*` proxy is the same
+  shape nginx would take, but nothing is packaged or documented for a real host.
+- **Refresh is manual.** `fe.refresh_all()` does both materialized relations in one
+  call, but nothing triggers it when upstream refreshes.
 - **The RQ2 link-coverage figure is now measurable but unpublished.**
   `fe.diag_link_methods` produces it, grouped by `(method, qualifier)` as decision 50
   requires. It has not been written up, and two caveats must travel with it: the

@@ -24,6 +24,20 @@ that justified them, are in `sql/fe_layer.sql` §0. See `DATA_CONTRACT.md` §2.
 goes on the *underlying* MVs — which is the better place anyway: one index there serves every query
 touching the table rather than one path through a copy.
 
+### Deployment: `sql/postgrest_setup.sql`
+
+Roles, grants and isolation, run after `fe_layer.sql`. Three roles — `authenticator`
+connects, `web_anon` is what a request runs as, `fe_owner` owns the layer and is what the
+RPC runs as via `SECURITY DEFINER`. Without that third role `web_anon` would need SELECT
+on 14 GB of raw event data; with it, its entire privilege set is USAGE on `api` and
+EXECUTE on the functions there. `fe_owner` is deliberately not a superuser, and
+`search_path` is pinned on every function.
+
+⚠️ **Everything is applied by looping over the `api` schema, never by naming a function**
+(decision 71). Naming them individually means each new one starts out `SECURITY INVOKER`
+and therefore broken, and the tempting repair is to widen `web_anon` — which dismantles
+the isolation. The file ends in seven assertions that must all read `ok`.
+
 ## 2. The derivations
 
 The deciding criterion for precomputation is **not** performance — it is whether the result depends

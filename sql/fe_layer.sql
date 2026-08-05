@@ -1566,6 +1566,53 @@ LANGUAGE sql AS $$
 $$;
 
 
+-- =====================================================================================
+-- §11 — Refreshing this layer
+--
+-- Two relations here are materialized — `fe.link_mat` (decision 57) and `fe.seed_lookup`
+-- (§8) — and both go stale silently the moment any upstream MV is refreshed. Silently is
+-- the problem: a stale link table does not error, it just quietly answers with last
+-- week's graph, and a stale search index simply cannot find objects that now exist.
+--
+-- One entry point, so there is nothing to half-remember:
+--
+--     SELECT fe.refresh_all();          -- after any upstream refresh (~11 s)
+--     SELECT * FROM fe.diag_staleness;  -- is anything behind?
+--
+-- ⚠️ **Order matters.** `fe.seed_lookup` reads the object views, which read the upstream
+-- MVs; `fe.link_mat` reads `fe.link`, which reads `fe.commit_pr_link`. Neither depends on
+-- the other, so either order works today — but they are refreshed in dependency order
+-- anyway, because that stops being true the moment one is built on the other.
+-- =====================================================================================
+
+CREATE OR REPLACE FUNCTION fe.refresh_all() RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW fe.link_mat;
+  REFRESH MATERIALIZED VIEW fe.seed_lookup;
+END;
+$$;
+
+COMMENT ON FUNCTION fe.refresh_all() IS
+  'Refresh every materialized relation in this layer. Run after any upstream MV refresh.';
+
+-- Row counts alone cannot prove freshness — an upstream change that adds and removes the
+-- same number of rows leaves them equal. What this catches is the common case (upstream
+-- grew, we did not) and, more usefully, tells you when each copy was last written, so
+-- "is this older than the upstream refresh?" is answerable at a glance.
+CREATE OR REPLACE VIEW fe.diag_staleness AS
+SELECT 'fe.link_mat'::text AS relation,
+       (SELECT count(*) FROM fe.link)     AS live_rows,
+       (SELECT count(*) FROM fe.link_mat) AS materialized_rows,
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.link_mat'))).modification) AS last_written
+UNION ALL
+SELECT 'fe.seed_lookup',
+       (SELECT count(*) FROM fe.object_issue) + (SELECT count(*) FROM fe.object_pull_request)
+         + (SELECT count(*) FROM fe.object_commit),
+       (SELECT count(*) FROM fe.seed_lookup),
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.seed_lookup'))).modification);
+
+
 -- -------------------------------------------------------------------------------------
 -- §8.1 — Measurements for fe.seed_lookup (decision 10 wants the number, not the habit)
 --

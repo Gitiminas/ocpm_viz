@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-07-31T00:00:00Z",
   "built_by": "scripts/build-catalogue.mjs",
-  "note": "Seeds listed here are the ones a sub-log can actually be served for. Until the get_object_graph RPC exists there is no traversal, so an arbitrary object cannot be seeded from.",
+  "note": "Seeds listed here are the ones the FIXTURE source can serve: a sub-log exists only where one was pre-built, so an arbitrary object cannot be seeded from. The database source traverses for real — switch Data source to Database, or use ?source=database.",
   "repos": [
     {
       "name": "microsoft/vscode",
@@ -126,14 +126,14 @@
     },
     {
       "name": "facebook/react",
-      "reason": "No sub-log built yet — needs the get_object_graph RPC.",
+      "reason": "No fixture built for this repository. Switch Data source to Database.",
       "available": false,
       "synthetic": false,
       "seeds": []
     },
     {
       "name": "kubernetes/kubernetes",
-      "reason": "No sub-log built yet — needs the get_object_graph RPC.",
+      "reason": "No fixture built for this repository. Switch Data source to Database.",
       "available": false,
       "synthetic": false,
       "seeds": []
