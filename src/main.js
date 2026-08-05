@@ -49,6 +49,8 @@ const el = (id) => document.getElementById(id);
 
 const elements = {
   chart: el('chart'),
+  sourceToggle: el('sourceToggle'),
+  sourceNote: el('sourceNote'),
   scroll: el('scroll'),
   wrap: el('wrap'),
   tip: el('tip'),
@@ -526,6 +528,48 @@ const initialQuery = queryFromUrl();
  * that starts on the corpus it ships with.
  */
 const source = createSource();
+
+/**
+ * Say which data source is live, and let it be changed without editing the URL.
+ *
+ * The source is chosen by `?source=` and defaults to fixtures. Before this existed the
+ * only way to know whether you were looking at the real database or at 13 hand-built
+ * test bundles was to remember what you had typed — and an evaluation session run on
+ * fixtures by accident would measure the wrong thing while looking identical to one run
+ * on real data. Switching reloads the page rather than swapping the source in place,
+ * because a seed from one source is meaningless in the other (fixtures key on
+ * `issue:242864`, the database on `issue:2902032454`), so carrying the query across
+ * would guarantee a failed load.
+ */
+function renderSourceToggle() {
+  const OPTIONS = [
+    { id: 'fixtures', label: 'Fixtures', note: 'Pre-built test sub-logs. No database.' },
+    { id: 'database', label: 'Database', note: 'Live via PostgREST. Seed from any object.' },
+  ];
+
+  elements.sourceToggle.innerHTML = '';
+  for (const option of OPTIONS) {
+    const active = option.id === source.name;
+    const button = document.createElement('button');
+    button.className = 'mono';
+    button.textContent = option.label;
+    button.style.cssText =
+      'flex:1;cursor:pointer;border:none;padding:6px 8px;font-size:11.5px;font-weight:600;' +
+      (active
+        ? 'background:var(--color-accent-600,#5b5bd6);color:#fff'
+        : 'background:var(--color-neutral-900);color:var(--color-neutral-400)');
+    button.setAttribute('aria-pressed', String(active));
+    if (!active) {
+      button.addEventListener('click', () => {
+        // Only the source survives the switch. See above.
+        window.location.search = `?source=${option.id}`;
+      });
+    }
+    elements.sourceToggle.appendChild(button);
+  }
+  elements.sourceNote.textContent = OPTIONS.find((o) => o.id === source.name).note;
+}
+renderSourceToggle();
 
 let catalogue = null;
 

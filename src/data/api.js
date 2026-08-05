@@ -41,6 +41,27 @@ export const DEFAULT_BASE_URL = 'http://localhost:3000';
  * most useful half of the failure. `PGRST*` codes are the API's own (bad function
  * signature, schema cache stale); `P0001` is ours, raised by `api.get_object_graph`.
  */
+/**
+ * Wrap a transport-level failure so it names the likely cause.
+ *
+ * An unreachable PostgREST surfaces from `fetch` as the bare string "fetch failed",
+ * which tells a reader nothing — not which server, not that a server is even involved.
+ * Since the database source is useless without PostgREST and the app defaults to
+ * fixtures, "fetch failed" is exactly the moment someone concludes the tool is broken
+ * and switches back, never learning that a process was simply not running.
+ */
+function errorFromFetch(error, baseUrl) {
+  const wrapped = new Error(
+    `Could not reach PostgREST at ${baseUrl}.\n` +
+      `Start it with:  postgrest postgrest.conf\n` +
+      `Or switch the Data source to Fixtures, which needs no database.\n` +
+      `(${error.message})`,
+  );
+  wrapped.cause = error;
+  wrapped.unreachable = true;
+  return wrapped;
+}
+
 function errorFromBody(status, body) {
   const parts = [];
   parts.push(body?.message || `PostgREST returned HTTP ${status}`);
@@ -77,14 +98,19 @@ export function createRpcTransport({
     if (!repo) throw new Error('rpcTransport: query.repo is required');
     if (!seed) throw new Error('rpcTransport: query.seed is required');
 
-    const response = await fetchImpl(`${baseUrl}/rpc/get_object_graph`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      // Argument names must match the SQL parameter names exactly — PostgREST resolves
-      // the overload by name, and a typo is a 404 "could not find the function",
-      // not a 400.
-      body: JSON.stringify({ repo, seed, traversal_degree: Number(traversalDegree) }),
-    });
+    let response;
+    try {
+      response = await fetchImpl(`${baseUrl}/rpc/get_object_graph`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        // Argument names must match the SQL parameter names exactly — PostgREST resolves
+        // the overload by name, and a typo is a 404 "could not find the function",
+        // not a 400.
+        body: JSON.stringify({ repo, seed, traversal_degree: Number(traversalDegree) }),
+      });
+    } catch (error) {
+      throw errorFromFetch(error, baseUrl);
+    }
 
     if (!response.ok) {
       let body = null;
@@ -175,11 +201,16 @@ export function createSearchTransport({
   }
 
   return async function searchTransport(params) {
-    const response = await fetchImpl(`${baseUrl}/rpc/search_seeds`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(params),
-    });
+    let response;
+    try {
+      response = await fetchImpl(`${baseUrl}/rpc/search_seeds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(params),
+      });
+    } catch (error) {
+      throw errorFromFetch(error, baseUrl);
+    }
 
     if (!response.ok) {
       let body = null;
@@ -206,11 +237,16 @@ export function createSearchTransport({
  * than quietly omitted.
  */
 export async function listRepos({ baseUrl = DEFAULT_BASE_URL, fetchImpl = globalThis.fetch } = {}) {
-  const response = await fetchImpl(`${baseUrl}/rpc/list_repos`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: '{}',
-  });
+  let response;
+  try {
+    response = await fetchImpl(`${baseUrl}/rpc/list_repos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: '{}',
+    });
+  } catch (error) {
+    throw errorFromFetch(error, baseUrl);
+  }
 
   if (!response.ok) {
     let body = null;

@@ -163,7 +163,8 @@ as a direct address), `?page=stats` the statistics page, `?preset=…` a saved c
 
 ## Live data, or fixtures
 
-The app reads **fixtures by default** and the database when asked:
+The **Data source** control at the top of the sidebar says which one is live and switches
+between them. The app reads **fixtures by default**; `?source=` sets it directly:
 
 ```
 http://localhost:8000/                                              fixtures

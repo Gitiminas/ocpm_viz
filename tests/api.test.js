@@ -275,4 +275,57 @@ describe('a query is resolved before anything is fetched', () => {
     const resolved = await resolveQuery({ repo: 'no-seeds' }, fixtureSource);
     assert.equal(resolved.action, 'prompt');
   });
+
+  test('a bare visit with no repo at all still loads something on fixtures', async () => {
+    // `/` with no query is the normal way to open the app. The fixture transport always
+    // resolved this internally; when the decision moved into resolveQuery, dropping the
+    // no-repo case made a plain visit show the seed prompt with a repository already
+    // selected — nonsense, and caught by opening it rather than by a test.
+    const anyRepo = { defaultSeed: async (repo) => (repo ? null : 'issue:242864') };
+    const resolved = await resolveQuery({}, anyRepo);
+    assert.equal(resolved.action, 'load');
+    assert.equal(resolved.query.seed, 'issue:242864');
+  });
+});
+
+describe('an unreachable database says so, and says what to do', () => {
+  test('a network failure names PostgREST and the way out, not "fetch failed"', async () => {
+    // `fetch` surfaces an unreachable server as the bare string "fetch failed", which
+    // names neither the server nor the fact that one is involved. Since the app
+    // defaults to fixtures, that is exactly the moment someone concludes the tool is
+    // broken and switches back, never learning a process was simply not running.
+    const dead = async () => {
+      throw new TypeError('fetch failed');
+    };
+    const transport = createRpcTransport({ fetchImpl: dead, baseUrl: 'http://localhost:9999' });
+
+    await assert.rejects(
+      () => transport({ repo: 'r', seed: 'pr:1' }),
+      (error) => {
+        assert.match(error.message, /Could not reach PostgREST at http:\/\/localhost:9999/);
+        assert.match(error.message, /postgrest postgrest\.conf/, 'must say how to start it');
+        assert.match(error.message, /Fixtures/, 'must offer the source that needs no database');
+        assert.equal(error.unreachable, true);
+        assert.equal(error.cause?.message, 'fetch failed', 'the original must survive');
+        return true;
+      },
+    );
+  });
+
+  test('an HTTP error is left alone — it is not a reachability problem', async () => {
+    // A 400 means PostgREST answered. Wrapping it in "could not reach" would send the
+    // reader after the wrong thing and bury the RPC's own hint.
+    const { fetchImpl } = stubFetch({
+      status: 400,
+      body: { code: 'P0001', message: 'seed x is not an issue', hint: 'ids are prefixed' },
+    });
+    await assert.rejects(
+      () => createRpcTransport({ fetchImpl })({ repo: 'r', seed: 'x' }),
+      (error) => {
+        assert.match(error.message, /seed x is not an issue/);
+        assert.notEqual(error.unreachable, true);
+        return true;
+      },
+    );
+  });
 });

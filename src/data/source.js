@@ -57,11 +57,20 @@ function fixtureSource() {
       return loadObjectGraph(query, { transport: fixtureTransport });
     },
     /*
-     * The repository's first servable seed, so choosing a repository shows something.
-     * Fixtures can do this because the catalogue enumerates what it can serve.
+     * The first servable seed, so opening the app shows something.
+     *
+     * ⚠️ Falls back to the first *available repository* when none is named, because a
+     * bare `/` is the normal way to open the app and it carries no `?repo=`. The
+     * fixture transport always did this internally; when the seed decision moved up
+     * here, dropping it meant a plain visit showed "choose something to start from"
+     * with a repository already selected — which is nonsense, and is what an
+     * incomplete extraction of an implicit behaviour looks like.
      */
     async defaultSeed(repo) {
-      const entry = (await catalogue()).repos.find((r) => r.name === repo && r.available);
+      const repos = (await catalogue()).repos;
+      const entry =
+        (repo && repos.find((r) => r.name === repo && r.available)) ||
+        (!repo && repos.find((r) => r.available));
       return entry?.seeds?.[0]?.id ?? null;
     },
     // Fixtures were built at a fixed traversal degree; nothing can change it.
