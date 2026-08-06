@@ -179,9 +179,9 @@ Stated plainly rather than left to inference.
   payloads have been rendered and looked at, both by the author in a browser and headlessly
   via `msedge.exe --headless=new --screenshot` over WSL interop. What has *not* run end to
   end is the **PostgREST → `fetch()` → browser** path: the samples reach the app as
-  `tests/fixtures/LIVE*.json`, written by `scripts/pull-sublog.mjs`, because `src/data/api.js`
-  does not exist yet. So the SQL and the payload are verified against the renderer; the HTTP
-  transport between them is not.
+  `tests/fixtures/LIVE*.json`. **Also closed, 2026-08-05:** `src/data/api.js` exists, the dev
+  server proxies `/rpc/*`, and the app renders live payloads fetched over HTTP — verified in
+  the browser against all three repositories.
 - **Interaction is untested by assertion.** Tooltips, pin-to-copy, minimap
   drag-to-zoom, legend hover, the degree stepper and the actor card are exercised
   only by looking at them. They have no automated coverage, because they need a DOM
@@ -203,8 +203,29 @@ Stated plainly rather than left to inference.
 - ~~**No traversal has ever been performed.**~~ **No longer a gap, 2026-08-04.** The
   recursive traversal in `api.get_object_graph` runs and was exercised at degrees 0–3; the
   degree sweep on vscode PR #116416 (1 → 39 → 42 → 291 objects) is what exposed how sharply
-  a sub-log grows with degree. What is still true is that the **app's picker** offers only
-  pre-built seeds, because it reads the fixture catalogue rather than the RPC.
+  a sub-log grows with degree. **Also closed, 2026-08-05:** the app's picker searches the
+  database through `api.search_seeds` when the Data source is set to Database; only the
+  fixture source is still limited to pre-built seeds, which is inherent to fixtures.
+- ⚠️ **There is no automated check that the picture is correct, and this is the largest
+  gap in the whole project.** Every layout assertion checks that positions are *finite,
+  banded and anchored* — never that the drawing means what it claims. **Four defects this
+  session were found by looking at the screen and by none of the 401 tests**: commits
+  wrongly excluded from merged pull requests, a dead app when no seed was given, isolated
+  objects indistinguishable from failures, and one pull request drawn as ~30. Each left
+  every check passing. `scripts/shot.mjs` makes looking cheap; it does not make it
+  automatic, and no baseline is compared.
+- **The Stats page has never been opened against real data.** All of its figures —
+  durations, gaps, handoffs, per-object tables — are computed in JS over the loaded
+  sub-log (decision 12) and have only ever been exercised on fixtures. Real sub-logs are
+  larger, sparser and contain shapes fixtures do not (a commit in 7,231 cases belonging to
+  several PRs). Unchecked, not known-broken.
+- **One dataset, one snapshot, three repositories.** Everything measured here comes from
+  materialized views last refreshed 2026-08-02. Nothing establishes that the layer holds
+  on a different extraction, a re-refresh, or a repository with different conventions.
+- **The commit→PR admission rule has been wrong twice.** Decision 61 was corrected by 65
+  after it was found to discard merged pull requests' own commits. It is right as far as
+  can be measured now, but it has the worst track record of anything in the layer, and
+  every figure resting on it deserves more scepticism than its precision suggests.
 - **The `commit_distinct` floor is unquantified.** Decisions 61–62 admit a `ref_match`
   commit only when GitHub flagged it new to the repository, which also excludes a legitimate
   force-push or rebase of the author's own commit. Every commit-link figure is therefore a
