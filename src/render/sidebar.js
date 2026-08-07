@@ -457,6 +457,34 @@ export function renderActorRows({
 }
 
 /**
+ * Claim an input for a combo, discarding whatever was bound to it before.
+ *
+ * ⚠️ **Load-bearing.** Both combos are re-wired on every load — `wireSelectors` runs
+ * from `load()`, from the seed prompt and from the failure path — but they are wired
+ * onto the *same two elements* every time. Plain `addEventListener` therefore stacked
+ * a fresh generation of listeners on each load, and never removed the old ones. Every
+ * generation stayed live, each closing over the `activeRepo` of the load that created
+ * it, and all of them fired on one keystroke and wrote into the same dropdown.
+ *
+ * The observed result: after visiting two repositories, typing an issue number fired
+ * **five** searches across three repositories, results from whichever answered last
+ * flashed over the others, and clicking a row rendered by a stale generation reloaded
+ * the app into that generation's repository — the tool silently changing repository
+ * under the user while the Repo box still said the one they had chosen.
+ *
+ * The generation guard inside `setupSearchCombo` cannot help: it makes a combo ignore
+ * its *own* out-of-order responses, and these are rival combos it has no way to see.
+ * The invariant has to be "one live binding per element", so it is enforced here where
+ * the binding happens rather than asked of every caller.
+ */
+function claimCombo(input) {
+  input.__comboAbort?.abort();
+  const controller = new AbortController();
+  input.__comboAbort = controller;
+  return { signal: controller.signal };
+}
+
+/**
  * A search box whose options come from a query, not from a list.
  *
  * The difference from `setupCombo` is the whole point rather than a detail. A combo
@@ -471,6 +499,7 @@ export function renderActorRows({
  * why it might not be available.
  */
 export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyMessage, onSelect }) {
+  const bind = claimCombo(input);
   input.value = initialLabel;
   input.setAttribute('value', initialLabel);
 
@@ -549,7 +578,7 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
   input.addEventListener('focus', () => {
     renderResults('');
     dropdown.style.display = 'block';
-  });
+  }, bind);
   // Debounced, because each keystroke may be a network round trip. 150 ms is below
   // the ~200 ms at which typing starts to feel laggy and above a fast typist's
   // inter-key interval, so a word becomes one request.
@@ -558,7 +587,7 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
     dropdown.style.display = 'block';
     clearTimeout(debounce);
     debounce = setTimeout(() => renderResults(input.value), 150);
-  });
+  }, bind);
   input.addEventListener('blur', () => {
     setTimeout(() => {
       dropdown.style.display = 'none';
@@ -566,7 +595,7 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
       // misstate what is on screen.
       input.value = initialLabel;
     }, 120);
-  });
+  }, bind);
 }
 
 /**
@@ -576,6 +605,7 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
  * nothing at all.
  */
 export function setupCombo({ input, dropdown, options, initialLabel, onSelect }) {
+  const bind = claimCombo(input);
   input.value = initialLabel;
   input.setAttribute('value', initialLabel);
 
@@ -634,14 +664,14 @@ export function setupCombo({ input, dropdown, options, initialLabel, onSelect })
   input.addEventListener('focus', () => {
     renderList(input.value === initialLabel ? '' : input.value);
     dropdown.style.display = 'block';
-  });
+  }, bind);
   input.addEventListener('input', () => {
     renderList(input.value);
     dropdown.style.display = 'block';
-  });
+  }, bind);
   input.addEventListener('blur', () => {
     setTimeout(() => {
       dropdown.style.display = 'none';
     }, 120);
-  });
+  }, bind);
 }
