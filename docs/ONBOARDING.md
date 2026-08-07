@@ -68,8 +68,18 @@ timestamp handling.
 Then run it and look at what it produces:
 
 ```bash
+../ocpm.sh db      # applies the layer in the only order that works, then gates it
+```
+
+That runs `fe_layer.sql` → `postgrest_setup.sql` → `fe.refresh_links()` → `fe.diag_sanity`
+→ restart PostgREST → `rpc-check.mjs`, stopping at the first step that fails. Prefer it to
+running the pieces: the order is load-bearing and two of the steps are easy to forget.
+By hand it is:
+
+```bash
 psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql
 psql -d gharchive_ocpm_viz_wsl -f sql/postgrest_setup.sql           # ⚠️ ALWAYS, see below
+psql -d gharchive_ocpm_viz_wsl -c "SELECT fe.refresh_links()"      # link_mat goes stale silently
 psql -d gharchive_ocpm_viz_wsl -c "SELECT * FROM fe.diag_sanity"   # all 0, and 9 activities
 node scripts/rpc-check.mjs                                          # the acceptance gate
 ```

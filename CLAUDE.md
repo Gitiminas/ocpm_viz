@@ -56,6 +56,7 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | `scripts/shot.mjs` | Headless screenshot of the running app, via Edge over WSL interop | Writes to `.shots/` (gitignored). **Never to `screenshots/`** — that baseline stays read-only |
 | `scripts/build-f1.mjs` | Builds `tests/fixtures/F1.json` from `ocel-data.json` | Re-runnable. `--check` fails if the committed fixture is stale |
 | `scripts/serve.mjs` | Zero-dependency static server (`npm start`) | Needed because ES modules and `fetch` are blocked on `file://` |
+| `../ocpm.sh` | Outside the repo. Clean start (`./ocpm.sh`), and `./ocpm.sh db` to apply the data layer in the one order that works | Prefer `db` over running the SQL by hand — `fe_layer.sql` resets the api functions to `SECURITY INVOKER` and `fe.link_mat` goes stale silently |
 | `tests/` | `node --test` suites plus `tests/fixtures/` | Run with `npm test`. See `tests/fixtures/README.md` |
 | `_ds/nocturne-*/` | Design system CSS tokens | Consume via `var(--token)`. Don't restyle |
 | `ocel-data.json` | The untouched original data blob (hyphen — confirmed in Task 0) | **Never edit.** F1 is built from it by script |
