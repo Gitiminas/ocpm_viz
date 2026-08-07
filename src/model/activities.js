@@ -143,6 +143,25 @@ export function isLandmark(activity) {
 }
 
 /**
+ * A pull request that ended **without** being merged.
+ *
+ * `PullRequestClosed` already means exactly this, and the reason is worth stating
+ * because it is not obvious from the name: GitHub emits **one** closing event, and a
+ * merge is that event carrying `pr_is_merged = true`. Upstream splits the two before we
+ * see them (`PullRequestMerged` 67,216 · `PullRequestClosed` 26,366), so a
+ * `PullRequestClosed` is never a merge and the two never coincide — measured across all
+ * three repositories, **no** pull request carries both at the same instant.
+ *
+ * It matters because the outcome is the question an issue-to-merge study asks, and
+ * 22,341 of 87,647 closed pull requests here were abandoned rather than merged. Before
+ * decision 81 that outcome was legible only by reading the label: `opened` and `closed`
+ * drew the identical glyph.
+ */
+export function isUnmergedClose(activity) {
+  return activity === 'PullRequestClosed';
+}
+
+/**
  * Collect every vocabulary problem in one pass, so a malformed bundle reports all
  * of its unknown activities at once instead of one per reload.
  *

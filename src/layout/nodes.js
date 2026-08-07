@@ -17,7 +17,12 @@
  *            commits fold into a count badge between the notable ones.
  */
 
-import { activityLabel, activityShortLabel, isLandmark } from '../model/activities.js';
+import {
+  activityLabel,
+  activityShortLabel,
+  isLandmark,
+  isUnmergedClose,
+} from '../model/activities.js';
 
 /**
  * Build the node list for one render pass.
@@ -59,6 +64,10 @@ export function buildNodes({
           short: activityShortLabel(event.activity),
           isComment: !!event.comment,
           landmark: isLandmark(event.activity),
+          // A pull request that ended without merging. Carried here rather than derived
+          // in the renderer so "which glyph gets the abandoned mark" stays checkable
+          // without a DOM, like `landmark` beside it.
+          unmergedClose: isUnmergedClose(event.activity),
         });
       }
     }

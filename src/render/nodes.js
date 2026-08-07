@@ -283,6 +283,36 @@ export function renderNodes({
         .attr('stroke-opacity', 0.7);
     }
 
+    /*
+     * A pull request that ended without merging: the landmark ring's counterpart, drawn
+     * **dashed and muted**. Terminal, but not the terminal the process was aiming at.
+     *
+     * ⚠️ **Not a hollow diamond, which was the obvious idea and is already taken.** In
+     * the issue and PR lanes a *comment* is drawn as the lane's own shape hollowed
+     * (`isComment` below fills it with the page background), so a hollow diamond would
+     * make an abandoned pull request read as a comment — the exact collision that made
+     * the commit-lane repeat markers squares rather than circles. Fill and shape are
+     * both spoken for, and colour is too: the shade carries *which* object (see
+     * `assignObjectColors`), so recolouring this glyph would break the one cue that
+     * lets a reader trace a link back to its pull request. A ring is what is left, and
+     * being the same device as the merged landmark is the point — same slot in the
+     * vocabulary, opposite outcome.
+     */
+    if (node.unmergedClose) {
+      group
+        .append('circle')
+        .attr('data-legend', 'closed-unmerged')
+        .attr('r', (node.isComment ? 6 : 8) + 6)
+        .attr('fill', 'none')
+        .attr('stroke', 'var(--color-neutral-500)')
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '3 3')
+        .attr('stroke-opacity', 0.9);
+    }
+
+    // Before the glyph, so the primary observation stays the strongest mark on the row.
+    if (node.lane === 'commit') drawRepeatObservations(group, node, tooltip, actorLogin);
+
     const size = node.isComment ? 6 : 8;
     drawSymbol(
       group.append('g'),

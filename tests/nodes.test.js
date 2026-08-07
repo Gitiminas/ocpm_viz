@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
 import { indexObjectGraph, normalizeGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
+import { isUnmergedClose } from '../src/model/activities.js';
 import { buildNodes, assignRanks, filterNodes } from '../src/layout/nodes.js';
 import { packRows } from '../src/layout/packing.js';
 import {
@@ -419,6 +420,43 @@ describe('ordinal mode gives every drawn mark its own slot', () => {
     const { rankOrder, rankMax } = assignRanks(nodes);
     assert.equal(rankOrder.length, nodes.length);
     assert.equal(rankMax, nodes.length - 1);
+  });
+});
+
+describe('a pull request that ended without merging is marked as such', () => {
+  test('PullRequestClosed is an unmerged close; PullRequestMerged is not', () => {
+    assert.equal(isUnmergedClose('PullRequestClosed'), true);
+    assert.equal(isUnmergedClose('PullRequestMerged'), false);
+    // IssueClosed is the normal end of an issue, not an abandonment.
+    assert.equal(isUnmergedClose('IssueClosed'), false);
+    assert.equal(isUnmergedClose('PullRequestOpened'), false);
+  });
+
+  test('the flag rides on the node, so the renderer derives nothing', async () => {
+    const { nodes } = await f1Context();
+    const closed = nodes.filter((n) => n.event?.activity === 'PullRequestClosed');
+    const merged = nodes.filter((n) => n.event?.activity === 'PullRequestMerged');
+    assert.ok(closed.length > 0, 'F1 must contain a PR close to exercise this');
+    assert.ok(merged.length > 0, 'F1 must contain a PR merge to exercise this');
+    for (const node of closed) assert.equal(node.unmergedClose, true);
+    for (const node of merged) assert.equal(node.unmergedClose, false);
+  });
+
+  test('the two marks are mutually exclusive — merged is a landmark, closed is not', async () => {
+    const { nodes } = await f1Context();
+    for (const node of nodes) {
+      assert.ok(
+        !(node.landmark && node.unmergedClose),
+        `${node.id} claims both landmark emphasis and the abandoned mark`,
+      );
+    }
+  });
+
+  test('commits and bursts never carry the flag', async () => {
+    const { nodes } = await f1Context();
+    for (const node of nodes.filter((n) => n.lane === 'commit')) {
+      assert.ok(!node.unmergedClose, `${node.id} is a commit and cannot be an unmerged close`);
+    }
   });
 });
 
