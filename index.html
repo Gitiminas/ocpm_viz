@@ -187,6 +187,15 @@ html,body{height:100%;margin:0;overflow:hidden}
 </div>
 <div id="wrap" style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">
 <div id="scroll" style="flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-bg)">
+<!--
+  Placeholder text — "choose a seed", "could not render" — goes HERE, never into #chart.
+  #chart holds the one <svg> the timeline creates at startup and holds a closure
+  reference to for the rest of the session. Writing innerHTML into #chart detaches
+  that svg, and every later render then draws correctly into a node that is no longer
+  in the document: no error, no picture. Keeping the two as siblings is what makes
+  that impossible rather than merely avoided.
+-->
+<div id="chartMessage" style="display:none"></div>
 <div id="chart"></div>
 </div>
 <div id="tip"></div>
