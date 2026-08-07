@@ -100,6 +100,7 @@ function buildCommitNodes({ index, bursts, expandedBursts, expandedGroups, mode 
       title: commit.label,
       isComment: false,
       landmark: false,
+      observations: commitObservations(index, commit),
       // Whether this commit belongs to a burst the user has unfolded. Anchors the
       // run-grouping pass so an expanded burst is never re-folded into a count badge.
       inBurst: memberOfExpandedBurst.has(commit.id),
@@ -134,6 +135,43 @@ function buildCommitNodes({ index, bursts, expandedBursts, expandedGroups, mode 
 
 function commitTime(commit) {
   return commit.intervals?.[0]?.start ?? null;
+}
+
+/**
+ * Every time this commit was observed, in order.
+ *
+ * **One commit object can carry many `CommitObserved` events.** The same SHA appears
+ * in a new push each time it reaches another branch — cherry-picked or merged across
+ * release lines — and each push is its own event. This is not rare: measured on this
+ * dataset, **39.6% of vscode's commits, 13.8% of react's and 5.2% of kubernetes'**
+ * have more than one, and one vscode SHA has thirty.
+ *
+ * Before this, the commit lane drew one glyph at the first observation and the rest
+ * were dropped — while the actor counts, the statistics and the axis *range* all
+ * still included them. That is the shape of the complaint that found it: a sub-log of
+ * one commit whose actor row read "3", with a month of empty axis after the glyph.
+ * `ARCHITECTURE.md` names this exact case as the thing OCPM exists to show ("one
+ * object touching many events"), so dropping it silently was the wrong flattening.
+ *
+ * ⚠️ The node's own `t` is deliberately left at the first observation. A commit stays
+ * **one node**, which is what `layout/anchors.js` documents as load-bearing and what
+ * bursts, commit groups and link anchoring all assume; the repeats are carried as data
+ * for the renderer to mark, never as extra nodes.
+ */
+function commitObservations(index, commit) {
+  return index
+    .eventsOf(commit.id)
+    .map((event) => ({
+      time: event.time,
+      ref: event.attrs?.ref ?? null,
+      pushId: event.attrs?.push_id ?? null,
+      // The PUSHER of this particular observation, which is not a property of the
+      // commit: 89% of vscode's repeatedly-observed commits were pushed by more than
+      // one account, up to fifteen. `index.pusherByCommit` keeps only one of them, so
+      // anything naming a pusher per observation has to read it from the event.
+      actorId: event.actor_id ?? null,
+    }))
+    .sort((a, b) => +a.time - +b.time);
 }
 
 /**
@@ -194,19 +232,45 @@ function groupUnremarkableRuns(commitNodes, expandedGroups) {
  * between renders.
  */
 export function assignRanks(nodes) {
-  const sorted = nodes.slice().sort((a, b) => {
+  const marks = [];
+
+  for (const node of nodes) {
+    marks.push({ id: node.id, lane: node.lane, t: node.t, target: node });
+    /*
+     * ⚠️ **A repeat observation needs a rank of its own.**
+     *
+     * Ordinal mode spaces marks by event order and discards real durations. A repeat
+     * push is an event and it is drawn, but it used to get no rank — so its x came
+     * from `ordinalTime`, which *interpolates a timestamp* between the ranks around
+     * it. Anything later than the last ranked node clamped to the right edge, which
+     * put re-pushes exactly on top of whatever ended the sub-log (reported as "the
+     * later push aligns perfectly with the issue closing, even though it happened
+     * after") and stacked several re-pushes on one another at the same point.
+     *
+     * Ranking them fixes both: each occupies its own slot, in the right order.
+     */
+    (node.observations || []).forEach((observation, i) => {
+      if (i === 0) return; // the first observation *is* the node
+      marks.push({ id: `${node.id}~${i}`, lane: node.lane, t: observation.time, target: observation });
+    });
+  }
+
+  marks.sort((a, b) => {
     const byTime = +a.t - +b.t;
     if (byTime) return byTime;
     if (a.lane !== b.lane) return a.lane < b.lane ? -1 : 1;
     return a.id < b.id ? -1 : 1;
   });
-  sorted.forEach((node, i) => {
-    node.rank = i;
+
+  marks.forEach((mark, i) => {
+    mark.rank = i;
+    mark.target.rank = i;
   });
+
   return {
-    rankOrder: sorted,
-    rankMax: Math.max(1, sorted.length - 1),
-    rankTimes: sorted.map((n) => +n.t),
+    rankOrder: marks,
+    rankMax: Math.max(1, marks.length - 1),
+    rankTimes: marks.map((mark) => +mark.t),
   };
 }
 

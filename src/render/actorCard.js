@@ -31,25 +31,28 @@ export function createActorCard({ element }) {
   function activity(actor, graph, index) {
     const items = [];
 
+    /*
+     * Commits are read from the events like everything else.
+     *
+     * There used to be a second pass keyed on `index.pusherByCommit`, which holds one
+     * pusher per commit — so a commit pushed by six accounts appeared on one card and
+     * was missing from the other five, and the time shown was the commit's first
+     * sighting rather than *this* actor's push. One item per `CommitObserved` event
+     * fixes both: an actor's card lists the pushes they made, when they made them.
+     */
     for (const event of graph.events) {
       if (event.actor_id !== actor.id) continue;
       const object = index.byId.get(event.object_id);
-      if (!object || object.type === 'commit') continue;
+      if (!object) continue;
       items.push({
         time: event.time,
         type: object.type,
-        label: event.comment
-          ? `Comment on ${object.label}`
-          : `${object.label} · ${activityLabel(event.activity)}`,
-      });
-    }
-
-    for (const commit of index.objectsOfType('commit')) {
-      if (index.pusherByCommit.get(commit.id) !== actor.id) continue;
-      items.push({
-        time: commit.intervals?.[0]?.start,
-        type: 'commit',
-        label: `Pushed ${commit.label}`,
+        label:
+          object.type === 'commit'
+            ? `Pushed ${object.label}`
+            : event.comment
+              ? `Comment on ${object.label}`
+              : `${object.label} · ${activityLabel(event.activity)}`,
       });
     }
 

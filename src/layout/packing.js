@@ -112,18 +112,35 @@ export function assignSubLanes(objects, nodesByObject = new Map()) {
  * @param {Array} nodes  nodes carrying `lane`, `objectId`, `t` and `x`
  * @param {string[]} lanes  lane types to pack, in order
  * @param {{laneObjects?: Map<string, Array>}} options  objects per lane, for sub-lanes
- * @returns {{maxRowByLane: Map<string, number>, objectRow: Map<string, number>}}
- *          highest row used per lane, and the base row of each object's band
+ * @returns {{maxRowByLane: Map<string, number>, objectRow: Map<string, number>,
+ *            repeatRow: number|null}}
+ *          highest row used per lane, the base row of each object's band, and the row
+ *          reserved for repeat commit observations (null when none exist)
  */
 export function packRows(nodes, lanes, { laneObjects = new Map() } = {}) {
   const maxRowByLane = new Map();
   const objectRow = new Map();
+  let repeatRow = null;
 
   for (const lane of lanes) {
     const inLane = nodes.filter((n) => n.lane === lane);
 
     if (!SUB_LANE_TYPES.has(lane)) {
-      maxRowByLane.set(lane, packByCollision(inLane, lane, 0));
+      let maxRow = packByCollision(inLane, lane, 0);
+      /*
+       * One reserved row beneath the commits, for repeat observations.
+       *
+       * A commit's later pushes are marks on the timeline, not commits, and drawing
+       * them among the glyphs would put "this SHA showed up again" in the row that
+       * otherwise means "a commit happened here" — the density the commit lane is
+       * already fighting. One shared row below keeps the main row reading as the
+       * commits themselves, which is what it is for.
+       */
+      if (lane === 'commit' && inLane.some((n) => n.observations?.length > 1)) {
+        repeatRow = maxRow + 1;
+        maxRow = repeatRow;
+      }
+      maxRowByLane.set(lane, maxRow);
       continue;
     }
 
@@ -159,7 +176,7 @@ export function packRows(nodes, lanes, { laneObjects = new Map() } = {}) {
     maxRowByLane.set(lane, maxRow);
   }
 
-  return { maxRowByLane, objectRow };
+  return { maxRowByLane, objectRow, repeatRow };
 }
 
 /**

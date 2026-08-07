@@ -154,6 +154,18 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       rankMax,
     });
     for (const node of nodes) node.x = scales.x(node.t, node);
+    // Where each observation falls. Taken from the scale by *time*, never through the
+    // node: the node's rank belongs to its first observation, so passing it here would
+    // stack every repeat on top of the glyph in ordinal mode.
+    for (const node of nodes) {
+      if (!node.observations?.length) continue;
+      node.observations.forEach((observation, i) => {
+        // The first observation *is* the glyph, so it takes the node's x rather than
+        // recomputing it. Later ones carry their own rank (`assignRanks`), which is
+        // what gives them a real slot in ordinal mode instead of an interpolated one.
+        observation.x = i === 0 ? node.x : scales.x(observation.time, observation);
+      });
+    }
     lastNodes = nodes;
 
     // ---- vertical position ----------------------------------------------------
@@ -161,9 +173,19 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     // objects overlap in time; without them the packer can only see nodes, and an
     // object's *span* is what decides whether it needs its own band.
     const laneObjects = new Map(visibleLanes.map((lane) => [lane, index.objectsOfType(lane)]));
-    const { maxRowByLane, objectRow } = packRows(nodes, visibleLanes, { laneObjects });
+    const { maxRowByLane, objectRow, repeatRow } = packRows(nodes, visibleLanes, { laneObjects });
     const { lanes: geometry, height } = computeLaneGeometry(visibleLanes, maxRowByLane, MARGIN);
     for (const node of nodes) node.y = rowY(geometry, node.lane, node.row);
+
+    // Repeat observations live on their own reserved row, so each carries the y it is
+    // drawn at. The first observation stays on the glyph: it *is* the glyph.
+    const repeatY = repeatRow == null ? null : rowY(geometry, 'commit', repeatRow);
+    for (const node of nodes) {
+      if (!node.observations?.length) continue;
+      node.observations.forEach((observation, i) => {
+        observation.y = i === 0 || repeatY == null ? node.y : repeatY;
+      });
+    }
 
     // Which drawn node stands for which object — commits carry their packed row, so
     // a link into the commit lane must meet the node, not the lane's top.

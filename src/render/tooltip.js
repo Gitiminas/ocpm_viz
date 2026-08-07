@@ -90,6 +90,48 @@ export function createTooltip({ tipEl, wrapEl }) {
         if (text) copyToClipboard(text, value);
       });
     }
+
+    // Grouped entries are copyable too, or the pin-to-copy affordance would work on
+    // every row of the card except the ones carrying the detail worth copying.
+    for (const item of tipEl.querySelectorAll('.tip-item')) {
+      item.addEventListener('click', (event) => {
+        if (!pinned) return;
+        event.stopPropagation();
+        const main = item.querySelector('.tip-item-main');
+        const text = main ? main.textContent.trim() : '';
+        if (text) copyToClipboard(text, main);
+      });
+    }
+  }
+
+  /**
+   * A boxed group of related entries.
+   *
+   * A repeated list — a commit's push observations, say — rendered as plain rows reads
+   * as several unrelated facts that happen to share the card, because every row in the
+   * body looks alike. Boxing it under one header says "these belong together, and this
+   * is what they are". Each entry stacks its own two lines rather than sitting in the
+   * key/value columns, because the columns are 300px wide and a timestamp beside a
+   * branch name wraps into unreadable ribbons.
+   *
+   * @param {{label: string, value: string, items: Array<{primary: string, secondary?: string}>}} group
+   */
+  function groupHtml({ label, value, items = [] }) {
+    const body = items
+      .map(
+        (item) =>
+          '<div class="tip-item">' +
+          `<div class="tip-item-main">${item.primary}</div>` +
+          (item.secondary ? `<div class="tip-item-sub">${item.secondary}</div>` : '') +
+          '</div>',
+      )
+      .join('');
+    return (
+      '<div class="tip-group">' +
+      `<div class="tip-group-head"><div class="k">${label}</div><div class="v">${value}</div></div>` +
+      body +
+      '</div>'
+    );
   }
 
   /**
@@ -108,11 +150,14 @@ export function createTooltip({ tipEl, wrapEl }) {
 
     const rows = spec.rows
       .filter(Boolean)
-      .map(
-        ([label, value, className]) =>
+      .map((row) => {
+        if (!Array.isArray(row)) return groupHtml(row);
+        const [label, value, className] = row;
+        return (
           `<div class="tip-row"><div class="k">${label}</div>` +
-          `<div class="v${className ? ` ${className}` : ''}">${value}</div></div>`,
-      )
+          `<div class="v${className ? ` ${className}` : ''}">${value}</div></div>`
+        );
+      })
       .join('');
 
     tipEl.innerHTML =

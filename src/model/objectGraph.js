@@ -174,12 +174,28 @@ export function indexObjectGraph(graph) {
   }
   for (const events of eventsByObject.values()) events.sort((a, b) => a.time - b.time);
 
-  // A commit object's actor comes from its CommitObserved event. Note this is the
-  // *pusher*, and stays a different identity space from `vmap.commit_author_name`
-  // (decision 5) — no heuristic join between them.
+  /*
+   * The actor who pushed a commit **first**, and only that.
+   *
+   * The actor on a `CommitObserved` event is the *pusher*, a different identity space
+   * from `vmap.commit_author_name` (decision 5) — no heuristic join between them.
+   *
+   * ⚠️ **This is not the answer to "who pushed this commit".** A commit is usually
+   * pushed by several accounts — 89% of vscode's repeatedly-observed commits, up to
+   * fifteen — so anything asking about pushers has to read the events, not this map.
+   * It used to be filled by overwriting on every event, which meant "whichever push
+   * happened to be written last" and silently discarded the rest; that is what made
+   * clicking an actor highlight nothing. Taking the earliest is at least deterministic
+   * and means something.
+   */
   const pusherByCommit = new Map();
+  const firstPushAt = new Map();
   for (const event of graph.events) {
-    if (event.activity === 'CommitObserved') pusherByCommit.set(event.object_id, event.actor_id);
+    if (event.activity !== 'CommitObserved') continue;
+    const earliest = firstPushAt.get(event.object_id);
+    if (earliest != null && +earliest <= +event.time) continue;
+    firstPushAt.set(event.object_id, event.time);
+    pusherByCommit.set(event.object_id, event.actor_id);
   }
 
   const eventCountByActor = new Map();

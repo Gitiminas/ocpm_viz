@@ -32,6 +32,20 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip .tip-row .v{font-size:12px;color:var(--color-text);text-align:right;word-break:break-word}
 #tip .tip-row .v.time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--color-neutral-300)}
 #tip .tip-row .v.mono{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--color-neutral-900);padding:2px 6px;border-radius:4px;color:var(--color-accent-300)}
+/* A group of related rows, boxed so a repeated list reads as one section rather than
+   as N unrelated rows sharing the card. Used by the commit tooltip's observation list. */
+#tip .tip-group{border:1px solid var(--color-neutral-800);border-radius:var(--radius-sm);overflow:hidden;margin:2px 0}
+/* Stacked, not two columns: three counts beside a label wrap into a ragged second
+   line in a 300px card. The label reads as the section heading it is. */
+#tip .tip-group-head{padding:7px 10px;background:var(--color-neutral-900);border-bottom:1px solid var(--color-neutral-800)}
+#tip .tip-group-head .k{font-size:10px;font-weight:600;color:var(--color-neutral-500);text-transform:uppercase;letter-spacing:.05em}
+#tip .tip-group-head .v{font-size:11px;color:var(--color-text);margin-top:2px}
+#tip .tip-item{padding:6px 10px;border-bottom:1px solid var(--color-neutral-900)}
+#tip .tip-item:last-child{border-bottom:none}
+#tip .tip-item-main{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--color-text);word-break:break-word;line-height:1.35}
+#tip .tip-item-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-500);margin-top:2px}
+#tip.pinned .tip-item{cursor:pointer}
+#tip.pinned .tip-item:hover{background:color-mix(in srgb, var(--color-text) 8%, transparent)}
 #tip .tip-footer{padding:10px 14px;background:var(--color-neutral-900);border-top:1px solid var(--color-neutral-800)}
 #tip .tip-note{display:flex;gap:7px;font-size:11px;color:var(--color-neutral-400);line-height:1.4}
 #tip .tip-close{display:none;position:absolute;top:8px;right:8px;width:18px;height:18px;border:none;background:none;color:var(--color-neutral-500);cursor:pointer;font-size:14px;line-height:1;padding:0}

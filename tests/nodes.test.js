@@ -6,6 +6,7 @@ import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
 import { indexObjectGraph, normalizeGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { buildNodes, assignRanks, filterNodes } from '../src/layout/nodes.js';
+import { packRows } from '../src/layout/packing.js';
 import {
   deriveRelGroups,
   createState,
@@ -230,3 +231,194 @@ describe('relationship toggles are derived, not enumerated', () => {
     assert.doesNotMatch(JSON.stringify(groups), /inferred/);
   });
 });
+
+/**
+ * A commit observed in several pushes.
+ *
+ * The SHA reaches another branch and GitHub reports a new PushEvent, so one commit
+ * object carries several `CommitObserved` events. It is common — 39.6% of vscode's
+ * commits, 13.8% of react's — and it used to be dropped: the lane drew one glyph at
+ * the first observation while the actor counts, the statistics and the axis range
+ * all still included the rest. The complaint that found it was a one-commit sub-log
+ * whose actor row read "3".
+ *
+ * Built inline rather than as a fixture because the property is one commit and three
+ * events, and a fixture would bury that in a bundle.
+ */
+function repeatedCommitGraph() {
+  const sha = 'commit:0001036d35667864ab01e65ac70325a7090a2f51';
+  const at = (time, ref, pushId, i) => ({
+    id: `e_obs${i}`,
+    activity: 'CommitObserved',
+    time,
+    object_id: sha,
+    actor_id: 'actor:flarnie',
+    repo: 'facebook/react',
+    comment: false,
+    attrs: { ref, push_id: pushId },
+  });
+  return normalizeGraph({
+    meta: { repo: 'facebook/react', seed: [{ id: sha, type: 'commit' }], traversal_degree: 2 },
+    objects: [
+      { id: 'actor:flarnie', type: 'actor', label: '@flarnie', repo: 'facebook/react', vmap: { login: 'flarnie' }, intervals: [] },
+      {
+        id: sha,
+        type: 'commit',
+        label: '0001036',
+        repo: 'facebook/react',
+        time_semantics: 'first_seen(push)',
+        vmap: { commit_sha: sha.slice(7), ref: 'refs/heads/15.6-dev', push_id: 1728284989 },
+        intervals: [{ start: '2017-05-09T13:29:38Z', end: '2017-05-09T13:29:38Z' }],
+      },
+    ],
+    events: [
+      at('2017-05-09T13:29:38Z', 'refs/heads/15.6-dev', 1728284989, 0),
+      at('2017-06-13T14:37:53Z', 'refs/heads/15-stable', 1797396175, 2),
+      at('2017-06-12T23:36:23Z', 'refs/heads/15-dev', 1795913512, 1),
+    ],
+    links: [],
+  });
+}
+
+describe('a commit observed in several pushes', () => {
+  const build = () => {
+    const graph = repeatedCommitGraph();
+    const index = indexObjectGraph(graph);
+    return buildNodes({ graph, index, bursts: [] }).filter((n) => n.lane === 'commit');
+  };
+
+  test('stays exactly one node — anchors, bursts and groups all assume it', () => {
+    assert.equal(build().length, 1);
+  });
+
+  test('carries every observation, in time order however the events arrived', () => {
+    const [node] = build();
+    assert.equal(node.observations.length, 3);
+    assert.deepEqual(
+      node.observations.map((o) => o.ref),
+      ['refs/heads/15.6-dev', 'refs/heads/15-dev', 'refs/heads/15-stable'],
+    );
+    const times = node.observations.map((o) => +o.time);
+    assert.deepEqual(times.slice().sort((a, b) => a - b), times);
+  });
+
+  test('the node still stands at the first observation', () => {
+    const [node] = build();
+    assert.equal(+node.t, +new Date('2017-05-09T13:29:38Z'));
+    assert.equal(+node.observations[0].time, +node.t);
+  });
+
+  test('each observation keeps its own ref and push, not the object vmap', () => {
+    const [node] = build();
+    // The object's own vmap describes the FIRST push only. Reading it for the others
+    // is what claimed a three-branch commit had reached one.
+    assert.deepEqual(
+      node.observations.map((o) => o.pushId),
+      [1728284989, 1795913512, 1797396175],
+    );
+  });
+
+  test('each observation records its own pusher, which the object cannot', () => {
+    const [node] = build();
+    // 89% of vscode's repeatedly-observed commits were pushed by more than one
+    // account. `pusherByCommit` keeps one, so anything naming a pusher per
+    // observation must read it from the event.
+    assert.deepEqual(
+      node.observations.map((o) => o.actorId),
+      ['actor:flarnie', 'actor:flarnie', 'actor:flarnie'],
+    );
+    for (const observation of node.observations) {
+      assert.ok(observation.actorId, 'an observation without a pusher cannot be labelled');
+    }
+  });
+
+  test('a commit observed once carries a single observation, not none', async () => {
+    const { nodes } = await f1Context();
+    const commits = nodes.filter((n) => n.lane === 'commit' && !n.isBurst && !n.isGroup);
+    assert.ok(commits.length > 0);
+    for (const node of commits) {
+      assert.equal(node.observations.length, 1, `${node.id} should have one observation`);
+    }
+  });
+});
+
+describe('repeat observations get their own row, and pushes are attributed per push', () => {
+  const context = () => {
+    const graph = repeatedCommitGraph();
+    const index = indexObjectGraph(graph);
+    const nodes = buildNodes({ graph, index, bursts: [] });
+    for (const node of nodes) node.x = 0;
+    return { graph, index, nodes };
+  };
+
+  test('the commit lane reserves one row below the commits for repeats', () => {
+    const { nodes } = context();
+    const { maxRowByLane, repeatRow } = packRows(nodes, ['commit'], {});
+    // One commit occupies row 0; the repeats get row 1, and the lane grows to hold it.
+    assert.equal(repeatRow, 1);
+    assert.equal(maxRowByLane.get('commit'), 1);
+  });
+
+  test('no row is reserved when nothing repeats', async () => {
+    const graph = await loadF1();
+    const index = indexObjectGraph(graph);
+    const nodes = buildNodes({ graph, index, bursts: deriveBursts(index.objectsOfType('commit')) });
+    const { repeatRow } = packRows(nodes, ['commit'], {});
+    assert.equal(repeatRow, null, 'F1 has no repeated commit, so the lane must not grow');
+  });
+
+  test('pusherByCommit names the FIRST pusher, not whichever event was written last', () => {
+    // Events are supplied out of order on purpose: the last one written is the
+    // 15-stable push, the earliest is 15.6-dev. Overwriting would pick the wrong one.
+    const graph = repeatedCommitGraph();
+    const index = indexObjectGraph(graph);
+    const commit = index.objectsOfType('commit')[0];
+    const first = index.eventsOf(commit.id)[0];
+    assert.equal(index.pusherByCommit.get(commit.id), first.actor_id);
+  });
+
+  test('an actor is attributed the pushes they made, not the commits they touched', () => {
+    const { nodes } = context();
+    const commit = nodes.find((n) => n.lane === 'commit');
+    // All three pushes here are flarnie's, so all three observations are theirs — the
+    // point being that the answer comes from the observations, not from one stored id.
+    const mine = commit.observations.filter((o) => o.actorId === 'actor:flarnie');
+    assert.equal(mine.length, 3);
+    assert.equal(commit.observations.filter((o) => o.actorId === 'actor:nobody').length, 0);
+  });
+});
+
+describe('ordinal mode gives every drawn mark its own slot', () => {
+  test('repeat observations are ranked, in time order, alongside the nodes', () => {
+    const graph = repeatedCommitGraph();
+    const index = indexObjectGraph(graph);
+    const nodes = buildNodes({ graph, index, bursts: [] });
+    const { rankOrder, rankMax, rankTimes } = assignRanks(nodes);
+
+    // One commit node + two repeat observations = three ranked marks, not one.
+    assert.equal(rankOrder.length, 3);
+    assert.equal(rankMax, 2);
+    assert.deepEqual(
+      rankOrder.map((m) => m.rank),
+      [0, 1, 2],
+    );
+    for (let i = 1; i < rankTimes.length; i++) {
+      assert.ok(rankTimes[i] >= rankTimes[i - 1], 'ranks must follow time');
+    }
+
+    // Every repeat carries a distinct rank. Without this they had none at all, and
+    // `ordinalTime` interpolated them — anything past the last ranked node clamped to
+    // the right edge and landed on top of whatever ended the sub-log.
+    const commit = nodes.find((n) => n.lane === 'commit');
+    const ranks = commit.observations.map((o) => o.rank ?? commit.rank);
+    assert.equal(new Set(ranks).size, 3, 'each observation needs its own ordinal slot');
+  });
+
+  test('a sub-log with no repeats ranks exactly as before', async () => {
+    const { nodes } = await f1Context();
+    const { rankOrder, rankMax } = assignRanks(nodes);
+    assert.equal(rankOrder.length, nodes.length);
+    assert.equal(rankMax, nodes.length - 1);
+  });
+});
+

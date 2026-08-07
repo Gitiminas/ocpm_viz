@@ -37,11 +37,11 @@ ObjectGraph = {
 | `intervals` | `[{start, end}]`, ISO strings in, `Date`s out | **yes** — array must exist; `[]` is valid | `objectGraph.js:53`, layout spans, axis, `metrics.js:23` |
 | `intervals[].start` | ISO 8601 UTC | **yes** per interval | validator `objectGraph.js:59`; commit x-position |
 | `intervals[].end` | ISO 8601 UTC or null | no — null means "still open" | lifetime completeness `metrics.js:25` |
-| `vmap.push_id` | string/number | commits only | burst derivation `bursts.js:41`; commit tooltip `nodes.js:484` |
-| `vmap.commit_sha` | string | commits only | commit tooltip title `nodes.js:479` |
-| `vmap.commit_message` | string | commits only | commit tooltip `nodes.js:474` |
-| `vmap.commit_author_name` | string | commits only | tooltip `nodes.js:482`; unique-author count `metrics.js:69` |
-| `vmap.ref` | string | commits only | commit tooltip `nodes.js:483` |
+| `vmap.push_id` | string/number | commits only | burst derivation `bursts.js:41`; commit tooltip `nodes.js:555` (single-observation commits only — a repeated commit lists a push per observation instead) |
+| `vmap.commit_sha` | string | commits only | commit tooltip title `nodes.js:564` |
+| `vmap.commit_message` | string | commits only | commit tooltip `nodes.js:517` |
+| `vmap.commit_author_name` | string | commits only | tooltip `nodes.js:532`, labelled **Git author**; unique-author count `metrics.js:79`. ⚠️ A git identity string, never joined to a GitHub account (decision 5) — the *pusher* is `event.actor_id`, and on a repeated commit there is usually more than one of those. The tooltip label used to read bare "Author", which invited reading the sidebar's actor as the author of the commit |
+| `vmap.ref` | string | commits only | commit tooltip `nodes.js:554` (single-observation commits only — a repeated commit lists a ref per observation, from `event.attrs.ref`) |
 | `vmap.login` | string | actors only | actor card `actorCard.js:62`, sidebar `sidebar.js:415,423`, trails `timeline.js:277` |
 
 `intervals` is the only lifecycle mechanism — there is no `t_start`/`t_end` pair anywhere. Commit

@@ -143,14 +143,52 @@ function groupBy(items, keyOf) {
   return groups;
 }
 
+/**
+ * The points on the timeline that belong to one actor.
+ *
+ * ⚠️ **For a commit this is per *push*, not per commit.** A commit is pushed by several
+ * accounts — 89% of vscode's repeatedly-observed commits are, up to fifteen — so "did
+ * this actor touch this commit" has no single answer, and the old test (`node.actorId
+ * === actorId`, against a map holding one arbitrary pusher) gave a wrong one in both
+ * directions: it drew a trail through commits an actor never pushed and skipped the
+ * ones they did. Selecting an actor in the sidebar therefore appeared to do nothing.
+ *
+ * Each observation is its own point, at the moment and row it is drawn, so an actor's
+ * trail passes through exactly the pushes they made — the first observation on the
+ * glyph, a later one on the repeat row.
+ */
+export function actorPoints(nodes, actorId) {
+  const points = [];
+  for (const node of nodes) {
+    if (node.observations?.length) {
+      node.observations.forEach((observation, i) => {
+        if (observation.actorId !== actorId) return;
+        points.push({
+          x: observation.x ?? node.x,
+          y: observation.y ?? node.y,
+          t: observation.time,
+          // The ring hugs what it marks: the full glyph, or the smaller repeat marker.
+          ring: i === 0 ? 14 : 10,
+        });
+      });
+      continue;
+    }
+    if (node.actorId === actorId) {
+      points.push({ x: node.x, y: node.y, t: node.t, ring: node.isComment ? 10 : 14 });
+    }
+  }
+  return points.sort((a, b) => +a.t - +b.t);
+}
+
 export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
   for (const actorId of state.actors) {
     const color = actorColors.get(actorId);
-    const mine = nodes.filter((n) => n.actorId === actorId).sort((a, b) => a.t - b.t);
+    const mine = actorPoints(nodes, actorId);
 
     for (let i = 1; i < mine.length; i++) {
       gHalo
         .append('path')
+        .attr('data-legend', 'actor-trail')
         .attr('d', curve(mine[i - 1], mine[i]))
         .attr('fill', 'none')
         .attr('stroke', color)
@@ -158,12 +196,13 @@ export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
         .attr('stroke-dasharray', '4 6')
         .attr('opacity', 0.8);
     }
-    for (const node of mine) {
+    for (const point of mine) {
       gHalo
         .append('circle')
-        .attr('cx', node.x)
-        .attr('cy', node.y)
-        .attr('r', node.isComment ? 10 : 14)
+        .attr('data-legend', 'actor-trail')
+        .attr('cx', point.x)
+        .attr('cy', point.y)
+        .attr('r', point.ring)
         .attr('fill', 'none')
         .attr('stroke', color)
         .attr('stroke-width', 2.5)
@@ -277,6 +316,91 @@ export function renderNodes({
         .text(node.short || node.title);
     }
   }
+}
+
+/**
+ * The same SHA, observed again — one hollow marker per later push, on the commit
+ * lane's reserved repeat row, joined to the glyph by a dashed elbow.
+ *
+ * The alternative was a node per observation, which would read as several commits and
+ * would break the one-commit-one-node invariant that `layout/anchors.js`, bursts and
+ * commit groups all rest on. Keeping one glyph and marking the repeats says what is
+ * true — *one* commit, seen three times — and it is what fills the stretch of axis
+ * that these observations were already stretching but drawing nothing into.
+ *
+ * They sit on their own row rather than beside the glyph so the commit row keeps
+ * meaning "a commit happened here"; a re-push is a sighting, not a commit.
+ *
+ * Coordinates are relative because the enclosing group is translated to the node.
+ */
+function drawRepeatObservations(group, node, tooltip, actorLogin) {
+  const repeats = (node.observations || []).slice(1);
+  if (!repeats.length) return;
+
+  const last = repeats[repeats.length - 1];
+  const dy = (last.y ?? node.y) - node.y;
+
+  // Down to the repeat row, then along it — an elbow rather than a diagonal, so the
+  // drop reads as "the same commit, one row down" instead of as a link to elsewhere.
+  group
+    .append('path')
+    .attr('data-legend', 'repeat-observation')
+    .attr('d', `M0,0 L0,${dy} L${last.x - node.x},${dy}`)
+    .attr('fill', 'none')
+    .attr('stroke', COLORS.commit)
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', '2 3')
+    .attr('opacity', 0.5);
+
+  repeats.forEach((repeat, i) => {
+    const marker = group
+      .append('g')
+      .attr('transform', `translate(${repeat.x - node.x},${(repeat.y ?? node.y) - node.y})`)
+      .attr('data-legend', 'repeat-observation')
+      .attr('opacity', 0.9)
+      .style('cursor', 'pointer');
+
+    /*
+     * A hollow **square**, not a hollow circle. The circle is the comment glyph in the
+     * issue and PR lanes, and reusing it here would make a re-push read as a comment —
+     * the shape vocabulary has to stay one-to-one or it stops being a vocabulary. The
+     * square is the commit family's own shape, hollowed to say "not a new commit".
+     */
+    drawSymbol(marker, 'square', 4.5, 'var(--color-bg)', COLORS.commit, 1.5);
+
+    /*
+     * ⚠️ **Each marker answers for itself.** They used to inherit the commit's card,
+     * so three marks a week apart all reported the same time, ref and push — the
+     * reader could see there were three and could not tell which one was under the
+     * cursor. A mark that cannot be identified is decoration.
+     */
+    if (tooltip) {
+      tooltip.bind(marker, () => repeatTooltipSpec(node, repeat, i, actorLogin));
+    }
+  });
+}
+
+/** The card for one later push: which observation, whose, where, and when. */
+function repeatTooltipSpec(node, repeat, i, actorLogin) {
+  const total = node.observations.length;
+  const sha = String(node.object?.vmap?.commit_sha || node.object?.label || '');
+  return {
+    accent: COLORS.commit,
+    shape: 'square',
+    kicker: 'Commit · later push',
+    title: `${escapeHtml(sha.slice(0, 10))}…`,
+    rows: [
+      ['Observation', `${i + 2} of ${total}`],
+      ['Time', formatInstant(repeat.time), 'time'],
+      ['Pushed by', `@${escapeHtml(actorLogin(repeat.actorId))}`],
+      ['Branch', escapeHtml(shortRef(repeat.ref)), 'mono'],
+      ['Push', escapeHtml(String(repeat.pushId ?? '—')), 'mono'],
+      ['First seen', formatInstant(node.t), 'time'],
+    ],
+    note:
+      'The same commit observed again — it reached another branch. This is a sighting, ' +
+      'not a new commit; the solid glyph on the row above is where it first appeared.',
+  };
 }
 
 function drawGroupBadge(group, node) {
@@ -472,19 +596,65 @@ function nodeTooltipSpec(node, actorLogin) {
   if (node.lane === 'commit') {
     const vmap = node.object.vmap || {};
     const message = vmap.commit_message || '—';
+    const observations = node.observations || [];
+    const repeated = observations.length > 1;
+
+    /*
+     * ⚠️ **"Git author" and "Pushed by" are two different identity spaces and the labels
+     * have to say so** (decision 5). `commit_author_name` is the string inside the commit;
+     * the actor on a `CommitObserved` event is whoever *pushed* it, and they are never
+     * joined — the upstream author email is anonymised, so there is nothing to join on.
+     * The bare label "Author" invited the obvious reading that the sidebar's actor was
+     * that author: on react, @flarnie pushed 218 observations written by 27 different
+     * people and authored none of them. Naming the role is the whole fix.
+     */
+    const rows = [
+      ['Time', formatInstant(node.t), 'time'],
+      ['Git author', escapeHtml(vmap.commit_author_name || '—')],
+    ];
+
+    /*
+     * ⚠️ `vmap.ref` and `vmap.push_id` describe the **first** observation only. Printing
+     * them alone on a commit seen on three branches states that it reached one — the
+     * wrong-picture-no-error failure, on the field a reader would use to trace where a
+     * change went. So a repeated commit lists every observation instead, each with its
+     * own pusher: a repeated commit usually has several, and no single "pushed by" line
+     * could be true of all of them.
+     */
+    if (repeated) {
+      const pushers = new Set(observations.map((observation) => observation.actorId));
+      const branches = new Set(observations.map((observation) => shortRef(observation.ref)));
+      rows.push({
+        label: 'Observed',
+        value:
+          `${plural(observations.length, 'push', 'pushes')} · ` +
+          `${plural(branches.size, 'branch', 'branches')} · ` +
+          `${plural(pushers.size, 'account', 'accounts')}`,
+        items: observations.map((observation) => ({
+          primary: `@${escapeHtml(actorLogin(observation.actorId))} → ${escapeHtml(shortRef(observation.ref))}`,
+          secondary: formatInstant(observation.time),
+        })),
+      });
+    } else {
+      rows.push(['Pushed by', `@${escapeHtml(actorLogin(observations[0]?.actorId ?? node.actorId))}`]);
+      rows.push(['Ref', escapeHtml(vmap.ref || '—'), 'mono']);
+      rows.push(['Push', escapeHtml(vmap.push_id ?? '—'), 'mono']);
+    }
+
+    rows.push(['Message', escapeHtml(message.length > 72 ? `${message.slice(0, 72)}…` : message)]);
+
     return {
       accent: COLORS.commit,
       shape: 'square',
       kicker: 'Commit',
       title: `${escapeHtml(String(vmap.commit_sha || node.object.label).slice(0, 10))}…`,
-      rows: [
-        ['Time', formatInstant(node.t), 'time'],
-        ['Author', escapeHtml(vmap.commit_author_name || '—')],
-        ['Ref', escapeHtml(vmap.ref || '—'), 'mono'],
-        ['Push', escapeHtml(vmap.push_id ?? '—'), 'mono'],
-        ['Message', escapeHtml(message.length > 72 ? `${message.slice(0, 72)}…` : message)],
-      ],
-      note: 'Time = first observed in a PushEvent (not real git commit time).',
+      rows,
+      note: repeated
+        ? 'Seen in more than one push — the same commit reaching another branch. The solid ' +
+          'glyph is the first observation; the hollow markers are the rest. Pushers are ' +
+          'GitHub accounts; the git author is not one and is never matched to one.'
+        : 'Time = first observed in a PushEvent (not real git commit time). The git author ' +
+          'is a commit string, not a GitHub account, and the two are never matched.',
     };
   }
 
@@ -505,6 +675,17 @@ function nodeTooltipSpec(node, actorLogin) {
     rows,
     note: '',
   };
+}
+
+/** `2 branches`, `1 branch`. */
+function plural(n, singular, plural_) {
+  return `${n} ${n === 1 ? singular : plural_}`;
+}
+
+/** `refs/heads/15-stable` → `15-stable`. The prefix is on every ref and says nothing. */
+function shortRef(ref) {
+  if (!ref) return '—';
+  return String(ref).replace(/^refs\/(heads|tags)\//, '');
 }
 
 function curve(a, b) {
