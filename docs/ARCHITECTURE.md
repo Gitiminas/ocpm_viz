@@ -98,11 +98,25 @@ alternative was a module doing two jobs:
 - `render/format.js` — Task 5's UTC fix must be a one-file change, so every formatter lives here.
 - `render/theme.js`, `sidebar.js`, `actorCard.js`, `stats.js` — otherwise `timeline.js` becomes the
   same god-module the rewrite was meant to break up.
+- `render/legend.js` holds `LEGEND_SECTIONS` as **pure exported data**, not markup built inline,
+  so "is every drawn mark explained?" is answerable without a DOM. Every mark carries a
+  `data-legend` key and `tests/legend.test.js` fails in both directions — a mark with no row,
+  or a row naming nothing drawn (decision 82). The legend had drifted to explaining six of a
+  dozen marks precisely because nothing connected drawing one to explaining it.
+  It renders from `redraw()` rather than on load, because it **dims** the rows whose marks are
+  not on screen (decision 83) — dims, never removes, so "the data has none" and "you switched
+  it off" stay distinguishable. Presence is read off the chart, not re-derived.
 - `state/labels.js` — lets `state.js` derive toggle labels without importing a render module.
 - `model/commitGroups.js` — grouping commits by the PR they reach is a data derivation, and the
   union visibility rule (decision 26) has to be testable on its own.
 - `render/controls.js` — the preset panel and the hidden-state banner are two halves of one
   bargain (decision 27) and belong together, away from the per-lane sidebar rows.
+
+The timeline draws into ordered layers, one of which — `preview` — exists for marks that
+belong to a pointer rather than to state: an actor's trail while their sidebar row is
+hovered (decision 84). It is written by `previewActor()` without a re-render, and cleared
+by the next `render()` along with everything else, so a preview cannot outlast the
+positions it was drawn against.
 
 **Where visibility is decided.** All of it lives in `state/state.js` as pure predicates —
 `isObjectVisible`, `isNodeVisible`, `isLinkVisible`. `layout/` takes a predicate rather than the

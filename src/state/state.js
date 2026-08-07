@@ -241,6 +241,27 @@ export function isLinkVisible(link, byId, state, groupsByCommit = new Map()) {
 }
 
 /**
+ * What to draw while an actor row is merely hovered.
+ *
+ * Hovering previews a trail; clicking pins it. The two share one drawing path, and this
+ * is the whole difference between them — a throwaway selection of exactly one actor,
+ * built without touching `state.actors`, so letting go of the mouse cannot disturb what
+ * the user has pinned.
+ *
+ * Returns `null` when there is nothing to preview: no actor, or an actor whose trail is
+ * already pinned. Drawing a preview over a pinned trail would double every stroke and
+ * make the pinned one appear to brighten on hover, which reads as a state change that
+ * did not happen.
+ *
+ * @returns {{actors: Set<string>}|null} a state-shaped object for `renderActorTrails`
+ */
+export function actorPreview(actorId, state) {
+  if (!actorId) return null;
+  if (state.actors.has(actorId)) return null;
+  return { actors: new Set([actorId]) };
+}
+
+/**
  * The sub-log as currently filtered: only the objects, events and links on screen.
  *
  * Metrics are computed over *this*, not over the whole bundle, because they must

@@ -406,6 +406,7 @@ export function renderActorRows({
   state,
   onChange,
   onProfile,
+  onPreview = () => {},
 }) {
   container.innerHTML = '';
 
@@ -439,6 +440,20 @@ export function renderActorRows({
       }
       onChange();
     });
+
+    /*
+     * Hovering previews the trail; clicking pins it. Same idea as the legend: see what a
+     * control does before committing to it, which for an actor list matters because the
+     * only way to answer "did this person touch the part I care about?" was to click,
+     * look, and click back — and a wrong guess left the picture changed.
+     *
+     * `mouseleave` clears unconditionally rather than clearing only what it drew. If a
+     * click lands between the two events the row is now pinned, `actorPreview` returns
+     * null for it, and there is no preview left to clear — so clearing regardless is
+     * both correct and the only version that cannot strand a stroke on screen.
+     */
+    row.addEventListener('mouseenter', () => onPreview(actor.id));
+    row.addEventListener('mouseleave', () => onPreview(null));
 
     row.querySelector('.actorProfileBtn').addEventListener('click', (event) => {
       event.stopPropagation();

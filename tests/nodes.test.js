@@ -6,6 +6,7 @@ import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
 import { indexObjectGraph, normalizeGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { isUnmergedClose } from '../src/model/activities.js';
+import { actorPoints } from '../src/render/nodes.js';
 import { buildNodes, assignRanks, filterNodes } from '../src/layout/nodes.js';
 import { packRows } from '../src/layout/packing.js';
 import {
@@ -14,6 +15,7 @@ import {
   resetToggles,
   linkPairKey,
   isNodeVisible,
+  actorPreview,
 } from '../src/state/state.js';
 
 const fileTransport = async (query) =>
@@ -460,3 +462,46 @@ describe('a pull request that ended without merging is marked as such', () => {
   });
 });
 
+describe('hovering an actor previews the same trail clicking would pin', () => {
+  const stateWith = (...ids) => ({ actors: new Set(ids) });
+
+  test('a hovered actor previews exactly themselves', () => {
+    const preview = actorPreview('actor:connor4312', stateWith());
+    assert.deepEqual([...preview.actors], ['actor:connor4312']);
+  });
+
+  test('nothing is previewed for an actor already pinned', () => {
+    // Drawing over a pinned trail doubles every stroke, which reads as the pinned one
+    // brightening — a state change the user did not make.
+    assert.equal(actorPreview('actor:connor4312', stateWith('actor:connor4312')), null);
+  });
+
+  test('nothing is previewed for no actor — this is how mouseleave clears', () => {
+    assert.equal(actorPreview(null, stateWith()), null);
+    assert.equal(actorPreview(undefined, stateWith('actor:x')), null);
+  });
+
+  test('previewing never touches what is pinned', () => {
+    const state = stateWith('actor:a');
+    const before = [...state.actors];
+    actorPreview('actor:b', state);
+    actorPreview(null, state);
+    assert.deepEqual([...state.actors], before, 'hover must not disturb the pinned set');
+  });
+
+  test('the preview draws the same points the pinned trail would', async () => {
+    const { nodes } = await f1Context();
+    for (const node of nodes) node.x = 0, (node.y = 0);
+    const actorId = nodes.find((n) => n.actorId)?.actorId;
+    assert.ok(actorId, 'F1 must attribute at least one node to an actor');
+
+    // Both paths call renderActorTrails with a one-actor selection, so the geometry has
+    // to agree — that is what makes hover an honest preview of the click rather than an
+    // approximation of it.
+    const hovered = actorPreview(actorId, stateWith());
+    const pinned = stateWith(actorId);
+    assert.deepEqual([...hovered.actors], [...pinned.actors]);
+    assert.deepEqual(actorPoints(nodes, [...hovered.actors][0]), actorPoints(nodes, actorId));
+    assert.ok(actorPoints(nodes, actorId).length > 0, 'the trail must have points');
+  });
+});

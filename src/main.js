@@ -34,7 +34,7 @@ import { createTooltip } from './render/tooltip.js';
 import { createMinimap } from './render/minimap.js';
 import { createActorCard } from './render/actorCard.js';
 import { createTimeline, MARGIN } from './render/timeline.js';
-import { renderLegend } from './render/legend.js';
+import { renderLegend, legendKeysPresentIn } from './render/legend.js';
 import { renderStats } from './render/stats.js';
 import {
   renderTrackRows,
@@ -284,6 +284,9 @@ function renderSidebar() {
     actorColors,
     state,
     onChange: redraw,
+    // Hover draws a throwaway trail straight onto the last render; it never touches
+    // `state.actors`, so nothing a hover does can outlive the pointer.
+    onPreview: (actorId) => timeline.previewActor(actorId),
     onProfile: (actor, anchor) =>
       actorCard.open(actor, anchor, { graph, index, color: actorColors.get(actor.id) }),
   });
@@ -311,6 +314,11 @@ function renderSidebar() {
  */
 function redraw() {
   timeline.render();
+  // After the draw, never before: the legend dims the marks that are not on screen, and
+  // "what is on screen" is read off the chart that was just rebuilt. Re-rendering fifteen
+  // rows costs nothing, and replacing the nodes each time means the hover listeners go
+  // with them rather than stacking (the failure decision 75 records).
+  renderLegend(elements.legend, legendKeysPresentIn(elements.chart));
   if (!current) return;
   renderHiddenBanner({
     container: elements.hiddenBanner,

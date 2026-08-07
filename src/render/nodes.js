@@ -120,7 +120,7 @@ export function renderSequenceLines({ gSeq, nodes, laneTypes, focus, objectColor
         const isComment = a.isComment || b.isComment;
         gSeq
           .append('path')
-          .attr('data-legend', isComment ? 'comments' : null)
+          .attr('data-legend', isComment ? 'comments' : 'sequence')
           .attr('d', curve(a, b))
           .attr('fill', 'none')
           .attr('stroke', objectColors.get(a.objectId) || typeColor(laneType))
@@ -211,6 +211,20 @@ export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
   }
 }
 
+/**
+ * Which legend row explains this node.
+ *
+ * One place, so a mark can never be drawn without an entry that names it — the gap this
+ * closes is that only commits carried a tag, leaving comments, bursts, folded runs and
+ * every issue/PR glyph unexplained and unhighlightable.
+ */
+export function legendKeyFor(node) {
+  if (node.isBurst) return 'burst';
+  if (node.isGroup) return 'fold-group';
+  if (node.isComment) return 'comments';
+  return node.lane;
+}
+
 export function renderNodes({
   gNode,
   nodes,
@@ -245,7 +259,9 @@ export function renderNodes({
       .attr('transform', `translate(${startX},${startY})`)
       .style('cursor', 'pointer')
       .attr('opacity', dim)
-      .attr('data-legend', node.lane === 'commit' ? 'commit' : null)
+      // Every node names the legend row that explains it. Only commits were tagged
+      // before, so hovering "Issue" lit its lifecycle bar and none of its glyphs.
+      .attr('data-legend', legendKeyFor(node))
       .on('click', (event) => {
         event.stopPropagation();
         handlers.onNodeClick(event, node);
@@ -276,6 +292,7 @@ export function renderNodes({
     if (node.landmark) {
       group
         .append('circle')
+        .attr('data-legend', 'landmark')
         .attr('r', (node.isComment ? 6 : 8) + 6)
         .attr('fill', 'none')
         .attr('stroke', nodeColor)

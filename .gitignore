@@ -12,3 +12,8 @@ CLAUDE.local.md
 node_modules/
 .shots/
 postgrest.conf
+
+# Written outside this repo and reviewed against it, never maintained as part of it.
+# Its own header says the binding documents win wherever it disagrees, so tracking it
+# would put a second, staler account of the project's decisions under version control.
+docs/OCEL_TOOL_SPEC.md

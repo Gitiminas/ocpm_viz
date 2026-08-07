@@ -238,6 +238,7 @@ export function renderLinks({
       const label = `×${crowd}`;
       group
         .append('rect')
+        .attr('data-legend', 'link-crowded')
         .attr('x', sx - 7 - label.length * 3.2)
         .attr('y', sy - 9)
         .attr('width', 14 + label.length * 6.4)
@@ -265,6 +266,7 @@ export function renderLinks({
       const color = objectColors.get(target.id) || qualifierColor(link.qualifier);
       group
         .append('circle')
+        .attr('data-legend', 'link-extracted')
         .attr('cx', tx)
         .attr('cy', midY)
         .attr('r', 8)

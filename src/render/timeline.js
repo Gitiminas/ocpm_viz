@@ -37,7 +37,7 @@ import {
   renderGroupBoxes,
 } from './nodes.js';
 import { TYPE, drawSymbol, typeColor, objectShade } from './theme.js';
-import { isNodeVisible, isObjectVisible } from '../state/state.js';
+import { isNodeVisible, isObjectVisible, actorPreview } from '../state/state.js';
 
 export const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
 const MIN_PLOT_WIDTH = 820;
@@ -50,6 +50,9 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     seq: svg.append('g'),
     link: svg.append('g'),
     halo: svg.append('g'),
+    // Hover previews draw here, under the glyphs like the pinned trails beside them but
+    // in their own layer, so clearing a preview cannot touch what the user has pinned.
+    preview: svg.append('g'),
     node: svg.append('g'),
     label: svg.append('g'),
     axis: svg.append('g'),
@@ -312,6 +315,30 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     syncStickyLabels();
   }
 
+  /**
+   * Draw — or clear — the trail for an actor being hovered.
+   *
+   * ⚠️ **Deliberately not a re-render.** `render()` tears down and rebuilds the whole
+   * SVG, which is fine for a click and wrong for a pointer moving down a list: on a
+   * sub-log the size of F10 that is hundreds of nodes rebuilt per row hovered. This
+   * reuses the nodes already positioned by the last draw and touches one layer.
+   *
+   * Which means it is only valid while those positions are: a `render()` clears every
+   * layer, this one included, so a preview never survives a redraw into a picture it no
+   * longer describes.
+   */
+  function previewActor(actorId) {
+    layers.preview.selectAll('*').remove();
+    const preview = context && actorPreview(actorId, state);
+    if (!preview) return;
+    renderActorTrails({
+      gHalo: layers.preview,
+      nodes: lastNodes,
+      state: preview,
+      actorColors: context.actorColors,
+    });
+  }
+
   /** Lane backgrounds, separators and the sticky lane labels. */
   function drawLaneChrome({ layers, geometry, visibleLanes, index, width, visibleObjectIds }) {
     visibleLanes.forEach((laneType, i) => {
@@ -413,6 +440,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   return {
     measure,
     render,
+    previewActor,
     setGraph,
     captureTween,
     syncStickyLabels,
