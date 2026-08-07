@@ -182,6 +182,23 @@ Stated plainly rather than left to inference.
   `tests/fixtures/LIVE*.json`. **Also closed, 2026-08-05:** `src/data/api.js` exists, the dev
   server proxies `/rpc/*`, and the app renders live payloads fetched over HTTP — verified in
   the browser against all three repositories.
+- ~~**Nothing automated exercises the `web_anon` path, and it broke once.**~~ **Closed
+  2026-08-07, the same day it opened.** `fe.diag_sanity` and the rest of `rpc-check.mjs`
+  reach the database through `psql` as the *owner*, so a PostgREST permissions regression
+  was invisible to them: re-running `fe_layer.sql` reverted all three `api` functions to
+  `SECURITY INVOKER`, the app died with *"permission denied for schema fe"*, and the gate
+  reported **PASS**. `rpc-check.mjs` now ends with one unauthenticated HTTP call to
+  `api.list_repos` — which reads `fe.seed_lookup`, so it exercises exactly what breaks.
+  Unreachable PostgREST is a **skip**, not a failure, so the gate still works on a machine
+  with only a database (`PGRST_URL`, `PGRST_SKIP` override it).
+  - Verified by regression rather than by reasoning: with
+    `ALTER FUNCTION api.list_repos() SECURITY INVOKER` applied, every earlier gate still
+    passed and this one failed with the app's own error and the `postgrest_setup.sql`
+    remedy. It also detects a stale PostgREST schema cache, which presents differently and
+    needs a different fix.
+  - ⚠️ It probes **one** function. A regression confined to `get_object_graph` or
+    `search_seeds` would still pass, since the failure mode this guards against is
+    schema-wide by construction. Narrow, and deliberately so.
 - **Interaction is untested by assertion.** Tooltips, pin-to-copy, minimap
   drag-to-zoom, legend hover, the degree stepper and the actor card are exercised
   only by looking at them. They have no automated coverage, because they need a DOM
@@ -208,12 +225,42 @@ Stated plainly rather than left to inference.
   fixture source is still limited to pre-built seeds, which is inherent to fixtures.
 - ⚠️ **There is no automated check that the picture is correct, and this is the largest
   gap in the whole project.** Every layout assertion checks that positions are *finite,
-  banded and anchored* — never that the drawing means what it claims. **Four defects this
-  session were found by looking at the screen and by none of the 401 tests**: commits
+  banded and anchored* — never that the drawing means what it claims. **Five defects have
+  now been found by looking at the screen and by none of the 401 tests**: commits
   wrongly excluded from merged pull requests, a dead app when no seed was given, isolated
-  objects indistinguishable from failures, and one pull request drawn as ~30. Each left
+  objects indistinguishable from failures, one pull request drawn as ~30, and — added
+  2026-08-07 — the seed prompt detaching the timeline's `<svg>` so that every subsequent
+  render drew into a node outside the document (decision 74). Each left
   every check passing. `scripts/shot.mjs` makes looking cheap; it does not make it
   automatic, and no baseline is compared.
+  - **One narrow thing is now machine-checked**, added 2026-08-08: that every mark the
+    renderers draw has a legend row explaining it, and every row names something drawn
+    (`tests/legend.test.js`, decision 82). That is *completeness of the key*, not
+    correctness of the picture — it cannot tell you a glyph is in the wrong place, only
+    that nothing is drawn without a name. The larger gap above is unchanged.
+  - ⚠️ **The fifth is the sharpest statement of this gap so far, because the tests could
+    not have caught it even in principle.** The other four were wrong pictures; this was
+    *no* picture, produced by a DOM mutation two modules away from anything under test.
+    Every module under `model/`, `layout/` and `stats/` stayed correct throughout — the
+    node positions computed on each render were right, and were written to an element no
+    longer in the document. **No DOM-free assertion can reach a defect whose entire
+    content is which element is attached to what.** Verified instead by driving the real
+    app headlessly — open `?source=database`, choose a seed, switch repository, choose
+    another — and reading `#chart` back out of the live DOM at each step, with the fix
+    reverted as a control to confirm the probe detects the defect. That probe was
+    scaffolding and was deleted; if this class recurs, a browser-driver suite is the
+    honest answer, and it remains out of scope.
+- ⚠️ **Seed symmetry is checked for exactly one triple, and only by URL.** Added 2026-08-07,
+  prompted by a report that seeding from a commit, its pull request and its issue gave
+  different sub-logs. `facebook/react` commit `0005d1e`, PR #14576 and issue #14578 were
+  loaded at degree 2 by all three routes — direct RPC, direct URL, and in-session seed
+  switching — and returned **identical payloads (6 objects, 8 events, 2 links) and identical
+  renders** every time. The asymmetry was real but not in the lookup: stacked combo listeners
+  were changing the *repository* mid-query (decision 75). The traversal is symmetric by
+  construction — `adj` unions both link directions and `reached` takes `min(hop)` — but
+  "symmetric by construction" is an argument, not a measurement, and **no test asserts that
+  two seeds in one component yield the same sub-log at a degree that spans them.** One triple
+  in one repository is thin evidence; a sweep over many triples is unwritten work.
 - **The Stats page has never been opened against real data.** All of its figures —
   durations, gaps, handoffs, per-object tables — are computed in JS over the loaded
   sub-log (decision 12) and have only ever been exercised on fixtures. Real sub-logs are
@@ -226,11 +273,21 @@ Stated plainly rather than left to inference.
   after it was found to discard merged pull requests' own commits. It is right as far as
   can be measured now, but it has the worst track record of anything in the layer, and
   every figure resting on it deserves more scepticism than its precision suggests.
-- **The `commit_distinct` floor is unquantified.** Decisions 61–62 admit a `ref_match`
-  commit only when GitHub flagged it new to the repository, which also excludes a legitimate
-  force-push or rebase of the author's own commit. Every commit-link figure is therefore a
-  floor by an **unmeasured** amount. Measuring it needs commit parent data, which this
-  dataset does not carry. Do not present the figures as exact.
+- ~~**The `commit_distinct` floor is unquantified.**~~ **Measured, 2026-08-07.** Decision 80
+  narrowed the rule to "flagged new on the pull request's *own* head branch" and the floor is
+  now countable, because the commits it drops can be sorted by where they *were* born. Real
+  links lost — born on the PR's own branch, but with no `commit_distinct` push there, so a
+  force-push, a rebase, or GH Archive's 20-commit truncation: **vscode 1,620, react 272,
+  kubernetes 56.** Cross-branch pass-throughs correctly removed: **49,004 / 2,319 / 858**.
+  `fe.diag_ref_match_narrowing` reports both columns per repo, so the cost is visible beside
+  the benefit rather than inferred. Figures are still a floor and still must be quoted as a
+  range — upstream raw, and the narrowed count — never as one number.
+  - ⚠️ **Kubernetes pays and gains nothing:** 56 real links lost, 0 pass-throughs removed,
+    because its contributors work from forks where this failure mode barely occurs. The
+    removal rate differs sharply by repository (vscode 71%, react 66%, kubernetes 32% of
+    upstream `ref_match`), and that spread is **real branching practice, not a filter
+    artifact** — but it is exactly why raw link counts must never be compared across
+    repositories as though they measured the same thing. See §5.
 
 ---
 
