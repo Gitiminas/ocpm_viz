@@ -8,13 +8,23 @@
  * known link methods, and the both-endpoints-are-objects rule (decision 49) — which is
  * the same gate all 13 fixtures pass.
  *
- * The transport here is what `src/data/api.js` becomes in pass 2. It shells out to psql
- * rather than speaking to PostgREST, because PostgREST is not wired up yet and the point
- * of this script is to validate the SQL underneath it: knowing the query returns the
- * right thing is what makes the HTTP layer easy to debug later.
+ * The transport shells out to `psql` rather than speaking to PostgREST, deliberately: the
+ * point is to validate the SQL underneath the HTTP layer, and a payload proved correct
+ * here is what makes an HTTP fault easy to place later.
+ *
+ * ⚠️ **But `psql` connects as the OWNER, and the app connects as `web_anon`** — so for a
+ * long time this gate could not see the one failure that takes the app down completely.
+ * On 2026-08-07, re-running `fe_layer.sql` reverted every `api` function to
+ * `SECURITY INVOKER`, the app died with *"permission denied for schema fe"*, and this
+ * script printed **PASS**. The final check now travels that second path. It is one HTTP
+ * call, and it is skipped — not failed — when PostgREST is not running, so the gate still
+ * works on a machine with only a database.
  *
  *   node scripts/rpc-check.mjs [repo] [seed] [degree]
  *   node scripts/rpc-check.mjs microsoft/vscode issue:2902032454 2
+ *
+ *   PGRST_URL=http://localhost:3000   where to find PostgREST (default)
+ *   PGRST_SKIP=1                      skip the web_anon probe entirely
  */
 
 import { execFileSync } from 'node:child_process';
@@ -269,6 +279,64 @@ if (layoutFail.length) {
   process.exit(1);
 }
 console.log('gate    layout in all three time modes (finite, banded, anchored)   ✓');
+
+// ---- and the app reaches it as web_anon, not as the owner ----------------------------
+/**
+ * The second path: PostgREST, over HTTP, unauthenticated.
+ *
+ * Everything above runs as the database owner and therefore cannot observe a permissions
+ * regression at all. `api.list_repos` reads `fe.seed_lookup`, so one call to it exercises
+ * exactly what breaks: an `api` function that is no longer `SECURITY DEFINER` runs as
+ * `web_anon`, which by design can read nothing in `fe`.
+ *
+ * Unreachable is a **skip**, not a failure — PostgREST is a separate process and this gate
+ * has to stay useful without it. Reachable-and-refusing is a failure, because that is the
+ * app being broken.
+ */
+async function checkWebAnon() {
+  if (process.env.PGRST_SKIP) {
+    console.log('gate    web_anon over HTTP   — skipped (PGRST_SKIP)');
+    return;
+  }
+  const base = process.env.PGRST_URL || 'http://localhost:3000';
+
+  let response;
+  try {
+    response = await fetch(`${base}/rpc/list_repos`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    console.log(`gate    web_anon over HTTP   — skipped (nothing listening at ${base})`);
+    return;
+  }
+
+  if (response.ok) {
+    const rows = await response.json();
+    console.log(`gate    web_anon reaches the RPC over HTTP (${rows.length} repos)   ✓`);
+    return;
+  }
+
+  const body = await response.text();
+  console.error(`\nFAIL — PostgREST answered ${response.status} as web_anon:`);
+  console.error(`  ${body.slice(0, 300)}`);
+  if (/permission denied/i.test(body)) {
+    console.error(
+      '\n  This is the SECURITY INVOKER regression. `fe_layer.sql` replaced the api\n' +
+        '  functions and reset them, so they now run as web_anon instead of as their\n' +
+        '  owner. Fix:\n' +
+        `\n      psql -d ${DB} -f sql/postgrest_setup.sql\n`,
+    );
+  } else if (/schema cache|PGRST202/i.test(body)) {
+    console.error(
+      '\n  PostgREST is holding a stale schema cache. Reload it (NOTIFY pgrst,\n' +
+        "  'reload schema') or restart the process.\n",
+    );
+  }
+  process.exit(1);
+}
+
+await checkWebAnon();
 
 const byType = {};
 for (const o of raw.objects) byType[o.type] = (byType[o.type] || 0) + 1;

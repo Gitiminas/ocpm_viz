@@ -39,6 +39,7 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | `docs/MOCKUP_OVERVIEW.md` | The **superseded** mockup, described | **Historical.** Not maintained; describes deleted code |
 | `docs/VERIFICATION.md` | What was checked, how, and what was not | Task 6 output; §3b covers the data layer. **Read §4 before trusting any figure** |
 | `docs/LINK_FANNING.md` | Why link fanning exists, how it broke on real data, and what it does now | Worked example of a defect no test could catch |
+| `docs/COMMIT_PR_NARROWING.md` | Which commits count as a pull request's, why the rule changed, and what it costs | Decision 80. Read before quoting any commit-link figure |
 | `README.md` | Human entry point: run, test, extend | Keep current |
 | `docs/ONBOARDING.md` | Reading path: what to read, in what order, and what to skip | Orientation |
 | ~~`tasks/*.md`~~ | Was one file per work package. **Deleted in `a1e2a9c` and staying deleted.** Work packages 00–06 are complete | Gone — do not restore |
@@ -50,7 +51,7 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | `index.html` | The app shell: markup, CSS, and the one `<script type="module">` entry | **Work here** for anything structural in the page |
 | `src/` | The application, as ES modules. Structure and rationale in `ARCHITECTURE.md` | **Work here.** Keep `model/`, `layout/` and `stats/` DOM-free |
 | `sql/fe_layer.sql` | **The PostgREST data layer**: schema `fe` (8 views + 7 diagnostics) and `api.get_object_graph`. Idempotent — re-run it to apply changes | **Work here** for anything about what the payload contains. Read its header before editing: the load-bearing conventions are listed there, and each one is a defect someone already shipped |
-| `scripts/rpc-check.mjs` | Acceptance gate: a real RPC payload through `loadObjectGraph`, then the real layout pipeline | Run after any change to `sql/fe_layer.sql`. `findGraphProblems()` must return `[]` |
+| `scripts/rpc-check.mjs` | Acceptance gate: a real RPC payload through `loadObjectGraph`, then the real layout pipeline, then one unauthenticated HTTP call as `web_anon` | Run after any change to `sql/fe_layer.sql`. `findGraphProblems()` must return `[]`. The HTTP probe skips if PostgREST is down |
 | `scripts/pull-sublog.mjs` | Snapshots RPC output to `tests/fixtures/LIVE*.json` so a real sub-log can be rendered | These are **samples, not fixtures** — nothing asserts against them |
 | `scripts/shot.mjs` | Headless screenshot of the running app, via Edge over WSL interop | Writes to `.shots/` (gitignored). **Never to `screenshots/`** — that baseline stays read-only |
 | `scripts/build-f1.mjs` | Builds `tests/fixtures/F1.json` from `ocel-data.json` | Re-runnable. `--check` fails if the committed fixture is stale |
@@ -139,7 +140,7 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
   Built as `sql/fe_layer.sql`: schema `fe` for the views, `api` for the one RPC. Exactly one
   materialization, `fe.link_mat`, with its measurement beside it. **Re-run `SELECT fe.refresh_links()`
   after any upstream refresh** — it goes stale silently, and `fe.diag_link_staleness` is what tells you.
-- **Two admission rules are ours, not upstream's** (decisions 61–62), and they are the only places
+- **Two admission rules are ours, not upstream's** (decisions 62 and 80 — 80 replaced 61), and they are the only places
   this project diverges from the shared views. Both narrow `ref_match`. Every commit-link and
   issue↔PR figure is therefore a **floor**, never a point estimate — say so wherever one is quoted.
 - Identity by numeric id, never by `login` or repo `name` — both are renameable.

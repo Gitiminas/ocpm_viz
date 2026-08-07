@@ -767,21 +767,68 @@ COMMENT ON VIEW fe.commit_branch_origin IS
 -- commit→PR attribution upstream and inherited the wide rule. One definition, consumed
 -- twice, is what stops those two from drifting apart again.
 -- -------------------------------------------------------------------------------------
+-- The head branch of each pull request, as a full ref, and the (commit, ref) pairs where
+-- GitHub declared a commit NEW. Named views rather than inline CTEs because the narrowing
+-- and its diagnostic must test the same two things.
+DROP VIEW IF EXISTS fe.pr_head_ref CASCADE;
+CREATE VIEW fe.pr_head_ref AS
+SELECT DISTINCT repo_id, pull_request_id, 'refs/heads/' || head_ref AS head_ref_full
+FROM mv_pull_request_events_full
+WHERE head_ref IS NOT NULL;
+
+COMMENT ON VIEW fe.pr_head_ref IS
+  'Pull request to its head branch, as a full ref. Input to the decision-80 narrowing.';
+
+DROP VIEW IF EXISTS fe.commit_born_ref CASCADE;
+CREATE VIEW fe.commit_born_ref AS
+SELECT DISTINCT repo_id, commit_sha, ref
+FROM mv_push_commits_full
+WHERE commit_distinct AND commit_sha IS NOT NULL;
+
+COMMENT ON VIEW fe.commit_born_ref IS
+  'Every (commit, ref) where GitHub flagged the commit new to the repository in that push. '
+  'Input to the decision-80 narrowing.';
+
+-- -------------------------------------------------------------------------------------
+-- ⚠️ **The question is "was this commit written FOR this pull request", and the only
+-- honest proxy is "was it born on THIS PR's branch"** (decision 80).
+--
+-- The previous rule asked whether the commit was first seen on *a* branch other than
+-- master/main. That catches the common case — trunk merged into a long-lived branch — by
+-- luck rather than by aim, and misses every commit merged in from a *colleague's* branch.
+-- Measured on vscode PR #116416: of 87 commits it admitted, **52 were born on other
+-- people's branches** (`tyriar/116467_2`, `isidorn/notificationsTelemetry`,
+-- `joh/kernelLanguages`, …) and had nothing to do with `notebook/execution`. None of the
+-- commits this rule drops were born on the PR's own branch.
+--
+-- ⚠️ **Still a FLOOR, and now for a second reason.** `commit_distinct = false` on the PR's
+-- own branch also catches a force-push, a rebase, and GH Archive's 20-commit truncation
+-- of `PushEvent.commits`. Measured cost: vscode 1,620 real links, react 272,
+-- kubernetes 56. Measured benefit: 9,796 / 537 / 0 cross-branch pass-throughs removed.
+-- **Kubernetes pays the cost and gains nothing** — its contributors work from forks, so
+-- this failure mode barely occurs there. Quote three numbers, never one:
+-- upstream raw, the previous rule, this rule (vscode: 71,470 / 32,262 / 20,846).
+-- -------------------------------------------------------------------------------------
 DROP VIEW IF EXISTS fe.commit_pr_link CASCADE;
 CREATE VIEW fe.commit_pr_link AS
 SELECT l.repo_id, l.commit_sha, l.pull_request_id, l.pr_number, l.link_method
 FROM mv_commit_pr_links l
-LEFT JOIN fe.commit_branch_origin o
-  ON o.repo_id = l.repo_id AND o.commit_sha = l.commit_sha
 WHERE l.admitted
   AND (l.link_method IN ('head_sha','merge_commit_sha')
-       -- Decision 61, corrected: first seen on a branch other than the default one.
-       -- NOT "never reached master" — see the note on fe.commit_branch_origin.
-       OR COALESCE(o.first_seen_on_branch, false));
+       OR EXISTS (
+         SELECT 1
+         FROM fe.pr_head_ref h
+         JOIN fe.commit_born_ref b
+           ON b.repo_id = l.repo_id
+          AND b.commit_sha = l.commit_sha
+          AND b.ref = h.head_ref_full
+         WHERE h.repo_id = l.repo_id
+           AND h.pull_request_id = l.pull_request_id));
 
 COMMENT ON VIEW fe.commit_pr_link IS
-  'mv_commit_pr_links with the decision-61 ref_match narrowing applied. The single source '
-  'of commit-to-PR attribution in this layer — fe.link branches A and B both read it.';
+  'mv_commit_pr_links with the decision-80 ref_match narrowing applied: a ref_match commit '
+  'is admitted only where GitHub flagged it new on the PR''s own head branch. The single '
+  'source of commit-to-PR attribution in this layer — fe.link branches A and B both read it.';
 
 
 DROP VIEW IF EXISTS fe.link CASCADE;
@@ -929,21 +976,23 @@ SELECT 'pr:' || b.pull_request_id::text,
        b.methods,
        b.repo_id
 -----------------------------------------------------------------------------------------
---    ⚠️ Reads fe.commit_pr_link — the DECISION 61 narrowing, defined once in §5.0b.
+--    ⚠️ Reads fe.commit_pr_link — the DECISION 80 narrowing, defined once in §5.0b.
 --
---    SHA matches are identity and pass untouched. `ref_match` is admitted only where the
---    commit was FIRST INTRODUCED on a branch that is not master/main.
+--    SHA matches are identity and pass untouched. `ref_match` is admitted only where
+--    GitHub flagged the commit NEW on the pull request's OWN head branch.
 --
 --    The defect it fixes. `ref_match` means "pushed to this PR's head branch while the PR
 --    was open", which is the right question — GH Archive's PR payload never lists a PR's
---    commits, so it is the ONLY evidence most of them have. But merging master into a
---    long-lived branch re-enumerates every incoming trunk commit in that push, and all of
---    them are then attributed to the PR. On vscode PR #116416: 217 ref_match commits, of
---    which **179 were already on master**, 4 were re-pushes, **34 were the branch's work**.
+--    commits, so it is the ONLY evidence most of them have. But merging anything into a
+--    long-lived branch re-enumerates every incoming commit in that push, and all of them
+--    are then attributed to the PR. On vscode PR #116416: 217 ref_match commits upstream,
+--    87 under the previous rule, **36 under this one** — and the 52 it removes were born
+--    on other people's branches, none on `notebook/execution`.
 --
---    ⚠️ It is a FLOOR, not a count. `commit_distinct = false` also catches a legitimate
---    force-push or rebase of the author's own commit, so this under-counts. Raw ref_match
---    is the ceiling. Report a range, never a point estimate.
+--    ⚠️ It is a FLOOR, not a count, and the floor's size is measured. `commit_distinct =
+--    false` on the PR's own branch also catches a force-push, a rebase and GH Archive's
+--    20-commit truncation: vscode 1,620 real links lost, react 272, kubernetes 56. Raw
+--    ref_match is the ceiling. Report a range, never a point estimate.
 --
 --    ⚠️ Why not SHA-only, which was the first instinct and is wrong. `head_sha` and
 --    `merge_commit_sha` do not describe a PR's contents — they are the branch tip at the
@@ -1434,22 +1483,43 @@ WITH rm AS (
 sha AS (
   SELECT DISTINCT repo_id, commit_sha, pull_request_id
   FROM mv_commit_pr_links WHERE admitted AND link_method IN ('head_sha','merge_commit_sha')
+),
+-- ⚠️ Reports the narrowing's **cost as well as its benefit**, because a filter that only
+-- ever printed what it removed would read as pure gain. `dropped_born_elsewhere` is the
+-- cross-branch pass-through this exists to catch; `dropped_born_here` is a real link lost
+-- to a force-push, a rebase or GH Archive's 20-commit truncation, and is the floor's size.
+born_on_pr_branch AS (
+  SELECT rm.repo_id, rm.commit_sha, rm.pull_request_id,
+         EXISTS (SELECT 1 FROM fe.pr_head_ref h
+                   JOIN fe.commit_born_ref b
+                     ON b.repo_id = rm.repo_id AND b.commit_sha = rm.commit_sha
+                    AND b.ref = h.head_ref_full
+                  WHERE h.repo_id = rm.repo_id
+                    AND h.pull_request_id = rm.pull_request_id) AS kept
+  FROM rm
 )
 SELECT r.name AS repo,
-       count(*)                                                        AS ref_match_pairs_upstream,
-       count(*) FILTER (WHERE o.first_seen_on_branch)                   AS kept,
-       count(*) FILTER (WHERE NOT o.first_seen_on_branch)               AS dropped_first_seen_on_trunk,
-       count(*) FILTER (WHERE o.first_seen_on_branch AND NOT o.introduced_new) AS kept_though_a_repush,
-       count(*) FILTER (WHERE o.first_seen_on_branch
+       count(*)                                              AS ref_match_pairs_upstream,
+       count(*) FILTER (WHERE k.kept)                        AS kept,
+       count(*) FILTER (WHERE NOT k.kept AND o.first_seen_ref IS DISTINCT FROM h.head_ref_full)
+                                                             AS dropped_born_elsewhere,
+       count(*) FILTER (WHERE NOT k.kept AND o.first_seen_ref = h.head_ref_full)
+                                                             AS dropped_born_here_floor,
+       count(*) FILTER (WHERE k.kept
                           AND NOT EXISTS (SELECT 1 FROM sha s
                                 WHERE s.repo_id = rm.repo_id
                                   AND s.commit_sha = rm.commit_sha
                                   AND s.pull_request_id = rm.pull_request_id))
-                                                                        AS kept_only_by_ref_match
+                                                             AS kept_only_by_ref_match
 FROM rm
 JOIN repo r ON r.id = rm.repo_id
+JOIN born_on_pr_branch k
+  ON k.repo_id = rm.repo_id AND k.commit_sha = rm.commit_sha
+ AND k.pull_request_id = rm.pull_request_id
 LEFT JOIN fe.commit_branch_origin o
   ON o.repo_id = rm.repo_id AND o.commit_sha = rm.commit_sha
+LEFT JOIN fe.pr_head_ref h
+  ON h.repo_id = rm.repo_id AND h.pull_request_id = rm.pull_request_id
 GROUP BY 1 ORDER BY 2 DESC;
 
 -- §7.5 — the four sanity checks that catch the SILENT failures. Every one must be 0.
@@ -1746,3 +1816,38 @@ $$;
 COMMENT ON FUNCTION api.list_repos() IS
   'Repositories and whether anything can be seeded from them. Availability is computed '
   'from fe.seed_lookup, not declared.';
+
+
+-- =====================================================================================
+-- §7 — AFTER THIS FILE, RE-RUN sql/postgrest_setup.sql
+--
+-- ⚠️ **Not optional, and the acceptance gate cannot tell you.** This file issues
+-- `CREATE OR REPLACE FUNCTION` on every `api` function, and a replaced function reverts
+-- to `SECURITY INVOKER` — so it runs as `web_anon`, which by design can read nothing in
+-- `fe`. The app then fails with *"permission denied for schema fe"* while every check
+-- here still passes, because `scripts/rpc-check.mjs` reaches the database through `psql`
+-- as the owner and never travels the `web_anon` path that actually broke.
+--
+-- This block turns that silence into a loud one. It only warns: the fix belongs in
+-- `postgrest_setup.sql`, which applies the policy by looping over the schema rather than
+-- naming functions (decision 71), and duplicating it here is how the two would drift.
+-- =====================================================================================
+DO $$
+DECLARE
+  _invoker integer;
+BEGIN
+  SELECT count(*) INTO _invoker
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'api' AND NOT p.prosecdef;
+
+  IF _invoker > 0 THEN
+    RAISE WARNING E'\n'
+      '=====================================================================\n'
+      '  % api function(s) are SECURITY INVOKER and PostgREST will now fail\n'
+      '  with "permission denied for schema fe".\n'
+      '\n'
+      '  Run this next:   psql -d % -f sql/postgrest_setup.sql\n'
+      '=====================================================================',
+      _invoker, current_database();
+  END IF;
+END $$;

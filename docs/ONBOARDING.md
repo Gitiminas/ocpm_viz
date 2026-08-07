@@ -69,9 +69,20 @@ Then run it and look at what it produces:
 
 ```bash
 psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql
+psql -d gharchive_ocpm_viz_wsl -f sql/postgrest_setup.sql           # ⚠️ ALWAYS, see below
 psql -d gharchive_ocpm_viz_wsl -c "SELECT * FROM fe.diag_sanity"   # all 0, and 9 activities
 node scripts/rpc-check.mjs                                          # the acceptance gate
 ```
+
+⚠️ **The second line is not optional and the gate cannot tell you.** `fe_layer.sql` issues
+`CREATE OR REPLACE FUNCTION` on every `api` function, and a replaced function reverts to
+`SECURITY INVOKER` — so it runs as `web_anon`, which by design can read nothing in `fe`.
+The app then dies with *"permission denied for schema fe"* while `diag_sanity` and
+`diag_sanity` still passes, because it reaches the database through `psql` as the owner
+and never travels the `web_anon` path that actually broke. Two guards now exist:
+`fe_layer.sql` ends with a loud `WARNING` when it finds a `SECURITY INVOKER` function, and
+`rpc-check.mjs` ends with an unauthenticated HTTP call that fails with the remedy. The
+ordering is still yours to keep — the warning is easy to scroll past.
 
 The `fe.diag_*` views are the fastest way to understand what the layer chooses **not** to
 carry — dropped activities, unresolvable PR comments, the `ref_match` narrowing — and each
