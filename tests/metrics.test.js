@@ -170,8 +170,8 @@ describe('landmarks identify which object they belong to', () => {
     }
     const labels = entries.map((e) => e.label);
     assert.ok(labels.some((l) => l.includes('First commit')));
-    assert.ok(labels.some((l) => l.includes('#242864') && l.includes('Issue closed')));
-    assert.ok(labels.some((l) => l.includes('PR #243221') && l.includes('PR merged')));
+    assert.ok(labels.some((l) => l.includes('#242864') && l.includes('Close')));
+    assert.ok(labels.some((l) => l.includes('PR #243221') && l.includes('Merge')));
   });
 
   test('with two issues each landmark names its own object', () => {
@@ -188,8 +188,8 @@ describe('landmarks identify which object they belong to', () => {
       links: [],
     });
     const labels = landmarks(graph).map((e) => e.label);
-    assert.ok(labels.includes('#1 · Issue closed'));
-    assert.ok(labels.includes('#2 · Issue closed'));
+    assert.ok(labels.includes('#1 · Close'));
+    assert.ok(labels.includes('#2 · Close'));
   });
 });
 

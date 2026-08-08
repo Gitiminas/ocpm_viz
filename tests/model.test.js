@@ -333,9 +333,9 @@ describe('burst derivation replaces the hardcoded burst', () => {
 
 describe('activity vocabulary is closed', () => {
   test('known activities resolve to labels', () => {
-    assert.equal(activityLabel('IssueClosed'), 'Issue closed');
-    assert.equal(activityShortLabel('PullRequestMerged'), 'merged');
-    assert.equal(activityLabel('PullRequestClosed'), 'PR closed');
+    assert.equal(activityLabel('IssueClosed'), 'Close');
+    assert.equal(activityShortLabel('PullRequestMerged'), 'merge');
+    assert.equal(activityLabel('PullRequestClosed'), 'Close');
   });
 
   test('an unmapped activity throws instead of rendering the raw enum', () => {

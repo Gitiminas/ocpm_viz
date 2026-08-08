@@ -43,22 +43,41 @@ export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
  * legitimately attaches to both. Do not "fix" this into two activities without
  * treating it as the event-log semantics change that it is.
  */
+/*
+ * ⚠️ **The keys are the closed vocabulary of decision 40 and do not change here.** They
+ * are what the SQL emits, what the fixtures carry and what `isKnownActivity` throws on.
+ * Only `label` and `short` moved, and only because they are what a reader sees.
+ *
+ * They are now **GitHub's own action words** — the verbs on its buttons: Open, Close,
+ * Merge, Reopen, Comment. The tool previously used past participles ("Issue opened",
+ * "PR merged"), which is neither what GitHub shows on a button nor what process-mining
+ * convention calls an activity; both name the *act*, not the state it leaves behind.
+ *
+ * They are also terse on purpose. Every consumer names the object alongside — the
+ * tooltip kicker says "Pull request · event", the landmark list and the actor card both
+ * render `${object.label} · ${label}` — so the old form repeated it: "PR #243221 · PR
+ * merged" now reads "PR #243221 · Merge".
+ *
+ * ⚠️ `CommitObserved` keeps its own wording. It is a **synthetic** activity (decision 44)
+ * meaning "this commit was seen in a push", not a GitHub action anyone performed; naming
+ * it "Push" would claim an act the data does not record. Its oddness is honest.
+ */
 export const ACTIVITIES = {
   IssueOpened: {
-    label: 'Issue opened',
-    short: 'opened',
+    label: 'Open',
+    short: 'open',
     objectTypes: ['issue'],
     landmark: false,
   },
   IssueClosed: {
-    label: 'Issue closed',
-    short: 'closed',
+    label: 'Close',
+    short: 'close',
     objectTypes: ['issue'],
     landmark: true,
   },
   IssueReopened: {
-    label: 'Issue reopened',
-    short: 'reopened',
+    label: 'Reopen',
+    short: 'reopen',
     objectTypes: ['issue'],
     landmark: false,
   },
@@ -69,26 +88,26 @@ export const ACTIVITIES = {
     landmark: false,
   },
   PullRequestOpened: {
-    label: 'PR opened',
-    short: 'opened',
+    label: 'Open',
+    short: 'open',
     objectTypes: ['pull_request'],
     landmark: false,
   },
   PullRequestMerged: {
-    label: 'PR merged',
-    short: 'merged',
+    label: 'Merge',
+    short: 'merge',
     objectTypes: ['pull_request'],
     landmark: true,
   },
   PullRequestClosed: {
-    label: 'PR closed',
-    short: 'closed',
+    label: 'Close',
+    short: 'close',
     objectTypes: ['pull_request'],
     landmark: false,
   },
   PullRequestReopened: {
-    label: 'PR reopened',
-    short: 'reopened',
+    label: 'Reopen',
+    short: 'reopen',
     objectTypes: ['pull_request'],
     landmark: false,
   },
