@@ -35,6 +35,7 @@ import { createMinimap } from './render/minimap.js';
 import { createActorCard } from './render/actorCard.js';
 import { createTimeline, MARGIN } from './render/timeline.js';
 import { renderLegend, legendKeysPresentIn } from './render/legend.js';
+import { createMessageSurface, messageHtml, errorHtml } from './render/message.js';
 import { renderStats } from './render/stats.js';
 import {
   renderTrackRows,
@@ -50,6 +51,8 @@ const el = (id) => document.getElementById(id);
 const elements = {
   chart: el('chart'),
   chartMessage: el('chartMessage'),
+  statsMessage: el('statsMessage'),
+  statsContent: el('statsContent'),
   sourceToggle: el('sourceToggle'),
   sourceNote: el('sourceNote'),
   scroll: el('scroll'),
@@ -78,6 +81,23 @@ const elements = {
   objectDropdown: el('objectDropdown'),
   traversalInfo: el('traversalInfo'),
 };
+
+/*
+ * One message surface per page, each a sibling of the thing it stands in for.
+ *
+ * Both are needed because both pages can fail, and a failure has to be visible on the
+ * page the reader is looking at. Routing to "whichever page is visible" was the other
+ * option and is worse: the message would then depend on where the user happened to be
+ * when the error fired, and switching pages would lose it.
+ */
+const chartSurface = createMessageSurface({
+  messageEl: elements.chartMessage,
+  contentEl: elements.chart,
+});
+const statsSurface = createMessageSurface({
+  messageEl: elements.statsMessage,
+  contentEl: elements.statsContent,
+});
 
 const state = createState();
 const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.wrap });
@@ -231,7 +251,8 @@ async function load(query) {
 
   // There is a sub-log now, so take the surface back from whatever message was up.
   // Before `measure()`, which reads the layout the chart is about to be drawn into.
-  hideChartMessage();
+  chartSurface.hide();
+  statsSurface.hide();
   timeline.measure();
   redraw();
   refreshStats();
@@ -313,7 +334,17 @@ function renderSidebar() {
  * exists to prevent.
  */
 function redraw() {
-  timeline.render();
+  // Guarded for the same reason as refreshStats: every toggle, zoom and mode switch
+  // reaches this from an event handler, where a throw would only reach the console and
+  // leave whatever was last drawn on screen — a stale picture, which is worse than none.
+  try {
+    timeline.render();
+    chartSurface.hide();
+  } catch (error) {
+    console.error(error);
+    chartSurface.show(errorHtml(error, 'Could not draw this sub-log'));
+    return;
+  }
   // After the draw, never before: the legend dims the marks that are not on screen, and
   // "what is on screen" is read off the chart that was just rebuilt. Re-rendering fifteen
   // rows costs nothing, and replacing the nodes each time means the hover listeners go
@@ -352,19 +383,28 @@ function showToast(message) {
 function refreshStats() {
   if (!current) return;
   const { graph, index, groupsByCommit, toggleContext, description, objectColors } = current;
-  renderStats({
-    graph: selectVisible(graph, state, groupsByCommit),
-    index,
-    // The same shades the timeline draws with, so a colour means one thing across both
-    // pages rather than "an issue" here and "*which* issue" there.
-    objectColors,
-    gridEl: elements.statsGrid,
-    landmarksEl: elements.statsLandmarks,
-    breadcrumbEl: elements.statsBreadcrumb,
-    description,
-    hiddenSummary: summarizeHidden(state, toggleContext),
-    onRerender: refreshStats,
-  });
+  // ⚠️ Guarded, because this is reached from a click handler as well as from `load()`.
+  // Unguarded, a throw here left an empty dashboard and a console line — and from the
+  // startup path the explanation went to the *timeline's* surface, invisible from here.
+  try {
+    renderStats({
+      graph: selectVisible(graph, state, groupsByCommit),
+      index,
+      // The same shades the timeline draws with, so a colour means one thing across both
+      // pages rather than "an issue" here and "*which* issue" there.
+      objectColors,
+      gridEl: elements.statsGrid,
+      landmarksEl: elements.statsLandmarks,
+      breadcrumbEl: elements.statsBreadcrumb,
+      description,
+      hiddenSummary: summarizeHidden(state, toggleContext),
+      onRerender: refreshStats,
+    });
+    statsSurface.hide();
+  } catch (error) {
+    console.error(error);
+    statsSurface.show(errorHtml(error, 'Could not compute these statistics'));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -683,34 +723,6 @@ async function reload(query) {
 }
 
 /**
- * Show a message instead of a picture — and **never by writing into `#chart`.**
- *
- * `createTimeline` appends one `<svg>` to `#chart` at startup and keeps a closure
- * reference to it for the whole session; it is never re-selected. Setting
- * `chart.innerHTML` therefore detaches the element the renderer still draws into, and
- * every subsequent render succeeds silently into a node outside the document. That is
- * what "the minimap updates but the chart is stuck on the placeholder" was: the
- * minimap is a separate `<svg>` in the page, so it kept working and made the timeline
- * look like the only broken thing.
- *
- * So the message lives in its own sibling element and the two are swapped. `#chart`
- * is hidden rather than emptied, because its contents are the previous sub-log and
- * showing them under a "nothing to draw" caption would contradict the caption.
- */
-function showChartMessage(html) {
-  elements.chartMessage.innerHTML = html;
-  elements.chartMessage.style.display = 'block';
-  elements.chart.style.display = 'none';
-}
-
-/** Hand the surface back to the renderer. */
-function hideChartMessage() {
-  elements.chartMessage.style.display = 'none';
-  elements.chartMessage.innerHTML = '';
-  elements.chart.style.display = '';
-}
-
-/**
  * The state between choosing a repository and naming a seed.
  *
  * Not an error and not a blank page: the selectors are wired so the search box works,
@@ -719,16 +731,15 @@ function hideChartMessage() {
  */
 function showSeedPrompt(repoName) {
   wireSelectors(repoName, null, null);
-  showChartMessage(
-    '<div style="padding:32px;max-width:640px">' +
-      '<div style="font-size:15px;font-weight:600;color:var(--color-text);margin-bottom:8px">' +
-      `Choose something to start from${repoName ? ` in ${escapeForHtml(repoName)}` : ''}</div>` +
-      '<div style="font-size:12.5px;color:var(--color-neutral-400);line-height:1.7">' +
-      'A sub-log is a repository <em>and</em> an object to traverse out from, so there is ' +
+  const html = messageHtml(
+    `Choose something to start from${repoName ? ` in ${escapeForHtml(repoName)}` : ''}`,
+    'A sub-log is a repository <em>and</em> an object to traverse out from, so there is ' +
       'nothing to draw yet.<br>Use <strong>Start from</strong> — an issue or PR number ' +
       '(<span class="mono">102358</span>), a commit SHA (<span class="mono">48fd5cb</span>), ' +
-      'or free text (<span class="mono">mcp server</span>).</div></div>',
+      'or free text (<span class="mono">mcp server</span>).',
   );
+  chartSurface.show(html);
+  statsSurface.show(html);
 }
 
 const escapeForHtml = (value) => String(value).replace(/[&<>]/g, (c) =>
@@ -862,15 +873,12 @@ function showFatal(error, query) {
   } catch {
     /* the selectors are a courtesy here; never let them mask the real error */
   }
-  showChartMessage(
-    '<div style="padding:32px;max-width:760px">' +
-      '<div style="font-size:15px;font-weight:600;color:var(--color-text);margin-bottom:8px">' +
-      'Could not render this sub-log</div>' +
-      '<pre class="mono" style="white-space:pre-wrap;font-size:12px;color:var(--color-neutral-400);' +
-      'line-height:1.6;margin:0">' +
-      String(error.message || error).replace(/</g, '&lt;') +
-      '</pre></div>',
-  );
+  // Both pages: a sub-log that would not load is missing from both, and the reader may
+  // be on either. This is the defect that made a failed renderStats look like a stats
+  // page with nothing in it.
+  const html = errorHtml(error);
+  chartSurface.show(html);
+  statsSurface.show(html);
 }
 
 let resizeTimer = null;

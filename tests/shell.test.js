@@ -42,6 +42,16 @@ describe('the app shell keeps its load-bearing order', () => {
     );
   });
 
+  test('the stats page has a message surface of its own', async () => {
+    // Without one, an exception in renderStats rendered an empty dashboard while the
+    // explanation went to #chartMessage — an element on a page that was not on screen.
+    const html = await shell();
+    const [message, content] = orderOf(html, 'statsMessage', 'statsContent');
+    assert.ok(message > 0, 'the stats page needs somewhere to say why it is empty');
+    assert.ok(content > 0, 'and something to say it instead of');
+    assert.ok(message < content, 'the message must precede the content as a sibling');
+  });
+
   test('the placeholder is a sibling of the chart, never its content', async () => {
     // Decision 74: writing into #chart detaches the one <svg> the renderer holds, and
     // every later draw then lands outside the document.

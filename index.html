@@ -229,7 +229,18 @@ html,body{height:100%;margin:0;overflow:hidden}
 <main id="statsPage" style="flex:1;min-width:0;display:none;flex-direction:column;padding:var(--space-8);overflow:auto">
 <h1 style="font-size:20px;margin:0 0 6px">Sub-log statistics</h1>
 <div class="mono" style="font-size:12px;color:var(--color-neutral-400);margin-bottom:var(--space-6)" id="statsBreadcrumb">…</div>
-<div style="display:flex;flex-wrap:wrap;gap:var(--space-6);align-items:flex-start">
+<!--
+  This page's message surface, and a sibling of the dashboards for the same reason
+  #chartMessage is a sibling of #chart: the renderer owns what is inside, and a message
+  written there would destroy it.
+
+  Without one, an exception in renderStats rendered an *empty dashboard* — the
+  explanation went to #chartMessage, which belongs to the timeline page and is not on
+  screen while this one is. A blank page with no error reads as "this sub-log has no
+  data", which is the wrong-picture-no-error failure this project keeps finding.
+-->
+<div id="statsMessage" style="display:none"></div>
+<div id="statsContent" style="display:flex;flex-wrap:wrap;gap:var(--space-6);align-items:flex-start">
 <div class="card elev-sm" id="statsCard" style="flex:3 1 620px;min-width:520px;padding:var(--space-6)">
 <div class="card-kicker">Dashboard</div>
 <div class="card-title" style="margin-bottom:var(--space-4)">Per-object statistics</div>
