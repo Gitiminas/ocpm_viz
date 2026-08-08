@@ -174,7 +174,7 @@ describe('ranking and filtering', () => {
   test('hiding a lane removes exactly that lane', async () => {
     const { nodes } = await f1Context();
     const state = createState();
-    state.tracks.commit = false;
+    state.lanes.commit = false;
     const filtered = filterNodes(nodes, (node) => isNodeVisible(node, state));
     assert.equal(filtered.filter((n) => n.lane === 'commit').length, 0);
     assert.ok(filtered.length > 0);

@@ -20,7 +20,7 @@
 
 const STORAGE_KEY = 'ocpm_viz.presets.v1';
 /** Bump when the snapshot shape changes incompatibly. */
-const SNAPSHOT_VERSION = 1;
+const SNAPSHOT_VERSION = 2;
 
 // ---------------------------------------------------------------------------
 // serialization
@@ -37,7 +37,7 @@ export function serializeState(state) {
   return {
     v: SNAPSHOT_VERSION,
     mode: state.mode,
-    tracks: { ...state.tracks },
+    lanes: { ...state.lanes },
     showComments: { ...state.showComments },
     hiddenObjects: [...state.hiddenObjects],
     hiddenCommitGroups: [...state.hiddenCommitGroups],
@@ -61,7 +61,19 @@ export function applyState(state, snapshot) {
   if (snapshot.mode) state.mode = snapshot.mode;
   if (snapshot.burstThreshold != null) state.burstThreshold = snapshot.burstThreshold;
 
-  for (const field of ['tracks', 'showComments', 'relPairs', 'qualifiers', 'methods']) {
+  /*
+   * ⚠️ **`tracks` is read as well as `lanes`, and must stay readable.**
+   *
+   * Snapshot v1 wrote `tracks`; v2 writes `lanes` (the rename that made one word for one
+   * concept). Presets live in local storage and in shared `?preset=` URLs — they are the
+   * reproducibility mechanism the task-based evaluation depends on — so a v1 snapshot
+   * that quietly lost its lane settings would restore a *different picture* under the
+   * same link, with nothing saying so. Dropping the alias is only safe once no v1
+   * snapshot can exist anywhere, which is not a thing this code can know.
+   */
+  if (snapshot.tracks && !snapshot.lanes) snapshot = { ...snapshot, lanes: snapshot.tracks };
+
+  for (const field of ['lanes', 'showComments', 'relPairs', 'qualifiers', 'methods']) {
     if (!snapshot[field]) continue;
     for (const [key, value] of Object.entries(snapshot[field])) {
       if (key in state[field]) state[field][key] = value;
@@ -193,7 +205,7 @@ export const BUILT_IN_PRESETS = [
     description: 'Every lane, link class and detection method visible.',
     build: ({ relGroups, qualifiers, methods }) => ({
       v: SNAPSHOT_VERSION,
-      tracks: { issue: true, pull_request: true, commit: true },
+      lanes: { issue: true, pull_request: true, commit: true },
       showComments: { issue: true, pull_request: true },
       hiddenObjects: [],
       hiddenCommitGroups: [],
@@ -208,7 +220,7 @@ export const BUILT_IN_PRESETS = [
       'Hides everything the platform does not itself assert, so what remains is only what GitHub acted on.',
     build: ({ relGroups, qualifiers, methods }) => ({
       v: SNAPSHOT_VERSION,
-      tracks: { issue: true, pull_request: true, commit: true },
+      lanes: { issue: true, pull_request: true, commit: true },
       showComments: { issue: true, pull_request: true },
       hiddenObjects: [],
       hiddenCommitGroups: [],
@@ -227,7 +239,7 @@ export const BUILT_IN_PRESETS = [
     description: 'Issue and PR lifecycles only — the shape of the process, without the delivery detail.',
     build: ({ relGroups, qualifiers, methods }) => ({
       v: SNAPSHOT_VERSION,
-      tracks: { issue: true, pull_request: true, commit: false },
+      lanes: { issue: true, pull_request: true, commit: false },
       showComments: { issue: true, pull_request: true },
       hiddenObjects: [],
       hiddenCommitGroups: [],
@@ -241,7 +253,7 @@ export const BUILT_IN_PRESETS = [
     description: 'PRs and commits with the conversation stripped out — how code reached the branch.',
     build: ({ relGroups, qualifiers, methods }) => ({
       v: SNAPSHOT_VERSION,
-      tracks: { issue: false, pull_request: true, commit: true },
+      lanes: { issue: false, pull_request: true, commit: true },
       showComments: { issue: false, pull_request: false },
       hiddenObjects: [],
       hiddenCommitGroups: [],

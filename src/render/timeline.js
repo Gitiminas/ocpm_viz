@@ -132,7 +132,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     const tweenFrom = pendingTween;
     pendingTween = null;
 
-    const visibleLanes = laneTypes.filter((lane) => state.tracks[lane]);
+    const visibleLanes = laneTypes.filter((lane) => state.lanes[lane]);
 
     // ---- node model -----------------------------------------------------------
     const allNodes = buildNodes({
@@ -254,7 +254,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         state.mode === 'highlights'
           ? highlightTickInstants({
               index,
-              tracks: state.tracks,
+              lanes: state.lanes,
               bursts,
               expandedBursts: state.expandedBursts,
               laneTypes,

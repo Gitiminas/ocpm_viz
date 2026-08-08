@@ -46,11 +46,11 @@ export function createState() {
     actors: new Set(),
 
     /** Lane visibility, by object type. */
-    tracks: { issue: true, pull_request: true, commit: true },
+    lanes: { issue: true, pull_request: true, commit: true },
     /** Comment visibility, per lane. */
     showComments: { issue: true, pull_request: true },
     /** Sidebar sub-row expansion, per lane. */
-    trackOpen: { issue: false, pull_request: false, commit: false },
+    laneOpen: { issue: false, pull_request: false, commit: false },
 
     /**
      * Individual objects hidden by id — one of two concurrent PRs, say, without
@@ -180,13 +180,13 @@ export function resetToggles(state, { relGroups = [], qualifiers = [], methods =
 /** Whether an individual object survives its own toggle and its lane's. */
 export function isObjectVisible(object, state) {
   if (!object) return false;
-  if (state.tracks[object.type] === false) return false;
+  if (state.lanes[object.type] === false) return false;
   return !state.hiddenObjects.has(object.id);
 }
 
 /** Whether a node survives every filter that applies to it. */
 export function isNodeVisible(node, state, groupsByCommit = new Map()) {
-  if (!state.tracks[node.lane]) return false;
+  if (!state.lanes[node.lane]) return false;
   if (node.isComment && state.showComments[node.lane] === false) return false;
 
   // A burst stands for many commits, and a fold group for many nodes. Either
@@ -328,12 +328,12 @@ export function summarizeHidden(state, context = {}) {
   const { relGroups = [], qualifiers = [], methods = [], objectsById = new Map(), commitGroups = [] } =
     context;
 
-  const hiddenLanes = LANE_TYPES.filter((lane) => state.tracks[lane] === false);
+  const hiddenLanes = LANE_TYPES.filter((lane) => state.lanes[lane] === false);
   if (hiddenLanes.length) {
     items.push({
-      key: 'tracks',
+      key: 'lanes',
       label: `${hiddenLanes.map((lane) => TYPE_LABELS[lane] || lane).join(', ')} lane${hiddenLanes.length === 1 ? '' : 's'} hidden`,
-      restore: (s) => hiddenLanes.forEach((lane) => (s.tracks[lane] = true)),
+      restore: (s) => hiddenLanes.forEach((lane) => (s.lanes[lane] = true)),
     });
   }
 

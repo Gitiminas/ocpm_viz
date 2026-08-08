@@ -114,7 +114,7 @@ describe('individual object toggles', () => {
 
     assert.equal(isObjectVisible(c.index.byId.get('pr:20'), c.state), false);
     assert.equal(isObjectVisible(c.index.byId.get('pr:21'), c.state), true);
-    assert.equal(c.state.tracks.pull_request, true, 'the lane itself stays on');
+    assert.equal(c.state.lanes.pull_request, true, 'the lane itself stays on');
   });
 
   test('hiding an object hides its nodes and its links', async () => {
@@ -130,7 +130,7 @@ describe('individual object toggles', () => {
 
   test('hiding the lane hides its objects regardless of their own toggles', async () => {
     const c = await context('F3');
-    c.state.tracks.pull_request = false;
+    c.state.lanes.pull_request = false;
     assert.equal(isObjectVisible(c.index.byId.get('pr:21'), c.state), false);
   });
 });
@@ -194,7 +194,7 @@ describe('the hidden summary reports every subtraction', () => {
 
   test('each control that subtracts shows up by name', async () => {
     const c = await context('F13');
-    c.state.tracks.commit = false;
+    c.state.lanes.commit = false;
     c.state.showComments.issue = false;
     c.state.hiddenObjects = new Set(['pr:80']);
     c.state.hiddenCommitGroups = new Set(['pr:81']);
@@ -207,10 +207,10 @@ describe('the hidden summary reports every subtraction', () => {
     assert.deepEqual(keys, [
       'comments',
       'commitGroups',
+      'lanes',
       'methods',
       'objects',
       'qualifiers',
-      'tracks',
     ]);
   });
 
@@ -223,7 +223,7 @@ describe('the hidden summary reports every subtraction', () => {
 
   test('restore all really restores everything', async () => {
     const c = await context('F13');
-    c.state.tracks.commit = false;
+    c.state.lanes.commit = false;
     c.state.showComments.issue = false;
     c.state.hiddenObjects = new Set(['pr:80']);
     c.state.hiddenCommitGroups = new Set(['pr:81']);
@@ -236,12 +236,12 @@ describe('the hidden summary reports every subtraction', () => {
 
   test('one item can be restored without restoring the rest', async () => {
     const c = await context('F1');
-    c.state.tracks.commit = false;
+    c.state.lanes.commit = false;
     c.state.showComments.issue = false;
     const summary = summarizeHidden(c.state, c.ctx);
-    summary.items.find((i) => i.key === 'tracks').restore(c.state);
+    summary.items.find((i) => i.key === 'lanes').restore(c.state);
 
-    assert.equal(c.state.tracks.commit, true);
+    assert.equal(c.state.lanes.commit, true);
     assert.equal(c.state.showComments.issue, false, 'the other subtraction is untouched');
   });
 });
@@ -249,7 +249,7 @@ describe('the hidden summary reports every subtraction', () => {
 describe('presets', () => {
   test('a snapshot round-trips through serialize and apply', async () => {
     const c = await context('F13');
-    c.state.tracks.commit = false;
+    c.state.lanes.commit = false;
     c.state.hiddenObjects = new Set(['pr:80']);
     c.state.hiddenCommitGroups = new Set(['pr:81']);
     c.state.qualifiers.related_issue = false;
@@ -257,7 +257,7 @@ describe('presets', () => {
     const snapshot = serializeState(c.state);
     const restored = applyState(createState(), snapshot);
 
-    assert.equal(restored.tracks.commit, false);
+    assert.equal(restored.lanes.commit, false);
     assert.deepEqual([...restored.hiddenObjects], ['pr:80']);
     assert.deepEqual([...restored.hiddenCommitGroups], ['pr:81']);
     assert.equal(restored.qualifiers.related_issue, false);
@@ -277,10 +277,33 @@ describe('presets', () => {
 
   test('a preset survives a URL round-trip', async () => {
     const c = await context('F1');
-    c.state.tracks.issue = false;
+    c.state.lanes.issue = false;
     const encoded = encodePreset(serializeState(c.state));
     assert.equal(/^[A-Za-z0-9_-]+$/.test(encoded), true, 'must be URL-safe');
-    assert.equal(decodePreset(encoded).tracks.issue, false);
+    assert.equal(decodePreset(encoded).lanes.issue, false);
+  });
+
+  test('a v1 snapshot written as `tracks` still applies its lanes', () => {
+    // Presets live in local storage and in shared ?preset= URLs — the reproducibility
+    // mechanism the task-based evaluation depends on. A v1 snapshot that quietly lost
+    // its lane settings would restore a *different picture* under the same link, with
+    // nothing saying so.
+    const state = createState();
+    applyState(state, { v: 1, tracks: { commit: false, issue: true, pull_request: true } });
+    assert.equal(state.lanes.commit, false, 'a v1 `tracks` key must still be honoured');
+    assert.equal(state.lanes.issue, true);
+  });
+
+  test('a v2 snapshot wins over a stray legacy key', () => {
+    const state = createState();
+    applyState(state, { v: 2, lanes: { commit: false }, tracks: { commit: true } });
+    assert.equal(state.lanes.commit, false, 'the current key is authoritative');
+  });
+
+  test('what is written now is `lanes`, so the rename actually happened', () => {
+    const snapshot = serializeState(createState());
+    assert.ok('lanes' in snapshot, 'a snapshot must carry lanes');
+    assert.ok(!('tracks' in snapshot), 'and must not still write the old name');
   });
 
   test('a malformed preset decodes to null rather than throwing', () => {
@@ -290,7 +313,7 @@ describe('presets', () => {
 
   test('a shareable URL carries the query and the configuration', async () => {
     const c = await context('F1');
-    c.state.tracks.commit = false;
+    c.state.lanes.commit = false;
     const url = presetUrl(
       'http://localhost:8000/',
       { repo: 'microsoft/vscode', seed: 'issue:242864' },
@@ -301,7 +324,7 @@ describe('presets', () => {
     // filtered.
     assert.equal(params.get('repo'), 'microsoft/vscode');
     assert.equal(params.get('seed'), 'issue:242864');
-    assert.equal(decodePreset(params.get('preset')).tracks.commit, false);
+    assert.equal(decodePreset(params.get('preset')).lanes.commit, false);
   });
 
   test('a share URL replaces the previous query rather than appending to it', async () => {
@@ -318,13 +341,13 @@ describe('presets', () => {
 
   test('an old preset applies what it can to a different sub-log', async () => {
     const fromF13 = await context('F13');
-    fromF13.state.tracks.commit = false;
+    fromF13.state.lanes.commit = false;
     fromF13.state.hiddenObjects = new Set(['pr:80']); // does not exist in F1
     const snapshot = serializeState(fromF13.state);
 
     const toF1 = await context('F1');
     applyState(toF1.state, snapshot);
-    assert.equal(toF1.state.tracks.commit, false, 'the part that applies, applies');
+    assert.equal(toF1.state.lanes.commit, false, 'the part that applies, applies');
     // The stale id is harmless: it hides nothing, because nothing has that id.
     assert.equal(toF1.graph.objects.some((o) => toF1.state.hiddenObjects.has(o.id)), false);
   });
@@ -335,7 +358,7 @@ describe('presets', () => {
       const snapshot = preset.build(c.ctx);
       const state = applyState(createState(), snapshot);
       assert.ok(preset.description.length > 10, `${preset.name} needs a description`);
-      assert.ok(state.tracks, `${preset.name} must set tracks`);
+      assert.ok(state.lanes, `${preset.name} must set lanes`);
     }
   });
 
@@ -352,14 +375,14 @@ describe('presets', () => {
     const c = await context('F1');
     const preset = BUILT_IN_PRESETS.find((p) => p.name === 'Lifecycle without commits');
     applyState(c.state, preset.build(c.ctx));
-    assert.equal(c.state.tracks.commit, false);
+    assert.equal(c.state.lanes.commit, false);
     // The hidden-dependency mitigation must fire for a built-in too.
     assert.equal(summarizeHidden(c.state, c.ctx).anyHidden, true);
   });
 
   test('"Everything" hides nothing', async () => {
     const c = await context('F1');
-    c.state.tracks.commit = false;
+    c.state.lanes.commit = false;
     const preset = BUILT_IN_PRESETS.find((p) => p.name === 'Everything');
     applyState(c.state, preset.build(c.ctx));
     assert.equal(summarizeHidden(c.state, c.ctx).anyHidden, false);

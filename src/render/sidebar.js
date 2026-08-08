@@ -110,7 +110,7 @@ function sectionLabel(text) {
  * Track rows: one per lane, expanding into its comment toggle, its individual
  * objects, and — for the commit lane — its commit groups.
  */
-export function renderTrackRows({
+export function renderLaneRows({
   container,
   state,
   laneTypes,
@@ -181,10 +181,10 @@ export function renderTrackRows({
 
     const section = masterSection({
       label: spec.label,
-      open: state.trackOpen[laneType],
+      open: state.laneOpen[laneType],
       children,
       onMasterChange: (checked) => {
-        state.tracks[laneType] = checked;
+        state.lanes[laneType] = checked;
         section.row.classList.toggle('on', checked);
         section.sub.style.opacity = checked ? '1' : '0.4';
         section.sub.style.pointerEvents = checked ? 'auto' : 'none';
@@ -192,13 +192,13 @@ export function renderTrackRows({
         onChange();
       },
       onToggleOpen: (open) => {
-        state.trackOpen[laneType] = open;
+        state.laneOpen[laneType] = open;
       },
     });
 
     // The glyph goes next to the master label, so a lane still reads as its type.
     section.labelEl.insertAdjacentHTML('afterbegin', glyph(spec.shape, spec.color));
-    section.master.checked = state.tracks[laneType] !== false;
+    section.master.checked = state.lanes[laneType] !== false;
     section.row.classList.toggle('on', section.master.checked);
     section.sub.style.opacity = section.master.checked ? '1' : '0.4';
     section.sub.style.pointerEvents = section.master.checked ? 'auto' : 'none';
@@ -230,7 +230,7 @@ export function renderRelationshipRows({
   const syncers = [];
 
   for (const group of relGroups) {
-    const available = (pair) => state.tracks[pair.types[0]] && state.tracks[pair.types[1]];
+    const available = (pair) => state.lanes[pair.types[0]] && state.lanes[pair.types[1]];
     const controls = [];
     const children = group.pairs.map((pair) => {
       const { row, checkbox } = subRow({

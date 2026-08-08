@@ -120,8 +120,8 @@ every link in a payload is now an object→object traceability edge that every c
 The filter vocabulary is **derived from the loaded sub-log**, never enumerated
 (`deriveRelGroups`/`deriveQualifiers`/`deriveMethods`, `state.js:97–158`). State keys:
 
-`k` · `mode` (`real`/`highlights`/`ordinal`) · `focus` · `focusDegree` · `actors` · `tracks` ·
-`showComments` · `trackOpen` · `hiddenObjects` · `hiddenCommitGroups` · `relPairs` · `qualifiers` ·
+`k` · `mode` (`real`/`highlights`/`ordinal`) · `focus` · `focusDegree` · `actors` · `lanes` ·
+`showComments` · `laneOpen` · `hiddenObjects` · `hiddenCommitGroups` · `relPairs` · `qualifiers` ·
 `methods` · `relOpen` · `expandedBursts` · `expandedGroups` · `burstThreshold`
 
 ### Layout
@@ -136,7 +136,7 @@ The filter vocabulary is **derived from the loaded sub-log**, never enumerated
 
 | Component | Fields consumed | Filters / params | Expected shape |
 |---|---|---|---|
-| `render/timeline.js` | `object.type/.id/.intervals`, `vmap.login` | `state.tracks`, `mode`, `k`, `focus` | orchestrates; emits `objectColors` |
+| `render/timeline.js` | `object.type/.id/.intervals`, `vmap.login` | `state.lanes`, `mode`, `k`, `focus` | orchestrates; emits `objectColors` |
 | `render/nodes.js` | `vmap.commit_sha/.commit_message/.commit_author_name/.ref/.push_id`; `event.attrs.auto_closed`; `node.t/.title/.actorId` | `focus`, burst/group expansion | glyphs + tooltip specs |
 | `render/links.js` | `link.source/.target/.qualifier/.evidence/.method/.n_methods`; `object.label/.type` | `isLinkVisible` (5 ANDed conditions) | curved paths; dashed + "?" badge when `extracted` |
 | `render/axis.js` | `object.intervals[].start/.end`; `event.time/.comment` | `mode` | tick marks |
@@ -146,7 +146,7 @@ The filter vocabulary is **derived from the loaded sub-log**, never enumerated
 
 | Component | Fields consumed | Filters / params | Expected shape |
 |---|---|---|---|
-| `render/sidebar.js` — tracks | `object.id/.label`; `group.key/.label/.prId/.commitIds` | `tracks`, `hiddenObjects`, `hiddenCommitGroups` | per-lane rows + per-object children |
+| `render/sidebar.js` — lanes | `object.id/.label`; `group.key/.label/.prId/.commitIds` | `lanes`, `hiddenObjects`, `hiddenCommitGroups` | per-lane rows + per-object children |
 | `render/sidebar.js` — relationships | derived groups: `pair.key/.label/.evidence` | `relPairs`, `qualifiers`, `methods` | tri-state parent/child checkboxes |
 | `render/sidebar.js` — actors | `actor.id`, `vmap.login`, `label`, runtime `eventCount` | `state.actors`, search text | colour-swatched rows |
 | `render/sidebar.js` — bursts | `burst.id/.size/.pushId` | `burstThreshold` | expand/collapse controls |

@@ -34,14 +34,14 @@ const STAGGER_DISTANCE_PX = 110;
  * Every object of every visible lane contributes its lifecycle boundaries, so N
  * issues and N PRs each get their open and close marked.
  */
-export function highlightTickInstants({ index, tracks, bursts, expandedBursts, laneTypes }) {
+export function highlightTickInstants({ index, lanes, bursts, expandedBursts, laneTypes }) {
   const instants = [];
   const push = (t) => {
     if (t != null) instants.push(+t);
   };
 
   for (const laneType of laneTypes) {
-    if (laneType === 'commit' || !tracks[laneType]) continue;
+    if (laneType === 'commit' || !lanes[laneType]) continue;
 
     for (const object of index.objectsOfType(laneType)) {
       for (const interval of object.intervals) {
@@ -63,7 +63,7 @@ export function highlightTickInstants({ index, tracks, bursts, expandedBursts, l
     }
   }
 
-  if (tracks.commit) {
+  if (lanes.commit) {
     const folded = new Set();
     for (const burst of bursts) {
       if (expandedBursts.has(burst.id)) continue;

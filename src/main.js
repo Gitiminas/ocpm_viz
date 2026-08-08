@@ -38,7 +38,7 @@ import { renderLegend, legendKeysPresentIn } from './render/legend.js';
 import { createMessageSurface, messageHtml, errorHtml } from './render/message.js';
 import { renderStats } from './render/stats.js';
 import {
-  renderTrackRows,
+  renderLaneRows,
   renderRelationshipRows,
   renderActorRows,
   renderBurstControls,
@@ -63,7 +63,7 @@ const elements = {
   degreeStepper: el('degreeStepper'),
   breadcrumb: el('breadcrumb'),
   focusInfo: el('focusInfo'),
-  tracks: el('tracks'),
+  lanes: el('lanes'),
   relationships: el('relationships'),
   actors: el('actors'),
   actorSearch: el('actorSearch'),
@@ -268,8 +268,8 @@ function renderSidebar() {
   if (!current) return;
   const { graph, index, actorColors, objectColors, commitGroups, toggleContext, query } = current;
 
-  renderTrackRows({
-    container: elements.tracks,
+  renderLaneRows({
+    container: elements.lanes,
     state,
     laneTypes: LANE_TYPES,
     index,

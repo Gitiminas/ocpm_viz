@@ -31,7 +31,7 @@ export function renderLifecycleBars({
   objectColors = new Map(),
 }) {
   for (const laneType of laneTypes) {
-    if (laneType === 'commit' || !state.tracks[laneType]) continue;
+    if (laneType === 'commit' || !state.lanes[laneType]) continue;
     const lane = geometry.get(laneType);
     if (!lane) continue;
 
@@ -513,7 +513,7 @@ function drawBurstNode(group, node) {
  */
 export function renderBurstHandles({ gNode, bursts, state, geometry, anchors, tooltip, handlers }) {
   const lane = geometry.get('commit');
-  if (!lane || !state.tracks.commit) return;
+  if (!lane || !state.lanes.commit) return;
 
   for (const burst of bursts) {
     if (!state.expandedBursts.has(burst.id)) continue;

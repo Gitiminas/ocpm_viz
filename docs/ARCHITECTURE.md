@@ -65,7 +65,7 @@ src/
     timeline.js  nodes.js  links.js  axis.js  minimap.js  tooltip.js  legend.js
     theme.js           ✚ colours, shapes, glyphs shared by every renderer
     format.js          ✚ the one place a timestamp becomes text
-    sidebar.js         ✚ track / relationship / burst / actor rows and the combos
+    sidebar.js         ✚ lane / relationship / burst / actor rows and the combos
     controls.js        ✚ preset panel and the always-visible hidden-state banner
     actorCard.js       ✚ the actor profile card
     stats.js           ✚ presentation for the statistics page

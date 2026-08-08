@@ -191,7 +191,7 @@ describe('metrics respond to the toggles — the reason they are not precomputed
 
   test('hiding a lane removes its objects from the table', async () => {
     const { graph, state, groupsByCommit } = await context('F1');
-    state.tracks.commit = false;
+    state.lanes.commit = false;
     const rows = perObjectMetrics(selectVisible(graph, state, groupsByCommit));
     assert.equal(rows.some((row) => row.type === 'commit'), false);
     assert.ok(rows.some((row) => row.type === 'issue'));
