@@ -1332,7 +1332,7 @@
     {
       "source": "pr:243221",
       "target": "issue:242864",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "validated",
       "method": "pr_body",
       "link_methods": [
@@ -1343,7 +1343,7 @@
     {
       "source": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
       "target": "issue:242864",
-      "qualifier": "referenced_issue",
+      "qualifier": "references_issue",
       "evidence": "extracted",
       "method": "commit_message",
       "link_methods": [
@@ -1352,9 +1352,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:b3d3aad6b5e24950e89536e79c89b5ba3fea34c0",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:b3d3aad6b5e24950e89536e79c89b5ba3fea34c0",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -1363,9 +1363,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:7d2f5bb1aee0ce20c6259d96b0d81f0aa9f9a0db",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:7d2f5bb1aee0ce20c6259d96b0d81f0aa9f9a0db",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -1374,9 +1374,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:279244f2321f64eb12f61b4bf33b9141a2678844",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:279244f2321f64eb12f61b4bf33b9141a2678844",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "commit_message",
       "link_methods": [
@@ -1385,9 +1385,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:dcc7479d496df48dc984594f0fcac524b8e2aee3",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:dcc7479d496df48dc984594f0fcac524b8e2aee3",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1396,9 +1396,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1407,9 +1407,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:c2676f75e5e4345eeae2718cae20d3b16cea9270",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:c2676f75e5e4345eeae2718cae20d3b16cea9270",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1418,9 +1418,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:8028356281a4702a727a3b8d36ced6637bc8b170",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:8028356281a4702a727a3b8d36ced6637bc8b170",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1429,9 +1429,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:b5e2be8269aca0ae3e471562f91676489dc499f8",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:b5e2be8269aca0ae3e471562f91676489dc499f8",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1440,9 +1440,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:e124185a5c6af98fe5af63215cba589cfd6c2d18",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:e124185a5c6af98fe5af63215cba589cfd6c2d18",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1451,9 +1451,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:084bb4ba6edd38a3d294534f62cad6ae08b5b9b0",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:084bb4ba6edd38a3d294534f62cad6ae08b5b9b0",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1462,9 +1462,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:68578692828fc190b407296b59e6374bd6bda05c",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:68578692828fc190b407296b59e6374bd6bda05c",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1473,9 +1473,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:2cf5382e8898705ff9ab5ed9ccee17877a7ac045",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:2cf5382e8898705ff9ab5ed9ccee17877a7ac045",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1484,9 +1484,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:a3f35a126434cc99e29b00ed250871a69344eaeb",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:a3f35a126434cc99e29b00ed250871a69344eaeb",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1495,9 +1495,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:d211b7e4e7c10629aae9ac35b63c24da8019fb3b",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:d211b7e4e7c10629aae9ac35b63c24da8019fb3b",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1506,9 +1506,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:10b193986dc049d05f20095fa7af73b85e8b906a",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:10b193986dc049d05f20095fa7af73b85e8b906a",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1517,9 +1517,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:65b9aef2b79a0a4672e6b7b149c944e70923bab7",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:65b9aef2b79a0a4672e6b7b149c944e70923bab7",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1528,9 +1528,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:3843fd721230435d9a974df1e467cbc0da885e2b",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:3843fd721230435d9a974df1e467cbc0da885e2b",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1539,9 +1539,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:cec4301944ba634fb0147154eb1dbf5a703c9dea",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:cec4301944ba634fb0147154eb1dbf5a703c9dea",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1550,9 +1550,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:0f1773ee9be1781f8942b12d91b6372852fc6427",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:0f1773ee9be1781f8942b12d91b6372852fc6427",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1561,9 +1561,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:b9e6b0205bdabc188c5c9bc98c6483958d876792",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:b9e6b0205bdabc188c5c9bc98c6483958d876792",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1572,9 +1572,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:f28966163eb622287aed485d97fbdb098ce90931",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:f28966163eb622287aed485d97fbdb098ce90931",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1583,9 +1583,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:9f6e395fe6d893283b1f391b7f74898fa2417066",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:9f6e395fe6d893283b1f391b7f74898fa2417066",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1594,9 +1594,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:26f2151e24485043309a8a3f66a499256c9a4c9e",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:26f2151e24485043309a8a3f66a499256c9a4c9e",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1605,9 +1605,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:1eb801f8f828d4e3ee926f75ccfcb9c1ed71012b",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:1eb801f8f828d4e3ee926f75ccfcb9c1ed71012b",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1616,9 +1616,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:33a4303081c447e8a23ce5487191dd7e396fe427",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:33a4303081c447e8a23ce5487191dd7e396fe427",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1627,9 +1627,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:cb1c6e5cf914963a41d1255578e9cfc11aa9f25b",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:cb1c6e5cf914963a41d1255578e9cfc11aa9f25b",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1638,9 +1638,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:1418a96b8e7acdf7609921fcff54eb0069ede5e5",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:1418a96b8e7acdf7609921fcff54eb0069ede5e5",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1649,9 +1649,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:81775e7ade6b9a65893dc6b1f00009a3b0a8e969",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:81775e7ade6b9a65893dc6b1f00009a3b0a8e969",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1660,9 +1660,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:c4318dc750d19f09eda6b4bc4ff692aad0bd7aeb",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:c4318dc750d19f09eda6b4bc4ff692aad0bd7aeb",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1671,9 +1671,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:ef0f96c1756611f80977dffb87b89f8ef4c627dd",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:ef0f96c1756611f80977dffb87b89f8ef4c627dd",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1682,9 +1682,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:7db007682b2b28557d044c6a107bc3c0d4a2ed39",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:7db007682b2b28557d044c6a107bc3c0d4a2ed39",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [
@@ -1693,9 +1693,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:67e6e173f850c0f3935e38ccb3a4bddc26f65782",
-      "target": "pr:243221",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:243221",
+      "target": "commit:67e6e173f850c0f3935e38ccb3a4bddc26f65782",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [

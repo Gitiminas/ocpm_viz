@@ -17,7 +17,7 @@ through `loadObjectGraph()` exactly as a real sub-log would be.
 | F13 | Two concurrent PRs, several commits each, one commit shared | many links into one lane stay individually readable | built |
 | F10 | 1 issue, 3 PRs, 300 commits in pushes of varying size | density behaviour at a scale F1 cannot reach | built |
 | F11 | Four PRs, one per issue↔PR detection method | each per-method toggle is independently observable | built |
-| F12 | A 3-method link, and both evidence classes on one pair | multi-method agreement (`n_methods > 1`) | built |
+| F12 | A 3-method link, both evidence classes on one pair, and the corpus's only `merge_commit` | multi-method agreement (`n_methods > 1`); the fourth qualifier | built |
 
 **Every synthesized fixture ships with an assertion proving it exhibits its property**
 (`tests/sublanes.test.js`, first describe block). This is not ceremony: an "overlapping PRs"
@@ -133,3 +133,25 @@ the model for id handling.** A real sub-log will not look like this.
 - **Every link has `n_methods: 1`**, so multi-method agreement is unexercised — hence F12.
 - **No reopen**, so every object yields exactly one interval — hence F9.
 - **`generated_at` is fixed**, not `now()`, so the fixture is byte-stable across runs.
+
+
+## The qualifier vocabulary
+
+Every fixture speaks decision 43's four — `resolves`, `contains_commit`, `merge_commit`,
+`references_issue` — the same set `fe.link` emits and the RPC serves.
+
+⚠️ **They did not, until 2026-08-09.** The corpus carried `related_issue`,
+`referenced_pull_request` and `referenced_issue`, names the database has never produced,
+so every qualifier-shaped assertion in the suite exercised a vocabulary that cannot occur
+and the per-qualifier toggles a fixture derived were not the ones a real sub-log derives.
+`build-f1.mjs` now remaps the frozen blob (which keeps its own names — it is never
+edited), and `build-synthetic-fixtures.mjs` writes the new names directly.
+
+⚠️ **`contains_commit` reversed as well as renamed.** The old name was stored commit → PR;
+the database stores the relationship PR → commit, because the qualifier means "this pull
+request contains this commit". Renaming without swapping the endpoints would have kept
+the name honest and made the direction a lie.
+
+`merge_commit` had no equivalent in the old vocabulary, so it was added to F12: it is the
+only qualifier that arrives by identity (`merge_commit_sha`) rather than by convention,
+and without it the corpus would exercise three of four.

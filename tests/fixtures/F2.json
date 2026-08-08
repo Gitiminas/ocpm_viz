@@ -162,7 +162,7 @@
     {
       "source": "pr:10",
       "target": "issue:1",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "validated",
       "method": "pr_body",
       "link_methods": [
@@ -173,7 +173,7 @@
     {
       "source": "pr:11",
       "target": "issue:1",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "validated",
       "method": "pr_body",
       "link_methods": [

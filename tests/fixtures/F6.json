@@ -124,7 +124,7 @@
     {
       "source": "pr:50",
       "target": "issue:5",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "validated",
       "method": "pr_body",
       "link_methods": [

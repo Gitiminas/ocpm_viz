@@ -108,13 +108,38 @@ function convertObject(source) {
   };
 }
 
+/**
+ * The blob's qualifier vocabulary, mapped onto the four this project settled (decision 43).
+ *
+ * `ocel-data.json` is frozen and never edited, so the translation belongs here — this
+ * script already transforms the blob rather than copying it (it drops `actor` links,
+ * decision 41). Leaving the old names in place is what let fixtures F1–F13 speak a
+ * vocabulary the RPC can never produce, so every qualifier-shaped assertion in the suite
+ * exercised names that do not occur in the data.
+ *
+ * ⚠️ **`referenced_pull_request` also reverses.** The blob stores it commit → PR; the
+ * database stores the same relationship as `contains_commit`, PR → commit ("this pull
+ * request contains this commit"). Renaming without swapping the endpoints would keep the
+ * name honest and make the direction a lie.
+ */
+const QUALIFIER_REMAP = {
+  related_issue: { to: 'resolves', reverse: false },
+  referenced_issue: { to: 'references_issue', reverse: false },
+  referenced_pull_request: { to: 'contains_commit', reverse: true },
+};
+
 function convertLink(source) {
   const method = methodFromProse(source.method);
   const methods = [method];
+  const remap = QUALIFIER_REMAP[source.qualifier];
+  if (!remap) throw new Error(`build-f1: no mapping for qualifier "${source.qualifier}"`);
+  const [from, to] = remap.reverse
+    ? [source.target, source.source]
+    : [source.source, source.target];
   return {
-    source: source.source,
-    target: source.target,
-    qualifier: source.qualifier,
+    source: from,
+    target: to,
+    qualifier: remap.to,
     evidence: classifyLink(methods),
     method,
     link_methods: methods,

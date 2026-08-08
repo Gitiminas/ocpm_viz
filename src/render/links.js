@@ -74,17 +74,40 @@ function computeLinkOffsets(entries) {
   const offsets = new Map();
   const bundles = new Map();
 
-  for (const entry of entries) {
-    const column = Math.round(entry.tx / SAME_COLUMN_PX);
-    const key = `${entry.sourceAnchor.id}|${column}`;
+  /*
+   * ⚠️ **Coincidence is bundled from BOTH ends, because either can be the shared one.**
+   *
+   * The first version keyed only on the source, which was right while the fixtures
+   * stored commit→PR: several links leaving one commit for PRs in the same column. The
+   * database stores that same relationship the other way — `contains_commit` is PR →
+   * commit — so F5's case became several links *arriving* at one commit from PRs, with
+   * different sources and one shared target. Same picture, same buried link, and the
+   * source-only key stopped seeing it entirely.
+   *
+   * A link can land in both bundles; the first to claim it wins, which is enough because
+   * an offset only has to make it distinguishable from the ones it coincides with.
+   */
+  const add = (key, entry) => {
     if (!bundles.has(key)) bundles.set(key, []);
     bundles.get(key).push(entry);
+  };
+
+  for (const entry of entries) {
+    const targetColumn = Math.round(entry.tx / SAME_COLUMN_PX);
+    const sourceColumn = Math.round(entry.sx / SAME_COLUMN_PX);
+    add(`from:${entry.sourceAnchor.id}|${targetColumn}`, entry);
+    add(`into:${entry.targetAnchor.id}|${sourceColumn}`, entry);
   }
 
   const crowded = new Map();
+  const claimed = new Set();
 
-  for (const bundle of bundles.values()) {
-    if (bundle.length < 2) continue;
+  for (const bundle of [...bundles.values()].sort((a, b) => b.length - a.length)) {
+    const fresh = bundle.filter((entry) => !claimed.has(entry.link));
+    if (fresh.length < 2) continue;
+    for (const entry of fresh) claimed.add(entry.link);
+    bundle.length = 0;
+    bundle.push(...fresh);
 
     /*
      * ⚠️ **Past a point, fanning stops separating and starts lying.**

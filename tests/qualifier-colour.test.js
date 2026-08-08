@@ -51,10 +51,13 @@ describe('every qualifier that occurs has a colour', () => {
     }
   });
 
-  test('every qualifier in the fixture corpus resolves too', async () => {
-    // F1-F13 predate decision 43 and still carry the retired names. They are the visual
-    // baseline, so they must not render grey while live data renders correctly.
+  test('the fixture corpus speaks the same vocabulary as the database', async () => {
+    // It did not, until decision 92 rebuilt it: F1-F13 carried `related_issue`,
+    // `referenced_pull_request` and `referenced_issue`, which the RPC can never produce.
     const found = await qualifiersIn('F');
+    for (const q of found.keys()) {
+      assert.ok(q in QUALIFIER, `fixture qualifier "${q}" is outside decision 43's four`);
+    }
     assert.ok(found.size > 0);
     for (const [q, file] of found) {
       assert.notEqual(qualifierColor(q), NEUTRAL, `${q} (${file}) has no colour`);

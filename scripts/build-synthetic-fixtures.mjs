@@ -176,8 +176,8 @@ FIXTURES.F2 = () => {
     objects,
     events,
     links: [
-      link('pr:10', 'issue:1', 'related_issue', 'pr_body'),
-      link('pr:11', 'issue:1', 'related_issue', 'pr_body'),
+      link('pr:10', 'issue:1', 'resolves', 'pr_body'),
+      link('pr:11', 'issue:1', 'resolves', 'pr_body'),
     ],
   });
 };
@@ -206,8 +206,8 @@ FIXTURES.F3 = () => {
     objects,
     events,
     links: [
-      link('pr:20', 'issue:2', 'related_issue', 'pr_body'),
-      link('pr:21', 'issue:2', 'related_issue', 'branch_name'),
+      link('pr:20', 'issue:2', 'resolves', 'pr_body'),
+      link('pr:21', 'issue:2', 'resolves', 'branch_name'),
     ],
   });
 };
@@ -236,8 +236,8 @@ FIXTURES.F4 = () => {
     objects,
     events,
     links: [
-      link('pr:30', 'issue:3', 'related_issue', 'pr_body'),
-      link('pr:30', 'issue:4', 'related_issue', 'pr_body'),
+      link('pr:30', 'issue:3', 'resolves', 'pr_body'),
+      link('pr:30', 'issue:4', 'resolves', 'pr_body'),
     ],
   });
 };
@@ -265,8 +265,8 @@ FIXTURES.F5 = () => {
     objects,
     events,
     links: [
-      link('commit:aaaa111bbbb222ccc', 'pr:40', 'referenced_pull_request', 'head_sha'),
-      link('commit:aaaa111bbbb222ccc', 'pr:41', 'referenced_pull_request', 'ref_match'),
+      link('pr:40', 'commit:aaaa111bbbb222ccc', 'contains_commit', 'head_sha'),
+      link('pr:41', 'commit:aaaa111bbbb222ccc', 'contains_commit', 'ref_match'),
     ],
   });
 };
@@ -287,7 +287,7 @@ FIXTURES.F6 = () => {
     seed: [{ id: 'issue:5', type: 'issue' }],
     objects,
     events,
-    links: [link('pr:50', 'issue:5', 'related_issue', 'pr_body')],
+    links: [link('pr:50', 'issue:5', 'resolves', 'pr_body')],
   });
 };
 
@@ -387,8 +387,8 @@ FIXTURES.F13 = () => {
     event('PullRequestOpened', t(4), 'pr:81', { actorId: 'actor:bob' }),
   ];
   const links = [
-    link('pr:80', 'issue:13', 'related_issue', 'pr_body'),
-    link('pr:81', 'issue:13', 'related_issue', 'branch_name'),
+    link('pr:80', 'issue:13', 'resolves', 'pr_body'),
+    link('pr:81', 'issue:13', 'resolves', 'branch_name'),
   ];
 
   // Four commits per PR, interleaved in time so their links cross.
@@ -402,7 +402,7 @@ FIXTURES.F13 = () => {
           actorId: prIndex ? 'actor:bob' : 'actor:alice',
         }),
       );
-      links.push(link(`commit:${sha}`, prId, 'referenced_pull_request', 'head_sha'));
+      links.push(link(prId, `commit:${sha}`, 'contains_commit', 'head_sha'));
     }
   }
 
@@ -411,8 +411,8 @@ FIXTURES.F13 = () => {
   const shared = 'sharedcommit00000';
   objects.push(commit(shared, { at: t(9), pushId: 8199 }));
   events.push(event('CommitObserved', t(9), `commit:${shared}`));
-  links.push(link(`commit:${shared}`, 'pr:80', 'referenced_pull_request', 'head_sha'));
-  links.push(link(`commit:${shared}`, 'pr:81', 'referenced_pull_request', 'ref_match'));
+  links.push(link('pr:80', `commit:${shared}`, 'contains_commit', 'head_sha'));
+  links.push(link('pr:81', `commit:${shared}`, 'contains_commit', 'ref_match'));
 
   events.push(event('PullRequestMerged', t(12), 'pr:80'));
   events.push(event('PullRequestMerged', t(16), 'pr:81', { actorId: 'actor:bob' }));
@@ -450,9 +450,9 @@ FIXTURES.F10 = () => {
   ];
   const events = [event('IssueOpened', t(1), 'issue:100')];
   const links = [
-    link('pr:1001', 'issue:100', 'related_issue', 'pr_body'),
-    link('pr:1002', 'issue:100', 'related_issue', 'branch_name'),
-    link('pr:1003', 'issue:100', 'related_issue', 'pr_title'),
+    link('pr:1001', 'issue:100', 'resolves', 'pr_body'),
+    link('pr:1002', 'issue:100', 'resolves', 'branch_name'),
+    link('pr:1003', 'issue:100', 'resolves', 'pr_title'),
   ];
 
   const prIds = ['pr:1001', 'pr:1002', 'pr:1003'];
@@ -475,7 +475,7 @@ FIXTURES.F10 = () => {
             actorId: commitNumber % 3 ? 'actor:alice' : 'actor:bob',
           }),
         );
-        links.push(link(`commit:${sha}`, prId, 'referenced_pull_request', 'head_sha'));
+        links.push(link(prId, `commit:${sha}`, 'contains_commit', 'head_sha'));
       }
       pushIndex += 1;
     }
@@ -517,7 +517,7 @@ FIXTURES.F11 = () => {
     const prId = `pr:110${i + 1}`;
     events.push(event('PullRequestOpened', t(2 + i * 8), prId));
     events.push(event('PullRequestMerged', t(8 + i * 8), prId));
-    links.push(link(prId, 'issue:110', 'related_issue', method));
+    links.push(link(prId, 'issue:110', 'resolves', method));
   });
   events.push(event('IssueClosed', t(30), 'issue:110'));
 
@@ -544,25 +544,34 @@ FIXTURES.F11 = () => {
 FIXTURES.F12 = () => {
   eventSeq = 0;
   const sha = 'mixedevidence0000';
+  // The merge commit is a second commit on purpose: `merge_commit` is the only qualifier
+  // the corpus would otherwise never exercise, and it is the only one that arrives by
+  // identity (`merge_commit_sha`) rather than by convention. Keeping it off the
+  // `pr:1201`↔`sha` pair leaves this fixture's mixed-evidence property untouched.
+  const mergeSha = 'mergecommit000000';
   const objects = [
     issue(120, { from: t(1), to: t(12) }),
     pr(1201, { from: t(2), to: t(10) }),
     commit(sha, { at: t(5), pushId: 12001 }),
+    commit(mergeSha, { at: t(10), pushId: 12002, message: 'Merge pull request #1201' }),
     actor('alice'),
   ];
   const events = [
     event('IssueOpened', t(1), 'issue:120'),
     event('PullRequestOpened', t(2), 'pr:1201'),
     event('CommitObserved', t(5), `commit:${sha}`),
+    event('CommitObserved', t(10), `commit:${mergeSha}`),
     event('PullRequestMerged', t(10), 'pr:1201'),
     event('IssueClosed', t(12), 'issue:120'),
   ];
   const links = [
     // Three methods agree on this one — the strongest signal the model can express.
-    link('pr:1201', 'issue:120', 'related_issue', ['pr_body', 'branch_name', 'pr_title']),
+    link('pr:1201', 'issue:120', 'resolves', ['pr_body', 'branch_name', 'pr_title']),
     // The same commit↔PR pair, asserted once by identity and once by convention.
-    link(`commit:${sha}`, 'pr:1201', 'referenced_pull_request', 'head_sha'),
-    link(`commit:${sha}`, 'pr:1201', 'referenced_pull_request', 'ref_match'),
+    link('pr:1201', `commit:${sha}`, 'contains_commit', 'head_sha'),
+    link('pr:1201', `commit:${sha}`, 'contains_commit', 'ref_match'),
+    // The fourth qualifier, and the only validated-by-identity one.
+    link('pr:1201', `commit:${mergeSha}`, 'merge_commit', 'merge_commit_sha'),
   ];
 
   return graph({

@@ -36,12 +36,11 @@ export const TYPE = {
  *   references_issue  commit → issue     27,261
  *   resolves          pr     → issue     13,462
  *
- * ⚠️ **This table listed three qualifiers that the database has never emitted.** It was
- * written against the vocabulary the fixtures carry and never moved to the four decision
- * 43 settled, so every real qualifier missed the lookup and fell through to neutral grey
- * — a feature quietly doing nothing, with no error to notice. Mostly invisible on the
- * chart, because decision 24 made the object's own shade override this; the live use is
- * the link tooltip's accent bar, which takes `qualifierColor` directly.
+ * ⚠️ **This table once listed three qualifiers the database has never emitted**, written
+ * against the vocabulary the fixtures carried. Every real qualifier missed the lookup and
+ * fell through to neutral grey — a feature quietly doing nothing, with no error to notice.
+ * The fixtures have since been rebuilt onto these four (decision 92), so the shim that
+ * carried the old names is gone and this table is the whole vocabulary again.
  */
 export const QUALIFIER = {
   resolves: { color: COLORS.issue, label: 'resolves' },
@@ -50,21 +49,6 @@ export const QUALIFIER = {
   merge_commit: { color: COLORS.commit, label: 'merge_commit' },
 };
 
-/**
- * The retired names still carried by fixtures F1–F13.
- *
- * Kept separate rather than merged above, because they are **not** part of the
- * vocabulary — decision 43 closed it at the four. The fixture corpus predates that
- * decision and was never rebuilt, so dropping these would leave the whole test corpus
- * falling through to grey while the live data rendered correctly, which is the wrong way
- * round for a corpus meant to stand in for real data. The fixtures are what should
- * change; until they do, this maps them onto the same "what does it reach" rule.
- */
-const RETIRED_QUALIFIER = {
-  related_issue: COLORS.issue,
-  referenced_issue: COLORS.issue,
-  referenced_pull_request: COLORS.pull_request,
-};
 
 /**
  * Per-object shades within a type's hue.
@@ -147,7 +131,7 @@ export function typeColor(objectType) {
 }
 
 export function qualifierColor(qualifier) {
-  return QUALIFIER[qualifier]?.color || RETIRED_QUALIFIER[qualifier] || 'var(--color-neutral-400)';
+  return QUALIFIER[qualifier]?.color || 'var(--color-neutral-400)';
 }
 
 /**

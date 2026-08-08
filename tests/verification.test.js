@@ -242,7 +242,7 @@ describe('multi-method agreement and mixed evidence survive the pipeline (F12)',
   test('both evidence classes on one pair remain two distinguishable links', async () => {
     const { graph, index, state, groupsByCommit } = await pipeline('F12');
     const visible = graph.links.filter((l) => isLinkVisible(l, index.byId, state, groupsByCommit));
-    const commitToPr = visible.filter((l) => l.qualifier === 'referenced_pull_request');
+    const commitToPr = visible.filter((l) => l.qualifier === 'contains_commit');
     assert.equal(commitToPr.length, 2);
     assert.deepEqual(commitToPr.map((l) => l.evidence).sort(), ['extracted', 'validated']);
   });
@@ -254,7 +254,7 @@ describe('multi-method agreement and mixed evidence survive the pipeline (F12)',
     }
     const visible = graph.links.filter((l) => isLinkVisible(l, index.byId, state, groupsByCommit));
     assert.equal(visible.every((l) => l.evidence === 'validated'), true);
-    assert.ok(visible.some((l) => l.qualifier === 'referenced_pull_request'));
+    assert.ok(visible.some((l) => l.qualifier === 'contains_commit'));
   });
 });
 

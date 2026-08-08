@@ -163,7 +163,7 @@
     {
       "source": "pr:20",
       "target": "issue:2",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "validated",
       "method": "pr_body",
       "link_methods": [
@@ -174,7 +174,7 @@
     {
       "source": "pr:21",
       "target": "issue:2",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "extracted",
       "method": "branch_name",
       "link_methods": [

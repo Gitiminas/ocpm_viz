@@ -153,9 +153,9 @@
   ],
   "links": [
     {
-      "source": "commit:aaaa111bbbb222ccc",
-      "target": "pr:40",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:40",
+      "target": "commit:aaaa111bbbb222ccc",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -164,9 +164,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:aaaa111bbbb222ccc",
-      "target": "pr:41",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:41",
+      "target": "commit:aaaa111bbbb222ccc",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [

@@ -273,16 +273,14 @@ Stated plainly rather than left to inference.
   rendering blank.
   - ⚠️ It reports **that** a render failed, not that the numbers are right. The Stats page
     still has no assertion behind its figures against real data (below).
-- ⚠️ **The fixture corpus speaks a retired qualifier vocabulary.** Found 2026-08-08.
-  F1–F13 carry `related_issue`, `referenced_pull_request` and `referenced_issue`; the
-  database and both LIVE snapshots carry decision 43's four — `resolves`,
-  `contains_commit`, `merge_commit`, `references_issue`. The fixtures predate that
-  decision and were never rebuilt, so **every qualifier-shaped assertion in the suite
-  exercises names the RPC can never produce**, and the per-qualifier toggles a fixture
-  derives are not the ones a real sub-log derives. `scripts/rpc-check.mjs` rejects an
-  unknown qualifier on the RPC path, which is why this stayed invisible: nothing checks
-  the fixture path against the same list. Not fixed — rebuilding the corpus is a change
-  to the visual baseline and to what 13 fixtures assert, and belongs in its own task.
+- ~~**The fixture corpus speaks a retired qualifier vocabulary.**~~ **Closed 2026-08-09.**
+  F1–F13 carried `related_issue`, `referenced_pull_request` and `referenced_issue`, which
+  the RPC can never produce, so every qualifier-shaped assertion exercised names that do
+  not occur. The corpus was rebuilt onto decision 43's four (decision 92). ⚠️ The rebuild
+  **found a live defect**: with `contains_commit` stored PR → commit as the database
+  stores it, F5's two-PRs-one-commit case shares its *target* rather than its source, and
+  the link fan keyed on the source alone — so the buried link that decision 25 exists to
+  prevent was buried again. Fixed and pinned.
 - **The Stats page has never been opened against real data.** All of its figures —
   durations, gaps, handoffs, per-object tables — are computed in JS over the loaded
   sub-log (decision 12) and have only ever been exercised on fixtures. Real sub-logs are

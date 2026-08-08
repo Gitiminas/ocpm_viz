@@ -122,16 +122,17 @@ describe('an edge meets an object where the object is drawn', () => {
 
   test('F10: a commit links to the band of the PR it actually reaches', async () => {
     const { graph, index, objectRow, geometry, anchors } = await layout('F10');
-    const links = graph.links.filter((l) => l.qualifier === 'referenced_pull_request');
+    const links = graph.links.filter((l) => l.qualifier === 'contains_commit');
     assert.ok(links.length > 0);
 
     const seen = new Set();
     for (const link of links) {
-      const target = index.byId.get(link.target);
-      seen.add(link.target);
+      // PR → commit, so the pull request whose band this must reach is the SOURCE.
+      const pr = index.byId.get(link.source);
+      seen.add(link.source);
       assert.equal(
-        anchors.y(link.target, target),
-        barY(geometry, objectRow, target),
+        anchors.y(link.source, pr),
+        barY(geometry, objectRow, pr),
         `${link.source} → ${link.target} lands off that PR's band`,
       );
     }

@@ -447,7 +447,7 @@
     {
       "source": "pr:80",
       "target": "issue:13",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "validated",
       "method": "pr_body",
       "link_methods": [
@@ -458,7 +458,7 @@
     {
       "source": "pr:81",
       "target": "issue:13",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "extracted",
       "method": "branch_name",
       "link_methods": [
@@ -467,9 +467,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:pr0c0000000000000",
-      "target": "pr:80",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:80",
+      "target": "commit:pr0c0000000000000",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -478,9 +478,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:pr0c1000000000000",
-      "target": "pr:80",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:80",
+      "target": "commit:pr0c1000000000000",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -489,9 +489,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:pr0c2000000000000",
-      "target": "pr:80",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:80",
+      "target": "commit:pr0c2000000000000",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -500,9 +500,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:pr0c3000000000000",
-      "target": "pr:80",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:80",
+      "target": "commit:pr0c3000000000000",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -511,9 +511,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:pr1c0000000000000",
-      "target": "pr:81",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:81",
+      "target": "commit:pr1c0000000000000",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -522,9 +522,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:pr1c1000000000000",
-      "target": "pr:81",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:81",
+      "target": "commit:pr1c1000000000000",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -533,9 +533,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:pr1c2000000000000",
-      "target": "pr:81",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:81",
+      "target": "commit:pr1c2000000000000",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -544,9 +544,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:pr1c3000000000000",
-      "target": "pr:81",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:81",
+      "target": "commit:pr1c3000000000000",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -555,9 +555,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:sharedcommit00000",
-      "target": "pr:80",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:80",
+      "target": "commit:sharedcommit00000",
+      "qualifier": "contains_commit",
       "evidence": "validated",
       "method": "head_sha",
       "link_methods": [
@@ -566,9 +566,9 @@
       "n_methods": 1
     },
     {
-      "source": "commit:sharedcommit00000",
-      "target": "pr:81",
-      "qualifier": "referenced_pull_request",
+      "source": "pr:81",
+      "target": "commit:sharedcommit00000",
+      "qualifier": "contains_commit",
       "evidence": "extracted",
       "method": "ref_match",
       "link_methods": [

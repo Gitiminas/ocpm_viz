@@ -241,7 +241,7 @@
     {
       "source": "pr:1101",
       "target": "issue:110",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "validated",
       "method": "pr_body",
       "link_methods": [
@@ -252,7 +252,7 @@
     {
       "source": "pr:1102",
       "target": "issue:110",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "extracted",
       "method": "branch_name",
       "link_methods": [
@@ -263,7 +263,7 @@
     {
       "source": "pr:1103",
       "target": "issue:110",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "extracted",
       "method": "pr_title",
       "link_methods": [
@@ -274,7 +274,7 @@
     {
       "source": "pr:1104",
       "target": "issue:110",
-      "qualifier": "related_issue",
+      "qualifier": "resolves",
       "evidence": "extracted",
       "method": "issue_comment",
       "link_methods": [

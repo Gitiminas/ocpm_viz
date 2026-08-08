@@ -143,9 +143,9 @@ describe('link filters are independent and all must pass', () => {
 
   test('a qualifier toggle removes exactly that qualifier', async () => {
     const c = await context('F1');
-    c.state.qualifiers.referenced_pull_request = false;
+    c.state.qualifiers.contains_commit = false;
     const remaining = visibleLinks(c);
-    assert.equal(remaining.some((l) => l.qualifier === 'referenced_pull_request'), false);
+    assert.equal(remaining.some((l) => l.qualifier === 'contains_commit'), false);
     assert.ok(remaining.length > 0, 'other qualifiers survive');
   });
 
@@ -171,10 +171,10 @@ describe('link filters are independent and all must pass', () => {
 
   test('filters compose — no toggle overrides another', async () => {
     const c = await context('F1');
-    c.state.qualifiers.referenced_pull_request = false;
+    c.state.qualifiers.contains_commit = false;
     c.state.methods.commit_message = false;
     const remaining = visibleLinks(c);
-    assert.equal(remaining.some((l) => l.qualifier === 'referenced_pull_request'), false);
+    assert.equal(remaining.some((l) => l.qualifier === 'contains_commit'), false);
     assert.equal(remaining.some((l) => l.method === 'commit_message'), false);
   });
 
@@ -198,7 +198,7 @@ describe('the hidden summary reports every subtraction', () => {
     c.state.showComments.issue = false;
     c.state.hiddenObjects = new Set(['pr:80']);
     c.state.hiddenCommitGroups = new Set(['pr:81']);
-    c.state.qualifiers.related_issue = false;
+    c.state.qualifiers.resolves = false;
     c.state.methods.head_sha = false;
 
     const summary = summarizeHidden(c.state, c.ctx);
@@ -227,7 +227,7 @@ describe('the hidden summary reports every subtraction', () => {
     c.state.showComments.issue = false;
     c.state.hiddenObjects = new Set(['pr:80']);
     c.state.hiddenCommitGroups = new Set(['pr:81']);
-    c.state.qualifiers.related_issue = false;
+    c.state.qualifiers.resolves = false;
     c.state.methods.head_sha = false;
 
     restoreAll(c.state, c.ctx);
@@ -252,7 +252,7 @@ describe('presets', () => {
     c.state.lanes.commit = false;
     c.state.hiddenObjects = new Set(['pr:80']);
     c.state.hiddenCommitGroups = new Set(['pr:81']);
-    c.state.qualifiers.related_issue = false;
+    c.state.qualifiers.resolves = false;
 
     const snapshot = serializeState(c.state);
     const restored = applyState(createState(), snapshot);
@@ -260,7 +260,7 @@ describe('presets', () => {
     assert.equal(restored.lanes.commit, false);
     assert.deepEqual([...restored.hiddenObjects], ['pr:80']);
     assert.deepEqual([...restored.hiddenCommitGroups], ['pr:81']);
-    assert.equal(restored.qualifiers.related_issue, false);
+    assert.equal(restored.qualifiers.resolves, false);
   });
 
   test('a snapshot excludes zoom, focus and burst expansion', async () => {

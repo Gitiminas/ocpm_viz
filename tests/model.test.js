@@ -186,7 +186,7 @@ describe('validation fails loudly on a malformed bundle', () => {
         { id: 'pr:1', type: 'pull_request', intervals: [] },
       ],
       links: [
-        { source: 'pr:1', target: 'issue:1', qualifier: 'related_issue', evidence: 'inferred' },
+        { source: 'pr:1', target: 'issue:1', qualifier: 'resolves', evidence: 'inferred' },
       ],
     };
     assert.match(findGraphProblems(bad).join('\n'), /validated and extracted/);

@@ -130,10 +130,12 @@ describe('fixtures exhibit the properties they claim', () => {
     const graph = await load('F5');
     const commits = graph.objects.filter((o) => o.type === 'commit');
     assert.equal(commits.length, 1);
-    const targets = graph.links
-      .filter((l) => l.source === commits[0].id && l.qualifier === 'referenced_pull_request')
-      .map((l) => l.target);
-    assert.deepEqual(targets.sort(), ['pr:40', 'pr:41']);
+    // `contains_commit` reads PR → commit (decision 43), so the commit is the target
+    // and the pull requests that reach it are the sources.
+    const prs = graph.links
+      .filter((l) => l.target === commits[0].id && l.qualifier === 'contains_commit')
+      .map((l) => l.source);
+    assert.deepEqual(prs.sort(), ['pr:40', 'pr:41']);
   });
 
   test('F6 really does have zero commits', async () => {
@@ -181,7 +183,7 @@ describe('fixtures exhibit the properties they claim', () => {
   test('F11 really does carry all four issue-PR detection methods', async () => {
     const graph = await load('F11');
     const methods = new Set(
-      graph.links.filter((l) => l.qualifier === 'related_issue').map((l) => l.method),
+      graph.links.filter((l) => l.qualifier === 'resolves').map((l) => l.method),
     );
     assert.deepEqual(
       [...methods].sort(),
@@ -453,21 +455,72 @@ describe('links that would coincide are fanned apart', () => {
     assert.deepEqual(labels, [`×${N}`], 'the bundle must declare how many links it stands for');
   });
 
-  test('a source whose links already diverge is left where it was', async () => {
-    // F1's one multi-link commit reaches the issue and the PR at different x, so
-    // nothing coincides and nothing should move — this is what keeps F1 identical.
+  test('links that already diverge are left where they are', async () => {
+    // F1's one multi-link commit touches both the issue and the PR, and they sit in
+    // different lanes with different spans — so clampToLifecycle puts them in different
+    // columns and the fan does not engage.
+    //
+    // ⚠️ It is touched from BOTH sides now: it is the source of its `references_issue`
+    // link and the target of the PR's `contains_commit` one (decision 43's direction).
+    // Filtering on `source` alone found two links before the corpus was rebuilt and
+    // would find one now, which is why this asks about either end.
+    const commitId = 'commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3';
     const graph = await load('F1');
     const index = indexObjectGraph(graph);
-    const multi = graph.links.filter(
-      (l) => l.source === 'commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3',
-    );
-    assert.equal(multi.length, 2);
-    assert.notEqual(multi[0].target, multi[1].target);
-    // Their targets sit in different lanes with different spans, so clampToLifecycle
-    // puts them in different columns and the fan does not engage.
-    const targets = multi.map((l) => index.byId.get(l.target));
-    assert.notEqual(targets[0].type, targets[1].type);
+    const touching = graph.links.filter((l) => l.source === commitId || l.target === commitId);
+    assert.equal(touching.length, 2);
+
+    const others = touching.map((l) => index.byId.get(l.source === commitId ? l.target : l.source));
+    assert.notEqual(others[0].id, others[1].id);
+    assert.notEqual(others[0].type, others[1].type, 'one is an issue, one a pull request');
   });
+  test('two pull requests reaching one commit are separated (F5)', async () => {
+    /*
+     * F5's buried link, in the direction the database actually stores.
+     *
+     * `contains_commit` is PR → commit, so this case is two links *arriving* at one
+     * commit — different sources, one shared target. The fan originally keyed on the
+     * source alone, which saw the old commit → PR form and stopped seeing this one; the
+     * link reaching the nearer band is a strict sub-segment of the other and vanishes
+     * under it, and in F5 the buried one is the extracted link, so the "?" that this
+     * tool exists to show goes with it.
+     */
+    const graph = await load('F5');
+    const index = indexObjectGraph(graph);
+    const commit = graph.objects.find((o) => o.type === 'commit');
+    const into = graph.links.filter((l) => l.target === commit.id);
+    assert.equal(into.length, 2, 'F5 must have one commit reached by two PRs');
+    assert.notEqual(into[0].source, into[1].source);
+
+    const drawn = [];
+    renderLinks({
+      gLink: fakeSelection(drawn),
+      defs: fakeSelection([]),
+      links: graph.links,
+      byId: index.byId,
+      anchors: anchorsFor({ 'pr:40': { y: 100 }, 'pr:41': { y: 140 } }),
+      state: resetToggles(createState(), {
+        relGroups: deriveRelGroups(graph.links, index.byId),
+        qualifiers: deriveQualifiers(graph.links),
+        methods: deriveMethods(graph.links),
+      }),
+      focus: null,
+      burstsByCommit: new Map(),
+      tooltip: { bind: (s) => s },
+      objectColors: new Map(),
+    });
+
+    const ends = [
+      ...new Set(
+        drawn
+          .filter((d) => d.attrs.d)
+          .map((d) => d.attrs.d.match(/([-\d.]+),[-\d.]+$/)[1]),
+      ),
+    ];
+    assert.equal(ends.length, 2, 'the two links must not arrive at the same x');
+    assert.ok(Math.abs(Number(ends[0]) - Number(ends[1])) >= 4, 'and must be readably apart');
+  });
+
 });
 
 describe('layout invariants across all fixtures and modes', () => {
