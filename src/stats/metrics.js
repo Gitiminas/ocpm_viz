@@ -164,7 +164,17 @@ export function landmarks(graph) {
     // "opened" would be the same moment as the commit itself.
     if (!hasLane(object) || object.type === 'commit') continue;
     const start = object.intervals[0]?.start;
-    if (start) entries.push({ label: `${object.label} opened`, time: start, type: object.type });
+    // `objectId` rides along so the renderer can shade the entry by *which* object it
+    // belongs to. With N issues the type colour says "an issue" and nothing more, and
+    // the label already had to be widened for the same reason.
+    if (start) {
+      entries.push({
+        label: `${object.label} opened`,
+        time: start,
+        type: object.type,
+        objectId: object.id,
+      });
+    }
   }
 
   for (const event of graph.events) {
@@ -174,6 +184,7 @@ export function landmarks(graph) {
       label: `${object ? object.label : event.object_id} · ${activityLabel(event.activity)}`,
       time: event.time,
       type: object?.type ?? 'issue',
+      objectId: event.object_id,
     });
   }
 

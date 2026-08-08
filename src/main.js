@@ -351,10 +351,13 @@ function showToast(message) {
  */
 function refreshStats() {
   if (!current) return;
-  const { graph, index, groupsByCommit, toggleContext, description } = current;
+  const { graph, index, groupsByCommit, toggleContext, description, objectColors } = current;
   renderStats({
     graph: selectVisible(graph, state, groupsByCommit),
     index,
+    // The same shades the timeline draws with, so a colour means one thing across both
+    // pages rather than "an issue" here and "*which* issue" there.
+    objectColors,
     gridEl: elements.statsGrid,
     landmarksEl: elements.statsLandmarks,
     breadcrumbEl: elements.statsBreadcrumb,

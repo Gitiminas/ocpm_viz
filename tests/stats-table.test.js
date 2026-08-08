@@ -24,6 +24,7 @@ import {
   largestGaps,
   leadTimes,
   commentCounts,
+  landmarks,
 } from '../src/stats/metrics.js';
 
 const fileTransport = async (query) =>
@@ -262,5 +263,54 @@ describe('cross-object lead times are labelled, not silently arbitrary', () => {
     const { graph } = await context('F8');
     const labels = leadTimes(graph).map((entry) => entry.label);
     assert.equal(labels.some((label) => label.includes('issue')), false);
+  });
+});
+
+describe('the stats page can shade by object, not only by type', () => {
+  /**
+   * The timeline spends a colour channel answering "which pull request is this"
+   * (`assignObjectColors`). The stats page painted every issue one purple and every
+   * pull request one orange, so a table of three pull requests said "pull request"
+   * three times and nothing about which was which — two views of one sub-log
+   * disagreeing about what a colour means.
+   *
+   * The renderer needs a DOM, so what is asserted here is the part that does not: that
+   * the data it shades by is present and keyed the way the colour map is.
+   */
+  test('every per-object row carries the id the colour map is keyed on (F10)', async () => {
+    const graph = await load('F10');
+    const rows = perObjectMetrics(graph);
+    assert.ok(rows.length > 1, 'F10 must have several objects, or this proves nothing');
+    for (const row of rows) {
+      assert.ok(row.id, `a row for "${row.label}" has no id to look a shade up by`);
+      assert.ok(graph.objects.some((o) => o.id === row.id), `${row.id} is not an object`);
+    }
+  });
+
+  test('rows of one type have distinct ids, so distinct shades are possible (F10)', async () => {
+    const graph = await load('F10');
+    const prs = perObjectMetrics(graph).filter((r) => r.type === 'pull_request');
+    assert.ok(prs.length > 1, 'F10 must have several pull requests');
+    assert.equal(new Set(prs.map((r) => r.id)).size, prs.length, 'ids must be unique');
+  });
+
+  test('landmark entries name the object they belong to (F10)', async () => {
+    const graph = await load('F10');
+    const entries = landmarks(graph);
+    // Commit landmarks are aggregate ("First commit"), so they carry no object; every
+    // issue or PR landmark must, or its dot falls back to the flat type colour.
+    const perObject = entries.filter((e) => e.type !== 'commit');
+    assert.ok(perObject.length > 0);
+    for (const entry of perObject) {
+      assert.ok(entry.objectId, `landmark "${entry.label}" has no objectId`);
+    }
+  });
+
+  test('a landmark objectId resolves to a real object (F10)', async () => {
+    const graph = await load('F10');
+    const ids = new Set(graph.objects.map((o) => o.id));
+    for (const entry of landmarks(graph).filter((e) => e.objectId)) {
+      assert.ok(ids.has(entry.objectId), `${entry.objectId} is not in the sub-log`);
+    }
   });
 });

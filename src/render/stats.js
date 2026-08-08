@@ -42,6 +42,16 @@ export function renderStats({
   description,
   hiddenSummary,
   onRerender,
+  /*
+   * The same per-object shades the timeline uses (`assignObjectColors`).
+   *
+   * Without them this page painted every issue the same purple and every pull request
+   * the same orange, so a table of four pull requests said "pull request" four times
+   * and nothing about which was which — while the timeline beside it had already spent
+   * a colour channel answering exactly that. Two views of one sub-log disagreeing about
+   * what a colour means is worse than either being uncoloured.
+   */
+  objectColors = new Map(),
 }) {
   breadcrumbEl.textContent = description;
   gridEl.innerHTML = '';
@@ -65,14 +75,14 @@ export function renderStats({
   const rows = perObjectMetrics(graph);
   const groups = groupRowsByType(rows);
 
-  gridEl.appendChild(buildTable(groups, onRerender));
+  gridEl.appendChild(buildTable(groups, onRerender, objectColors));
   gridEl.appendChild(buildSubLogSummary(graph, index));
-  renderLandmarkList(graph, landmarksEl);
+  renderLandmarkList(graph, landmarksEl, objectColors);
 }
 
 // ---------------------------------------------------------------------------
 
-function buildTable(groups, onRerender) {
+function buildTable(groups, onRerender, objectColors = new Map()) {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'overflow-x:auto';
 
@@ -154,9 +164,13 @@ function buildTable(groups, onRerender) {
 
     for (const row of group.rows) {
       const tr = document.createElement('tr');
+      const rowColor = objectColors.get(row.id) || color;
       tr.innerHTML =
         `<td style="padding:6px 7px 6px 26px;border-bottom:1px solid var(--color-neutral-900);` +
-        `white-space:nowrap"><span class="mono" style="color:var(--color-neutral-300)">` +
+        `white-space:nowrap">` +
+        `<span style="display:inline-block;width:7px;height:7px;border-radius:2px;` +
+        `background:${rowColor};margin-right:8px;vertical-align:middle"></span>` +
+        `<span class="mono" style="color:var(--color-neutral-300)">` +
         `${escapeHtml(row.label)}</span>` +
         (row.intervals > 1
           ? `<span class="mono" style="font-size:9.5px;color:var(--color-neutral-500);` +
@@ -279,7 +293,7 @@ function buildSubLogSummary(graph, index) {
   return wrap;
 }
 
-function renderLandmarkList(graph, landmarksEl) {
+function renderLandmarkList(graph, landmarksEl, objectColors = new Map()) {
   const entries = landmarks(graph);
   landmarksEl.innerHTML = '';
 
@@ -295,7 +309,8 @@ function renderLandmarkList(graph, landmarksEl) {
         ? ''
         : '<div style="position:absolute;left:50%;top:10px;width:1px;height:44px;' +
           'transform:translateX(-50%);background:var(--color-neutral-700)"></div>') +
-      `<div style="width:10px;height:10px;border-radius:50%;background:${typeColor(entry.type)};` +
+      `<div style="width:10px;height:10px;border-radius:50%;` +
+      `background:${objectColors.get(entry.objectId) || typeColor(entry.type)};` +
       'box-shadow:0 0 0 3px var(--color-neutral-900)"></div></div>' +
       `<span style="flex:1;font-weight:500;color:var(--color-text)">${escapeHtml(entry.label)}</span>` +
       `<span class="mono" style="color:var(--color-neutral-500);font-size:11.5px">${formatInstant(entry.time)}</span>`;

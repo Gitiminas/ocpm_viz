@@ -261,6 +261,13 @@ Stated plainly rather than left to inference.
   "symmetric by construction" is an argument, not a measurement, and **no test asserts that
   two seeds in one component yield the same sub-log at a degree that spans them.** One triple
   in one repository is thin evidence; a sweep over many triples is unwritten work.
+- ⚠️ **The Stats page has no error surface of its own.** Added 2026-08-08. `refreshStats`
+  runs inside the startup chain that ends in `.catch(showFatal)`, and `showFatal` writes
+  into `#chartMessage` — which belongs to the *timeline* page and is not on screen while
+  the stats page is open. An exception in `renderStats` therefore renders as an empty
+  dashboard with no error visible anywhere, which is how decision 86's own defect
+  presented. Found by reading `#chartMessage` out of the DOM, not by looking at the page.
+  Unfixed.
 - **The Stats page has never been opened against real data.** All of its figures —
   durations, gaps, handoffs, per-object tables — are computed in JS over the loaded
   sub-log (decision 12) and have only ever been exercised on fixtures. Real sub-logs are
