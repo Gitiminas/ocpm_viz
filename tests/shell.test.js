@@ -52,6 +52,23 @@ describe('the app shell keeps its load-bearing order', () => {
     assert.ok(message < content, 'the message must precede the content as a sibling');
   });
 
+  test('the sidebar follows the order of the task', async () => {
+    // Choose what you are looking at, choose how you want to see it, then refine.
+    // A saved view sets every toggle below it at once, so it belongs above them:
+    // met afterwards, it invites arranging the sidebar by hand and only then
+    // discovering that one click already did it — and then overwrites that work.
+    const html = await shell();
+    const at = (label) => html.indexOf(`>${label}</span>`);
+    const order = ['Views', 'Tracks', 'Relationships', 'Bursts', 'Actors', 'Legend'];
+    const positions = order.map(at);
+    assert.ok(positions.every((p) => p > 0), `a sidebar section is missing: ${order}`);
+    assert.deepEqual(
+      positions.slice().sort((a, b) => a - b),
+      positions,
+      `sidebar sections must appear in the order ${order.join(' → ')}`,
+    );
+  });
+
   test('the placeholder is a sibling of the chart, never its content', async () => {
     // Decision 74: writing into #chart detaches the one <svg> the renderer holds, and
     // every later draw then lands outside the document.
