@@ -24,14 +24,46 @@ export const TYPE = {
 };
 
 /**
- * Link qualifier colours. The link gradient runs from the source object's type
- * colour to its qualifier colour, so an edge reads as "from this kind of thing,
- * standing in this relation".
+ * Link qualifier colours — **the colour of what the link reaches**.
+ *
+ * The gradient runs from the source object's colour to this one, so an edge reads as
+ * "from this kind of thing, standing in this relation". Each qualifier has exactly one
+ * direction in the data, verified against `fe.link_mat`, so "what it reaches" is a
+ * property of the qualifier and not something the renderer has to work out:
+ *
+ *   contains_commit   pr     → commit    74,241
+ *   merge_commit      pr     → commit    56,853
+ *   references_issue  commit → issue     27,261
+ *   resolves          pr     → issue     13,462
+ *
+ * ⚠️ **This table listed three qualifiers that the database has never emitted.** It was
+ * written against the vocabulary the fixtures carry and never moved to the four decision
+ * 43 settled, so every real qualifier missed the lookup and fell through to neutral grey
+ * — a feature quietly doing nothing, with no error to notice. Mostly invisible on the
+ * chart, because decision 24 made the object's own shade override this; the live use is
+ * the link tooltip's accent bar, which takes `qualifierColor` directly.
  */
 export const QUALIFIER = {
-  related_issue: { color: COLORS.issue, label: 'related_issue' },
-  referenced_pull_request: { color: COLORS.pull_request, label: 'referenced_pull_request' },
-  referenced_issue: { color: COLORS.extracted, label: 'referenced_issue' },
+  resolves: { color: COLORS.issue, label: 'resolves' },
+  references_issue: { color: COLORS.issue, label: 'references_issue' },
+  contains_commit: { color: COLORS.commit, label: 'contains_commit' },
+  merge_commit: { color: COLORS.commit, label: 'merge_commit' },
+};
+
+/**
+ * The retired names still carried by fixtures F1–F13.
+ *
+ * Kept separate rather than merged above, because they are **not** part of the
+ * vocabulary — decision 43 closed it at the four. The fixture corpus predates that
+ * decision and was never rebuilt, so dropping these would leave the whole test corpus
+ * falling through to grey while the live data rendered correctly, which is the wrong way
+ * round for a corpus meant to stand in for real data. The fixtures are what should
+ * change; until they do, this maps them onto the same "what does it reach" rule.
+ */
+const RETIRED_QUALIFIER = {
+  related_issue: COLORS.issue,
+  referenced_issue: COLORS.issue,
+  referenced_pull_request: COLORS.pull_request,
 };
 
 /**
@@ -115,7 +147,7 @@ export function typeColor(objectType) {
 }
 
 export function qualifierColor(qualifier) {
-  return QUALIFIER[qualifier]?.color || 'var(--color-neutral-400)';
+  return QUALIFIER[qualifier]?.color || RETIRED_QUALIFIER[qualifier] || 'var(--color-neutral-400)';
 }
 
 /**
