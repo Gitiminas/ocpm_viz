@@ -15,6 +15,25 @@ import { typeColor, COLORS } from './theme.js';
 const HEIGHT = 40;
 const HANDLE_HIT_WIDTH = 10;
 const GRIP_WIDTH = 5;
+/**
+ * Keep the dots clear of both edges.
+ *
+ * Mapped edge to edge, the first and last dots were half outside the strip and sat under
+ * the viewport's grips, which start flush left — so the two marks that say where the
+ * sub-log *begins and ends* were the two you could not see.
+ *
+ * 7 = the largest dot's radius (4) plus half a grip (GRIP_WIDTH / 2), because a grip is
+ * centred on the viewport edge rather than drawn inside it. Anything less and the dot
+ * still touches.
+ */
+const EDGE_PAD = 4 + GRIP_WIDTH / 2 + 0.5;
+
+/** Where a node's x lands on the strip, inset from both ends. */
+export function minimapX(nodeX, marginLeft, span, mapWidth) {
+  const inner = Math.max(1, mapWidth - 2 * EDGE_PAD);
+  const x = EDGE_PAD + ((nodeX - marginLeft) / (span || 1)) * inner;
+  return Math.max(EDGE_PAD, Math.min(mapWidth - EDGE_PAD, x));
+}
 
 export function createMinimap({ svgEl, scrollEl, chartEl, onZoom, onAfterZoom }) {
   let resizing = false;
@@ -53,7 +72,7 @@ export function createMinimap({ svgEl, scrollEl, chartEl, onZoom, onAfterZoom })
 
     const span = plotWidth || 1;
     for (const node of nodes) {
-      const x = Math.max(0, Math.min(mapWidth, ((node.x - marginLeft) / span) * mapWidth));
+      const x = minimapX(node.x, marginLeft, span, mapWidth);
       map
         .append('circle')
         .attr('cx', x)
