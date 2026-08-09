@@ -122,7 +122,8 @@ The filter vocabulary is **derived from the loaded sub-log**, never enumerated
 
 `k` · `mode` (`real`/`highlights`/`ordinal`) · `focus` · `focusDegree` · `actors` · `lanes` ·
 `showComments` · `laneOpen` · `hiddenObjects` · `hiddenCommitGroups` · `relPairs` · `qualifiers` ·
-`methods` · `relOpen` · `expandedBursts` · `expandedGroups` · `burstThreshold`
+`methods` · `relOpen` · `expandedBursts` · `expandedGroups` · `expandedCommentBursts` ·
+`commentWindowDays`
 
 ### Layout
 
@@ -149,7 +150,7 @@ The filter vocabulary is **derived from the loaded sub-log**, never enumerated
 | `render/sidebar.js` — lanes | `object.id/.label`; `group.key/.label/.prId/.commitIds` | `lanes`, `hiddenObjects`, `hiddenCommitGroups` | per-lane rows + per-object children |
 | `render/sidebar.js` — relationships | derived groups: `pair.key/.label/.evidence` | `relPairs`, `qualifiers`, `methods` | tri-state parent/child checkboxes |
 | `render/sidebar.js` — actors | `actor.id`, `vmap.login`, `label`, runtime `eventCount` | `state.actors`, search text | colour-swatched rows |
-| `render/sidebar.js` — bursts | `burst.id/.size/.pushId` | `burstThreshold` | expand/collapse controls |
+| `render/sidebar.js` — folding | `burst.id/.size/.pushId`; `commentBurst.size` | `commentWindowDays` | a read-only push count and the comment window slider (decisions 93, 94) |
 | `render/controls.js` | `summarizeHidden()` items | — | non-dismissible hidden banner + preset panel |
 
 ### Render — stats page

@@ -7,7 +7,8 @@ every claim here is backed either by an assertion that runs in `npm test` or by 
 render that was looked at. Where neither was possible, this document says so
 rather than implying coverage that does not exist.
 
-**377 assertions, all DOM-free**, over 13 fixtures × 3 time modes.
+**478 assertions, all DOM-free**, over 13 fixtures × 3 time modes. ⚠️ The count moves with every
+session; what does not move is that they run with no browser, no network and no database.
 
 ---
 
@@ -94,7 +95,24 @@ rather than assumed, in the two ways available — the node list feeding every t
 before and after in all three time modes, and F1, F13 and the stats page were re-rendered in
 headless Edge and compared. The links were data the renderer carried and never used.
 
-**Nothing else differs.** The strongest single piece of evidence is the ordinal
+⚠️ **"Six differences" describes the state at Task 6 and has not held since 2026-08-08.**
+This session changed what F1 draws in six further ways, every one of them mandated and
+recorded, and none of them re-compared against `screenshots/` because that baseline is
+read-only and the comparison above was already not a pixel diff:
+
+| # | Further difference | Decision |
+|---|---|---|
+| 7 | Activity labels are verbs: `opened/closed/merged` → `open/close/merge` | 89 |
+| 8 | Commit↔PR links reversed to PR → commit, so their gradients run the other way | 92 |
+| 9 | A pull request closed without merging carries a dashed ring | 81 |
+| 10 | The `?` badge on extracted links is gone — 31 of them in F1 | — |
+| 11 | Comments within a day of each other fold into one mark with a count | 93 |
+| 12 | The legend is four sections and dims what is absent; sidebar renamed *Lanes* / *Folding* | 82, 83, 90, 94 |
+
+**Anyone re-running the baseline comparison must expect these**, and the list is why the
+old "nothing else differs" line below is scoped to Task 6 rather than to today.
+
+**Nothing else differed at Task 6.** The strongest single piece of evidence is the ordinal
 axis: every tick label is exactly −1h from the baseline, at the *same count and the
 same positions* — `Mar 07 06:15 → 05:15`, `Mar 09 20:23 → 19:23`, … `Mar 19 15:08 →
 14:08`. That the tick *selection* is unchanged while only the zone moved exercises

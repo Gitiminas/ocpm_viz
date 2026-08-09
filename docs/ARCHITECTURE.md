@@ -54,6 +54,7 @@ src/
     evidence.js        validated / extracted classification
     graph.js           adjacency construction, focus BFS
     bursts.js          ✚ burst derivation from push_id
+    commentBursts.js   ✚ runs of comments close together in time (decision 93)
     commitGroups.js    ✚ commits grouped by the PR they reach
   layout/
     scales.js          the three time modes and the coordinate dispatcher
@@ -65,6 +66,7 @@ src/
     timeline.js  nodes.js  links.js  axis.js  minimap.js  tooltip.js  legend.js
     theme.js           ✚ colours, shapes, glyphs shared by every renderer
     format.js          ✚ the one place a timestamp becomes text
+    message.js         ✚ a page's message surface: why it cannot draw (decision 87)
     sidebar.js         ✚ lane / relationship / burst / actor rows and the combos
     controls.js        ✚ preset panel and the always-visible hidden-state banner
     actorCard.js       ✚ the actor profile card
