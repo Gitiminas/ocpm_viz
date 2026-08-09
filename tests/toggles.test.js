@@ -388,3 +388,25 @@ describe('presets', () => {
     assert.equal(summarizeHidden(c.state, c.ctx).anyHidden, false);
   });
 });
+
+describe('link bundling can be switched off', () => {
+  test('it is on by default — the legible view is the default, not the escape hatch', () => {
+    assert.equal(createState().bundleLinks, true);
+  });
+
+  test('it survives a preset round trip', () => {
+    const state = createState();
+    state.bundleLinks = false;
+    const restored = applyState(createState(), serializeState(state));
+    assert.equal(restored.bundleLinks, false);
+    assert.equal(applyState(createState(), { v: 2 }).bundleLinks, true, 'absent leaves the default');
+  });
+
+  test('it never reports as hidden, because it hides nothing', async () => {
+    // Bundling folds; it does not subtract. A banner saying "links hidden" would be
+    // false, and decision 27's banner is only credible while everything in it is true.
+    const c = await context('F13');
+    c.state.bundleLinks = false;
+    assert.equal(summarizeHidden(c.state, c.ctx).anyHidden, false);
+  });
+})

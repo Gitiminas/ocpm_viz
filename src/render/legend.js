@@ -140,7 +140,7 @@ export const LEGEND_SECTIONS = [
       { key: 'link-validated', label: 'validated link', swatch: stroke('stroke-width="2.4"') },
       {
         key: 'link-extracted',
-        label: 'extracted link · ? = weak evidence',
+        label: 'extracted link — weak evidence',
         color: COLORS.extracted,
         swatch: stroke('stroke-width="1.6" stroke-dasharray="4 4"'),
       },

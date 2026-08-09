@@ -72,6 +72,16 @@ export function createState() {
 
     /** Burst ids the user has unfolded. Empty means every burst is collapsed. */
     expandedBursts: new Set(),
+    /*
+     * Whether links that share an end are drawn as one trunk (decision 95).
+     *
+     * On by default: on a dense sub-log the un-bundled picture is the unreadable one, so
+     * the default should be the legible view and the toggle the escape hatch — not the
+     * other way round. It subtracts nothing, so it does not report to `summarizeHidden`:
+     * every link is drawn either way, and a banner saying "links hidden" would be false.
+     */
+    bundleLinks: true,
+
     /** Comment-burst ids the user has unfolded. */
     expandedCommentBursts: new Set(),
     /*

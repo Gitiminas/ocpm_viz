@@ -268,7 +268,8 @@ export function renderLinks({
     entries.push({ link, source, target, sourceAnchor, targetAnchor, folded, sx, sy, tx, ty });
   }
 
-  const { bundles, bundleOf } = computeBundles(entries);
+  const { bundles, bundleOf } =
+    state.bundleLinks === false ? { bundles: [], bundleOf: new Map() } : computeBundles(entries);
   const { offsets, crowded } = computeLinkOffsets(entries);
 
   /*
@@ -296,28 +297,27 @@ export function renderLinks({
       .attr('stroke-dasharray', style.dash)
       .attr('opacity', style.opacity);
 
-    const label = String(bundle.size);
-    trunk
-      .append('rect')
-      .attr('x', bundle.sharedX - 7 - label.length * 3.2)
-      .attr('y', midY - 9)
-      .attr('width', 14 + label.length * 6.4)
-      .attr('height', 18)
-      .attr('rx', 9)
-      .attr('fill', 'var(--color-bg)')
-      .attr('stroke', color)
-      .attr('stroke-width', 1.5);
+    /*
+     * The count is written **along the trunk, as words**.
+     *
+     * It was a pill with a bare number, which is exactly what a folded comment run looks
+     * like — two different things saying "N" in the same shape, a few pixels apart. Words
+     * cost more room and buy the one thing the shape could not: you can tell what the
+     * number counts without hunting for the legend.
+     */
     trunk
       .append('text')
-      .attr('x', bundle.sharedX)
+      .attr('x', bundle.sharedX + 7)
       .attr('y', midY)
-      .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
       .attr('font-size', 10)
-      .attr('font-weight', 700)
       .attr('fill', color)
       .attr('class', 'mono')
-      .text(label);
+      .attr('paint-order', 'stroke')
+      .attr('stroke', 'var(--color-bg)')
+      .attr('stroke-width', 3)
+      .attr('stroke-linejoin', 'round')
+      .text(`${bundle.size} collapsed`);
 
     tooltip.bind(
       gLink
@@ -447,31 +447,16 @@ export function renderLinks({
         .text(label);
     }
 
-    if (isExtracted && inFocus) {
-      // The badge takes the target's shade too, so two "?" markers sitting near each
-      // other are still attributable to the objects they belong to.
-      const color = objectColors.get(target.id) || qualifierColor(link.qualifier);
-      group
-        .append('circle')
-        .attr('data-legend', 'link-extracted')
-        .attr('cx', bx)
-        .attr('cy', midY)
-        .attr('r', 8)
-        .attr('fill', 'var(--color-bg)')
-        .attr('stroke', color)
-        .attr('stroke-width', 2);
-      group
-        .append('text')
-        .attr('x', bx)
-        .attr('y', midY)
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'central')
-        .attr('font-size', 10)
-        .attr('font-weight', 700)
-        .attr('fill', color)
-        .attr('class', 'mono')
-        .text('?');
-    }
+    /*
+     * There is no "?" badge any more.
+     *
+     * It marked every extracted link with a circled question mark, on top of the dashed
+     * stroke that already says the same thing. On a dense sub-log that is one extra glyph
+     * per uncertain link — dozens of them, each competing with the counts and the object
+     * glyphs for the reader's attention — to repeat a cue the line carries on its own.
+     * The dash is the uncertainty cue (decision 7); the legend names it, and the tooltip
+     * still spells it out in words.
+     */
 
     // A wide transparent path on top, so a 1.6px dashed line is still easy to hit.
     const buildSpec = () => ({

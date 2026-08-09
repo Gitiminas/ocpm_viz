@@ -449,9 +449,13 @@ describe('links that would coincide are fanned apart', () => {
       objectColors: new Map(),
     });
 
-    // One trunk, drawn once, carrying the count.
-    const labels = drawn.map((d) => d.text).filter((t) => t === String(N));
-    assert.deepEqual(labels, [String(N)], 'the trunk must declare how many links it stands for');
+    // One trunk, drawn once, carrying the count — in words, so it cannot be mistaken
+    // for the bare number a folded comment run shows.
+    const labels = drawn.map((d) => d.text).filter((t) => t === `${N} collapsed`);
+    assert.deepEqual(labels, [`${N} collapsed`], 'the trunk must say how many it stands for');
+
+    // And no question-mark badges: the dashed stroke already carries the uncertainty.
+    assert.equal(drawn.filter((d) => d.text === '?').length, 0);
 
     // And every strand is still drawn, one per commit — the count is not a substitute
     // for the links, it is a label on the half of them that coincides.
