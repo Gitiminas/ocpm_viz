@@ -40,7 +40,9 @@ export function buildNodes({
   graph,
   index,
   bursts = [],
+  commentBursts = [],
   expandedBursts = new Set(),
+  expandedCommentBursts = new Set(),
   expandedGroups = new Set(),
   mode = 'real',
   laneTypes = ['issue', 'pull_request', 'commit'],
@@ -48,10 +50,41 @@ export function buildNodes({
   const nodes = [];
 
   // ---- event nodes, for every object of a lane-bearing, non-commit type --------
+  //
+  // Comments inside a collapsed comment burst are replaced by one node standing for the
+  // run (decision 93). Folding is a display choice, so the events are still *there* —
+  // `selectVisible` and every metric count them, exactly as with a folded push.
+  const foldedComments = new Map();
+  for (const burst of commentBursts) {
+    if (expandedCommentBursts.has(burst.id)) continue;
+    for (const id of burst.eventIds) foldedComments.set(id, burst);
+  }
+  const emitted = new Set();
+
   for (const laneType of laneTypes) {
     if (laneType === 'commit') continue;
     for (const object of index.objectsOfType(laneType)) {
       for (const event of index.eventsOf(object.id)) {
+        const folded = foldedComments.get(event.id);
+        if (folded) {
+          if (emitted.has(folded.id)) continue;
+          emitted.add(folded.id);
+          nodes.push({
+            id: `n_${folded.id}`,
+            lane: laneType,
+            objectId: object.id,
+            object,
+            t: folded.time,
+            actorId: null,
+            title: `${folded.size} comments`,
+            short: `${folded.size} comments`,
+            isComment: true,
+            landmark: false,
+            isCommentBurst: true,
+            commentBurst: folded,
+          });
+          continue;
+        }
         nodes.push({
           id: `n_${event.id}`,
           lane: laneType,

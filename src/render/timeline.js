@@ -19,6 +19,7 @@
 
 import { collectInstants } from '../model/objectGraph.js';
 import { deriveBursts, indexBurstsByCommit } from '../model/bursts.js';
+import { deriveCommentBursts } from '../model/commentBursts.js';
 import { buildAdjacency, focusSet } from '../model/graph.js';
 import { deriveCommitGroups } from '../model/commitGroups.js';
 import { buildNodes, assignRanks, filterNodes } from '../layout/nodes.js';
@@ -80,12 +81,16 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   function setGraph(graph, index, actorColors) {
     const commits = index.objectsOfType('commit');
     const bursts = deriveBursts(commits, { threshold: state.burstThreshold });
+    const commentBursts = deriveCommentBursts(index, laneTypes, {
+      windowDays: state.commentWindowDays,
+    });
     context = {
       graph,
       index,
       actorColors,
       bursts,
       burstsByCommit: indexBurstsByCommit(bursts),
+      commentBursts,
       adjacency: buildAdjacency(graph.links, bursts),
       instants: collectInstants(graph),
       objectColors: assignObjectColors(index, laneTypes),
@@ -126,8 +131,8 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
   function render() {
     if (!context) return;
-    const { graph, index, bursts, burstsByCommit, adjacency, instants, actorColors, objectColors,
-      groupsByCommit } = context;
+    const { graph, index, bursts, burstsByCommit, commentBursts, adjacency, instants,
+      actorColors, objectColors, groupsByCommit } = context;
 
     const tweenFrom = pendingTween;
     pendingTween = null;
@@ -139,7 +144,9 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       graph,
       index,
       bursts,
+      commentBursts,
       expandedBursts: state.expandedBursts,
+      expandedCommentBursts: state.expandedCommentBursts,
       expandedGroups: state.expandedGroups,
       mode: state.mode,
       laneTypes,

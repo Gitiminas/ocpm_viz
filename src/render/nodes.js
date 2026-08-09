@@ -219,6 +219,7 @@ export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
  * every issue/PR glyph unexplained and unhighlightable.
  */
 export function legendKeyFor(node) {
+  if (node.isCommentBurst) return 'comment-burst';
   if (node.isBurst) return 'burst';
   if (node.isGroup) return 'fold-group';
   if (node.isComment) return 'comments';
@@ -284,6 +285,10 @@ export function renderNodes({
     }
     if (node.isBurst) {
       drawBurstNode(group, node);
+      continue;
+    }
+    if (node.isCommentBurst) {
+      drawCommentBurst(group, node, objectColors.get(node.objectId) || typeColor(node.lane));
       continue;
     }
 
@@ -448,6 +453,28 @@ function repeatTooltipSpec(node, repeat, i, actorLogin) {
       'The same commit observed again — it reached another branch. This is a sighting, ' +
       'not a new commit; the solid glyph on the row above is where it first appeared.',
   };
+}
+
+/**
+ * A folded run of comments: the lane's own shape, hollow like a single comment, sized to
+ * hold a count.
+ *
+ * Hollow because it *is* comments — the one place the comment cue belongs. It is bigger
+ * than a single comment glyph and carries a number, which is what separates "several"
+ * from "one" without inventing a shape; a commit burst is a rounded square with a count
+ * for the same reason, in its own lane's vocabulary.
+ */
+function drawCommentBurst(group, node, color) {
+  drawSymbol(group, TYPE[node.lane].shape, 11, 'var(--color-bg)', color, 2);
+  group
+    .append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'central')
+    .attr('font-size', 10)
+    .attr('font-weight', 700)
+    .attr('fill', color)
+    .attr('class', 'mono')
+    .text(node.commentBurst.size);
 }
 
 function drawGroupBadge(group, node) {
@@ -622,6 +649,24 @@ function nodeTooltipSpec(node, actorLogin) {
         ['To', formatInstant(node.groupEnd), 'time'],
       ],
       note: 'Grouped between highlighted commits to declutter the Highlights view. Click to expand.',
+    };
+  }
+
+  if (node.isCommentBurst) {
+    const burst = node.commentBurst;
+    return {
+      accent: TYPE[node.lane].color,
+      shape: TYPE[node.lane].shape,
+      kicker: `${TYPE[node.lane].label} · comments`,
+      title: `${burst.size} comments in ${formatDuration(+burst.end - +burst.time) || 'one moment'}`,
+      rows: [
+        ['From', formatInstant(burst.time), 'time'],
+        ['To', formatInstant(burst.end), 'time'],
+        ['On', escapeHtml(node.object.label)],
+      ],
+      note:
+        'Comments close together in time, folded into one mark. Click to expand. Folding ' +
+        'is a display choice — every one of them still counts in the statistics.',
     };
   }
 

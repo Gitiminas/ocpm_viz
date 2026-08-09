@@ -347,7 +347,7 @@ export function renderRelationshipRows({
 }
 
 /** The burst size threshold (decision 6) — a control, not a constant. */
-export function renderBurstControls({ container, state, bursts, onChange }) {
+export function renderBurstControls({ container, state, bursts, commentBursts = [], onChange }) {
   container.innerHTML = '';
 
   const wrap = document.createElement('div');
@@ -375,6 +375,41 @@ export function renderBurstControls({ container, state, bursts, onChange }) {
   slider.addEventListener('change', () => onChange());
 
   wrap.append(label, slider);
+
+  /*
+   * The comment window, in days.
+   *
+   * A slider rather than a constant because there is no `push_id` for comments — nothing
+   * in the data says which of them belong together, so the reader decides what "close
+   * together" means and watches the count change (decision 93). Days, because that is the
+   * scale a conversation happens on; the defect this answers is an issue whose twenty
+   * comments stacked the lane taller than the screen.
+   */
+  const commentLabel = document.createElement('div');
+  commentLabel.className = 'mono';
+  commentLabel.style.cssText =
+    'font-size:11px;color:var(--color-neutral-400);display:flex;justify-content:space-between;margin-top:10px';
+  const commentValue = () =>
+    `Fold comments within <span style="color:var(--color-text)">${state.commentWindowDays}</span> day${state.commentWindowDays === 1 ? '' : 's'}`;
+  commentLabel.innerHTML =
+    `<span>${commentValue()}</span><span style="color:var(--color-neutral-600)">` +
+    `${commentBursts.length} folded</span>`;
+
+  const commentSlider = document.createElement('input');
+  commentSlider.type = 'range';
+  commentSlider.min = '0';
+  commentSlider.max = '30';
+  commentSlider.value = String(state.commentWindowDays);
+  commentSlider.style.cssText = 'width:100%;accent-color:var(--color-accent);cursor:pointer';
+  commentSlider.addEventListener('input', () => {
+    state.commentWindowDays = Number(commentSlider.value);
+    commentLabel.querySelector('span').innerHTML = commentValue();
+  });
+  // 0 days means "only comments sharing an instant", which is the honest way to switch
+  // the folding off without a second control that can disagree with the slider.
+  commentSlider.addEventListener('change', () => onChange());
+
+  wrap.append(commentLabel, commentSlider);
 
   if (bursts.length) {
     const list = document.createElement('div');

@@ -101,6 +101,15 @@ export const LEGEND_SECTIONS = [
         // Hollow is the comment's own cue, which is why an abandoned pull request and a
         // repeat commit observation had to find other devices (decisions 78, 81).
       },
+      {
+        key: 'comment-burst',
+        label: 'comments folded together',
+        swatch:
+          '<svg width="16" height="16" viewBox="-8 -8 16 16"><circle cx="0" cy="0" r="6.5" ' +
+          'fill="var(--color-bg)" stroke="var(--color-neutral-400)" stroke-width="2"/>' +
+          '<text x="0" y="0.5" text-anchor="middle" dominant-baseline="central" font-size="7" ' +
+          'font-family="monospace" fill="var(--color-neutral-400)">N</text></svg>',
+      },
       { key: 'landmark', label: 'merged · issue closed', swatch: ring(false) },
       { key: 'closed-unmerged', label: 'closed, not merged', swatch: ring(true) },
       {

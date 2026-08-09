@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
 import { indexObjectGraph, normalizeGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
+import { deriveCommentBursts } from '../src/model/commentBursts.js';
 import { isUnmergedClose } from '../src/model/activities.js';
 import { actorPoints } from '../src/render/nodes.js';
 import { buildNodes, assignRanks, filterNodes } from '../src/layout/nodes.js';
@@ -503,5 +504,78 @@ describe('hovering an actor previews the same trail clicking would pin', () => {
     assert.deepEqual([...hovered.actors], [...pinned.actors]);
     assert.deepEqual(actorPoints(nodes, [...hovered.actors][0]), actorPoints(nodes, actorId));
     assert.ok(actorPoints(nodes, actorId).length > 0, 'the trail must have points');
+  });
+});
+
+describe('comments close together in time fold into one mark', () => {
+  const at = (h) => new Date(Date.UTC(2025, 0, 1, h)).toISOString();
+  const build = async (windowDays, expanded = new Set()) => {
+    const graph = normalizeGraph({
+      meta: { repo: 'r', seed: [{ id: 'issue:1', type: 'issue' }] },
+      objects: [
+        { id: 'actor:a', type: 'actor', label: '@a', repo: 'r', vmap: { login: 'a' }, intervals: [] },
+        { id: 'issue:1', type: 'issue', label: '#1', repo: 'r',
+          intervals: [{ start: at(0), end: at(400) }] },
+      ],
+      events: [
+        { id: 'e0', activity: 'IssueOpened', time: at(0), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: false },
+        // three within an hour of each other, then one a fortnight later
+        { id: 'c1', activity: 'IssueCommented', time: at(1), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: true },
+        { id: 'c2', activity: 'IssueCommented', time: at(2), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: true },
+        { id: 'c3', activity: 'IssueCommented', time: at(3), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: true },
+        { id: 'c4', activity: 'IssueCommented', time: at(400), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: true },
+      ],
+      links: [],
+    });
+    const index = indexObjectGraph(graph);
+    const commentBursts = deriveCommentBursts(index, ['issue', 'pull_request'], { windowDays });
+    const nodes = buildNodes({
+      graph, index, bursts: [], commentBursts, expandedCommentBursts: expanded,
+    });
+    return { graph, index, commentBursts, nodes };
+  };
+
+  test('a run inside the window folds; a distant comment does not', async () => {
+    const { commentBursts } = await build(1);
+    assert.equal(commentBursts.length, 1, 'the three close comments are one burst');
+    assert.equal(commentBursts[0].size, 3);
+    assert.deepEqual(commentBursts[0].eventIds, ['c1', 'c2', 'c3']);
+  });
+
+  test('the folded run draws one node, and the lone comment keeps its own', async () => {
+    const { nodes } = await build(1);
+    const comments = nodes.filter((n) => n.isComment);
+    assert.equal(comments.length, 2, 'one burst mark plus one unfolded comment');
+    assert.equal(comments.filter((n) => n.isCommentBurst).length, 1);
+    assert.equal(comments.find((n) => n.isCommentBurst).commentBurst.size, 3);
+  });
+
+  test('a wider window swallows the distant comment too', async () => {
+    const { commentBursts } = await build(30);
+    assert.equal(commentBursts.length, 1);
+    assert.equal(commentBursts[0].size, 4, 'all four now read as one exchange');
+  });
+
+  test('a zero window folds nothing that is not simultaneous', async () => {
+    const { commentBursts, nodes } = await build(0);
+    assert.equal(commentBursts.length, 0);
+    assert.equal(nodes.filter((n) => n.isComment).length, 4, 'every comment drawn');
+  });
+
+  test('expanding one restores its comments individually', async () => {
+    const { commentBursts } = await build(1);
+    const { nodes } = await build(1, new Set([commentBursts[0].id]));
+    assert.equal(nodes.filter((n) => n.isCommentBurst).length, 0);
+    assert.equal(nodes.filter((n) => n.isComment).length, 4);
+  });
+
+  test('a run of one is a comment, never a burst', async () => {
+    const { commentBursts } = await build(1);
+    assert.ok(commentBursts.every((b) => b.size >= 2), 'a burst of one explains nothing');
+  });
+
+  test('folding is a display choice — the events are all still there', async () => {
+    const { graph } = await build(1);
+    assert.equal(graph.events.filter((e) => e.comment).length, 4);
   });
 });

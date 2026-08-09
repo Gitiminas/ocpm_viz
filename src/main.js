@@ -27,6 +27,7 @@ import {
 } from './state/state.js';
 import { deriveCommitGroups } from './model/commitGroups.js';
 import { deriveBursts } from './model/bursts.js';
+import { deriveCommentBursts } from './model/commentBursts.js';
 import { applyState, decodePreset } from './state/presets.js';
 import { renderHiddenBanner, renderPresetPanel } from './render/controls.js';
 import { actorColor } from './render/theme.js';
@@ -145,6 +146,12 @@ const timeline = createTimeline({
         timeline.captureTween();
         state.expandedBursts.add(node.burst.id);
         timeline.render();
+        return;
+      }
+      if (node.isCommentBurst) {
+        timeline.captureTween();
+        state.expandedCommentBursts.add(node.commentBurst.id);
+        redraw();
         return;
       }
       if (node.isGroup) {
@@ -290,6 +297,7 @@ function renderSidebar() {
     container: elements.bursts,
     state,
     bursts: deriveBursts(index.objectsOfType('commit'), { threshold: state.burstThreshold }),
+    commentBursts: deriveCommentBursts(index, LANE_TYPES, { windowDays: state.commentWindowDays }),
     // The threshold changes which pushes are bursts at all, so the graph context
     // has to be rebuilt, not merely redrawn.
     onChange: () => {
