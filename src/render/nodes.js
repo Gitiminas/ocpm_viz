@@ -610,6 +610,103 @@ export function renderBurstHandles({ gNode, bursts, state, geometry, anchors, to
   }
 }
 
+/**
+ * Where an unfolded comment run sits, so it can be folded back.
+ *
+ * Pure: it takes positioned nodes and returns the span each expanded run occupies. Split
+ * out because "which runs are open and where" is arithmetic that should be checkable
+ * without drawing — the handle it feeds is the only way back once a run is open, and a
+ * run whose extent is computed wrong is a control the reader cannot find.
+ */
+export function expandedCommentRuns(nodes, commentBursts, expanded) {
+  const runs = [];
+  for (const burst of commentBursts) {
+    if (!expanded.has(burst.id)) continue;
+    const ids = new Set(burst.eventIds);
+    const members = nodes.filter((node) => node.event && ids.has(node.event.id));
+    if (!members.length) continue;
+    runs.push({
+      burst,
+      minX: Math.min(...members.map((node) => node.x)),
+      maxX: Math.max(...members.map((node) => node.x)),
+      y: Math.min(...members.map((node) => node.y)),
+      size: members.length,
+    });
+  }
+  return runs;
+}
+
+/**
+ * The fold-back control for an unfolded comment run.
+ *
+ * Mirrors `renderBurstHandles`, and for the same reason: expanding is one click and
+ * collapsing has to be one too. Without it the only way back was reloading the sub-log,
+ * which throws away every other toggle the reader had set.
+ */
+export function renderCommentBurstHandles({
+  gNode,
+  nodes,
+  commentBursts,
+  state,
+  tooltip,
+  handlers,
+}) {
+  for (const run of expandedCommentRuns(nodes, commentBursts, state.expandedCommentBursts)) {
+    const color = typeColor(run.burst.lane);
+    const y = run.y - 22;
+
+    gNode
+      .append('path')
+      .attr('d', `M${run.minX},${y + 10} L${run.minX},${run.y} M${run.minX},${y + 10} L${run.maxX},${y + 10} L${run.maxX},${run.y}`)
+      .attr('fill', 'none')
+      .attr('stroke', color)
+      .attr('stroke-width', 1.5)
+      .attr('stroke-dasharray', '3 3')
+      .attr('opacity', 0.55);
+
+    const handle = gNode
+      .append('g')
+      .attr('data-legend', 'comment-burst')
+      .attr('transform', `translate(${(run.minX + run.maxX) / 2},${y})`)
+      .style('cursor', 'pointer')
+      .on('click', (event) => {
+        event.stopPropagation();
+        handlers.onCollapseCommentBurst(run.burst);
+      });
+
+    tooltip.bind(handle, () => ({
+      accent: color,
+      shape: TYPE[run.burst.lane].shape,
+      kicker: `${TYPE[run.burst.lane].label} · comments`,
+      title: `Fold ${run.burst.size} comments back`,
+      rows: [
+        ['From', formatInstant(run.burst.time), 'time'],
+        ['To', formatInstant(run.burst.end), 'time'],
+      ],
+      note: 'Click to fold this run back into one mark.',
+    }));
+
+    handle
+      .append('rect')
+      .attr('x', -15)
+      .attr('y', -10)
+      .attr('width', 30)
+      .attr('height', 20)
+      .attr('rx', 6)
+      .attr('fill', 'var(--color-neutral-900)')
+      .attr('stroke', color)
+      .attr('stroke-width', 1.5);
+    handle
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('font-size', 16)
+      .attr('font-weight', 700)
+      .attr('fill', color)
+      .text('\u2212');
+  }
+}
+
 /** Dashed bounding boxes around expanded highlight groups. */
 export function renderGroupBoxes({ gBG, nodes }) {
   const boxes = new Map();

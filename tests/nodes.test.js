@@ -7,7 +7,7 @@ import { indexObjectGraph, normalizeGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { deriveCommentBursts } from '../src/model/commentBursts.js';
 import { isUnmergedClose } from '../src/model/activities.js';
-import { actorPoints } from '../src/render/nodes.js';
+import { actorPoints, expandedCommentRuns } from '../src/render/nodes.js';
 import { buildNodes, assignRanks, filterNodes } from '../src/layout/nodes.js';
 import { packRows } from '../src/layout/packing.js';
 import {
@@ -577,5 +577,57 @@ describe('comments close together in time fold into one mark', () => {
   test('folding is a display choice — the events are all still there', async () => {
     const { graph } = await build(1);
     assert.equal(graph.events.filter((e) => e.comment).length, 4);
+  });
+});
+
+describe('an unfolded comment run can be folded back', () => {
+  const at = (h) => new Date(Date.UTC(2025, 0, 1, h)).toISOString();
+  const setup = async (expanded) => {
+    const graph = normalizeGraph({
+      meta: { repo: 'r', seed: [{ id: 'issue:1', type: 'issue' }] },
+      objects: [
+        { id: 'actor:a', type: 'actor', label: '@a', repo: 'r', vmap: { login: 'a' }, intervals: [] },
+        { id: 'issue:1', type: 'issue', label: '#1', repo: 'r', intervals: [{ start: at(0), end: at(9) }] },
+      ],
+      events: [
+        { id: 'e0', activity: 'IssueOpened', time: at(0), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: false },
+        ...[1, 2, 3].map((h) => ({
+          id: `c${h}`, activity: 'IssueCommented', time: at(h), object_id: 'issue:1',
+          actor_id: 'actor:a', repo: 'r', comment: true,
+        })),
+      ],
+      links: [],
+    });
+    const index = indexObjectGraph(graph);
+    const commentBursts = deriveCommentBursts(index, ['issue', 'pull_request'], { windowDays: 1 });
+    const nodes = buildNodes({ graph, index, bursts: [], commentBursts, expandedCommentBursts: expanded });
+    nodes.forEach((n, i) => { n.x = i * 50; n.y = 40; });
+    return { commentBursts, nodes };
+  };
+
+  test('a folded run offers no handle — there is nothing to fold back', async () => {
+    const { commentBursts, nodes } = await setup(new Set());
+    assert.deepEqual(expandedCommentRuns(nodes, commentBursts, new Set()), []);
+  });
+
+  test('an unfolded run reports the span its handle must cover', async () => {
+    const { commentBursts, nodes } = await setup(new Set());
+    const expanded = new Set([commentBursts[0].id]);
+    const open = await setup(expanded);
+    const runs = expandedCommentRuns(open.nodes, open.commentBursts, expanded);
+
+    assert.equal(runs.length, 1, 'the open run must be findable, or it cannot be closed');
+    assert.equal(runs[0].size, 3, 'every comment of the run counts toward its extent');
+    assert.ok(runs[0].maxX > runs[0].minX, 'the span must cover the run, not a point');
+    assert.equal(runs[0].burst.id, commentBursts[0].id);
+    void nodes;
+  });
+
+  test('a run whose comments are not drawn yields no handle, rather than a broken one', async () => {
+    // Hiding comments removes the nodes; a handle floating over nothing would be worse
+    // than no handle at all.
+    const { commentBursts } = await setup(new Set());
+    const runs = expandedCommentRuns([], commentBursts, new Set([commentBursts[0].id]));
+    assert.deepEqual(runs, []);
   });
 });

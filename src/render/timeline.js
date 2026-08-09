@@ -35,6 +35,7 @@ import {
   renderSequenceLines,
   renderActorTrails,
   renderBurstHandles,
+  renderCommentBurstHandles,
   renderGroupBoxes,
 } from './nodes.js';
 import { TYPE, drawSymbol, typeColor, objectShade } from './theme.js';
@@ -307,6 +308,14 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       handlers,
       objectColors,
       actorLogin: (id) => index.byId.get(id)?.vmap?.login ?? id,
+    });
+    renderCommentBurstHandles({
+      gNode: layers.node,
+      nodes,
+      commentBursts,
+      state,
+      tooltip,
+      handlers,
     });
     renderBurstHandles({
       gNode: layers.node,

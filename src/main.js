@@ -175,6 +175,12 @@ const timeline = createTimeline({
       timeline.render();
     },
 
+    onCollapseCommentBurst(burst) {
+      timeline.captureTween();
+      state.expandedCommentBursts.delete(burst.id);
+      redraw();
+    },
+
     onCollapseBurst(burst) {
       timeline.captureTween();
       state.expandedBursts.delete(burst.id);
