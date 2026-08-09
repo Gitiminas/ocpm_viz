@@ -72,13 +72,14 @@ export const LINK_METHOD = {
   /**
    * PR head ref matched against the push ref. A branch-naming convention.
    *
-   * ⚠️ **Narrowed in the data layer, not here** (decision 61, `sql/fe_layer.sql` §5).
+   * ⚠️ **Narrowed in the data layer, not here** (decision 80, `sql/fe_layer.sql` §5.0b).
    * Upstream this admits any commit pushed to the PR's head branch while the PR was open
    * — which is the right question, because GH Archive's PR payload never lists a PR's
    * commits, so for most of them this is the *only* evidence there is. But merging
    * `master` into a long-lived branch re-enumerates every incoming trunk commit in that
    * push, and all of them get attributed to the PR: vscode PR #116416 came out at 217
-   * such commits, of which 179 were already on master and 34 were the branch's own work.
+   * such commits, of which only 36 were born on its own branch. (The old "179 on master
+   * / 34 genuine" split was computed time-blind and is wrong — decisions 65 and 80.)
    *
    * The layer therefore admits `ref_match` only where the commit was *first introduced*
    * on a non-default branch. Nothing changes for this module — the value stays in the
