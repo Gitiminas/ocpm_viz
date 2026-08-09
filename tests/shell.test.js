@@ -59,7 +59,7 @@ describe('the app shell keeps its load-bearing order', () => {
     // discovering that one click already did it — and then overwrites that work.
     const html = await shell();
     const at = (label) => html.indexOf(`>${label}</span>`);
-    const order = ['Views', 'Lanes', 'Relationships', 'Bursts', 'Actors', 'Legend'];
+    const order = ['Views', 'Lanes', 'Relationships', 'Folding', 'Actors', 'Legend'];
     const positions = order.map(at);
     assert.ok(positions.every((p) => p > 0), `a sidebar section is missing: ${order}`);
     assert.deepEqual(

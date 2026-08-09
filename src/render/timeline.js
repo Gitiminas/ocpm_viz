@@ -81,7 +81,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   /** Swap in a new sub-log. Everything derived from the graph is rebuilt here. */
   function setGraph(graph, index, actorColors) {
     const commits = index.objectsOfType('commit');
-    const bursts = deriveBursts(commits, { threshold: state.burstThreshold });
+    const bursts = deriveBursts(commits);
     const commentBursts = deriveCommentBursts(index, laneTypes, {
       windowDays: state.commentWindowDays,
     });

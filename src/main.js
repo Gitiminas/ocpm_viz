@@ -302,7 +302,7 @@ function renderSidebar() {
   renderBurstControls({
     container: elements.bursts,
     state,
-    bursts: deriveBursts(index.objectsOfType('commit'), { threshold: state.burstThreshold }),
+    bursts: deriveBursts(index.objectsOfType('commit')),
     commentBursts: deriveCommentBursts(index, LANE_TYPES, { windowDays: state.commentWindowDays }),
     // The threshold changes which pushes are bursts at all, so the graph context
     // has to be rebuilt, not merely redrawn.

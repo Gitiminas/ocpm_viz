@@ -44,7 +44,6 @@ export function serializeState(state) {
     relPairs: { ...state.relPairs },
     qualifiers: { ...state.qualifiers },
     methods: { ...state.methods },
-    burstThreshold: state.burstThreshold,
   };
 }
 
@@ -59,7 +58,9 @@ export function applyState(state, snapshot) {
   if (!snapshot || typeof snapshot !== 'object') return state;
 
   if (snapshot.mode) state.mode = snapshot.mode;
-  if (snapshot.burstThreshold != null) state.burstThreshold = snapshot.burstThreshold;
+  // `burstThreshold` was dropped in decision 94 — pushes fold by push_id, always. An
+  // older snapshot may still carry it; ignoring it is right, and saying so here is what
+  // stops the next reader hunting for the field it sets.
 
   /*
    * ⚠️ **`tracks` is read as well as `lanes`, and must stay readable.**

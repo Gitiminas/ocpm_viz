@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 import { loadObjectGraph, describeSubLog } from '../src/data/loadObjectGraph.js';
 import { indexObjectGraph, findGraphProblems, collectInstants } from '../src/model/objectGraph.js';
-import { deriveBursts, indexBurstsByCommit, DEFAULT_BURST_THRESHOLD } from '../src/model/bursts.js';
+import { deriveBursts, indexBurstsByCommit, MIN_BURST } from '../src/model/bursts.js';
 import { buildAdjacency, focusSet, MAX_FOCUS_DEGREE } from '../src/model/graph.js';
 import { classifyMethod, classifyLink, LINK_METHOD, EVIDENCE } from '../src/model/evidence.js';
 import {
@@ -300,14 +300,15 @@ describe('burst derivation replaces the hardcoded burst', () => {
     assert.equal(burst.time.toISOString(), '2025-03-10T18:32:11.000Z');
   });
 
-  test('the threshold decides how many bursts there are, including zero', async () => {
-    const graph = await loadF1();
-    const commits = commitsOf(graph);
-    assert.equal(deriveBursts(commits, { threshold: 100 }).length, 0);
-    // Every push in F1 has either 20 commits or 1, so dropping the threshold to 0
-    // makes all 13 pushes bursts.
-    assert.equal(deriveBursts(commits, { threshold: 0 }).length, 13);
-    assert.equal(DEFAULT_BURST_THRESHOLD, 5);
+  test('a push of more than one commit is a burst, and a lone commit is not', async () => {
+    // There is no size threshold any more (decision 94): push_id decides what a burst is,
+    // and it is a fact in the data rather than a preference. Every push in F1 carries
+    // either 20 commits or 1, so exactly the 20-commit push folds.
+    const commits = commitsOf(await loadF1());
+    const bursts = deriveBursts(commits);
+    assert.equal(bursts.length, 1);
+    assert.equal(bursts[0].size, 20);
+    assert.equal(MIN_BURST, 2);
   });
 
   test('commits without a push_id are never burst members', () => {

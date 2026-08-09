@@ -353,42 +353,37 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
   const wrap = document.createElement('div');
   wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:2px 8px';
 
-  const label = document.createElement('div');
-  label.className = 'mono';
-  label.style.cssText = 'font-size:11px;color:var(--color-neutral-400);display:flex;justify-content:space-between';
-  const value = () =>
-    `Collapse pushes over <span style="color:var(--color-text)">${state.burstThreshold}</span>`;
-  label.innerHTML = `<span>${value()}</span><span style="color:var(--color-neutral-600)">${bursts.length} burst${bursts.length === 1 ? '' : 's'}</span>`;
-
-  const slider = document.createElement('input');
-  slider.type = 'range';
-  slider.min = '1';
-  slider.max = '50';
-  slider.value = String(state.burstThreshold);
-  slider.style.cssText = 'width:100%;accent-color:var(--color-accent);cursor:pointer';
-  slider.addEventListener('input', () => {
-    state.burstThreshold = Number(slider.value);
-    label.querySelector('span').innerHTML = value();
-  });
-  // Re-derive on release rather than on every pixel: changing the threshold
-  // rebuilds every burst and the adjacency that depends on them.
-  slider.addEventListener('change', () => onChange());
-
-  wrap.append(label, slider);
+  /*
+   * Pushes fold by `push_id` and that is the whole rule (decision 94), so this states the
+   * outcome rather than offering a control.
+   *
+   * There used to be a size slider and a checkbox per burst here. The slider never chose
+   * what a burst *is* — `push_id` does, and it is a fact in the data — only how big one
+   * had to be before the tool bothered, which is a preference dressed as a finding. The
+   * checkboxes duplicated a click that already exists on the burst itself, and on a
+   * sub-log with many pushes the list was longer than everything else in the sidebar.
+   */
+  const pushes = document.createElement('div');
+  pushes.className = 'mono';
+  pushes.style.cssText = 'font-size:11px;color:var(--color-neutral-400);line-height:1.5';
+  pushes.innerHTML =
+    `Pushes fold by <span style="color:var(--color-text)">push id</span>` +
+    `<div style="color:var(--color-neutral-600);font-size:10px;margin-top:2px">` +
+    `${bursts.length} folded · click one to expand, and the handle above it to fold back</div>`;
+  wrap.appendChild(pushes);
 
   /*
    * The comment window, in days.
    *
-   * A slider rather than a constant because there is no `push_id` for comments — nothing
-   * in the data says which of them belong together, so the reader decides what "close
-   * together" means and watches the count change (decision 93). Days, because that is the
-   * scale a conversation happens on; the defect this answers is an issue whose twenty
-   * comments stacked the lane taller than the screen.
+   * A slider precisely because comments have no `push_id` — nothing in the data says
+   * which of them belong together, so the reader decides what "close together" means and
+   * watches the count change (decision 93). That is the difference between this control
+   * and the one that used to sit above it.
    */
   const commentLabel = document.createElement('div');
   commentLabel.className = 'mono';
   commentLabel.style.cssText =
-    'font-size:11px;color:var(--color-neutral-400);display:flex;justify-content:space-between;margin-top:10px';
+    'font-size:11px;color:var(--color-neutral-400);display:flex;justify-content:space-between;margin-top:12px';
   const commentValue = () =>
     `Fold comments within <span style="color:var(--color-text)">${state.commentWindowDays}</span> day${state.commentWindowDays === 1 ? '' : 's'}`;
   commentLabel.innerHTML =
@@ -410,25 +405,6 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
   commentSlider.addEventListener('change', () => onChange());
 
   wrap.append(commentLabel, commentSlider);
-
-  if (bursts.length) {
-    const list = document.createElement('div');
-    list.style.cssText = 'display:flex;flex-direction:column;gap:2px;margin-top:4px';
-    for (const burst of bursts) {
-      const { row } = subRow({
-        label: `${burst.size} commits · push ${burst.pushId}`,
-        checked: !state.expandedBursts.has(burst.id),
-        onChange: (checked) => {
-          if (checked) state.expandedBursts.delete(burst.id);
-          else state.expandedBursts.add(burst.id);
-          onChange();
-        },
-      });
-      list.appendChild(row);
-    }
-    wrap.append(sectionLabel('collapsed'), list);
-  }
-
   container.appendChild(wrap);
 }
 

@@ -15,7 +15,6 @@
  * is testable without drawing anything.
  */
 
-import { DEFAULT_BURST_THRESHOLD } from '../model/bursts.js';
 import { DEFAULT_COMMENT_WINDOW_DAYS } from '../model/commentBursts.js';
 import { EVIDENCE, ISSUE_PR_METHODS } from '../model/evidence.js';
 import { isCommitInVisibleGroup } from '../model/commitGroups.js';
@@ -85,8 +84,6 @@ export function createState() {
     commentWindowDays: DEFAULT_COMMENT_WINDOW_DAYS,
     /** Highlight-mode group keys the user has unfolded. */
     expandedGroups: new Set(),
-    /** Collapse a push above this many commits (decision 6). */
-    burstThreshold: DEFAULT_BURST_THRESHOLD,
   };
 }
 
