@@ -405,28 +405,6 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
   commentSlider.addEventListener('change', () => onChange());
 
   wrap.append(commentLabel, commentSlider);
-
-  /*
-   * Link bundling, on or off.
-   *
-   * It belongs here rather than under Relationships because it folds rather than filters —
-   * nothing is subtracted, so it is the same kind of control as the two above it.
-   */
-  const bundleRow = document.createElement('label');
-  bundleRow.className = 'sideRow';
-  bundleRow.style.cssText =
-    'display:flex;align-items:center;gap:8px;padding:6px 0;margin-top:12px;cursor:pointer';
-  bundleRow.innerHTML =
-    `<input type="checkbox"${state.bundleLinks === false ? '' : ' checked'} style="${CHECKBOX}">` +
-    '<span class="mono" style="font-size:11px;color:var(--color-neutral-400);flex:1">' +
-    'Collapse links sharing an end</span>';
-  const bundleBox = bundleRow.querySelector('input');
-  bundleBox.addEventListener('change', () => {
-    state.bundleLinks = bundleBox.checked;
-    onChange();
-  });
-  wrap.appendChild(bundleRow);
-
   container.appendChild(wrap);
 }
 

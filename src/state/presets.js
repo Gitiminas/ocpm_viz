@@ -37,7 +37,6 @@ export function serializeState(state) {
   return {
     v: SNAPSHOT_VERSION,
     mode: state.mode,
-    bundleLinks: state.bundleLinks,
     lanes: { ...state.lanes },
     showComments: { ...state.showComments },
     hiddenObjects: [...state.hiddenObjects],
@@ -59,7 +58,6 @@ export function applyState(state, snapshot) {
   if (!snapshot || typeof snapshot !== 'object') return state;
 
   if (snapshot.mode) state.mode = snapshot.mode;
-  if (typeof snapshot.bundleLinks === 'boolean') state.bundleLinks = snapshot.bundleLinks;
   // `burstThreshold` was dropped in decision 94 — pushes fold by push_id, always. An
   // older snapshot may still carry it; ignoring it is right, and saying so here is what
   // stops the next reader hunting for the field it sets.

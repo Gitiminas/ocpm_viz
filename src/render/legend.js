@@ -145,15 +145,6 @@ export const LEGEND_SECTIONS = [
         swatch: stroke('stroke-width="1.6" stroke-dasharray="4 4"'),
       },
       {
-        key: 'link-bundle',
-        label: 'N links sharing one end',
-        swatch:
-          '<svg width="24" height="16" viewBox="-12 -8 24 16"><path d="M0,-7 L0,0" ' +
-          'stroke="var(--color-neutral-400)" stroke-width="2.2" fill="none"/>' +
-          '<path d="M0,0 L-8,7 M0,0 L0,7 M0,0 L8,7" stroke="var(--color-neutral-400)" ' +
-          'stroke-width="1.4" fill="none"/></svg>',
-      },
-      {
         key: 'link-crowded',
         label: 'more links than can be fanned',
         swatch:

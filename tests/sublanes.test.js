@@ -17,7 +17,7 @@ import {
   deriveQualifiers,
   deriveMethods,
 } from '../src/state/state.js';
-import { renderLinks, computeBundles } from '../src/render/links.js';
+import { renderLinks } from '../src/render/links.js';
 
 /**
  * A stand-in for a d3 selection that records the attributes written to it.
@@ -403,16 +403,13 @@ describe('links that would coincide are fanned apart', () => {
   });
 
 
-  test('many links sharing one end become one trunk that declares its size', async () => {
+  test('a bundle too crowded to fan is drawn coincident and declares its size', async () => {
     /*
      * The defect this pins: PR #116416 contains 85 commits pushed in the same hour, so
-     * 85 links leave one pull request. Fanned at 5px each that smears the shared endpoint
+     * 85 links land in one bundle. Fanned at 5px each that smears the shared endpoint
      * across 425px, and the lane caption then says one pull request while the picture
-     * shows a wall of arrival points.
-     *
-     * Decision 68 answered that by drawing them coincident with a `×N` badge. Bundling
-     * answers it better: the shared half is one trunk carrying the count, and each strand
-     * still lands on its own commit — so the count is declared *and* nothing is lost.
+     * shows a wall of arrival points. Past MAX_FANNED_LINKS the bundle collapses to one
+     * visible line carrying a count.
      */
     const N = 20;
     const objects = [
@@ -449,18 +446,13 @@ describe('links that would coincide are fanned apart', () => {
       objectColors: new Map(),
     });
 
-    // One trunk, drawn once, carrying the count — in words, so it cannot be mistaken
-    // for the bare number a folded comment run shows.
-    const labels = drawn.map((d) => d.text).filter((t) => t === `${N} collapsed`);
-    assert.deepEqual(labels, [`${N} collapsed`], 'the trunk must say how many it stands for');
+    const startXs = new Set(
+      drawn.filter((d) => d.attrs.d).map((d) => d.attrs.d.match(/^M([-\d.]+),/)[1]),
+    );
+    assert.equal(startXs.size, 1, `${N} coincident links must not be spread across ${startXs.size} positions`);
 
-    // And no question-mark badges: the dashed stroke already carries the uncertainty.
-    assert.equal(drawn.filter((d) => d.text === '?').length, 0);
-
-    // And every strand is still drawn, one per commit — the count is not a substitute
-    // for the links, it is a label on the half of them that coincides.
-    const paths = drawn.filter((d) => d.attrs.d && d.attrs.d.includes('C')).length;
-    assert.ok(paths >= N, `${paths} strands drawn for ${N} links`);
+    const labels = drawn.map((d) => d.text).filter((t) => typeof t === 'string' && t.startsWith('×'));
+    assert.deepEqual(labels, [`×${N}`], 'the bundle must declare how many links it stands for');
   });
 
   test('links that already diverge are left where they are', async () => {
@@ -609,80 +601,5 @@ describe('layout invariants across all fixtures and modes', () => {
     assert.equal(issue.intervals.length, 2, 'two bars');
     // One object, so one band — the reopen must not split it into two rows.
     assert.equal(objectRow.get(issue.id), 0);
-  });
-});
-
-describe('links that share an end are bundled into one trunk', () => {
-  const entry = (id, src, tgt, { evidence = 'extracted', qualifier = 'resolves', sx, sy, tx, ty }) => ({
-    link: { source: src, target: tgt, evidence, qualifier, id },
-    source: { id: src, type: src.split(':')[0] === 'pr' ? 'pull_request' : 'commit', label: src },
-    target: { id: tgt, type: tgt.split(':')[0] === 'issue' ? 'issue' : 'commit', label: tgt },
-    sourceAnchor: { id: src }, targetAnchor: { id: tgt },
-    sx, sy, tx, ty,
-  });
-
-  test('several links converging on one object bundle from the target end', () => {
-    // kubernetes issue #47532: seven pull requests resolve one issue. A source-only rule
-    // would bundle nothing here, which is what the real sub-log looks like.
-    const entries = [1, 2, 3].map((i) =>
-      entry(`l${i}`, `pr:${i}`, 'issue:1', { sx: i * 100, sy: 300, tx: 50, ty: 100 }),
-    );
-    const { bundles, bundleOf } = computeBundles(entries);
-    assert.equal(bundles.length, 1);
-    assert.equal(bundles[0].size, 3);
-    assert.equal(bundles[0].sharedIsSource, false, 'the shared end is the issue');
-    for (const e of entries) assert.ok(bundleOf.has(e.link));
-  });
-
-  test('several links diverging from one object bundle from the source end', () => {
-    const entries = [1, 2, 3].map((i) =>
-      entry(`l${i}`, 'pr:1', `commit:${i}`, { qualifier: 'contains_commit', sx: 50, sy: 100, tx: i * 100, ty: 300 }),
-    );
-    const { bundles } = computeBundles(entries);
-    assert.equal(bundles.length, 1);
-    assert.equal(bundles[0].sharedIsSource, true);
-  });
-
-  test('validated and extracted never share a trunk', () => {
-    // F5's shape. Merging these would erase the distinction the tool exists to show, so
-    // they stay two links — and the fan, not bundling, is what keeps them apart.
-    const entries = [
-      entry('a', 'pr:40', 'commit:x', { evidence: 'validated', qualifier: 'contains_commit', sx: 50, sy: 100, tx: 200, ty: 300 }),
-      entry('b', 'pr:41', 'commit:x', { evidence: 'extracted', qualifier: 'contains_commit', sx: 80, sy: 140, tx: 200, ty: 300 }),
-    ];
-    assert.equal(computeBundles(entries).bundles.length, 0);
-  });
-
-  test('two qualifiers on the same pair never share a trunk', () => {
-    // merge_commit is the commit that closed the PR; folding it into contains_commit
-    // would hide which one it is.
-    const entries = [
-      entry('a', 'pr:1', 'commit:x', { qualifier: 'contains_commit', sx: 50, sy: 100, tx: 200, ty: 300 }),
-      entry('b', 'pr:1', 'commit:y', { qualifier: 'merge_commit', sx: 50, sy: 100, tx: 250, ty: 300 }),
-    ];
-    assert.equal(computeBundles(entries).bundles.length, 0);
-  });
-
-  test('a lone link is never a bundle', () => {
-    const entries = [entry('a', 'pr:1', 'issue:1', { sx: 50, sy: 100, tx: 200, ty: 300 })];
-    assert.equal(computeBundles(entries).bundles.length, 0);
-  });
-
-  test('the trunk stops short of the peers, so the split happens near them', () => {
-    const entries = [1, 2].map((i) =>
-      entry(`l${i}`, 'pr:1', `commit:${i}`, { qualifier: 'contains_commit', sx: 50, sy: 100, tx: i * 100, ty: 300 }),
-    );
-    const [bundle] = computeBundles(entries).bundles;
-    assert.ok(bundle.splitY > bundle.sharedY, 'the trunk runs toward the peers');
-    assert.ok(bundle.splitY < 300, 'and stops before reaching them, or there is no split');
-    assert.ok(bundle.splitY > (100 + 300) / 2, 'the split belongs near the peers, not midway');
-  });
-
-  test('every link lands in at most one bundle', () => {
-    const entries = [1, 2, 3].map((i) =>
-      entry(`l${i}`, 'pr:1', `commit:${i}`, { qualifier: 'contains_commit', sx: 50, sy: 100, tx: i * 100, ty: 300 }),
-    );
-    const { bundleOf, bundles } = computeBundles(entries);
-    assert.equal(new Set([...bundleOf.values()]).size, bundles.length);
   });
 });
