@@ -145,6 +145,81 @@ function computeLinkOffsets(entries) {
   return { offsets, crowded };
 }
 
+/** A bundle needs two links; one strand is just a link. */
+const MIN_BUNDLE = 2;
+
+/** How far toward the peers the trunk runs before it splits. */
+const SPLIT_FRACTION = 0.78;
+
+/**
+ * Group links that share an endpoint and say the same thing about it.
+ *
+ * ⚠️ **From either end.** One pull request reaching many commits is divergence; many pull
+ * requests reaching one issue is convergence, and a real sub-log has both — kubernetes
+ * issue #47532 at degree 1 has *no* source with more than one link and two targets with
+ * six and seven. A source-only rule would have collapsed nothing there. This is the same
+ * asymmetry that let F5's buried link come back when `contains_commit` was stored in the
+ * direction the database actually stores it.
+ *
+ * ⚠️ **Never across evidence or qualifier.** Merging a validated link with an extracted
+ * one would erase the distinction the tool exists to show (decision 7); merging
+ * `merge_commit` into `contains_commit` would hide which commit is the merge. The peer's
+ * type is in the key too, so a bundle always splits toward one lane.
+ *
+ * A link belongs to at most one bundle, larger bundles claiming first — the same rule the
+ * fan uses, and for the same reason: an offset only has to separate a link from the ones
+ * it actually coincides with.
+ */
+export function computeBundles(entries) {
+  const groups = new Map();
+  const add = (key, entry) => {
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(entry);
+  };
+
+  for (const entry of entries) {
+    const { link, source, target } = entry;
+    add(`from|${entry.sourceAnchor.id}|${link.evidence}|${link.qualifier}|${target?.type}`, entry);
+    add(`into|${entry.targetAnchor.id}|${link.evidence}|${link.qualifier}|${source?.type}`, entry);
+  }
+
+  const bundleOf = new Map();
+  const bundles = [];
+  const claimed = new Set();
+
+  for (const [key, members] of [...groups.entries()].sort((a, b) => b[1].length - a[1].length)) {
+    const fresh = members.filter((entry) => !claimed.has(entry.link));
+    if (fresh.length < MIN_BUNDLE) continue;
+    for (const entry of fresh) claimed.add(entry.link);
+
+    const sharedIsSource = key.startsWith('from|');
+    const first = fresh[0];
+    const sharedX = sharedIsSource ? first.sx : first.tx;
+    const sharedY = sharedIsSource ? first.sy : first.ty;
+    const peerY = sharedIsSource ? first.ty : first.sy;
+
+    const bundle = {
+      key,
+      sharedIsSource,
+      members: fresh,
+      size: fresh.length,
+      sharedX,
+      sharedY,
+      // The split sits close to the peers, so the crossings that make a dense sub-log
+      // unreadable happen in one line rather than N.
+      splitY: sharedY + (peerY - sharedY) * SPLIT_FRACTION,
+      evidence: first.link.evidence,
+      qualifier: first.link.qualifier,
+      sharedAnchorId: sharedIsSource ? first.sourceAnchor.id : first.targetAnchor.id,
+      sharedObject: sharedIsSource ? first.source : first.target,
+    };
+    bundles.push(bundle);
+    for (const entry of fresh) bundleOf.set(entry.link, bundle);
+  }
+
+  return { bundles, bundleOf };
+}
+
 export function renderLinks({
   gLink,
   defs,
@@ -193,7 +268,82 @@ export function renderLinks({
     entries.push({ link, source, target, sourceAnchor, targetAnchor, folded, sx, sy, tx, ty });
   }
 
+  const { bundles, bundleOf } = computeBundles(entries);
   const { offsets, crowded } = computeLinkOffsets(entries);
+
+  /*
+   * One trunk per bundle: the shared half of N links, drawn once, carrying the count.
+   *
+   * Drawn before the strands so the strands and their badges sit above it. It keeps the
+   * evidence styling of its members — they all agree, by construction — because a solid
+   * trunk feeding dashed strands would claim a confidence the links do not have.
+   */
+  for (const bundle of bundles) {
+    const color =
+      objectColors.get(bundle.sharedAnchorId) ||
+      (bundle.sharedObject ? typeColor(bundle.sharedObject.type) : qualifierColor(bundle.qualifier));
+    const style = evidenceStyle(bundle.evidence);
+    const midY = (bundle.sharedY + bundle.splitY) / 2;
+
+    const trunk = gLink.append('g');
+    trunk.attr('data-legend', 'link-bundle');
+    trunk
+      .append('path')
+      .attr('d', `M${bundle.sharedX},${bundle.sharedY} L${bundle.sharedX},${bundle.splitY}`)
+      .attr('fill', 'none')
+      .attr('stroke', color)
+      .attr('stroke-width', style.width + 0.8)
+      .attr('stroke-dasharray', style.dash)
+      .attr('opacity', style.opacity);
+
+    const label = String(bundle.size);
+    trunk
+      .append('rect')
+      .attr('x', bundle.sharedX - 7 - label.length * 3.2)
+      .attr('y', midY - 9)
+      .attr('width', 14 + label.length * 6.4)
+      .attr('height', 18)
+      .attr('rx', 9)
+      .attr('fill', 'var(--color-bg)')
+      .attr('stroke', color)
+      .attr('stroke-width', 1.5);
+    trunk
+      .append('text')
+      .attr('x', bundle.sharedX)
+      .attr('y', midY)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('font-size', 10)
+      .attr('font-weight', 700)
+      .attr('fill', color)
+      .attr('class', 'mono')
+      .text(label);
+
+    tooltip.bind(
+      gLink
+        .append('path')
+        .attr('d', `M${bundle.sharedX},${bundle.sharedY} L${bundle.sharedX},${bundle.splitY}`)
+        .attr('fill', 'none')
+        .attr('stroke', '#000')
+        .attr('stroke-opacity', 0)
+        .attr('stroke-width', 16)
+        .style('cursor', 'pointer'),
+      () => ({
+        accent: color,
+        shape: 'line',
+        kicker: `OCEL links · ${bundle.qualifier}`,
+        title: `${bundle.size} links ${bundle.sharedIsSource ? 'from' : 'to'} ` +
+          `${escapeHtml(bundle.sharedObject?.label || bundle.sharedAnchorId)}`,
+        rows: [
+          ['Evidence', evidenceBadge(bundle.evidence)],
+          ['Method', escapeHtml(bundle.qualifier), 'mono'],
+        ],
+        note:
+          'Drawn as one line to the point where it splits, then one strand per object. ' +
+          'Every link is still here — only the half they share is drawn once.',
+      }),
+    );
+  }
 
   // Gradients are rebuilt every render because both endpoints move. One per drawn
   // link, keyed by the *anchored* endpoints so folded links share a gradient.
@@ -236,8 +386,20 @@ export function renderLinks({
       (sourceAnchor.folded && focus.has(sourceAnchor.id)) ||
       (targetAnchor.folded && focus.has(targetAnchor.id));
 
-    const midY = (sy + ty) / 2;
-    const path = `M${sx},${sy} C ${sx},${midY} ${tx},${midY} ${tx},${ty}`;
+    /*
+     * A bundled link draws only its **strand**: from its own unique end to the point where
+     * the trunk splits. The trunk is drawn once for the whole bundle below, so the shared
+     * half of N links becomes one line instead of N — and nothing is lost, because every
+     * strand still lands on its own object.
+     */
+    const bundle = bundleOf.get(link);
+    const [ax, ay, bx, by] = bundle
+      ? bundle.sharedIsSource
+        ? [bundle.sharedX, bundle.splitY, tx, ty]
+        : [sx, sy, bundle.sharedX, bundle.splitY]
+      : [sx, sy, tx, ty];
+    const midY = (ay + by) / 2;
+    const path = `M${ax},${ay} C ${ax},${midY} ${bx},${midY} ${bx},${by}`;
 
     const group = gLink.append('g').attr('opacity', inFocus ? style.opacity : 0.1);
     group
@@ -255,7 +417,9 @@ export function renderLinks({
      * in focus and whatever its evidence class, because the count is a fact about the
      * data rather than an uncertainty cue.
      */
-    const crowd = crowded.get(link);
+    // A bundled link's count is on its trunk; two badges saying the same thing would
+    // disagree the moment one of them is right.
+    const crowd = bundle ? null : crowded.get(link);
     if (crowd) {
       const color = objectColors.get(target.id) || qualifierColor(link.qualifier);
       const label = `×${crowd}`;
@@ -290,7 +454,7 @@ export function renderLinks({
       group
         .append('circle')
         .attr('data-legend', 'link-extracted')
-        .attr('cx', tx)
+        .attr('cx', bx)
         .attr('cy', midY)
         .attr('r', 8)
         .attr('fill', 'var(--color-bg)')
@@ -298,7 +462,7 @@ export function renderLinks({
         .attr('stroke-width', 2);
       group
         .append('text')
-        .attr('x', tx)
+        .attr('x', bx)
         .attr('y', midY)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'central')
