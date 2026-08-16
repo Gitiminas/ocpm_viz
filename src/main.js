@@ -14,6 +14,7 @@ import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
+import { MODES } from './layout/engine.js';
 import {
   createState,
   deriveRelGroups,
@@ -187,9 +188,24 @@ const timeline = createTimeline({
       timeline.render();
     },
 
-    onRendered({ nodes, scales, plotWidth, basePlotWidth }) {
+    onRendered({ nodes, scales, plotWidth, basePlotWidth, kind }) {
       el('zin').disabled = state.k >= MAX_ZOOM - 0.001;
       el('zout').disabled = state.k <= MIN_ZOOM + 0.001;
+
+      /*
+       * ⚠️ **The minimap is hidden in off mode, not left showing the last picture.**
+       *
+       * It is a *time* overview — a strip of every event's instant, with a viewport you
+       * drag along it — and off mode has no time axis for it to describe. Leaving it up
+       * would be a control that silently does nothing and a picture that quietly belongs
+       * to a different mode, which is the stale-picture failure decision 87 guards
+       * against in the other direction. Its space is given back rather than blanked, so
+       * nothing suggests a strip that failed to draw.
+       */
+      const structural = kind === 'structural';
+      el('minimapWrap').style.display = structural ? 'none' : 'block';
+      if (structural) return;
+
       minimap.render({
         nodes,
         plotWidth,
@@ -478,10 +494,16 @@ el('zin').onclick = () => setZoom(state.k * 1.3);
 el('zout').onclick = () => setZoom(state.k / 1.3);
 el('zrst').onclick = () => setZoom(1);
 
+/** Reflect the active mode in the segmented control. */
+function markMode(mode) {
+  for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
+    option.classList.toggle('on', option.dataset.mode === mode);
+  }
+}
+
 for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
   option.addEventListener('click', () => {
-    for (const other of document.querySelectorAll('#modeSeg .seg-opt')) other.classList.remove('on');
-    option.classList.add('on');
+    markMode(option.dataset.mode);
     state.mode = option.dataset.mode;
     timeline.captureTween();
     timeline.render();
@@ -586,10 +608,29 @@ function queryFromUrl() {
     // to", which for the RPC is 2 and for a fixture is whatever it was built at.
     traversalDegree: params.get('degree') ? Number(params.get('degree')) : undefined,
     page: params.get('page') === 'stats' ? 'stats' : 'timeline',
+    /*
+     * The time mode, for the same reason `?page=` exists: a link has to reproduce what
+     * someone was looking at. It matters more now than it did with three modes, because
+     * the fourth changes what *position* means — "look at this sub-log" and "look at this
+     * sub-log with time off" are two different requests, and the task-based evaluation
+     * needs to be able to make the second one.
+     *
+     * A preset also carries the mode (`serializeState`), but a preset is a whole
+     * configuration; this is the one knob on its own. An unknown value is ignored rather
+     * than defaulted loudly — it is a URL someone typed, not a payload.
+     */
+    mode: MODES.includes(params.get('mode')) ? params.get('mode') : null,
   };
 }
 
 const initialQuery = queryFromUrl();
+
+// Before the first load, so the opening render is already in the asked-for mode rather
+// than drawing the timeline and then replacing it.
+if (initialQuery.mode) {
+  state.mode = initialQuery.mode;
+  markMode(initialQuery.mode);
+}
 
 /**
  * Fixtures or the database, chosen by `?source=` and defaulting to fixtures.

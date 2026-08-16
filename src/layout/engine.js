@@ -28,15 +28,25 @@
  */
 
 import { buildNodes, assignRanks, filterNodes } from './nodes.js';
-import { createScales } from './scales.js';
+import { createScales, MODES as TEMPORAL_MODES } from './scales.js';
 import { packRows } from './packing.js';
 import { computeLaneGeometry, rowY } from './lanes.js';
 import { createAnchors } from './anchors.js';
-import { layoutForce, fitPositions } from './force.js';
-import { buildStructuralNodes, buildStructuralEdges, timeExtent } from './structural.js';
+import { layoutForce, fitPositions, relaxOverlaps } from './force.js';
+import { buildStructuralNodes, buildStructuralEdges, timeExtent, rampExtent } from './structural.js';
 
 /** Which engine a mode uses. `off` is the only structural one. */
 export const STRUCTURAL_MODES = ['off'];
+
+/**
+ * Every mode the tool has, in the order the control offers them.
+ *
+ * Assembled here rather than kept in `scales.js`, whose own `MODES` is correctly the
+ * three modes *that module* implements — `off` draws no scale at all. This module is the
+ * one place that knows both engines exist, so it is the one place that can name them all.
+ */
+export { TEMPORAL_MODES };
+export const MODES = [...TEMPORAL_MODES, ...STRUCTURAL_MODES];
 
 export function isStructuralMode(mode) {
   return STRUCTURAL_MODES.includes(mode);
@@ -237,11 +247,17 @@ function layoutStructural({
     height: plotHeight,
   });
 
-  const fitted = fitPositions(positions, {
-    width: plotWidth,
-    height: plotHeight,
-    padding: STRUCTURAL_PADDING,
-  });
+  // Fit, then separate. In that order and not the other way round: fitting scales
+  // positions but not radii, so it can create overlaps that were not there in the
+  // simulation's own space — see `relaxOverlaps`.
+  const fitted = relaxOverlaps(
+    fitPositions(positions, {
+      width: plotWidth,
+      height: plotHeight,
+      padding: STRUCTURAL_PADDING,
+    }),
+    nodes,
+  );
 
   for (const node of nodes) {
     const at = fitted.get(node.id);
@@ -282,7 +298,11 @@ function layoutStructural({
     rankMax: 0,
     rankTimes: [],
     edges,
+    // Two spans, two jobs: `extent` covers everything that happened and is what a time
+    // brush must span; `rampExtent` covers first-appearances, which is what the fill
+    // actually encodes. See `rampExtent` for why conflating them wastes half the ramp.
     extent: timeExtent(nodes),
+    rampExtent: rampExtent(nodes),
     positions,
   };
 }

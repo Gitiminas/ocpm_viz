@@ -112,6 +112,57 @@ export function shadeCount(objectType) {
   return (OBJECT_SHADES[objectType] || [null]).length;
 }
 
+/**
+ * The time ramp: light for early, dark for late, **inside each type's own hue**.
+ *
+ * Off mode releases the time axis, so time moves from position — the strongest channel —
+ * to weaker ones, and this is the main one. It is a *demotion*, not a deletion.
+ *
+ * ⚠️ **The hue stays with the type, so colour never becomes the type cue.** A single
+ * global ramp would make an early commit and an early issue the same colour, and the
+ * whole argument of this tool is against encoding objects by colour alone. Type is
+ * carried by shape and size (`layout/structural.js`); the ramp only says *when* within
+ * whatever type you are already looking at. Fill answers "when", shape and size answer
+ * "what", and the stroke — the object's own shade from `objectShade` — answers "which".
+ *
+ * The hues are the ones already in `COLORS`, and the lightness ranges match the design
+ * system's own: `--color-accent` is `oklch(66% 0.124 289.6)` and its 300→700 ramp runs
+ * 87%→48% at that hue, so an issue ramp of 88%→46% stays inside the family rather than
+ * inventing a new one. Chroma rises slightly toward the dark end, which is what keeps a
+ * late mark reading as saturated rather than merely grey.
+ *
+ * ⚠️ The issue hue is stated numerically because `var(--color-accent)` cannot be
+ * interpolated at runtime — the same limitation `OBJECT_SHADES` already works around. If
+ * the theme's accent hue moves, this table has to move with it.
+ */
+const TIME_RAMP = {
+  issue: { hue: 289.6, light: [88, 46], chroma: [0.055, 0.135] },
+  pull_request: { hue: 68, light: [90, 46], chroma: [0.06, 0.13] },
+  commit: { hue: 205, light: [90, 44], chroma: [0.045, 0.12] },
+};
+
+const mix = (from, to, fraction) => from + (to - from) * fraction;
+
+/**
+ * The fill for an object of this type at this point in the sub-log's span.
+ *
+ * @param {string} objectType
+ * @param {number} fraction  0 = earliest thing on screen, 1 = latest
+ */
+export function timeRampFill(objectType, fraction = 0) {
+  const ramp = TIME_RAMP[objectType];
+  if (!ramp) return typeColor(objectType);
+  const t = Math.max(0, Math.min(1, Number.isFinite(fraction) ? fraction : 0));
+  const lightness = mix(ramp.light[0], ramp.light[1], t);
+  const chroma = mix(ramp.chroma[0], ramp.chroma[1], t);
+  return `oklch(${lightness.toFixed(1)}% ${chroma.toFixed(3)} ${ramp.hue})`;
+}
+
+/** Ramp stops for a legend swatch, earliest to latest. */
+export function timeRampStops(objectType, steps = 5) {
+  return Array.from({ length: steps }, (_, i) => timeRampFill(objectType, i / (steps - 1)));
+}
+
 /** Actor trail palette, assigned by index. */
 export const ACTOR_PALETTE = [
   'oklch(74% 0.12 150)',

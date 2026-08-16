@@ -12,6 +12,7 @@ import {
   bundleEdges,
   edgeDirection,
   timeExtent,
+  rampExtent,
   timeFraction,
   STRUCTURAL_RADIUS,
   burstRadius,
@@ -425,5 +426,37 @@ describe('the time span the ramp and the brush read', () => {
   test('nothing dated at all yields no extent rather than a broken one', () => {
     assert.equal(timeExtent([{ id: 'a', t: null, tLast: null }]), null);
     assert.equal(timeExtent([]), null);
+  });
+});
+
+describe('the ramp gets the whole scale, not part of it', () => {
+  test('first-appearances span the full 0–1 range', async () => {
+    // ⚠️ Found by looking at a render, not by a check. The ramp colours a node by when it
+    // first appeared, but the extent it was scaled against ran to the LAST activity in
+    // the sub-log — so the darkest mark on F13 sat at 0.58 of the ramp and on F1 at 0.38,
+    // and the bottom third to half of the scale was reserved for a moment no mark
+    // occupies. Two spans, two questions: `rampExtent` for "when did things start",
+    // `timeExtent` for "when did anything happen", which is what a brush must cover.
+    for (const fixture of ['F1', 'F13', 'F10']) {
+      const { nodes } = await structuralFor(fixture);
+      const extent = rampExtent(nodes);
+      const fractions = nodes.filter((node) => node.t).map((node) => timeFraction(node.t, extent));
+      assert.equal(Math.min(...fractions), 0, `${fixture}: nothing sits at the light end`);
+      assert.equal(Math.max(...fractions), 1, `${fixture}: nothing reaches the dark end`);
+    }
+  });
+
+  test('the ramp span is never wider than the activity span', async () => {
+    const { nodes } = await structuralFor('F1');
+    const ramp = rampExtent(nodes);
+    const full = timeExtent(nodes);
+    assert.ok(ramp.min >= full.min && ramp.max <= full.max);
+    assert.ok(ramp.max < full.max, 'F1 keeps acting after its last object first appeared');
+  });
+
+  test('an undated or single-node sub-log yields no ramp rather than a broken one', () => {
+    assert.equal(rampExtent([]), null);
+    assert.equal(rampExtent([{ id: 'a', t: null }]), null);
+    assert.equal(timeFraction(new Date(5), rampExtent([{ id: 'a', t: new Date(5) }])), 0);
   });
 });

@@ -23,6 +23,8 @@ import { deriveCommentBursts } from '../model/commentBursts.js';
 import { buildAdjacency, focusSet } from '../model/graph.js';
 import { deriveCommitGroups } from '../model/commitGroups.js';
 import { createLayout } from '../layout/engine.js';
+import { edgeDirection } from '../layout/structural.js';
+import { renderStructuralEdges, renderStructuralNodes } from './structural.js';
 import { renderAxis, highlightTickInstants } from './axis.js';
 import { renderLinks } from './links.js';
 import {
@@ -35,7 +37,7 @@ import {
   renderGroupBoxes,
 } from './nodes.js';
 import { TYPE, drawSymbol, typeColor, objectShade } from './theme.js';
-import { isNodeVisible, isObjectVisible, actorPreview } from '../state/state.js';
+import { isNodeVisible, isObjectVisible, isLinkVisible, actorPreview } from '../state/state.js';
 
 export const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
 const MIN_PLOT_WIDTH = 820;
@@ -62,6 +64,13 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   let context = null; // set by setGraph
   let lastNodes = [];
   let pendingTween = null;
+  /*
+   * The last structural layout's UNFITTED positions, fed back so the force simulation
+   * warm-starts. Without it every render is a fresh global optimisation and the picture
+   * is re-rolled by any interaction — expanding one push would reshuffle the whole graph.
+   * Cleared by `setGraph`, because positions from one sub-log mean nothing in another.
+   */
+  let lastPositions = null;
 
   function measure() {
     basePlotWidth = Math.max(
@@ -72,6 +81,20 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
   function plotWidth() {
     return basePlotWidth * state.k;
+  }
+
+  /**
+   * The box the structural layout is fitted into.
+   *
+   * The timeline's height falls out of how many rows its lanes needed; a force layout has
+   * no such number, so it takes the space that is actually on screen and fills it. Zoom
+   * multiplies it exactly as it multiplies the width, so zooming spreads the graph rather
+   * than stretching it in one direction only — which is what would happen if the height
+   * stayed fixed while `plotWidth` grew.
+   */
+  function structuralPlotHeight() {
+    const available = elements.scroll.clientHeight - MARGIN.top - MARGIN.bottom;
+    return Math.max(420, available) * state.k;
   }
 
   /** Swap in a new sub-log. Everything derived from the graph is rebuilt here. */
@@ -95,6 +118,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     };
     lastNodes = [];
     pendingTween = null;
+    lastPositions = null;
     return context.objectColors;
   }
 
@@ -153,18 +177,59 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       expandedCommentBursts: state.expandedCommentBursts,
       expandedGroups: state.expandedGroups,
       isVisible: (node) => isNodeVisible(node, state, groupsByCommit),
+      isLinkVisible: (link) => isLinkVisible(link, index.byId, state, groupsByCommit),
+      previousPositions: lastPositions,
       margin: MARGIN,
       plotWidth: plotWidth(),
+      plotHeight: structuralPlotHeight(),
     });
 
     const { nodes, geometry, anchors, objectRow, scales, rankOrder, rankMax, rankTimes,
       width, height } = layout;
     lastNodes = nodes;
+    // Kept for the next render's warm start, so the picture stays put instead of being
+    // re-rolled. Only the structural engine produces these.
+    if (layout.positions) lastPositions = layout.positions;
 
     svg.attr('width', width).attr('height', height);
     for (const layer of Object.values(layers)) layer.selectAll('*').remove();
 
     const focus = focusSet(adjacency, state.focus, state.focusDegree);
+
+    // ---- the one branch -------------------------------------------------------
+    //
+    // Off mode has no lanes, no axis, no lifecycle bars and no sequence spines, because
+    // every one of those is a statement about a time axis. It draws edges and nodes.
+    if (layout.kind === 'structural') {
+      const nodesById = new Map(nodes.map((node) => [node.id, node]));
+      renderStructuralEdges({
+        gLink: layers.link,
+        edges: layout.edges,
+        nodesById,
+        focus,
+        tooltip,
+        direction: (edge) => edgeDirection(edge, nodesById),
+      });
+      renderStructuralNodes({
+        gNode: layers.node,
+        nodes,
+        // The ramp's own span, not the full activity span — see `rampExtent`.
+        extent: layout.rampExtent,
+        focus,
+        tooltip,
+        handlers,
+        objectColors,
+        actorLogin: (id) => index.byId.get(id)?.vmap?.login ?? id,
+      });
+      handlers.onRendered({
+        nodes,
+        scales: null,
+        plotWidth: plotWidth(),
+        basePlotWidth,
+        kind: 'structural',
+      });
+      return;
+    }
 
     // ---- draw -----------------------------------------------------------------
     // Which objects actually survived the filters, so the lane caption can say so.

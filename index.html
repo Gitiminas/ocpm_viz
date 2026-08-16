@@ -195,6 +195,13 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div class="seg-opt on" data-mode="real"><span>Real</span></div>
 <div class="seg-opt" data-mode="highlights"><span>Highlights</span></div>
 <div class="seg-opt" data-mode="ordinal"><span>Ordinal</span></div>
+<!--
+  The fourth mode releases the time axis entirely and lets position encode relationship
+  structure instead. Time is demoted, not deleted: it moves to the fill ramp, the edge
+  arrowheads and the hovercard. Last in the row because it is the one that changes what
+  position means, and the three before it are variations on a shared idea.
+-->
+<div class="seg-opt" data-mode="off" title="Release the time axis — position encodes relationships instead"><span>Off</span></div>
 </div>
 <div style="display:flex;gap:2px;border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);padding:2px">
 <button aria-label="Zoom out" class="btn btn-icon" id="zout"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line></svg></button>
@@ -203,7 +210,12 @@ html,body{height:100%;margin:0;overflow:hidden}
 </div>
 </div>
 </div>
-<div style="flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 10px">
+<!--
+  Hidden in the off time mode: the minimap is a *time* overview, and that mode has no time
+  axis for it to describe. Its space is given back rather than blanked, so nothing reads
+  as a strip that failed to draw. See onRendered in main.js.
+-->
+<div id="minimapWrap" style="flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 10px">
 <svg id="minimap"></svg>
 </div>
 <div id="wrap" style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">

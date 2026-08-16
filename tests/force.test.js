@@ -1,7 +1,13 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { layoutForce, fitPositions, iterationsFor, hashId } from '../src/layout/force.js';
+import {
+  layoutForce,
+  fitPositions,
+  relaxOverlaps,
+  iterationsFor,
+  hashId,
+} from '../src/layout/force.js';
 
 /**
  * The force layout behind the **off** time mode.
@@ -299,5 +305,82 @@ describe('fitting a layout into a box', () => {
     for (const [id, { x, y }] of vertical) {
       assert.ok(Number.isFinite(x) && Number.isFinite(y), `${id} is not finite`);
     }
+  });
+});
+
+describe('overlap relaxation, because fitting scales positions but not radii', () => {
+  test('marks that collide after fitting are pushed apart', () => {
+    // ⚠️ Found by looking at F10, not by a check. The simulation separates nodes in its
+    // own space; `fitPositions` then scales that space into the viewport, and any fit
+    // below 1x brings marks closer in pixels while they keep their drawn size. That put a
+    // 40-commit push meta-node on top of the pull request it belongs to, with the label
+    // unreadable underneath — 7 colliding pairs on F10, the deepest by 5.6px.
+    const nodes = [
+      { id: 'big', radius: 20 },
+      { id: 'small', radius: 6 },
+      { id: 'far', radius: 6 },
+    ];
+    const positions = new Map([
+      ['big', { x: 100, y: 100 }],
+      ['small', { x: 110, y: 100 }], // 10px apart, needs 26 + padding
+      ['far', { x: 400, y: 400 }],
+    ]);
+
+    const relaxed = relaxOverlaps(positions, nodes);
+    const gap = Math.hypot(
+      relaxed.get('big').x - relaxed.get('small').x,
+      relaxed.get('big').y - relaxed.get('small').y,
+    );
+    assert.ok(gap >= 26, `rims still overlap: ${gap.toFixed(1)}px apart, need 26`);
+    // Anything already clear must not be dragged around by the pass.
+    assert.deepEqual(relaxed.get('far'), { x: 400, y: 400 });
+  });
+
+  test('it is deterministic, including for exactly coincident marks', () => {
+    const nodes = [
+      { id: 'a', radius: 10 },
+      { id: 'b', radius: 10 },
+    ];
+    const at = () =>
+      new Map([
+        ['a', { x: 50, y: 50 }],
+        ['b', { x: 50, y: 50 }],
+      ]);
+    const first = relaxOverlaps(at(), nodes);
+    const second = relaxOverlaps(at(), nodes);
+    for (const id of ['a', 'b']) {
+      assert.equal(first.get(id).x, second.get(id).x);
+      assert.equal(first.get(id).y, second.get(id).y);
+    }
+    assert.ok(
+      Math.hypot(first.get('a').x - first.get('b').x, first.get('a').y - first.get('b').y) > 19,
+      'coincident marks must separate to their combined radii',
+    );
+  });
+
+  test('it does not depend on the order nodes are passed in', () => {
+    const nodes = [
+      { id: 'a', radius: 12 },
+      { id: 'b', radius: 12 },
+      { id: 'c', radius: 12 },
+    ];
+    const at = () =>
+      new Map([
+        ['a', { x: 0, y: 0 }],
+        ['b', { x: 8, y: 3 }],
+        ['c', { x: -5, y: 6 }],
+      ]);
+    const forwards = relaxOverlaps(at(), nodes);
+    const backwards = relaxOverlaps(at(), nodes.slice().reverse());
+    for (const id of ['a', 'b', 'c']) {
+      assert.equal(forwards.get(id).x, backwards.get(id).x, `${id} depends on input order`);
+      assert.equal(forwards.get(id).y, backwards.get(id).y);
+    }
+  });
+
+  test('a single node, or none, is left alone', () => {
+    assert.equal(relaxOverlaps(new Map(), []).size, 0);
+    const one = new Map([['a', { x: 3, y: 4 }]]);
+    assert.deepEqual(relaxOverlaps(one, [{ id: 'a', radius: 5 }]).get('a'), { x: 3, y: 4 });
   });
 });

@@ -237,6 +237,12 @@ export function layoutForce({
     }
 
     // Attraction along edges.
+    //
+    // ⚠️ **Measured rim to rim, not centre to centre.** With centre distances a big node
+    // is pulled in until repulsion happens to balance, which on F10 left 40-commit push
+    // meta-nodes sitting on top of the pull request they belong to — the label unreadable
+    // underneath. Subtracting both radii makes the attraction fall to zero exactly when
+    // the two marks touch, so an edge pulls things adjacent rather than overlapping.
     for (const edge of orderedEdges) {
       const a = index.get(edge.source);
       const b = index.get(edge.target);
@@ -244,7 +250,8 @@ export function layoutForce({
       const deltaX = x[a] - x[b];
       const deltaY = y[a] - y[b];
       const distance = Math.max(EPSILON, Math.sqrt(deltaX * deltaX + deltaY * deltaY));
-      const force = (distance * distance) / k;
+      const rim = Math.max(0, distance - radii[a] - radii[b]);
+      const force = (rim * rim) / k;
       const unitX = (deltaX / distance) * force;
       const unitY = (deltaY / distance) * force;
       dx[a] -= unitX;
@@ -291,6 +298,76 @@ export function layoutForce({
     positions.set(ordered[i].id, { x: x[i] - meanX, y: y[i] - meanY });
   }
   return positions;
+}
+
+/**
+ * Push overlapping marks apart, in the space they are actually drawn in.
+ *
+ * ⚠️ **Needed because fitting scales positions but not radii.** The simulation separates
+ * nodes in its own coordinate space, and `fitPositions` then scales that space into the
+ * viewport — so any fit below 1× brings marks closer together in pixels while they keep
+ * their drawn size. Measured on F10 before this existed: 7 overlapping pairs, the deepest
+ * by 5.6px, which is what put a 40-commit push meta-node on top of its pull request.
+ *
+ * Deliberately a *separate* pass rather than a force in the simulation. It works on the
+ * final pixel coordinates, which is the only place the true overlap is known, and it
+ * moves only pairs that actually collide — so the structure the simulation found survives
+ * it. Deterministic: a fixed iteration count, pairs visited in sorted id order, and the
+ * same id-derived tie-break as the simulation for exactly coincident marks.
+ *
+ * @param {Map} positions   id → `{x, y}`, already fitted
+ * @param {Array} nodes     `[{id, radius}]`
+ * @param {object} [options]
+ * @param {number} [options.padding]     extra breathing room between rims
+ * @param {number} [options.iterations]
+ */
+export function relaxOverlaps(positions, nodes, { padding = 4, iterations = 24 } = {}) {
+  const ordered = nodes
+    .filter((node) => positions.has(node.id))
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  if (ordered.length < 2) return positions;
+
+  const point = new Map([...positions].map(([id, at]) => [id, { x: at.x, y: at.y }]));
+
+  for (let step = 0; step < iterations; step++) {
+    let moved = false;
+    for (let i = 0; i < ordered.length; i++) {
+      for (let j = i + 1; j < ordered.length; j++) {
+        const a = point.get(ordered[i].id);
+        const b = point.get(ordered[j].id);
+        const need = (ordered[i].radius ?? 0) + (ordered[j].radius ?? 0) + padding;
+
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let distance = Math.hypot(dx, dy);
+        if (distance >= need) continue;
+
+        if (distance < EPSILON) {
+          const angle =
+            ((hashId(`${ordered[i].id}|${ordered[j].id}`) & 0xffff) / 0x10000) * Math.PI * 2;
+          dx = Math.cos(angle);
+          dy = Math.sin(angle);
+          distance = EPSILON;
+        }
+        // Half the shortfall each, so neither mark is privileged over the other.
+        const shift = (need - distance) / 2;
+        const ux = (dx / distance) * shift;
+        const uy = (dy / distance) * shift;
+        a.x -= ux;
+        a.y -= uy;
+        b.x += ux;
+        b.y += uy;
+        moved = true;
+      }
+    }
+    // Settled early: the usual case, and worth exiting for so the cost is paid only by
+    // the layouts that actually collide.
+    if (!moved) break;
+  }
+
+  const out = new Map();
+  for (const [id, at] of point) out.set(id, at);
+  return out;
 }
 
 /**

@@ -6,6 +6,7 @@
  *   node scripts/shot.mjs LIVE1
  *   node scripts/shot.mjs F1 --height 2000
  *   node scripts/shot.mjs LIVE2 --page stats
+ *   node scripts/shot.mjs F13 --mode off
  *
  * ⚠️ **This does not replace looking at it.** `npm test` covers the arithmetic and this
  * covers "did anything draw at all"; neither can tell you the picture is *right*. It
@@ -60,17 +61,21 @@ const fixture = positional[0] || 'LIVE1';
 const width = Number(flag('width', 1700));
 const height = Number(flag('height', 1400));
 const page = flag('page', null);
+// The time mode. Worth a flag rather than only a preset, because the off mode changes
+// what position means, so "F13" and "F13 with time off" are two different pictures.
+const mode = flag('mode', null);
 const port = flag('port', 8000);
 
 const url =
   `http://localhost:${port}/?fixture=${encodeURIComponent(fixture)}` +
-  (page ? `&page=${encodeURIComponent(page)}` : '');
+  (page ? `&page=${encodeURIComponent(page)}` : '') +
+  (mode ? `&mode=${encodeURIComponent(mode)}` : '');
 
 // The browser writes where *it* can see. Under WSL that means a Windows path, so stage
 // the file on the Windows side and copy it back into the repo's scratch directory.
 const outDir = resolve(ROOT, '.shots');
 mkdirSync(outDir, { recursive: true });
-const name = `${fixture}${page ? `-${page}` : ''}.png`;
+const name = `${fixture}${page ? `-${page}` : ''}${mode ? `-${mode}` : ''}.png`;
 const finalPath = resolve(outDir, name);
 
 let browserTarget;

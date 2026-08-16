@@ -8,7 +8,7 @@
  * colour.
  */
 
-import { glyph, COLORS, TYPE } from './theme.js';
+import { glyph, COLORS, TYPE, timeRampStops } from './theme.js';
 
 export function highlightLegendGroup(key, on, color) {
   for (const element of document.querySelectorAll(`[data-legend="${key}"]`)) {
@@ -71,6 +71,23 @@ const ring = (dash) =>
 const stroke = (attrs) =>
   `<svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" ` +
   `stroke="var(--color-neutral-400)" ${attrs}/></svg>`;
+
+/**
+ * The time ramp, as discrete stops.
+ *
+ * Drawn in the commit hue because a legend swatch has to pick one, and stated in the row
+ * beside it that the ramp runs inside *each* type's own hue rather than being one global
+ * scale — the distinction that keeps colour from becoming the type cue.
+ */
+const rampSwatch = () =>
+  `<svg width="44" height="10" viewBox="0 0 44 10">${timeRampStops('commit', 5)
+    .map(
+      (color, i) =>
+        `<rect x="${i * 8.8}" y="0" width="8.8" height="10" fill="${color}"${
+          i === 0 ? ' rx="2"' : ''
+        }/>`,
+    )
+    .join('')}</svg>`;
 
 const hollow = (shape) => {
   const common = 'fill="var(--color-bg)" stroke="var(--color-neutral-400)" stroke-width="2"';
@@ -152,6 +169,35 @@ export const LEGEND_SECTIONS = [
           'height="12" rx="6" fill="none" stroke="var(--color-neutral-400)" stroke-width="1.5"/>' +
           '<text x="0" y="1" text-anchor="middle" dominant-baseline="central" font-size="8" ' +
           'font-family="monospace" fill="var(--color-neutral-400)">&#215;N</text></svg>',
+      },
+    ],
+  },
+  {
+    /*
+     * Only drawn in the off time mode, and dimmed like any other absent row in the other
+     * three (decision 83) rather than removed — a row that vanishes cannot say whether
+     * the mark is absent because the data has none or because you switched modes.
+     */
+    title: 'Time off',
+    rows: [
+      {
+        /*
+         * One row for both channels on purpose. The fill and the outline are two
+         * attributes of a single mark, not two marks, so they cannot be tagged
+         * separately — and a keyless row would never dim, which would leave "fill =
+         * when" reading as live in the three modes where fill means nothing of the sort.
+         */
+        key: 'time-ramp',
+        label: 'fill = when, early → late · outline = which object',
+        swatch: rampSwatch(),
+      },
+      {
+        key: 'precedence-arrow',
+        label: 'points at the later end',
+        swatch:
+          '<svg width="22" height="12" viewBox="0 0 22 12"><line x1="0" y1="6" x2="13" y2="6" ' +
+          'stroke="var(--color-neutral-500)" stroke-width="2"/>' +
+          '<path d="M20 6L13 9.2L13 2.8Z" fill="var(--color-neutral-500)"/></svg>',
       },
     ],
   },
