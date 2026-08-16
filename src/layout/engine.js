@@ -32,7 +32,7 @@ import { createScales, MODES as TEMPORAL_MODES } from './scales.js';
 import { packRows } from './packing.js';
 import { computeLaneGeometry, rowY } from './lanes.js';
 import { createAnchors } from './anchors.js';
-import { layoutForce, fitPositions, relaxOverlaps } from './force.js';
+import { layoutLayered } from './layered.js';
 import { buildStructuralNodes, buildStructuralEdges, timeExtent, rampExtent } from './structural.js';
 
 /** Which engine a mode uses. `off` is the only structural one. */
@@ -226,7 +226,6 @@ function layoutStructural({
   expandedBursts = new Set(),
   isVisible = () => true,
   isLinkVisible = () => true,
-  previousPositions = null,
   margin,
   plotWidth,
   plotHeight = STRUCTURAL_PLOT_HEIGHT,
@@ -239,28 +238,14 @@ function layoutStructural({
   // the link gone, those two objects are no longer near each other *because of it*.
   const edges = buildStructuralEdges(graph.links.filter(isLinkVisible), nodes);
 
-  const positions = layoutForce({
-    nodes: nodes.map((node) => ({ id: node.id, radius: node.radius })),
-    edges: edges.map((edge) => ({ source: edge.source, target: edge.target })),
-    previous: previousPositions,
+  const { positions, rows, crossings } = layoutLayered(nodes, edges, {
     width: plotWidth,
     height: plotHeight,
+    padding: STRUCTURAL_PADDING,
   });
 
-  // Fit, then separate. In that order and not the other way round: fitting scales
-  // positions but not radii, so it can create overlaps that were not there in the
-  // simulation's own space — see `relaxOverlaps`.
-  const fitted = relaxOverlaps(
-    fitPositions(positions, {
-      width: plotWidth,
-      height: plotHeight,
-      padding: STRUCTURAL_PADDING,
-    }),
-    nodes,
-  );
-
   for (const node of nodes) {
-    const at = fitted.get(node.id);
+    const at = positions.get(node.id);
     node.x = margin.left + (at?.x ?? plotWidth / 2);
     node.y = margin.top + (at?.y ?? plotHeight / 2);
   }
@@ -303,7 +288,10 @@ function layoutStructural({
     // actually encodes. See `rampExtent` for why conflating them wastes half the ramp.
     extent: timeExtent(nodes),
     rampExtent: rampExtent(nodes),
-    positions,
+    // The rows as ordered, and what the ordering achieved. `crossings` is reported rather
+    // than kept private because "how tangled is this sub-log" is a finding, not a detail.
+    rows,
+    crossings,
   };
 }
 

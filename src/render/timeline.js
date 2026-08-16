@@ -64,13 +64,6 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   let context = null; // set by setGraph
   let lastNodes = [];
   let pendingTween = null;
-  /*
-   * The last structural layout's UNFITTED positions, fed back so the force simulation
-   * warm-starts. Without it every render is a fresh global optimisation and the picture
-   * is re-rolled by any interaction — expanding one push would reshuffle the whole graph.
-   * Cleared by `setGraph`, because positions from one sub-log mean nothing in another.
-   */
-  let lastPositions = null;
 
   function measure() {
     basePlotWidth = Math.max(
@@ -118,7 +111,6 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     };
     lastNodes = [];
     pendingTween = null;
-    lastPositions = null;
     return context.objectColors;
   }
 
@@ -178,7 +170,6 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       expandedGroups: state.expandedGroups,
       isVisible: (node) => isNodeVisible(node, state, groupsByCommit),
       isLinkVisible: (link) => isLinkVisible(link, index.byId, state, groupsByCommit),
-      previousPositions: lastPositions,
       margin: MARGIN,
       plotWidth: plotWidth(),
       plotHeight: structuralPlotHeight(),
@@ -187,9 +178,6 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     const { nodes, geometry, anchors, objectRow, scales, rankOrder, rankMax, rankTimes,
       width, height } = layout;
     lastNodes = nodes;
-    // Kept for the next render's warm start, so the picture stays put instead of being
-    // re-rolled. Only the structural engine produces these.
-    if (layout.positions) lastPositions = layout.positions;
 
     svg.attr('width', width).attr('height', height);
     for (const layer of Object.values(layers)) layer.selectAll('*').remove();

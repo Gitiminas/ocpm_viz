@@ -310,49 +310,32 @@ describe('the structural layout', () => {
     }
   });
 
-  test('it hands back unfitted positions for the next warm start', async () => {
+  test('it reports the rows and what the ordering achieved', async () => {
     const context = await contextFor('F1');
     const layout = engineLayout(context, 'off');
-    assert.ok(layout.positions instanceof Map);
-    assert.equal(layout.positions.size, layout.nodes.length);
-
-    // Unfitted, i.e. centred on the origin rather than on the drawing box — feeding the
-    // fitted coordinates back in would compound the fit on every render and walk the
-    // picture off the screen.
-    const centre = [...layout.positions.values()].reduce(
-      (sum, at) => ({ x: sum.x + at.x, y: sum.y + at.y }),
-      { x: 0, y: 0 },
+    assert.ok(Array.isArray(layout.rows), 'the rows are part of the answer');
+    assert.ok(layout.rows.every((row) => row.length > 0), 'an empty row is dropped, not drawn');
+    assert.equal(
+      layout.rows.reduce((sum, row) => sum + row.length, 0),
+      layout.nodes.length,
+      'every node belongs to exactly one row',
     );
-    assert.ok(Math.abs(centre.x / layout.positions.size) < 1e-6);
-    assert.ok(Math.abs(centre.y / layout.positions.size) < 1e-6);
+    // Reported rather than kept private: how tangled a sub-log is, is a finding.
+    assert.equal(typeof layout.crossings, 'number');
   });
 
-  test('a warm start keeps the picture still', async () => {
+  test('there is no warm start to keep, because the layout is a pure function', async () => {
+    // ⚠️ The force layout this replaced had to be fed its own previous output to stay
+    // still between renders, and `previousPositions` existed for that. A layered layout
+    // depends only on the graph, so re-rendering is not merely stable — it is identical,
+    // and there is no state that could go stale.
     const context = await contextFor('F13');
     const first = engineLayout(context, 'off');
-    const second = createLayout({
-      mode: 'off',
-      graph: context.graph,
-      index: context.index,
-      laneTypes: LANE_TYPES,
-      visibleLanes: LANE_TYPES.slice(),
-      bursts: context.bursts,
-      commentBursts: context.commentBursts,
-      instants: context.instants,
-      expandedBursts: new Set(),
-      expandedCommentBursts: new Set(),
-      expandedGroups: new Set(),
-      isVisible: () => true,
-      previousPositions: first.positions,
-      margin: MARGIN,
-      plotWidth: PLOT_WIDTH,
-    });
+    const second = engineLayout(context, 'off');
     for (const node of first.nodes) {
       const other = second.nodes.find((candidate) => candidate.id === node.id);
-      assert.ok(
-        Math.hypot(node.x - other.x, node.y - other.y) < 80,
-        `${node.id} jumped on a warm re-render`,
-      );
+      assert.equal(node.x, other.x, `${node.id} moved horizontally on a re-render`);
+      assert.equal(node.y, other.y, `${node.id} moved vertically on a re-render`);
     }
   });
 
@@ -469,7 +452,6 @@ describe('the structural layout', () => {
       expandedCommentBursts: new Set(),
       expandedGroups: new Set(),
       isVisible: () => true,
-      previousPositions: folded.positions,
       margin: MARGIN,
       plotWidth: PLOT_WIDTH,
     });
