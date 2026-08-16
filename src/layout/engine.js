@@ -32,6 +32,8 @@ import { createScales } from './scales.js';
 import { packRows } from './packing.js';
 import { computeLaneGeometry, rowY } from './lanes.js';
 import { createAnchors } from './anchors.js';
+import { layoutForce, fitPositions } from './force.js';
+import { buildStructuralNodes, buildStructuralEdges, timeExtent } from './structural.js';
 
 /** Which engine a mode uses. `off` is the only structural one. */
 export const STRUCTURAL_MODES = ['off'];
@@ -182,14 +184,139 @@ function layoutTemporal({
   };
 }
 
+/** Default drawing box for the structural layout, when the caller measures nothing. */
+export const STRUCTURAL_PLOT_HEIGHT = 620;
+const STRUCTURAL_PADDING = 60;
+
 /**
  * The structural layout: position encodes relationships, and time is demoted.
  *
- * Filled in by the next step. It throws rather than returning an empty layout, because a
- * silently empty picture is the one failure mode this project keeps finding by eye —
- * `render/timeline.js` reports a thrown error on the chart's own message surface, where
- * it can be read.
+ * In a timeline, position is fully spent — one axis is time, the other is object identity
+ * — so relational proximity is never spatial proximity and structure can only be read by
+ * tracing long edges across the screen. Here position is free to carry structure: related
+ * objects sit near each other, and an issue referenced by a pull request four years later
+ * is a short edge rather than a full-width faint line.
+ *
+ * **Time is demoted, not deleted.** This function keeps everything the weaker channels
+ * need: `extent` for the fill ramp and the time brush, `node.t` for the ramp and for the
+ * hovercard's first row, and enough on each node for an arrowhead to say which endpoint
+ * came first. What it does not do is let time decide where anything goes.
+ *
+ * @returns {object} the same shape `layoutTemporal` returns, plus `edges`, `extent` and
+ *   `positions` — the last being the *unfitted* coordinates, which the caller keeps and
+ *   passes back as `previousPositions` so the next render warm-starts instead of
+ *   re-rolling the picture.
  */
-function layoutStructural() {
-  throw new Error('The off (structural) layout is not wired up yet.');
+function layoutStructural({
+  graph,
+  index,
+  laneTypes,
+  visibleLanes,
+  bursts = [],
+  expandedBursts = new Set(),
+  isVisible = () => true,
+  isLinkVisible = () => true,
+  previousPositions = null,
+  margin,
+  plotWidth,
+  plotHeight = STRUCTURAL_PLOT_HEIGHT,
+}) {
+  const allNodes = buildStructuralNodes({ index, bursts, expandedBursts, laneTypes });
+  const nodes = filterNodes(allNodes, isVisible);
+
+  // The links shape the layout, so hiding a relationship class genuinely rearranges the
+  // picture rather than merely erasing lines from it. That is the honest reading: with
+  // the link gone, those two objects are no longer near each other *because of it*.
+  const edges = buildStructuralEdges(graph.links.filter(isLinkVisible), nodes);
+
+  const positions = layoutForce({
+    nodes: nodes.map((node) => ({ id: node.id, radius: node.radius })),
+    edges: edges.map((edge) => ({ source: edge.source, target: edge.target })),
+    previous: previousPositions,
+    width: plotWidth,
+    height: plotHeight,
+  });
+
+  const fitted = fitPositions(positions, {
+    width: plotWidth,
+    height: plotHeight,
+    padding: STRUCTURAL_PADDING,
+  });
+
+  for (const node of nodes) {
+    const at = fitted.get(node.id);
+    node.x = margin.left + (at?.x ?? plotWidth / 2);
+    node.y = margin.top + (at?.y ?? plotHeight / 2);
+  }
+
+  // Which drawn node stands for which object — including the members of a collapsed
+  // push, which are represented by it. Same rule as `buildStructuralEdges`, and the same
+  // reason: a mark that is drawn has to be reachable, or focusing a pull request would
+  // fail to highlight the push that delivered its commits.
+  const nodeByObject = new Map();
+  for (const node of nodes) {
+    if (node.isBurst && node.burst) {
+      for (const commitId of node.burst.commitIds) nodeByObject.set(commitId, node);
+    }
+    if (node.objectId) nodeByObject.set(node.objectId, node);
+  }
+
+  return {
+    kind: 'structural',
+    nodes,
+    nodeByObject,
+    visibleLanes,
+    // There are no lanes in this mode, and an empty map rather than null is deliberate:
+    // `rowY` already answers 0 for a lane it does not know, so anything that still asks
+    // gets a defined answer instead of throwing halfway through a render.
+    geometry: new Map(),
+    width: margin.left + plotWidth + margin.right,
+    height: margin.top + plotHeight + margin.bottom,
+    anchors: createStructuralAnchors(nodeByObject),
+    objectRow: new Map(),
+    repeatRow: null,
+    // No time scale, and no ranks: both are statements about an axis this mode does not
+    // draw. Null rather than a stub, so a caller that needs one fails visibly.
+    scales: null,
+    rankOrder: [],
+    rankMax: 0,
+    rankTimes: [],
+    edges,
+    extent: timeExtent(nodes),
+    positions,
+  };
+}
+
+/**
+ * Endpoint resolution for the structural layout.
+ *
+ * Deliberately the same interface as `layout/anchors.js` — `{x, y, xAt, clampToLifecycle,
+ * xOfTime}` — so `render/links.js` never learns which engine ran. The bodies are trivial
+ * here because a structural node has one position and nothing to slide along: there is no
+ * lifecycle bar to meet side-on and no time axis to project onto.
+ *
+ * ⚠️ `xOfTime` **throws**, and that is the honest answer rather than an unhelpful one.
+ * Its only caller is the burst-handle renderer, which projects a push's timestamp onto
+ * the time axis — and this mode has no time axis, so any number it returned would be
+ * fiction. Returning null instead would flow into a `translate(null, …)` and produce a
+ * mark in the wrong place with no error, which is the failure this project keeps finding
+ * by eye. The burst handles are not drawn in off mode; a collapsed push is a node here
+ * and is expanded by clicking it.
+ */
+function createStructuralAnchors(nodeByObject) {
+  const at = (anchorId) => nodeByObject.get(anchorId) ?? null;
+
+  return {
+    x: (anchorId) => at(anchorId)?.x ?? 0,
+    y: (anchorId) => at(anchorId)?.y ?? 0,
+    xAt: (object) => (object ? (at(object.id)?.x ?? 0) : 0),
+    clampToLifecycle: (anchorId) => at(anchorId)?.x ?? 0,
+    xOfTime: () => {
+      throw new Error(
+        'xOfTime() has no meaning in the off (structural) mode: there is no time axis to ' +
+          'project onto. Its caller draws burst handles, which this mode does not — a ' +
+          'collapsed push is a node here, expanded by clicking it.',
+      );
+    },
+  };
 }

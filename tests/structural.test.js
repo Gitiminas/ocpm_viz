@@ -134,6 +134,72 @@ describe('one node stands for one object', () => {
   });
 });
 
+describe('nothing collapses except by push_id', () => {
+  /**
+   * ⚠️ **The off mode introduces no folding rule of its own, and this pins that.**
+   *
+   * `push_id` is a fact in the data and decision 94 folds on it, always. Anything further
+   * — clustering by PR, by time, by density — would be a *new* research decision about
+   * what a mark means, not a rendering choice, and it would be invisible in a diff. The
+   * arithmetic below is the whole of it, so a future "just group these too" has to break
+   * a test and be argued for rather than slipped in.
+   */
+  test('every commit is either its own node or in exactly one folded push (F10)', async () => {
+    const { index, bursts, nodes } = await structuralFor('F10');
+    const commits = index.objectsOfType('commit');
+
+    const foldedIds = new Set(bursts.flatMap((burst) => [...burst.commitIds]));
+    const drawnIndividually = new Set(
+      nodes.filter((node) => node.lane === 'commit' && !node.isBurst).map((node) => node.objectId),
+    );
+
+    for (const commit of commits) {
+      const folded = foldedIds.has(commit.id);
+      const drawn = drawnIndividually.has(commit.id);
+      assert.ok(
+        folded !== drawn,
+        `${commit.id} must be exactly one of folded or drawn, not ${folded && drawn ? 'both' : 'neither'}`,
+      );
+    }
+
+    // And the count follows from the push rule alone — no residue to explain.
+    const pushSizes = new Map();
+    for (const commit of commits) {
+      const pushId = commit.vmap?.push_id;
+      if (pushId == null) continue;
+      pushSizes.set(pushId, (pushSizes.get(pushId) || 0) + 1);
+    }
+    const multiCommitPushes = [...pushSizes.values()].filter((size) => size > 1).length;
+    const loneCommits = commits.length - [...pushSizes.values()].filter((s) => s > 1).reduce((a, b) => a + b, 0);
+
+    const commitLaneNodes = nodes.filter((node) => node.lane === 'commit');
+    assert.equal(
+      commitLaneNodes.length,
+      multiCommitPushes + loneCommits,
+      'the commit-lane node count must be exactly (multi-commit pushes) + (commits in none)',
+    );
+    // The measured shape of F10, stated so a change to it is visible rather than silent.
+    assert.equal(commits.length, 300);
+    assert.equal(multiCommitPushes, 18);
+    assert.equal(loneCommits, 6);
+    assert.equal(commitLaneNodes.length, 24);
+  });
+
+  test('the only nodes that are not one-per-object are the folded pushes', async () => {
+    const { index, nodes } = await structuralFor('F10');
+    const objectNodes = nodes.filter((node) => !node.isBurst);
+    const ids = objectNodes.map((node) => node.objectId);
+    assert.equal(new Set(ids).size, ids.length, 'no object may be drawn twice');
+
+    for (const node of objectNodes) {
+      assert.ok(
+        index.byId.has(node.objectId),
+        `${node.id} is not a burst and must therefore name a real object`,
+      );
+    }
+  });
+});
+
 describe('size encodes type, because the lanes are gone', () => {
   test('issue > pull request > commit', () => {
     assert.ok(STRUCTURAL_RADIUS.issue > STRUCTURAL_RADIUS.pull_request);

@@ -252,11 +252,245 @@ describe('the engine chooses by mode, and says which it chose', () => {
     assert.equal(isStructuralMode('off'), true);
   });
 
-  test('an unbuilt engine throws rather than returning an empty picture', async () => {
-    // Until the structural engine is wired up it must fail loudly. An empty layout would
-    // draw a blank chart with no error, which reads as "this sub-log has nothing in it" —
-    // the wrong-picture-no-error failure decisions 60, 74 and 87 all exist to prevent.
+  test('off returns a structural layout, and says so', async () => {
     const context = await contextFor('F1');
-    assert.throws(() => engineLayout(context, 'off'), /not wired up yet/);
+    assert.equal(engineLayout(context, 'off').kind, 'structural');
+  });
+});
+
+describe('the structural layout', () => {
+  test('every node gets a finite position inside the drawing box', async () => {
+    const context = await contextFor('F1');
+    const layout = engineLayout(context, 'off');
+
+    assert.ok(layout.nodes.length > 0, 'F1 must lay out something');
+    for (const node of layout.nodes) {
+      assert.ok(Number.isFinite(node.x), `${node.id} has a non-finite x`);
+      assert.ok(Number.isFinite(node.y), `${node.id} has a non-finite y`);
+      assert.ok(node.x >= 0 && node.x <= layout.width, `${node.id} escaped horizontally`);
+      assert.ok(node.y >= 0 && node.y <= layout.height, `${node.id} escaped vertically`);
+    }
+  });
+
+  test('it draws one node per object, not one per event', async () => {
+    // The same property `structural.test.js` proves of the model, asserted here through
+    // the engine, because this is the seam the renderer actually calls.
+    const context = await contextFor('F1');
+    const temporal = engineLayout(context, 'real');
+    const structural = engineLayout(context, 'off');
+
+    const issueNodes = (layout) => layout.nodes.filter((node) => node.lane === 'issue');
+    assert.ok(
+      issueNodes(temporal).length > issueNodes(structural).length,
+      'the timeline draws an issue once per event; off mode draws it once',
+    );
+    assert.equal(issueNodes(structural).length, context.index.objectsOfType('issue').length);
+  });
+
+  test('it is deterministic across renders', async () => {
+    // Acceptance criterion 2. A layout that re-rolls itself on every render is an
+    // animation, not a layout.
+    const context = await contextFor('F13');
+    const first = engineLayout(context, 'off');
+    const second = engineLayout(context, 'off');
+    for (const node of first.nodes) {
+      const other = second.nodes.find((candidate) => candidate.id === node.id);
+      assert.equal(node.x, other.x, `${node.id} moved horizontally between renders`);
+      assert.equal(node.y, other.y, `${node.id} moved vertically between renders`);
+    }
+  });
+
+  test('it carries the time span the ramp and the brush read', async () => {
+    const context = await contextFor('F1');
+    const layout = engineLayout(context, 'off');
+    assert.ok(layout.extent, 'time is demoted, not deleted — the span must survive');
+    assert.ok(layout.extent.max > layout.extent.min);
+    for (const node of layout.nodes) {
+      assert.ok(node.t, `${node.id} has no timestamp, so the ramp cannot place it`);
+    }
+  });
+
+  test('it hands back unfitted positions for the next warm start', async () => {
+    const context = await contextFor('F1');
+    const layout = engineLayout(context, 'off');
+    assert.ok(layout.positions instanceof Map);
+    assert.equal(layout.positions.size, layout.nodes.length);
+
+    // Unfitted, i.e. centred on the origin rather than on the drawing box — feeding the
+    // fitted coordinates back in would compound the fit on every render and walk the
+    // picture off the screen.
+    const centre = [...layout.positions.values()].reduce(
+      (sum, at) => ({ x: sum.x + at.x, y: sum.y + at.y }),
+      { x: 0, y: 0 },
+    );
+    assert.ok(Math.abs(centre.x / layout.positions.size) < 1e-6);
+    assert.ok(Math.abs(centre.y / layout.positions.size) < 1e-6);
+  });
+
+  test('a warm start keeps the picture still', async () => {
+    const context = await contextFor('F13');
+    const first = engineLayout(context, 'off');
+    const second = createLayout({
+      mode: 'off',
+      graph: context.graph,
+      index: context.index,
+      laneTypes: LANE_TYPES,
+      visibleLanes: LANE_TYPES.slice(),
+      bursts: context.bursts,
+      commentBursts: context.commentBursts,
+      instants: context.instants,
+      expandedBursts: new Set(),
+      expandedCommentBursts: new Set(),
+      expandedGroups: new Set(),
+      isVisible: () => true,
+      previousPositions: first.positions,
+      margin: MARGIN,
+      plotWidth: PLOT_WIDTH,
+    });
+    for (const node of first.nodes) {
+      const other = second.nodes.find((candidate) => candidate.id === node.id);
+      assert.ok(
+        Math.hypot(node.x - other.x, node.y - other.y) < 80,
+        `${node.id} jumped on a warm re-render`,
+      );
+    }
+  });
+
+  test('edges reflect the links, and hiding one rearranges rather than merely erasing', async () => {
+    const context = await contextFor('F1');
+    const all = engineLayout(context, 'off');
+    assert.ok(all.edges.length > 0, 'F1 has links');
+
+    const validatedOnly = createLayout({
+      mode: 'off',
+      graph: context.graph,
+      index: context.index,
+      laneTypes: LANE_TYPES,
+      visibleLanes: LANE_TYPES.slice(),
+      bursts: context.bursts,
+      commentBursts: context.commentBursts,
+      instants: context.instants,
+      expandedBursts: new Set(),
+      expandedCommentBursts: new Set(),
+      expandedGroups: new Set(),
+      isVisible: () => true,
+      isLinkVisible: (link) => link.evidence === 'validated',
+      margin: MARGIN,
+      plotWidth: PLOT_WIDTH,
+    });
+
+    assert.ok(validatedOnly.edges.length < all.edges.length, 'the filter must reach the edges');
+    assert.ok(
+      validatedOnly.edges.every((edge) => edge.evidence === 'validated'),
+      'a hidden evidence class must not shape the layout',
+    );
+  });
+
+  test('anchors expose the same interface as the temporal ones', async () => {
+    // So `render/links.js` never learns which engine ran.
+    const context = await contextFor('F1');
+    const layout = engineLayout(context, 'off');
+    const pr = context.index.objectsOfType('pull_request')[0];
+
+    for (const method of ['x', 'y', 'xAt', 'clampToLifecycle', 'xOfTime']) {
+      assert.equal(typeof layout.anchors[method], 'function', `anchors must expose ${method}`);
+    }
+    const node = layout.nodes.find((candidate) => candidate.objectId === pr.id);
+    assert.equal(layout.anchors.x(pr.id, pr), node.x, 'an edge must meet the node it names');
+    assert.equal(layout.anchors.y(pr.id, pr), node.y);
+    assert.equal(layout.anchors.clampToLifecycle(pr.id, pr, 999), node.x, 'nothing to slide along');
+  });
+
+  test('a link into a folded push anchors on the push', async () => {
+    const context = await contextFor('F10');
+    const layout = engineLayout(context, 'off');
+    const burst = context.bursts[0];
+    const member = [...burst.commitIds][0];
+    const burstNode = layout.nodes.find((node) => node.id === `n_${burst.id}`);
+
+    assert.ok(burstNode, 'a collapsed push must be drawn');
+    assert.equal(
+      layout.anchors.x(member, { id: member, type: 'commit' }),
+      burstNode.x,
+      'a folded commit resolves to its push',
+    );
+  });
+
+  test('xOfTime refuses rather than inventing a position', async () => {
+    // There is no time axis here, so any number it returned would be fiction — and it
+    // would flow into a translate() and put a mark somewhere wrong with no error.
+    const context = await contextFor('F1');
+    const layout = engineLayout(context, 'off');
+    assert.throws(() => layout.anchors.xOfTime(new Date()), /no time axis/);
+  });
+
+  test('an empty picture is empty, not broken', async () => {
+    // Everything switched off is a legitimate state — decision 27 requires it to be
+    // reachable and declared, not prevented.
+    const context = await contextFor('F1');
+    const layout = createLayout({
+      mode: 'off',
+      graph: context.graph,
+      index: context.index,
+      laneTypes: LANE_TYPES,
+      visibleLanes: [],
+      bursts: context.bursts,
+      commentBursts: context.commentBursts,
+      instants: context.instants,
+      expandedBursts: new Set(),
+      expandedCommentBursts: new Set(),
+      expandedGroups: new Set(),
+      isVisible: () => false,
+      margin: MARGIN,
+      plotWidth: PLOT_WIDTH,
+    });
+    assert.equal(layout.nodes.length, 0);
+    assert.equal(layout.edges.length, 0);
+    assert.equal(layout.extent, null);
+    assert.ok(Number.isFinite(layout.height), 'an empty layout still needs a height');
+  });
+
+  test('folding and unfolding a push changes what is drawn, not where everything is', async () => {
+    // Acceptance criterion 2's second half, and the reason `layoutForce` warm-starts.
+    const context = await contextFor('F10');
+    const folded = engineLayout(context, 'off');
+    const burst = context.bursts[0];
+
+    const expanded = createLayout({
+      mode: 'off',
+      graph: context.graph,
+      index: context.index,
+      laneTypes: LANE_TYPES,
+      visibleLanes: LANE_TYPES.slice(),
+      bursts: context.bursts,
+      commentBursts: context.commentBursts,
+      instants: context.instants,
+      expandedBursts: new Set([burst.id]),
+      expandedCommentBursts: new Set(),
+      expandedGroups: new Set(),
+      isVisible: () => true,
+      previousPositions: folded.positions,
+      margin: MARGIN,
+      plotWidth: PLOT_WIDTH,
+    });
+
+    // The members appear...
+    const drawn = new Set(expanded.nodes.map((node) => node.objectId));
+    for (const commitId of burst.commitIds) {
+      assert.ok(drawn.has(commitId), `${commitId} must be drawn once its push is expanded`);
+    }
+    assert.ok(!drawn.has(burst.id), 'and the meta-node goes away');
+
+    // ...and everything that was already on screen stays roughly put.
+    const survivors = folded.nodes.filter(
+      (node) => node.id !== `n_${burst.id}` && expanded.nodes.some((n) => n.id === node.id),
+    );
+    assert.ok(survivors.length > 5, 'sanity: there must be survivors to measure');
+    const moved = survivors.map((node) => {
+      const after = expanded.nodes.find((candidate) => candidate.id === node.id);
+      return Math.hypot(node.x - after.x, node.y - after.y);
+    });
+    const median = moved.slice().sort((a, b) => a - b)[Math.floor(moved.length / 2)];
+    assert.ok(median < 120, `expanding a push shifted the typical node by ${Math.round(median)}px`);
   });
 });
