@@ -22,11 +22,7 @@ import { deriveBursts, indexBurstsByCommit } from '../model/bursts.js';
 import { deriveCommentBursts } from '../model/commentBursts.js';
 import { buildAdjacency, focusSet } from '../model/graph.js';
 import { deriveCommitGroups } from '../model/commitGroups.js';
-import { buildNodes, assignRanks, filterNodes } from '../layout/nodes.js';
-import { createScales } from '../layout/scales.js';
-import { packRows } from '../layout/packing.js';
-import { computeLaneGeometry, rowY } from '../layout/lanes.js';
-import { createAnchors } from '../layout/anchors.js';
+import { createLayout } from '../layout/engine.js';
 import { renderAxis, highlightTickInstants } from './axis.js';
 import { renderLinks } from './links.js';
 import {
@@ -140,83 +136,35 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
     const visibleLanes = laneTypes.filter((lane) => state.lanes[lane]);
 
-    // ---- node model -----------------------------------------------------------
-    const allNodes = buildNodes({
+    // ---- layout ---------------------------------------------------------------
+    //
+    // One call, one engine chosen inside it. Everything below reads the result rather
+    // than the mode, which is what keeps "is time on?" out of the render pass.
+    const layout = createLayout({
+      mode: state.mode,
       graph,
       index,
+      laneTypes,
+      visibleLanes,
       bursts,
       commentBursts,
+      instants,
       expandedBursts: state.expandedBursts,
       expandedCommentBursts: state.expandedCommentBursts,
       expandedGroups: state.expandedGroups,
-      mode: state.mode,
-      laneTypes,
-    });
-    const nodes = filterNodes(allNodes, (node) => isNodeVisible(node, state, groupsByCommit));
-    const { rankOrder, rankMax, rankTimes } = assignRanks(nodes);
-
-    // ---- horizontal position --------------------------------------------------
-    const scales = createScales({
-      instants,
-      marginLeft: MARGIN.left,
+      isVisible: (node) => isNodeVisible(node, state, groupsByCommit),
+      margin: MARGIN,
       plotWidth: plotWidth(),
-      mode: state.mode,
-      rankTimes,
-      rankMax,
     });
-    for (const node of nodes) node.x = scales.x(node.t, node);
-    // Where each observation falls. Taken from the scale by *time*, never through the
-    // node: the node's rank belongs to its first observation, so passing it here would
-    // stack every repeat on top of the glyph in ordinal mode.
-    for (const node of nodes) {
-      if (!node.observations?.length) continue;
-      node.observations.forEach((observation, i) => {
-        // The first observation *is* the glyph, so it takes the node's x rather than
-        // recomputing it. Later ones carry their own rank (`assignRanks`), which is
-        // what gives them a real slot in ordinal mode instead of an interpolated one.
-        observation.x = i === 0 ? node.x : scales.x(observation.time, observation);
-      });
-    }
+
+    const { nodes, geometry, anchors, objectRow, scales, rankOrder, rankMax, rankTimes,
+      width, height } = layout;
     lastNodes = nodes;
 
-    // ---- vertical position ----------------------------------------------------
-    // Objects are passed in so a lane can allocate sub-lanes when two of its
-    // objects overlap in time; without them the packer can only see nodes, and an
-    // object's *span* is what decides whether it needs its own band.
-    const laneObjects = new Map(visibleLanes.map((lane) => [lane, index.objectsOfType(lane)]));
-    const { maxRowByLane, objectRow, repeatRow } = packRows(nodes, visibleLanes, { laneObjects });
-    const { lanes: geometry, height } = computeLaneGeometry(visibleLanes, maxRowByLane, MARGIN);
-    for (const node of nodes) node.y = rowY(geometry, node.lane, node.row);
-
-    // Repeat observations live on their own reserved row, so each carries the y it is
-    // drawn at. The first observation stays on the glyph: it *is* the glyph.
-    const repeatY = repeatRow == null ? null : rowY(geometry, 'commit', repeatRow);
-    for (const node of nodes) {
-      if (!node.observations?.length) continue;
-      node.observations.forEach((observation, i) => {
-        observation.y = i === 0 || repeatY == null ? node.y : repeatY;
-      });
-    }
-
-    // Which drawn node stands for which object — commits carry their packed row, so
-    // a link into the commit lane must meet the node, not the lane's top.
-    const nodeByObject = new Map();
-    for (const node of nodes) {
-      if (node.isGroup) {
-        for (const member of node.members) nodeByObject.set(member.objectId, node);
-      } else if (node.objectId) {
-        nodeByObject.set(node.objectId, node);
-      }
-    }
-
-    const width = MARGIN.left + plotWidth() + MARGIN.right;
     svg.attr('width', width).attr('height', height);
     for (const layer of Object.values(layers)) layer.selectAll('*').remove();
 
     const focus = focusSet(adjacency, state.focus, state.focusDegree);
-    // `objectRow` is what tells an edge which band its issue or PR was packed into;
-    // without it every link into a lane lands on band 0.
-    const anchors = createAnchors({ nodes, nodeByObject, geometry, scales, objectRow });
 
     // ---- draw -----------------------------------------------------------------
     // Which objects actually survived the filters, so the lane caption can say so.
