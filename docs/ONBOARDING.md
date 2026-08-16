@@ -126,8 +126,9 @@ than as logic.
 
 ## 4. The tests are the executable specification
 
-Run `npm test` and read the **test names** as a list of guarantees — 377 statements about what must
-be true, maintained in a way prose is not. Then read two files properly:
+Run `npm test` and read the **test names** as a list of guarantees — 478 assertions across 80
+suites about what must be true, maintained in a way prose is not (counted 2026-08-16; it said 377).
+Then read two files properly:
 
 - `tests/sublanes.test.js` — the layout invariants, including the "each fixture must actually exhibit
   the property it claims" block. Without that block, an "overlapping PRs" fixture whose PRs do not

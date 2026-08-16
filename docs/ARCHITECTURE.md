@@ -47,7 +47,9 @@ src/
   data/
     loadObjectGraph.js the sole data entry point
     fixtures.js        serve a {repo, seed} query from local JSON, via a catalogue
-    api.js             load an ObjectGraph from PostgREST (added later)
+    api.js             load an ObjectGraph from PostgREST: the RPC, seed search, repo list
+    source.js          ✚ fixtures vs database behind one shape, chosen by ?source= (63)
+    seedQuery.js       ✚ parse and rank what is typed into "Start from" (64)
   model/
     objectGraph.js     shape validation, normalization, indexing
     activities.js      the closed activity vocabulary + landmark set
@@ -79,8 +81,12 @@ src/
     metrics.js         durations, counts, gaps — pure functions over an ObjectGraph
 scripts/
   build-f1.mjs         ocel-data.json → tests/fixtures/F1.json
+  build-synthetic-fixtures.mjs  F2–F13: one structural property each, never real data
   build-catalogue.mjs  which repos exist and which seeds can be served
-  serve.mjs            zero-dependency static server (npm start)
+  serve.mjs            zero-dependency static server (npm start), proxying /rpc/*
+  rpc-check.mjs        acceptance gate: a real RPC payload through the real pipeline
+  pull-sublog.mjs      snapshot RPC output to tests/fixtures/LIVE*.json — samples, not fixtures
+  shot.mjs             headless screenshot of the running app, to .shots/
 tests/
   fixtures/            F1 … F13
   *.test.js
@@ -108,6 +114,13 @@ alternative was a module doing two jobs:
   It renders from `redraw()` rather than on load, because it **dims** the rows whose marks are
   not on screen (decision 83) — dims, never removes, so "the data has none" and "you switched
   it off" stay distinguishable. Presence is read off the chart, not re-derived.
+- `data/source.js` — the fixtures-or-database choice, absorbed in one place (decision 63). Its
+  three operations are async in **both** implementations even where one has nothing to await,
+  because differing shapes would push the branch up into `main.js`, which is what this module
+  exists to prevent.
+- `data/seedQuery.js` — parsing "pr #243221" and ranking the matches are pure functions, and
+  they are shared by both sources deliberately (decision 64): a second parser in SQL would give
+  the two searches something to disagree about with nothing to say which was right.
 - `state/labels.js` — lets `state.js` derive toggle labels without importing a render module.
 - `model/commitGroups.js` — grouping commits by the PR they reach is a data derivation, and the
   union visibility rule (decision 26) has to be testable on its own.

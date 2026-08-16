@@ -42,9 +42,14 @@ There is deliberately no "case": the same event may belong to many sub-logs.
 
 `?repo=&seed=` reproduces a selection by link; add `?preset=` to carry the filters too.
 
-⚠️ Until the `get_object_graph` RPC exists there is no traversal, so **only seeds with a
-pre-built sub-log are offered**. `facebook/react` and `kubernetes/kubernetes` appear in the
-repo list, disabled, because their absence is itself the RQ2 finding.
+⚠️ **On the fixture source** there is no traversal, so only seeds with a pre-built sub-log
+are offered, and `facebook/react` and `kubernetes/kubernetes` appear in the repo list
+disabled — "no fixture built for this repository". The database source traverses for real
+and serves all three. Corrected 2026-08-16: this paragraph said the two repositories were
+unavailable *until the `get_object_graph` RPC exists* and that their absence was itself the
+RQ2 finding. The RPC exists, both repositories have data, and
+`scripts/build-catalogue.mjs` already retracts that claim in place — it was a statement
+about which fixtures had been built, not about the world.
 
 ## What you are looking at
 
@@ -269,15 +274,17 @@ keeps them out of the `^F\d+$` test globs.
 Work packages `tasks/00` through `tasks/06` are complete, and the data layer is built.
 What is **not** done:
 
-- **The renderer does not cope with dense real sub-logs** — open question O12, and one
-  half of it misleads rather than merely crowds: a pull request with 37 commits draws
-  ~30 diamonds in the PR lane because the link fan spreads coincident endpoints. Fix the
-  fan before the band stacking.
-- **`scripts/build-catalogue.mjs` still lists react and kubernetes as "unavailable —
-  needs the `get_object_graph` RPC".** That is true of the *fixture* catalogue and is
-  what the fixture source still reports; the database source computes availability from
-  `fe.seed_lookup` instead and shows all three as available. The hardcoded list is now
-  fixture-only and should say so.
+- **The renderer still crowds on dense real sub-logs — open question O12(b).** Event
+  glyphs stack without bound: kubernetes issue #260 has 288 comment events in a short
+  window, so the collision loop allocates 52 bands for one issue and the SVG reaches
+  5,654 px. Crowding rather than deception, but it is worst on the busiest issues.
+  ⚠️ **O12(a) is closed** — the misleading half, where a 37-commit pull request drew ~30
+  diamonds because the link fan spread coincident endpoints. Decision 68 caps the fan at
+  `MAX_FANNED_LINKS = 6` (`src/render/links.js`) and declares a `×N` count beyond that.
+  This bullet claimed both halves were open; corrected 2026-08-16.
+- **How to draw a dense sub-log's links is unresolved — open question O13.** Bundling
+  links that share an endpoint into one trunk was built and reverted on 2026-08-09.
+  Decisions 25 and 68 survive whatever replaces it.
 - **No deployment story beyond localhost.** The dev server's `/rpc/*` proxy is the same
   shape nginx would take, but nothing is packaged or documented for a real host.
 - **Refresh is manual.** `fe.refresh_all()` does both materialized relations in one
@@ -285,9 +292,9 @@ What is **not** done:
 - **The RQ2 link-coverage figure is now measurable but unpublished.**
   `fe.diag_link_methods` produces it, grouped by `(method, qualifier)` as decision 50
   requires. It has not been written up, and two caveats must travel with it: the
-  `ref_match` narrowing (decisions 61–62) makes every commit-link count a **floor**, and
+  `ref_match` narrowing (decisions 80 and 62 — 80 replaced 61) makes every commit-link
+  count a **floor**, and
   the per-repo spread is a fork-vs-branch contribution artifact, not a process difference.
-- **Layout does not cope with dense real sub-logs** — see open question O12.
 - **Interaction has no automated coverage** — tooltips, minimap drag, legend hover.
 - **Sizing has not been tuned** beyond 1920×1200.
 

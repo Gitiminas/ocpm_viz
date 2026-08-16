@@ -102,9 +102,14 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div id="objectDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow-y:auto;max-height:220px"></div>
 </div>
 <!--
-  Read-only, not a control. Traversal degree is fixed when the sub-log is built, so
-  a stepper here would be a control that silently does nothing - forbidden. It
-  becomes editable when get_object_graph can honour it.
+  Written by updateTraversalInfo(), and what it holds depends on the source.
+
+  Against the DATABASE the traversal degree is a real 0-3 stepper: get_object_graph takes
+  it as a parameter, so the condition decision 35 set has been met (decision 72). On
+  FIXTURES it stays text, for decision 35's original reason - the degree was fixed when
+  the fixture was built, so a stepper there would be a control that silently does nothing.
+
+  Corrected 2026-08-16: this comment said the degree was read-only, full stop.
 -->
 <div id="traversalInfo" class="mono" style="font-size:10px;color:var(--color-neutral-500);margin-top:6px;line-height:1.5"></div>
 </div>

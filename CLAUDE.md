@@ -144,13 +144,21 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
 - **Two admission rules are ours, not upstream's** (decisions 62 and 80 — 80 replaced 61), and they are the only places
   this project diverges from the shared views. Both narrow `ref_match`. Every commit-link and
   issue↔PR figure is therefore a **floor**, never a point estimate — say so wherever one is quoted.
-- Identity by numeric id, never by `login` or repo `name` — both are renameable.
-  **Two dated exceptions, both blocked on the RPC, neither to be widened:**
-  actor objects are keyed `actor:<login>` and the query addresses a repo by name, because
-  `ocel-data.json` — the frozen source blob F1 is built from — carries no numeric actor id and no
-  other source is reachable yet. `actor.id` exists upstream (`DATA_CONTRACT.md` §0), so both expire
-  when the RPC lands. Until then a renamed account silently splits into two actors across a
-  re-extraction; note it if actor counts are reported.
+- Identity by numeric id, never by `login` or repo `name` — both are renameable. Object ids are
+  **type-prefixed** (decision 51): `issue:<issue_id>`, `pr:<pull_request_id>`, `commit:<sha>`,
+  `actor:<actor_id>`. The prefix is not decoration — the bare numbers collide across types.
+  **Two exceptions remain, and they have shrunk (updated 2026-08-16):**
+  - The query still addresses a **repo by name**, because `repo.name` is not unique in this
+    database: it resolves deterministically to the id with the most events, carried as
+    `meta.repo_id`, with a `meta.repo_ambiguous` flag when more than one row bore the name.
+    (Decision 51 spells the flag `meta.repo_id`; the RPC emits both — `sql/fe_layer.sql:1337`.)
+  - `actor:<login>` survives **in the fixtures only**. `ocel-data.json` — the frozen blob F1 is
+    built from — carries no numeric actor id, so `build-f1.mjs` keys on the login and the
+    synthetic fixtures follow it. The RPC has landed and `fe.object_actor` reads `actor.id` from
+    the base table (decision 58), so the live payload is already `actor:<actor_id>`. This entry
+    previously said both exceptions were "blocked on the RPC" and would expire when it landed;
+    half of that has happened. A renamed account still splits into two actors across a
+    re-extraction **of the fixtures**; note it if fixture actor counts are reported.
 - **Modularity is a hard requirement.** Data access, layout, rendering and stats stay separable.
   `loadObjectGraph(query) -> ObjectGraph` is the only data entry point.
 - No bundler, framework or TypeScript. A test runner is required; native ES modules need no build
