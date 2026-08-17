@@ -36,8 +36,16 @@ export function createState() {
   return {
     /** Horizontal zoom multiplier. */
     k: 1,
-    /** Active time scale: real | highlights | ordinal. */
+    /** Active time scale: real | highlights | ordinal | off. */
     mode: 'real',
+    /**
+     * How the off mode arranges a sub-log: `layered` (rows) or `radial` (rings).
+     *
+     * Only read when `mode === 'off'`. Two geometries for one question — rows read as a
+     * process direction and match the timeline's lane order, rings read as containment
+     * and suit a hub-shaped sub-log. Neither is right in general, so it is the reader's.
+     */
+    structuralLayout: 'layered',
     /** Focused object id, or null. Client-side highlighting only. */
     focus: null,
     /** BFS depth from the focused object. Capped at 2 by the graph model. */

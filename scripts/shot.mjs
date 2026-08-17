@@ -79,6 +79,8 @@ const port = flag('port', 8000);
 const repo = flag('repo', null);
 const seed = flag('seed', null);
 const degree = flag('degree', null);
+// Which arrangement the off mode uses: layered (rows) or radial (rings).
+const layout = flag('layout', null);
 const fixture = positional[0] || 'LIVE1';
 
 const target = repo
@@ -90,7 +92,8 @@ const target = repo
 const url =
   `http://localhost:${port}/${target}` +
   (page ? `&page=${encodeURIComponent(page)}` : '') +
-  (mode ? `&mode=${encodeURIComponent(mode)}` : '');
+  (mode ? `&mode=${encodeURIComponent(mode)}` : '') +
+  (layout ? `&layout=${encodeURIComponent(layout)}` : '');
 
 // The browser writes where *it* can see. Under WSL that means a Windows path, so stage
 // the file on the Windows side and copy it back into the repo's scratch directory.
@@ -100,7 +103,7 @@ mkdirSync(outDir, { recursive: true });
 const label = repo
   ? [repo, seed, degree && `d${degree}`].filter(Boolean).join('-').replace(/[^\w.-]+/g, '-')
   : fixture;
-const name = `${label}${page ? `-${page}` : ''}${mode ? `-${mode}` : ''}.png`;
+const name = `${label}${page ? `-${page}` : ''}${mode ? `-${mode}` : ''}${layout ? `-${layout}` : ''}.png`;
 const finalPath = resolve(outDir, name);
 
 let browserTarget;

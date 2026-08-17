@@ -170,6 +170,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       expandedGroups: state.expandedGroups,
       isVisible: (node) => isNodeVisible(node, state, groupsByCommit),
       isLinkVisible: (link) => isLinkVisible(link, index.byId, state, groupsByCommit),
+      structuralLayout: state.structuralLayout,
       margin: MARGIN,
       plotWidth: plotWidth(),
       plotHeight: structuralPlotHeight(),

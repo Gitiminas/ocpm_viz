@@ -33,10 +33,24 @@ import { packRows } from './packing.js';
 import { computeLaneGeometry, rowY } from './lanes.js';
 import { createAnchors } from './anchors.js';
 import { layoutLayered } from './layered.js';
+import { layoutRadial } from './radial.js';
 import { buildStructuralNodes, buildStructuralEdges, timeExtent } from './structural.js';
 
 /** Which engine a mode uses. `off` is the only structural one. */
 export const STRUCTURAL_MODES = ['off'];
+
+/**
+ * The two ways the off mode can arrange a sub-log.
+ *
+ * Both are structural — position encodes relationships either way — and they answer the
+ * same question with different geometry. `layered` puts issues, pull requests and commits
+ * in rows, which reads as a process direction and matches the timeline's lane order.
+ * `radial` puts them in rings, which reads as containment and suits a hub-shaped sub-log,
+ * where one issue has everything hanging off it and rows have to flatten the symmetry.
+ * Neither is right in general, so the reader chooses.
+ */
+export const STRUCTURAL_LAYOUTS = ['layered', 'radial'];
+export const DEFAULT_STRUCTURAL_LAYOUT = 'layered';
 
 /**
  * Every mode the tool has, in the order the control offers them.
@@ -226,6 +240,7 @@ function layoutStructural({
   expandedBursts = new Set(),
   isVisible = () => true,
   isLinkVisible = () => true,
+  structuralLayout = DEFAULT_STRUCTURAL_LAYOUT,
   margin,
   plotWidth,
   plotHeight = STRUCTURAL_PLOT_HEIGHT,
@@ -238,16 +253,37 @@ function layoutStructural({
   // the link gone, those two objects are no longer near each other *because of it*.
   const edges = buildStructuralEdges(graph.links.filter(isLinkVisible), nodes);
 
-  const { positions, rows, crossings } = layoutLayered(nodes, edges, {
-    width: plotWidth,
-    height: plotHeight,
-    padding: STRUCTURAL_PADDING,
-  });
+  const box = { width: plotWidth, height: plotHeight, padding: STRUCTURAL_PADDING };
+  const arrange = structuralLayout === 'radial' ? layoutRadial : layoutLayered;
+  // `rings` and `rows` are the same thing under two names; `crossings` is a property only
+  // the layered arrangement can meaningfully report, since a crossing count between two
+  // rows says nothing about a circle.
+  const { positions, rows, rings, crossings = null, waypoints = new Map() } = arrange(
+    nodes,
+    edges,
+    box,
+  );
 
   for (const node of nodes) {
     const at = positions.get(node.id);
     node.x = margin.left + (at?.x ?? plotWidth / 2);
     node.y = margin.top + (at?.y ?? plotHeight / 2);
+  }
+
+  /*
+   * ⚠️ **Waypoints take the same offset as the nodes, and did not.** The arrangement works
+   * in its own box; the margin is added when the result is placed on the canvas. Nodes got
+   * that offset and the routed bends did not, so a long edge bent at a point shifted up
+   * and to the left by the whole margin — 180px across — and curved away from the line it
+   * was supposed to be. Nothing errors, and it is only visible on a sub-log that has a
+   * row-skipping link at all.
+   */
+  const placedWaypoints = new Map();
+  for (const [key, via] of waypoints) {
+    placedWaypoints.set(
+      key,
+      via.map((point) => ({ x: margin.left + point.x, y: margin.top + point.y })),
+    );
   }
 
   // Which drawn node stands for which object — including the members of a collapsed
@@ -285,10 +321,14 @@ function layoutStructural({
     edges,
     // Everything that happened, first instant to last — what the time brush has to span.
     extent: timeExtent(nodes),
-    // The rows as ordered, and what the ordering achieved. `crossings` is reported rather
-    // than kept private because "how tangled is this sub-log" is a finding, not a detail.
-    rows,
+    // The bands as arranged, whichever geometry produced them, and what the ordering
+    // achieved. `crossings` is reported rather than kept private because "how tangled is
+    // this sub-log" is a finding, not a detail; it is null for the radial arrangement,
+    // which has no adjacent-row count to give.
+    rows: rows ?? rings ?? [],
     crossings,
+    waypoints: placedWaypoints,
+    structuralLayout,
   };
 }
 

@@ -14,7 +14,7 @@ import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
-import { MODES } from './layout/engine.js';
+import { MODES, STRUCTURAL_LAYOUTS, isStructuralMode } from './layout/engine.js';
 import {
   createState,
   deriveRelGroups,
@@ -499,12 +499,31 @@ function markMode(mode) {
   for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
     option.classList.toggle('on', option.dataset.mode === mode);
   }
+  // The arrangement control belongs to the off mode alone. Shown in the other three it
+  // would be a control that silently does nothing, which this project forbids.
+  el('layoutSeg').style.display = isStructuralMode(mode) ? '' : 'none';
+}
+
+/** Reflect the active structural arrangement. */
+function markLayout(layout) {
+  for (const option of document.querySelectorAll('#layoutSeg .seg-opt')) {
+    option.classList.toggle('on', option.dataset.layout === layout);
+  }
 }
 
 for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
   option.addEventListener('click', () => {
     markMode(option.dataset.mode);
     state.mode = option.dataset.mode;
+    timeline.captureTween();
+    timeline.render();
+  });
+}
+
+for (const option of document.querySelectorAll('#layoutSeg .seg-opt')) {
+  option.addEventListener('click', () => {
+    markLayout(option.dataset.layout);
+    state.structuralLayout = option.dataset.layout;
     timeline.captureTween();
     timeline.render();
   });
@@ -620,6 +639,9 @@ function queryFromUrl() {
      * than defaulted loudly — it is a URL someone typed, not a payload.
      */
     mode: MODES.includes(params.get('mode')) ? params.get('mode') : null,
+    // Which arrangement the off mode uses. Same reasoning as `mode`: a link has to be
+    // able to reproduce the picture, and rows and rings are two different pictures.
+    layout: STRUCTURAL_LAYOUTS.includes(params.get('layout')) ? params.get('layout') : null,
   };
 }
 
@@ -630,6 +652,10 @@ const initialQuery = queryFromUrl();
 if (initialQuery.mode) {
   state.mode = initialQuery.mode;
   markMode(initialQuery.mode);
+}
+if (initialQuery.layout) {
+  state.structuralLayout = initialQuery.layout;
+  markLayout(initialQuery.layout);
 }
 
 /**

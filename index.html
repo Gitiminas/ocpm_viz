@@ -59,9 +59,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip.pinned .tip-row:hover{background:color-mix(in srgb, var(--color-text) 8%, transparent)}
 .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:1px solid currentColor}
 #minimap{cursor:pointer;display:block;width:100%}
-#modeSeg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
-#modeSeg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
-#modeSeg .seg-opt{cursor:pointer}
+#modeSeg .seg-opt.on,#layoutSeg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
+#modeSeg .seg-opt:not(.on):hover,#layoutSeg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
+#modeSeg .seg-opt,#layoutSeg .seg-opt{cursor:pointer}
 </style>
 </head>
 <body>
@@ -202,6 +202,15 @@ html,body{height:100%;margin:0;overflow:hidden}
   position means, and the three before it are variations on a shared idea.
 -->
 <div class="seg-opt" data-mode="off" title="Release the time axis — position encodes relationships instead"><span>Off</span></div>
+</div>
+<!--
+  How the off mode arranges things. Hidden in the three time modes, where it would be a
+  control that silently does nothing — the rule this project applies to the traversal
+  stepper and to the minimap alike.
+-->
+<div class="seg" id="layoutSeg" style="display:none">
+<div class="seg-opt on" data-layout="layered" title="Rows: issues, then pull requests, then commits"><span>Rows</span></div>
+<div class="seg-opt" data-layout="radial" title="Rings: issues at the centre, commits outermost"><span>Rings</span></div>
 </div>
 <div style="display:flex;gap:2px;border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);padding:2px">
 <button aria-label="Zoom out" class="btn btn-icon" id="zout"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line></svg></button>
