@@ -529,15 +529,24 @@ function setZoom(value) {
 el('zin').onclick = () => setZoom(state.k * 1.3);
 el('zout').onclick = () => setZoom(state.k / 1.3);
 /*
- * One "put it back" control, not two.
+ * One "put it back" control, not several.
  *
- * This resets the zoom and any marks dragged out of place together. A separate button for
- * the second was redundant beside a reset pill that was already there and already meant
- * "return the view to how it was computed" — and two reset controls sitting side by side
- * invite the reader to work out which one they want before either does anything.
+ * It resets everything the reader can do to the *view* without changing what was loaded:
+ * the zoom, any marks dragged out of place, and the brushed time range. A separate button
+ * per thing was the alternative and is worse — two or three reset controls side by side
+ * make the reader work out which one they want before any of them does anything.
+ *
+ * ⚠️ The brush was left out of this when the drag reset was folded in, so the pill undid
+ * two of the three things it appears to promise and quietly kept dimming half the graph.
+ * A control that resets *some* of the view is worse than one that resets none, because
+ * the reader stops looking for the rest.
  */
 el('zrst').onclick = () => {
   state.nodeNudges.clear();
+  state.timeBrush = [0, 1];
+  el('timeBrushFrom').value = 0;
+  el('timeBrushTo').value = 1000;
+  syncTimeBrush();
   setZoom(1);
 };
 
