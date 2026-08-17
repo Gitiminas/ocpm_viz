@@ -39,6 +39,7 @@ import { createTimeline, MARGIN } from './render/timeline.js';
 import { renderLegend, legendKeysPresentIn } from './render/legend.js';
 import { createMessageSurface, messageHtml, errorHtml } from './render/message.js';
 import { renderStats } from './render/stats.js';
+import { formatInstant } from './render/format.js';
 import {
   renderLaneRows,
   renderRelationshipRows,
@@ -106,6 +107,8 @@ const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.wrap });
 const actorCard = createActorCard({ element: elements.actorCard });
 
 let current = null; // { graph, index, actorColors, description }
+/** So a `?brush=` in the opening URL survives the first load's reset. */
+let firstLoad = true;
 let relSync = () => {};
 
 // ---------------------------------------------------------------------------
@@ -201,7 +204,7 @@ const timeline = createTimeline({
       timeline.render();
     },
 
-    onRendered({ nodes, scales, plotWidth, basePlotWidth, kind }) {
+    onRendered({ nodes, scales, plotWidth, basePlotWidth, kind, extent }) {
       el('zin').disabled = state.k >= MAX_ZOOM - 0.001;
       el('zout').disabled = state.k <= MIN_ZOOM + 0.001;
 
@@ -217,7 +220,13 @@ const timeline = createTimeline({
        */
       const structural = kind === 'structural';
       el('minimapWrap').style.display = structural ? 'none' : 'block';
-      if (structural) return;
+      // The brush takes the minimap's slot: one place to look for "when", whichever mode
+      // is on. Hidden with no span to brush — a sub-log of one instant has no range.
+      el('timeBrushWrap').style.display = structural && extent ? 'block' : 'none';
+      if (structural) {
+        updateTimeBrushLabel(extent);
+        return;
+      }
 
       minimap.render({
         nodes,
@@ -269,8 +278,18 @@ async function load(query) {
   state.expandedBursts = new Set();
   state.expandedGroups = new Set();
   // A displacement is relative to a position in *this* sub-log; carrying it into another
-  // would move a mark by an amount that meant something somewhere else.
+  // would move a mark by an amount that meant something somewhere else. The brush resets
+  // for the same reason in reverse: "the last third" of one span is not the last third of
+  // another, and a range silently carried over would hide marks nobody chose to hide.
   state.nodeNudges.clear();
+  // ⚠️ Not on the first load, or a `?brush=` link would reset itself before drawing
+  // anything — the range would be in the URL, in the sliders, and applied to nothing.
+  if (!firstLoad) {
+    state.timeBrush = [0, 1];
+    el('timeBrushFrom').value = 0;
+    el('timeBrushTo').value = 1000;
+  }
+  firstLoad = false;
 
   const objectColors = timeline.setGraph(graph, index, actorColors);
   const toggleContext = { relGroups, qualifiers, methods, commitGroups, objectsById: index.byId };
@@ -531,6 +550,40 @@ function markMode(mode) {
   el('layoutSeg').style.display = isStructuralMode(mode) ? '' : 'none';
 }
 
+/**
+ * Say what the brush is currently letting through.
+ *
+ * Named in UTC instants rather than as percentages, because "1 Mar – 14 Mar" is a fact
+ * about the sub-log and "20%–60%" is a fact about a slider. Decision 9's rule applies here
+ * as everywhere: the times are UTC and labelled as such.
+ */
+function updateTimeBrushLabel(extent) {
+  const [from, to] = state.timeBrush;
+  const label = el('timeBrushLabel');
+  if (!extent) {
+    label.textContent = '';
+    return;
+  }
+  if (from <= 0 && to >= 1) {
+    label.textContent = 'the whole sub-log';
+    return;
+  }
+  const span = extent.max - extent.min;
+  const at = (fraction) => formatInstant(new Date(extent.min + span * fraction));
+  label.textContent = `${at(Math.min(from, to))} → ${at(Math.max(from, to))}`;
+}
+
+for (const id of ['timeBrushFrom', 'timeBrushTo']) {
+  el(id).addEventListener('input', () => {
+    state.timeBrush = [
+      Number(el('timeBrushFrom').value) / 1000,
+      Number(el('timeBrushTo').value) / 1000,
+    ];
+    // A redraw, not a reload: the brush dims, it does not change what was loaded.
+    timeline.render();
+  });
+}
+
 /** Reflect the active structural arrangement. */
 function markLayout(layout) {
   for (const option of document.querySelectorAll('#layoutSeg .seg-opt')) {
@@ -671,7 +724,21 @@ function queryFromUrl() {
     // Which arrangement the off mode uses. Same reasoning as `mode`: a link has to be
     // able to reproduce the picture, and rows and rings are two different pictures.
     layout: STRUCTURAL_LAYOUTS.includes(params.get('layout')) ? params.get('layout') : null,
+    // The brushed range, as two fractions — `?brush=0.6,1` is "the last two fifths". Same
+    // reproducibility argument as ?mode= and ?layout=: a brushed picture is a different
+    // picture, and a link has to be able to carry it. Fractions rather than dates because
+    // that is what the state holds, and because a date outside the span would silently
+    // mean nothing.
+    brush: parseBrush(params.get('brush')),
   };
+}
+
+/** `"0.2,0.8"` → `[0.2, 0.8]`, or null if it is not two numbers in range. */
+function parseBrush(value) {
+  if (!value) return null;
+  const parts = value.split(',').map(Number);
+  if (parts.length !== 2 || parts.some((n) => !Number.isFinite(n) || n < 0 || n > 1)) return null;
+  return [Math.min(...parts), Math.max(...parts)];
 }
 
 const initialQuery = queryFromUrl();
@@ -685,6 +752,11 @@ if (initialQuery.mode) {
 if (initialQuery.layout) {
   state.structuralLayout = initialQuery.layout;
   markLayout(initialQuery.layout);
+}
+if (initialQuery.brush) {
+  state.timeBrush = initialQuery.brush;
+  el('timeBrushFrom').value = Math.round(initialQuery.brush[0] * 1000);
+  el('timeBrushTo').value = Math.round(initialQuery.brush[1] * 1000);
 }
 
 /**

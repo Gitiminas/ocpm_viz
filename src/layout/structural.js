@@ -291,6 +291,48 @@ export function timeExtent(nodes) {
 }
 
 /**
+ * A brushed range, from two fractions of the sub-log's span.
+ *
+ * The control works in fractions because a slider does; the answer is in instants because
+ * that is what a node carries. `null` when there is nothing to brush, or when the range
+ * covers everything — a brush that excludes nothing is not a brush, and saying so here
+ * keeps the renderer from dimming against a range that means "all of it".
+ */
+export function brushRange(extent, from, to) {
+  if (!extent) return null;
+  const low = Math.max(0, Math.min(1, Math.min(from, to)));
+  const high = Math.max(0, Math.min(1, Math.max(from, to)));
+  if (low <= 0 && high >= 1) return null;
+
+  const span = extent.max - extent.min;
+  return { min: extent.min + span * low, max: extent.min + span * high };
+}
+
+/**
+ * Whether a mark was alive during the brushed range.
+ *
+ * ⚠️ **An overlap of spans, not a test of one instant**, and the difference is the whole
+ * usefulness of the control. A node's `t` is when it *first appeared*; testing only that
+ * would answer "what started in this window", which is a much narrower question and on
+ * most sub-logs a nearly empty one — measured on F1, every one of its fifteen marks first
+ * appears in the first half of the span, so brushing the second half would have dimmed
+ * nothing at all and the right-hand side of the slider would have done nothing. An issue
+ * opened in March and closed in June is alive in April, and brushing April should show it.
+ *
+ * ⚠️ An undated mark is **inside**, never dimmed. A commit with no timestamp is a gap in
+ * the data, and dimming it would present that gap as a statement about when it happened —
+ * the reader would take it for something that fell outside the range they chose. There is
+ * nothing to say, so nothing is said.
+ */
+export function overlapsBrush(node, brush) {
+  if (!brush) return true;
+  const from = node?.t ? +node.t : null;
+  if (from == null || !Number.isFinite(from)) return true;
+  const to = node?.tLast && Number.isFinite(+node.tLast) ? +node.tLast : from;
+  return to >= brush.min && from <= brush.max;
+}
+
+/**
  * Where a node sits in the sub-log's time span, as a fraction from 0 (earliest) to 1.
  *
  * The time brush reads this. A span of zero — one object, or several sharing an instant —

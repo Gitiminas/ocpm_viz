@@ -30,8 +30,11 @@ import { objectOpacity } from '../model/graph.js';
 import { formatInstant, escapeHtml } from './format.js';
 import { activityLabel } from '../model/activities.js';
 import { legendKeyFor } from './nodes.js';
-import { bundleEdges } from '../layout/structural.js';
+import { bundleEdges, overlapsBrush } from '../layout/structural.js';
 import { pushApart } from './motion.js';
+
+/** How faint a mark outside the brushed range becomes. Dimmed, never removed. */
+const BRUSHED_OUT = 0.13;
 
 /** Gap between a node's edge and where an arrowhead stops. */
 const ARROW_GAP = 4;
@@ -57,6 +60,7 @@ export function renderStructuralEdges({
   tooltip,
   direction,
   waypoints = new Map(),
+  brush = null,
 }) {
   // What movement needs in order to keep an edge attached to its ends: which two marks it
   // joins, and how to redraw it once they have moved.
@@ -91,9 +95,14 @@ export function renderStructuralEdges({
 
     classes.forEach(([evidence, group], index) => {
       const style = evidenceStyle(evidence);
+      // An edge is only as bright as its dimmer end, under focus and under the brush
+      // alike: an edge half inside a brushed range is not inside it.
+      const brushed =
+        overlapsBrush(source, brush) && overlapsBrush(target, brush) ? 1 : BRUSHED_OUT;
       const opacity =
         Math.min(objectOpacity(source.objectId, focus), objectOpacity(target.objectId, focus)) *
-        style.opacity;
+        style.opacity *
+        brushed;
       const color = evidence === 'validated' ? 'var(--color-neutral-500)' : COLORS.extracted;
       const legendKey = evidence === 'validated' ? 'link-validated' : 'link-extracted';
 
@@ -332,6 +341,7 @@ export function renderStructuralNodes({
   previous = new Map(),
   onDragged = null,
   repaint = () => {},
+  brush = null,
 }) {
   // What movement needs: where each mark belongs, where it was a moment ago, and how to
   // put it somewhere. The label rides along, so a name never parts company with its mark.
@@ -343,7 +353,15 @@ export function renderStructuralNodes({
     // here as it does there; time is carried by the arrowheads, the brush and the
     // hovercard instead. See the note on `renderStructuralNodes` for what this replaced.
     const shade = objectColors.get(node.objectId) || typeColor(node.lane);
-    const opacity = objectOpacity(node.objectId, focus);
+    /*
+     * ⚠️ **Dimmed, never removed.** A mark outside the brushed range is still part of the
+     * sub-log, and taking it away would leave the reader unable to tell "nothing happened
+     * then" from "you narrowed the range" — the distinction decision 83 protects in the
+     * legend and decision 27 in the banner. Dimming says both at once: the shape of the
+     * whole graph stays visible behind what was asked for.
+     */
+    const opacity =
+      objectOpacity(node.objectId, focus) * (overlapsBrush(node, brush) ? 1 : BRUSHED_OUT);
 
     const group = gNode
       .append('g')

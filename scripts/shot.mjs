@@ -81,6 +81,8 @@ const seed = flag('seed', null);
 const degree = flag('degree', null);
 // Which arrangement the off mode uses: layered (rows) or radial (rings).
 const layout = flag('layout', null);
+// The brushed time range, as two fractions: --brush 0.6,1
+const brush = flag('brush', null);
 const fixture = positional[0] || 'LIVE1';
 
 const target = repo
@@ -93,7 +95,8 @@ const url =
   `http://localhost:${port}/${target}` +
   (page ? `&page=${encodeURIComponent(page)}` : '') +
   (mode ? `&mode=${encodeURIComponent(mode)}` : '') +
-  (layout ? `&layout=${encodeURIComponent(layout)}` : '');
+  (layout ? `&layout=${encodeURIComponent(layout)}` : '') +
+  (brush ? `&brush=${encodeURIComponent(brush)}` : '');
 
 // The browser writes where *it* can see. Under WSL that means a Windows path, so stage
 // the file on the Windows side and copy it back into the repo's scratch directory.
@@ -103,7 +106,7 @@ mkdirSync(outDir, { recursive: true });
 const label = repo
   ? [repo, seed, degree && `d${degree}`].filter(Boolean).join('-').replace(/[^\w.-]+/g, '-')
   : fixture;
-const name = `${label}${page ? `-${page}` : ''}${mode ? `-${mode}` : ''}${layout ? `-${layout}` : ''}.png`;
+const name = `${label}${page ? `-${page}` : ''}${mode ? `-${mode}` : ''}${layout ? `-${layout}` : ''}${brush ? '-brushed' : ''}.png`;
 const finalPath = resolve(outDir, name);
 
 let browserTarget;

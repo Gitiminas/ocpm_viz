@@ -13,6 +13,8 @@ import {
   edgeDirection,
   timeExtent,
   timeFraction,
+  brushRange,
+  overlapsBrush,
   STRUCTURAL_RADIUS,
   burstRadius,
 } from '../src/layout/structural.js';
@@ -471,5 +473,73 @@ describe('the span the time brush will read', () => {
   test('nothing dated at all yields no extent rather than a broken one', () => {
     assert.equal(timeExtent([{ id: 'a', t: null, tLast: null }]), null);
     assert.equal(timeExtent([]), null);
+  });
+});
+
+describe('the time brush', () => {
+  const extent = { min: 1000, max: 2000 };
+
+  test('two fractions become two instants', () => {
+    assert.deepEqual(brushRange(extent, 0, 0.5), { min: 1000, max: 1500 });
+    assert.deepEqual(brushRange(extent, 0.25, 0.75), { min: 1250, max: 1750 });
+  });
+
+  test('the handles may be dragged past each other', () => {
+    // A reader crossing the two handles means the range between them, not an empty one.
+    assert.deepEqual(brushRange(extent, 0.75, 0.25), brushRange(extent, 0.25, 0.75));
+  });
+
+  test('a range covering everything is no brush at all', () => {
+    // A brush that excludes nothing should not dim anything, and saying so here stops the
+    // renderer from testing every mark against a range that means "all of it".
+    assert.equal(brushRange(extent, 0, 1), null);
+    assert.equal(brushRange(null, 0.2, 0.8), null);
+  });
+
+  test('fractions outside 0–1 are clamped rather than extrapolated', () => {
+    assert.deepEqual(brushRange(extent, -3, 0.5), { min: 1000, max: 1500 });
+  });
+
+  test('a mark alive during the range is in, one that was not is out', () => {
+    const brush = { min: 1250, max: 1750 };
+    const at = (from, to) => ({ t: new Date(from), tLast: new Date(to ?? from) });
+
+    assert.equal(overlapsBrush(at(1500), brush), true, 'inside');
+    assert.equal(overlapsBrush(at(1250), brush), true, 'the edges are included');
+    assert.equal(overlapsBrush(at(1750), brush), true);
+    assert.equal(overlapsBrush(at(1100), brush), false, 'over before the range began');
+    assert.equal(overlapsBrush(at(1900), brush), false, 'not started until after it ended');
+
+    // ⚠️ The case the whole design turns on: something that started before the range and
+    // was still going during it. An issue opened in March and closed in June is alive in
+    // April, and brushing April must show it.
+    assert.equal(overlapsBrush(at(900, 1400), brush), true, 'spans into the range');
+    assert.equal(overlapsBrush(at(1600, 2400), brush), true, 'spans out of the range');
+    assert.equal(overlapsBrush(at(0, 9999), brush), true, 'spans right across it');
+  });
+
+  test('with no brush, everything is in', () => {
+    assert.equal(overlapsBrush({ t: new Date(1) }, null), true);
+  });
+
+  test('an undated mark is IN, never dimmed', () => {
+    // ⚠️ A commit with no timestamp is a gap in the data. Dimming it would present that
+    // gap as a statement about when it happened, and the reader would take it for
+    // something that fell outside the range they chose. Nothing to say, so nothing said.
+    assert.equal(overlapsBrush({ t: null }, { min: 0, max: 1 }), true);
+    assert.equal(overlapsBrush({ t: new Date('nonsense') }, { min: 0, max: 1 }), true);
+    assert.equal(overlapsBrush(undefined, { min: 0, max: 1 }), true);
+  });
+
+  test('it works against a real sub-log’s span', async () => {
+    const { nodes } = await structuralFor('F1');
+    const extent = timeExtent(nodes);
+    // ⚠️ The LAST tenth, not the first half. Every one of F1's marks first appears early,
+    // so a first-half brush contains all of them however it is written — the discovery
+    // that sent this from "is this instant inside" to "was this mark alive then".
+    const late = brushRange(extent, 0.9, 1);
+    const alive = nodes.filter((node) => overlapsBrush(node, late));
+    assert.ok(alive.length > 0, 'something in F1 must still be alive at the end');
+    assert.ok(alive.length < nodes.length, 'and not everything is');
   });
 });

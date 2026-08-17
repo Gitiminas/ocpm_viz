@@ -39,6 +39,16 @@ export function createState() {
     /** Active time scale: real | highlights | ordinal | off. */
     mode: 'real',
     /**
+     * The brushed time range in the off mode, as two fractions of the sub-log's span.
+     *
+     * Fractions rather than instants, so the range keeps its meaning when the sub-log
+     * changes underneath it — "the last third" survives an expanded push or a hidden
+     * lane, where two absolute timestamps would quietly start describing a different
+     * portion of a different span. `[0, 1]` is no brush at all.
+     */
+    timeBrush: [0, 1],
+
+    /**
      * Marks the reader has dragged, as an OFFSET from where the layout put them.
      *
      * ⚠️ An offset rather than a position, deliberately. Both structural layouts are pure

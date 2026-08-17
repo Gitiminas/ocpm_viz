@@ -23,7 +23,7 @@ import { deriveCommentBursts } from '../model/commentBursts.js';
 import { buildAdjacency, focusSet } from '../model/graph.js';
 import { deriveCommitGroups } from '../model/commitGroups.js';
 import { createLayout } from '../layout/engine.js';
-import { edgeDirection } from '../layout/structural.js';
+import { edgeDirection, brushRange } from '../layout/structural.js';
 import { renderStructuralEdges, renderStructuralNodes } from './structural.js';
 import { createMotion } from './motion.js';
 import { renderAxis, highlightTickInstants } from './axis.js';
@@ -205,6 +205,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     // every one of those is a statement about a time axis. It draws edges and nodes.
     if (layout.kind === 'structural') {
       const nodesById = new Map(nodes.map((node) => [node.id, node]));
+      const brush = brushRange(layout.extent, state.timeBrush[0], state.timeBrush[1]);
       const liveEdges = renderStructuralEdges({
         gLink: layers.link,
         edges: layout.edges,
@@ -215,6 +216,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         // Where a row-skipping edge should bend, so it goes around the middle row
         // rather than through it.
         waypoints: layout.waypoints,
+        brush,
       });
       const liveMarks = renderStructuralNodes({
         gNode: layers.node,
@@ -225,8 +227,9 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         objectColors,
         actorLogin: (id) => index.byId.get(id)?.vmap?.login ?? id,
         previous: lastStructuralAt,
-        onDragged: (node, nudge) => handlers.onNodeDragged?.(node, nudge),
+        onDragged: (nudges) => handlers.onNodeDragged?.(nudges),
         repaint: () => motion.repaint(),
+        brush,
       });
 
       // Slide into place, then drift. Remembered *before* the animation runs, so the next
@@ -241,6 +244,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         plotWidth: plotWidth(),
         basePlotWidth,
         kind: 'structural',
+        extent: layout.extent,
       });
       return;
     }

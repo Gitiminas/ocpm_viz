@@ -227,6 +227,25 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div id="minimapWrap" style="flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 10px">
 <svg id="minimap"></svg>
 </div>
+<!--
+  The time brush, in the slot the minimap vacates in off mode.
+
+  Deliberately the same piece of the screen: it is where a time overview already lives, so
+  a reader looking for "when" looks in one place whichever mode is on. Off mode releases
+  the time axis, and this is the control that gives time back — dimming what was not alive
+  in the chosen window rather than removing it, so the shape of the whole sub-log stays
+  visible behind the part being asked about.
+-->
+<div id="timeBrushWrap" style="display:none;flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 12px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px">
+<span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-500)">Alive during</span>
+<span class="mono" id="timeBrushLabel" style="font-size:10.5px;color:var(--color-neutral-400)"></span>
+</div>
+<div style="display:flex;gap:10px;align-items:center">
+<input type="range" id="timeBrushFrom" min="0" max="1000" value="0" style="flex:1;accent-color:var(--color-accent)">
+<input type="range" id="timeBrushTo" min="0" max="1000" value="1000" style="flex:1;accent-color:var(--color-accent)">
+</div>
+</div>
 <div id="wrap" style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">
 <div id="scroll" style="flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-bg)">
 <!--
