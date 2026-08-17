@@ -288,6 +288,7 @@ async function load(query) {
     state.timeBrush = [0, 1];
     el('timeBrushFrom').value = 0;
     el('timeBrushTo').value = 1000;
+    syncTimeBrush();
   }
   firstLoad = false;
 
@@ -573,16 +574,43 @@ function updateTimeBrushLabel(extent) {
   label.textContent = `${at(Math.min(from, to))} → ${at(Math.max(from, to))}`;
 }
 
-for (const id of ['timeBrushFrom', 'timeBrushTo']) {
+/**
+ * Keep the two handles in order and paint the filled span between them.
+ *
+ * ⚠️ The handles are stopped from crossing rather than being allowed to swap. Swapping
+ * works arithmetically — the range is read as min-to-max either way — but on screen the
+ * handle under the pointer would jump to the other side of the one it passed, and the
+ * reader would be dragging a different handle from the one they grabbed.
+ */
+function syncTimeBrush(changed) {
+  const from = el('timeBrushFrom');
+  const to = el('timeBrushTo');
+  if (changed === 'from' && Number(from.value) > Number(to.value)) from.value = to.value;
+  if (changed === 'to' && Number(to.value) < Number(from.value)) to.value = from.value;
+
+  const low = Number(from.value) / 1000;
+  const high = Number(to.value) / 1000;
+  state.timeBrush = [low, high];
+
+  const fill = el('timeBrushFill');
+  fill.style.left = `${low * 100}%`;
+  fill.style.width = `${(high - low) * 100}%`;
+}
+
+for (const [id, which] of [
+  ['timeBrushFrom', 'from'],
+  ['timeBrushTo', 'to'],
+]) {
   el(id).addEventListener('input', () => {
-    state.timeBrush = [
-      Number(el('timeBrushFrom').value) / 1000,
-      Number(el('timeBrushTo').value) / 1000,
-    ];
+    syncTimeBrush(which);
     // A redraw, not a reload: the brush dims, it does not change what was loaded.
     timeline.render();
   });
 }
+
+// Paint the filled span once at startup. Without this the rail shows empty on a first
+// load — the range covers everything and the control says it covers nothing.
+syncTimeBrush();
 
 /** Reflect the active structural arrangement. */
 function markLayout(layout) {
@@ -757,6 +785,7 @@ if (initialQuery.brush) {
   state.timeBrush = initialQuery.brush;
   el('timeBrushFrom').value = Math.round(initialQuery.brush[0] * 1000);
   el('timeBrushTo').value = Math.round(initialQuery.brush[1] * 1000);
+  syncTimeBrush();
 }
 
 /**

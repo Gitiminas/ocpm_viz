@@ -62,6 +62,20 @@ html,body{height:100%;margin:0;overflow:hidden}
 #modeSeg .seg-opt.on,#layoutSeg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
 #modeSeg .seg-opt:not(.on):hover,#layoutSeg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
 #modeSeg .seg-opt,#layoutSeg .seg-opt{cursor:pointer}
+/* One track, two thumbs. The inputs are stacked on the same rail and are transparent to
+   the pointer except at the thumbs, so a click on the rail cannot make one handle leap
+   across the other. */
+.brushTrack{position:relative;height:26px}
+.brushTrack .brushRail{position:absolute;left:0;right:0;top:11px;height:4px;border-radius:2px;background:var(--color-neutral-700)}
+.brushTrack .brushFill{position:absolute;top:11px;height:4px;border-radius:2px;background:var(--color-accent)}
+.brushTrack input[type=range]{position:absolute;left:0;top:0;width:100%;height:26px;margin:0;background:none;-webkit-appearance:none;appearance:none;pointer-events:none}
+.brushTrack input[type=range]:focus{outline:none}
+.brushTrack input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent)}
+.brushTrack input[type=range]::-webkit-slider-runnable-track{background:none;border:none}
+.brushTrack input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:14px;height:14px;border-radius:50%;background:var(--color-accent);border:2px solid var(--color-bg);cursor:grab;margin-top:0}
+.brushTrack input[type=range]::-webkit-slider-thumb:active{cursor:grabbing}
+.brushTrack input[type=range]::-moz-range-track{background:none;border:none}
+.brushTrack input[type=range]::-moz-range-thumb{pointer-events:auto;width:14px;height:14px;border-radius:50%;background:var(--color-accent);border:2px solid var(--color-bg);cursor:grab}
 </style>
 </head>
 <body>
@@ -241,9 +255,21 @@ html,body{height:100%;margin:0;overflow:hidden}
 <span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-500)">Alive during</span>
 <span class="mono" id="timeBrushLabel" style="font-size:10.5px;color:var(--color-neutral-400)"></span>
 </div>
-<div style="display:flex;gap:10px;align-items:center">
-<input type="range" id="timeBrushFrom" min="0" max="1000" value="0" style="flex:1;accent-color:var(--color-accent)">
-<input type="range" id="timeBrushTo" min="0" max="1000" value="1000" style="flex:1;accent-color:var(--color-accent)">
+<!--
+  One track, two handles. Two separate sliders side by side read as two independent
+  settings rather than as the two ends of one range, which is what they are.
+
+  Built from two overlaid range inputs rather than from scratch, so the handles keep the
+  keyboard behaviour a range input already has — arrow keys, Home and End — which a
+  hand-rolled pair of draggable divs would have had to reimplement and probably would not
+  have. The inputs take no pointer events except on their thumbs, so clicking the track
+  does not make one of them jump over the other.
+-->
+<div class="brushTrack" id="timeBrushTrack">
+<div class="brushRail"></div>
+<div class="brushFill" id="timeBrushFill"></div>
+<input type="range" id="timeBrushFrom" min="0" max="1000" value="0" aria-label="Range start">
+<input type="range" id="timeBrushTo" min="0" max="1000" value="1000" aria-label="Range end">
 </div>
 </div>
 <div id="wrap" style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">
