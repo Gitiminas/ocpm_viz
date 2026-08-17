@@ -12,17 +12,21 @@
  *
  *   type      shape (circle / diamond / square) and size, exactly as `TYPE` defines them
  *   evidence  solid vs dashed, from `evidenceStyle` — untouched from every other mode
- *   identity  the object's own shade (`objectShade`) as the node's stroke
- *   time      the fill ramp, the arrowheads, and the hovercard's first row
+ *   identity  the object's own shade (`objectShade`), as fill, exactly as elsewhere
+ *   time      the arrowheads, the time brush, and the hovercard's first row
  *
- * **What changes**: fill stops meaning "which object" and starts meaning "when". The
- * object's shade moves to the stroke rather than being dropped, so nothing a reader
- * learned from the timeline or the statistics page becomes false here.
+ * **Only position changes.** An earlier version put a light-to-dark ramp on the fill so
+ * colour could carry time, as the design brief proposed. It was wrong in practice and was
+ * removed: a lone issue came out pale lilac instead of the accent blurple it is in every
+ * other mode, pull requests lost their orange, and a reader carrying the colour mapping
+ * across from the timeline or the statistics page was simply misled — the objection
+ * decision 86 raises about two views disagreeing over what a colour means. Time is better
+ * served by dimming what falls outside a brushed range, which subtracts rather than
+ * recolours, and by the arrowheads that were always going to carry precedence.
  */
 
-import { TYPE, drawSymbol, typeColor, timeRampFill, evidenceStyle, COLORS } from './theme.js';
+import { TYPE, drawSymbol, typeColor, evidenceStyle, COLORS } from './theme.js';
 import { objectOpacity } from '../model/graph.js';
-import { timeFraction } from '../layout/structural.js';
 import { formatInstant, escapeHtml } from './format.js';
 import { activityLabel } from '../model/activities.js';
 import { legendKeyFor } from './nodes.js';
@@ -38,10 +42,10 @@ const ARROW_SIZE = 7;
  * (decision 24).** That decision exists because a link crossing a full-width chart
  * converges with a dozen others in the destination lane, and colour was the only thing
  * left that could say *which* pull request it arrived at. In this mode an edge is short
- * and lands on a visibly distinct node, so the problem it solves does not arise — and
- * colour is now carrying time, so a coloured edge would compete with the one channel the
- * mode depends on. The evidence cue is untouched, because that is a statement about how
- * much the link is worth and it holds in every mode.
+ * and lands on a visibly distinct node whose own colour already answers that, so the
+ * problem decision 24 solves does not arise here and a coloured edge would only add a
+ * third hue to a picture that already has one per object. The evidence cue is untouched,
+ * because that is a statement about how much the link is worth and it holds in every mode.
  */
 export function renderStructuralEdges({
   gLink,
@@ -94,12 +98,31 @@ export function renderStructuralEdges({
       });
     }
 
+    /*
+     * ⚠️ **The hover target is a separate, invisible, fat line — not the drawn one.**
+     *
+     * Binding to the visible stroke means a *dashed* edge only answers the pointer on its
+     * painted segments, so extracted links were effectively unhoverable while validated
+     * ones worked. That is the worst way round: the uncertain links are precisely the ones
+     * a reader needs to interrogate, and the failure looks like the feature simply not
+     * existing rather than like a bug. `render/links.js` already solved this the same way
+     * for the timeline; this now matches it, and `tooltip.bind` brings right-click pinning
+     * with it, which the hand-rolled handlers here did not have.
+     */
     if (tooltip) {
-      line.style('cursor', 'help');
-      line
-        .on('mouseenter', (event) => tooltip.show(event, edgeCard(edge, source, target, heading)))
-        .on('mousemove', (event) => tooltip.move(event))
-        .on('mouseleave', () => tooltip.hide());
+      tooltip.bind(
+        gLink
+          .append('line')
+          .attr('x1', from.x)
+          .attr('y1', from.y)
+          .attr('x2', to.x)
+          .attr('y2', to.y)
+          .attr('stroke', '#000')
+          .attr('stroke-opacity', 0)
+          .attr('stroke-width', 16)
+          .style('cursor', 'pointer'),
+        () => edgeCard(edge, source, target, heading),
+      );
     }
   }
 }
@@ -183,13 +206,12 @@ function edgeCard(edge, source, target, heading) {
 /**
  * Draw the nodes.
  *
- * One mark per object. Fill is the time ramp, stroke is the object's own shade, shape and
- * size are the type — the three channels doing three separate jobs.
+ * One mark per object, in the object's own colour — the same shade the timeline and the
+ * statistics page give it. Shape and size carry the type, as they do everywhere else.
  */
 export function renderStructuralNodes({
   gNode,
   nodes,
-  extent,
   focus,
   tooltip,
   handlers,
@@ -197,8 +219,11 @@ export function renderStructuralNodes({
   actorLogin = (id) => id,
 }) {
   for (const node of nodes) {
+    // The object's own shade, exactly as every other mode draws it (decision 24, and the
+    // same map the statistics page uses under decision 86). Fill means "which object"
+    // here as it does there; time is carried by the arrowheads, the brush and the
+    // hovercard instead. See the note on `renderStructuralNodes` for what this replaced.
     const shade = objectColors.get(node.objectId) || typeColor(node.lane);
-    const fill = timeRampFill(node.lane, timeFraction(node.t, extent));
     const opacity = objectOpacity(node.objectId, focus);
 
     const group = gNode
@@ -238,10 +263,10 @@ export function renderStructuralNodes({
       group.append('g'),
       TYPE[node.lane].shape,
       node.radius,
-      fill,
+      shade,
       shade,
       node.isBurst ? 2.5 : 2,
-    ).attr('data-legend', 'time-ramp');
+    );
 
     // A collapsed push says how many it stands for, inside the mark, exactly as the
     // timeline's burst does. The count is the member count, never metadata.
@@ -263,12 +288,7 @@ export function renderStructuralNodes({
       handlers?.onNodeClick?.(event, node);
     });
 
-    if (tooltip) {
-      group
-        .on('mouseenter', (event) => tooltip.show(event, nodeCard(node, extent, actorLogin)))
-        .on('mousemove', (event) => tooltip.move(event))
-        .on('mouseleave', () => tooltip.hide());
-    }
+    if (tooltip) tooltip.bind(group, () => nodeCard(node, actorLogin));
   }
 
   /*
@@ -315,7 +335,7 @@ export function renderStructuralNodes({
  * The first row is the real timestamp, exactly as in every other mode: time is demoted,
  * and the one place it is never approximate is here.
  */
-export function nodeCard(node, extent, actorLogin = (id) => id) {
+export function nodeCard(node, actorLogin = (id) => id) {
   if (node.isBurst) {
     return {
       accent: typeColor('commit'),

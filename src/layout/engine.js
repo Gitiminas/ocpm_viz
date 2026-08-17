@@ -33,7 +33,7 @@ import { packRows } from './packing.js';
 import { computeLaneGeometry, rowY } from './lanes.js';
 import { createAnchors } from './anchors.js';
 import { layoutLayered } from './layered.js';
-import { buildStructuralNodes, buildStructuralEdges, timeExtent, rampExtent } from './structural.js';
+import { buildStructuralNodes, buildStructuralEdges, timeExtent } from './structural.js';
 
 /** Which engine a mode uses. `off` is the only structural one. */
 export const STRUCTURAL_MODES = ['off'];
@@ -283,11 +283,8 @@ function layoutStructural({
     rankMax: 0,
     rankTimes: [],
     edges,
-    // Two spans, two jobs: `extent` covers everything that happened and is what a time
-    // brush must span; `rampExtent` covers first-appearances, which is what the fill
-    // actually encodes. See `rampExtent` for why conflating them wastes half the ramp.
+    // Everything that happened, first instant to last — what the time brush has to span.
     extent: timeExtent(nodes),
-    rampExtent: rampExtent(nodes),
     // The rows as ordered, and what the ordering achieved. `crossings` is reported rather
     // than kept private because "how tangled is this sub-log" is a finding, not a detail.
     rows,

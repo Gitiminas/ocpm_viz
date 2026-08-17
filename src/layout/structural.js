@@ -46,8 +46,8 @@ import { isLandmark, isUnmergedClose } from '../model/activities.js';
  * carrying time.
  */
 export const STRUCTURAL_RADIUS = {
-  issue: 13,
-  pull_request: 10,
+  issue: 15,
+  pull_request: 12,
   commit: 6.5,
 };
 
@@ -291,36 +291,9 @@ export function timeExtent(nodes) {
 }
 
 /**
- * The span the **fill ramp** maps: first-appearance to first-appearance.
- *
- * ⚠️ **Not the same as `timeExtent`, and using that one here wastes half the channel.**
- * `timeExtent` spans everything that happened, first instant to last, because that is
- * what a time brush must cover. But the ramp colours a node by `node.t` — when the object
- * *first appeared* — so scaling those against a maximum drawn from some other object's
- * *closing* instant means nothing ever reaches the dark end. Measured before this existed:
- * the darkest node on F13 sat at 0.58 of the ramp and on F1 at 0.38, so the bottom third
- * to half of the scale was reserved for a moment no mark occupies.
- *
- * Two extents, because there are two questions: "when did things start" is what the
- * colour answers, "when did anything happen" is what the brush has to cover.
- */
-export function rampExtent(nodes) {
-  let min = null;
-  let max = null;
-  for (const node of nodes) {
-    if (!node.t) continue;
-    const value = +node.t;
-    if (!Number.isFinite(value)) continue;
-    if (min == null || value < min) min = value;
-    if (max == null || value > max) max = value;
-  }
-  return min == null ? null : { min, max };
-}
-
-/**
  * Where a node sits in the sub-log's time span, as a fraction from 0 (earliest) to 1.
  *
- * The fill ramp reads this. A span of zero — one object, or several sharing an instant —
+ * The time brush reads this. A span of zero — one object, or several sharing an instant —
  * returns 0 for everything rather than dividing by zero: with no spread to show, the
  * honest answer is that the ramp says nothing here.
  */

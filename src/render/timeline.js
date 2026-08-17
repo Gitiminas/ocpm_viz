@@ -201,8 +201,6 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       renderStructuralNodes({
         gNode: layers.node,
         nodes,
-        // The ramp's own span, not the full activity span — see `rampExtent`.
-        extent: layout.rampExtent,
         focus,
         tooltip,
         handlers,
