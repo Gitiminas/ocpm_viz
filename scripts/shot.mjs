@@ -125,6 +125,16 @@ try {
       '--disable-gpu',
       '--no-sandbox',
       '--hide-scrollbars',
+      /*
+       * ⚠️ Motion off, so two shots of one sub-log are comparable.
+       *
+       * The off mode drifts its marks a couple of pixels around where the layout put
+       * them, which is fine to look at and useless to compare: two screenshots taken a
+       * second apart would differ everywhere, and a screenshot is exactly the tool used
+       * here to check whether a change moved anything. The app honours this the same way
+       * it honours a reader who has asked for less movement — same picture, no journey.
+       */
+      '--force-prefers-reduced-motion',
       `--window-size=${width},${height}`,
       // The app fetches its payload and lays out with d3 before anything is drawn, so a
       // naive screenshot catches a blank page. Virtual time lets the render finish

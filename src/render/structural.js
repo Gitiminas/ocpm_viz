@@ -57,6 +57,10 @@ export function renderStructuralEdges({
   direction,
   waypoints = new Map(),
 }) {
+  // What movement needs in order to keep an edge attached to its ends: which two marks it
+  // joins, and how to redraw it once they have moved.
+  const live = [];
+
   for (const bundle of bundleEdges(edges)) {
     const first = bundle.edges[0];
     const source = nodesById.get(first.source);
@@ -97,7 +101,7 @@ export function renderStructuralEdges({
       const route = points(source, target, waypoints.get(bundle.key), shift);
       const heading = direction(group[0]);
 
-      gLink
+      const drawn = gLink
         .append('path')
         .attr('data-legend', legendKey)
         .attr('d', pathThrough(route))
@@ -106,6 +110,21 @@ export function renderStructuralEdges({
         .attr('stroke-width', style.width)
         .attr('stroke-dasharray', style.dash)
         .attr('opacity', opacity);
+
+      // Recomputed from the two live centres rather than transformed: an edge *is* its
+      // endpoints, and nudging it any other way would let it come adrift from the marks
+      // it joins — visibly, and only while something was moving.
+      const via = waypoints.get(bundle.key);
+      live.push({
+        source: bundle.edges[0].source,
+        target: bundle.edges[0].target,
+        apply(from, to) {
+          drawn.attr(
+            'd',
+            pathThrough(points({ ...source, ...from }, { ...target, ...to }, via, shift)),
+          );
+        },
+      });
 
       if (heading !== 0) {
         const [from, to] =
@@ -162,6 +181,7 @@ export function renderStructuralEdges({
       }
     });
   }
+  return live;
 }
 
 /**
@@ -313,7 +333,12 @@ export function renderStructuralNodes({
   handlers,
   objectColors = new Map(),
   actorLogin = (id) => id,
+  previous = new Map(),
 }) {
+  // What movement needs: where each mark belongs, where it was a moment ago, and how to
+  // put it somewhere. The label rides along, so a name never parts company with its mark.
+  const live = [];
+
   for (const node of nodes) {
     // The object's own shade, exactly as every other mode draws it (decision 24, and the
     // same map the statistics page uses under decision 86). Fill means "which object"
@@ -385,6 +410,18 @@ export function renderStructuralNodes({
     });
 
     if (tooltip) tooltip.bind(group, () => nodeCard(node, actorLogin));
+
+    live.push({
+      id: node.id,
+      x: node.x,
+      y: node.y,
+      // Where this mark was drawn last time, so it slides rather than jumps. A mark that
+      // is new to the picture has no `from` and simply appears where it belongs.
+      from: previous.get(node.id),
+      apply(point) {
+        group.attr('transform', `translate(${point.x},${point.y})`);
+      },
+    });
   }
 
   /*
@@ -398,9 +435,10 @@ export function renderStructuralNodes({
    * Issues and pull requests are labelled; commits are not, because a dense sub-log has
    * dozens and the labels would BE the picture. A commit names itself on hover.
    */
+  const labelled = new Map();
   for (const node of nodes) {
     if (node.lane === 'commit') continue;
-    gNode
+    const label = gNode
       .append('text')
       .attr('x', node.x)
       .attr('y', node.y + node.radius + 15)
@@ -416,7 +454,22 @@ export function renderStructuralNodes({
       .attr('stroke-width', 3.5)
       .attr('stroke-linejoin', 'round')
       .text(node.title);
+    labelled.set(node.id, { label, offset: node.radius + 15 });
   }
+
+  // A label is not inside its mark's group — it is drawn in a later pass so it cannot be
+  // covered — so it has to be moved alongside it, or names would slide off their marks.
+  for (const mark of live) {
+    const entry = labelled.get(mark.id);
+    if (!entry) continue;
+    const move = mark.apply;
+    mark.apply = (point) => {
+      move(point);
+      entry.label.attr('x', point.x).attr('y', point.y + entry.offset);
+    };
+  }
+
+  return live;
 }
 
 /**

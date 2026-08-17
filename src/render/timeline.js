@@ -25,6 +25,7 @@ import { deriveCommitGroups } from '../model/commitGroups.js';
 import { createLayout } from '../layout/engine.js';
 import { edgeDirection } from '../layout/structural.js';
 import { renderStructuralEdges, renderStructuralNodes } from './structural.js';
+import { createMotion } from './motion.js';
 import { renderAxis, highlightTickInstants } from './axis.js';
 import { renderLinks } from './links.js';
 import {
@@ -64,6 +65,14 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   let context = null; // set by setGraph
   let lastNodes = [];
   let pendingTween = null;
+  /*
+   * Movement for the off mode. One instance for the session, replayed on every draw —
+   * `play` stops whatever was running first, so two loops can never fight over one mark.
+   * Nothing here feeds back into the layout: see `render/motion.js`.
+   */
+  const motion = createMotion();
+  /** Where each structural mark was drawn last time, so a re-render slides into place. */
+  let lastStructuralAt = new Map();
 
   function measure() {
     basePlotWidth = Math.max(
@@ -111,6 +120,10 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     };
     lastNodes = [];
     pendingTween = null;
+    motion.stop();
+    // Positions from one sub-log say nothing about another, so a new graph appears rather
+    // than sliding in from wherever the last one happened to leave its marks.
+    lastStructuralAt = new Map();
     return context.objectColors;
   }
 
@@ -191,7 +204,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     // every one of those is a statement about a time axis. It draws edges and nodes.
     if (layout.kind === 'structural') {
       const nodesById = new Map(nodes.map((node) => [node.id, node]));
-      renderStructuralEdges({
+      const liveEdges = renderStructuralEdges({
         gLink: layers.link,
         edges: layout.edges,
         nodesById,
@@ -202,7 +215,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         // rather than through it.
         waypoints: layout.waypoints,
       });
-      renderStructuralNodes({
+      const liveMarks = renderStructuralNodes({
         gNode: layers.node,
         nodes,
         focus,
@@ -210,7 +223,15 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         handlers,
         objectColors,
         actorLogin: (id) => index.byId.get(id)?.vmap?.login ?? id,
+        previous: lastStructuralAt,
       });
+
+      // Slide into place, then drift. Remembered *before* the animation runs, so the next
+      // render starts from where the layout put things rather than from wherever the
+      // drift had wandered to at that instant — otherwise a re-render would inherit a
+      // fraction of the wobble and the picture would creep.
+      lastStructuralAt = new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+      motion.play({ marks: liveMarks, edges: liveEdges });
       handlers.onRendered({
         nodes,
         scales: null,
