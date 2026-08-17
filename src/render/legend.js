@@ -161,21 +161,15 @@ export const LEGEND_SECTIONS = [
      * three (decision 83) rather than removed — a row that vanishes cannot say whether
      * the mark is absent because the data has none or because you switched modes.
      *
-     * There was a second row here, for a light-to-dark fill ramp carrying time. The ramp
-     * is gone: colour means "which object" in every mode now, and time is carried by this
-     * arrowhead, by the brush, and by the hovercard.
+     * Two rows have been removed from here. A light-to-dark fill ramp carrying time —
+     * colour means "which object" in every mode now. And a ×N badge on an edge standing
+     * for several links: it was one number too many beside a push node that already
+     * carries its own count, and the hovercard names every link the mark stands for
+     * anyway. What the badge was really guarding against — a dashed link hidden under a
+     * solid one — is handled by drawing one line per evidence class, not by counting.
      */
     title: 'Time off',
     rows: [
-      {
-        key: 'link-bundle',
-        label: 'several links, one line',
-        swatch:
-          '<svg width="26" height="14" viewBox="0 0 26 14"><line x1="0" y1="10" x2="26" y2="10" ' +
-          'stroke="var(--color-neutral-400)" stroke-width="2"/>' +
-          '<text x="13" y="5" text-anchor="middle" font-size="8" font-family="monospace" ' +
-          'fill="var(--color-neutral-400)">&#215;N</text></svg>',
-      },
       {
         key: 'precedence-arrow',
         label: 'points at the later end',

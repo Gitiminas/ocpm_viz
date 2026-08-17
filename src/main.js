@@ -185,9 +185,8 @@ const timeline = createTimeline({
      * account for. Decision 27's rule applies: this changes the picture, so it is
      * declared and it is undoable.
      */
-    onNodeDragged(node, nudge) {
-      state.nodeNudges.set(node.id, nudge);
-      updateResetPositions();
+    onNodeDragged(nudges) {
+      for (const { id, dx, dy } of nudges) state.nodeNudges.set(id, { dx, dy });
     },
 
     onCollapseCommentBurst(burst) {
@@ -272,7 +271,6 @@ async function load(query) {
   // A displacement is relative to a position in *this* sub-log; carrying it into another
   // would move a mark by an amount that meant something somewhere else.
   state.nodeNudges.clear();
-  updateResetPositions();
 
   const objectColors = timeline.setGraph(graph, index, actorColors);
   const toggleContext = { relGroups, qualifiers, methods, commitGroups, objectsById: index.byId };
@@ -510,7 +508,18 @@ function setZoom(value) {
 
 el('zin').onclick = () => setZoom(state.k * 1.3);
 el('zout').onclick = () => setZoom(state.k / 1.3);
-el('zrst').onclick = () => setZoom(1);
+/*
+ * One "put it back" control, not two.
+ *
+ * This resets the zoom and any marks dragged out of place together. A separate button for
+ * the second was redundant beside a reset pill that was already there and already meant
+ * "return the view to how it was computed" — and two reset controls sitting side by side
+ * invite the reader to work out which one they want before either does anything.
+ */
+el('zrst').onclick = () => {
+  state.nodeNudges.clear();
+  setZoom(1);
+};
 
 /** Reflect the active mode in the segmented control. */
 function markMode(mode) {
@@ -529,27 +538,7 @@ function markLayout(layout) {
   }
 }
 
-/**
- * Show the way back once anything has been dragged.
- *
- * Dragging subtracts nothing, so it does not belong in the hidden-state banner — but it
- * does change the picture away from the one the algorithm computed, and decision 27's
- * principle is that such a change is declared and undoable rather than a state the reader
- * has to remember getting into. Hidden when there is nothing to undo, so it is never a
- * control that does nothing.
- */
-function updateResetPositions() {
-  const moved = state.nodeNudges.size;
-  const button = el('resetPositions');
-  button.style.display = moved ? '' : 'none';
-  button.title = `${moved} mark${moved === 1 ? '' : 's'} moved by hand — click to put them back`;
-}
 
-el('resetPositions').addEventListener('click', () => {
-  state.nodeNudges.clear();
-  updateResetPositions();
-  timeline.render();
-});
 
 for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
   option.addEventListener('click', () => {

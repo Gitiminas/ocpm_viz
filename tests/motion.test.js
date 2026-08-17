@@ -7,6 +7,7 @@ import {
   driftPhase,
   easeOutCubic,
   settlePosition,
+  pushApart,
   SETTLE_MS,
 } from '../src/render/motion.js';
 
@@ -209,5 +210,84 @@ describe('driving a scene', () => {
     motion.stop();
     motion.stop();
     assert.equal(motion.isRunning(), false);
+  });
+});
+
+describe('dragging pushes what is in the way', () => {
+  test('an overlapping neighbour is moved clear', () => {
+    // Without this a reader can stack the whole graph on one point — a picture that says
+    // nothing and cannot be recovered from except by resetting.
+    const marks = [
+      { id: 'a', x: 100, y: 100, radius: 12 },
+      { id: 'b', x: 108, y: 100, radius: 12 },
+    ];
+    pushApart(marks);
+    const gap = Math.hypot(marks[0].x - marks[1].x, marks[0].y - marks[1].y);
+    assert.ok(gap >= 24, `still overlapping: ${gap.toFixed(1)} apart, need 24`);
+  });
+
+  test('the mark under the pointer does not move — it goes where it was put', () => {
+    const marks = [
+      { id: 'dragged', x: 100, y: 100, radius: 12 },
+      { id: 'other', x: 104, y: 100, radius: 12 },
+    ];
+    pushApart(marks, { fixedId: 'dragged' });
+    assert.equal(marks[0].x, 100, 'the dragged mark must land exactly where the pointer is');
+    assert.equal(marks[0].y, 100);
+    assert.ok(marks[1].x > 104, 'and the other one takes the whole shove');
+  });
+
+  test('a shove propagates through a crowd rather than stopping at the first neighbour', () => {
+    const marks = Array.from({ length: 6 }, (_, i) => ({
+      id: `n${i}`,
+      x: 100 + i * 4,
+      y: 100,
+      radius: 10,
+    }));
+    pushApart(marks, { fixedId: 'n0' });
+    const sorted = marks.slice().sort((a, b) => a.x - b.x);
+    for (let i = 1; i < sorted.length; i++) {
+      const gap = sorted[i].x - sorted[i - 1].x - sorted[i].radius - sorted[i - 1].radius;
+      assert.ok(gap > -1e-6, `${sorted[i].id} still overlaps its neighbour`);
+    }
+  });
+
+  test('marks already clear of each other are left exactly alone', () => {
+    const marks = [
+      { id: 'a', x: 0, y: 0, radius: 10 },
+      { id: 'b', x: 400, y: 400, radius: 10 },
+    ];
+    pushApart(marks);
+    assert.deepEqual(marks, [
+      { id: 'a', x: 0, y: 0, radius: 10 },
+      { id: 'b', x: 400, y: 400, radius: 10 },
+    ]);
+  });
+
+  test('exactly coincident marks separate, deterministically', () => {
+    const at = () => [
+      { id: 'a', x: 50, y: 50, radius: 10 },
+      { id: 'b', x: 50, y: 50, radius: 10 },
+    ];
+    const first = pushApart(at());
+    const second = pushApart(at());
+    assert.deepEqual(first, second, 'the tie-break must not vary between runs');
+    assert.ok(Math.hypot(first[0].x - first[1].x, first[0].y - first[1].y) > 19);
+  });
+
+  test('it does not depend on the order the marks are given in', () => {
+    const build = () => [
+      { id: 'a', x: 100, y: 100, radius: 12 },
+      { id: 'b', x: 106, y: 103, radius: 12 },
+      { id: 'c', x: 96, y: 108, radius: 12 },
+    ];
+    const forwards = pushApart(build());
+    const backwards = pushApart(build().reverse());
+    for (const id of ['a', 'b', 'c']) {
+      const a = forwards.find((m) => m.id === id);
+      const b = backwards.find((m) => m.id === id);
+      assert.equal(a.x, b.x, `${id} depends on input order`);
+      assert.equal(a.y, b.y);
+    }
   });
 });

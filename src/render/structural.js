@@ -31,6 +31,7 @@ import { formatInstant, escapeHtml } from './format.js';
 import { activityLabel } from '../model/activities.js';
 import { legendKeyFor } from './nodes.js';
 import { bundleEdges } from '../layout/structural.js';
+import { pushApart } from './motion.js';
 
 /** Gap between a node's edge and where an arrowhead stops. */
 const ARROW_GAP = 4;
@@ -114,46 +115,40 @@ export function renderStructuralEdges({
       // Recomputed from the two live centres rather than transformed: an edge *is* its
       // endpoints, and nudging it any other way would let it come adrift from the marks
       // it joins — visibly, and only while something was moving.
+      const head =
+        heading === 0
+          ? null
+          : drawArrowhead(
+              gLink,
+              heading === 1 ? route[route.length - 2] : route[1],
+              heading === 1 ? route[route.length - 1] : route[0],
+              { color, opacity },
+            );
+
       const via = waypoints.get(bundle.key);
       live.push({
         source: bundle.edges[0].source,
         target: bundle.edges[0].target,
         apply(from, to) {
-          drawn.attr(
-            'd',
-            pathThrough(points({ ...source, ...from }, { ...target, ...to }, via, shift)),
-          );
+          const moved = points({ ...source, ...from }, { ...target, ...to }, via, shift);
+          drawn.attr('d', pathThrough(moved));
+          /*
+           * ⚠️ **The head moves with the line.** It is a separate path — it has to be, to
+           * sit at the *temporally* later end rather than at whichever end the line was
+           * drawn towards — so nothing moves it unless this does. Left out, dragging a
+           * mark peeled every arrowhead off its edge and left them floating where the
+           * marks used to be.
+           */
+          if (head) {
+            head.attr(
+              'd',
+              heading === 1
+                ? arrowPath(moved[moved.length - 2], moved[moved.length - 1])
+                : arrowPath(moved[1], moved[0]),
+            );
+          }
         },
       });
-
-      if (heading !== 0) {
-        const [from, to] =
-          heading === 1
-            ? [route[route.length - 2], route[route.length - 1]]
-            : [route[1], route[0]];
-        drawArrowhead(gLink, from, to, { color, opacity });
-      }
-
-      // How many links this one mark stands for. Declared rather than left implicit —
-      // the same bargain decision 68 makes for the timeline's crowded bundles.
-      if (group.length > 1) {
-        const middle = route[Math.floor(route.length / 2)];
-        gLink
-          .append('text')
-          .attr('data-legend', 'link-bundle')
-          .attr('x', middle.x)
-          .attr('y', middle.y - 4)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', 9)
-          .attr('font-family', 'JetBrains Mono, monospace')
-          .attr('fill', color)
-          .attr('opacity', opacity)
-          .attr('pointer-events', 'none')
-          .attr('paint-order', 'stroke')
-          .attr('stroke', 'var(--color-bg)')
-          .attr('stroke-width', 3)
-          .text(`\u00d7${group.length}`);
-      }
 
       /*
        * ⚠️ **The hover target is a separate, invisible, fat path — not the drawn one.**
@@ -251,7 +246,7 @@ function trim(source, target, firstVia, lastVia) {
  * pattern handling inconsistently across renderers and — more to the point — this one has
  * to sit at the *temporally* later end, which is not always the line's `x2`.
  */
-function drawArrowhead(group, from, to, { color, opacity }) {
+function arrowPath(from, to) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy) || 1;
@@ -261,20 +256,21 @@ function drawArrowhead(group, from, to, { color, opacity }) {
   const px = -uy;
   const py = ux;
 
-  const tipX = to.x;
-  const tipY = to.y;
   const baseX = to.x - ux * ARROW_SIZE;
   const baseY = to.y - uy * ARROW_SIZE;
   const half = ARROW_SIZE * 0.42;
 
-  group
+  return (
+    `M${to.x},${to.y} L${baseX + px * half},${baseY + py * half} ` +
+    `L${baseX - px * half},${baseY - py * half} Z`
+  );
+}
+
+function drawArrowhead(group, from, to, { color, opacity }) {
+  return group
     .append('path')
     .attr('data-legend', 'precedence-arrow')
-    .attr(
-      'd',
-      `M${tipX},${tipY} L${baseX + px * half},${baseY + py * half} ` +
-        `L${baseX - px * half},${baseY - py * half} Z`,
-    )
+    .attr('d', arrowPath(from, to))
     .attr('fill', color)
     .attr('opacity', opacity);
 }
@@ -410,6 +406,11 @@ export function renderStructuralNodes({
       id: node.id,
       x: node.x,
       y: node.y,
+      // The shove needs a size to work with, and an offset is measured from where the
+      // layout put the mark rather than from wherever it currently sits.
+      radius: node.radius,
+      layoutX: node.layoutX ?? node.x,
+      layoutY: node.layoutY ?? node.y,
       // Where this mark was drawn last time, so it slides rather than jumps. A mark that
       // is new to the picture has no `from` and simply appears where it belongs.
       from: previous.get(node.id),
@@ -418,7 +419,9 @@ export function renderStructuralNodes({
       },
     };
 
-    const drag = onDragged ? enableDrag(group, mark, node, { onDragged, repaint }) : null;
+    const drag = onDragged
+      ? enableDrag(group, mark, node, { onDragged, repaint, marks: live })
+      : null;
 
     group.on('click', (event) => {
       event.stopPropagation();
@@ -497,7 +500,7 @@ const DRAG_SLOP_PX = 3;
  * Pointer capture rather than window listeners: the pointer keeps talking to this element
  * even when it leaves it, so a fast drag cannot slip off the mark and strand it mid-move.
  */
-function enableDrag(group, mark, node, { onDragged, repaint }) {
+function enableDrag(group, mark, node, { onDragged, repaint, marks }) {
   let from = null;
   let travelled = 0;
 
@@ -520,6 +523,9 @@ function enableDrag(group, mark, node, { onDragged, repaint }) {
     travelled = Math.max(travelled, Math.hypot(dx, dy));
     mark.x = from.markX + dx;
     mark.y = from.markY + dy;
+    // Anything in the way moves aside. Without it a reader can stack the whole graph on
+    // one point — a picture that says nothing and cannot be read back out of.
+    pushApart(marks, { fixedId: mark.id });
     // Repaint rather than re-render: a full render rebuilds the SVG, and doing that per
     // pointer event would drop frames and destroy the element being dragged mid-gesture.
     repaint();
@@ -531,7 +537,18 @@ function enableDrag(group, mark, node, { onDragged, repaint }) {
     group.node().releasePointerCapture?.(event.pointerId);
     from = null;
     if (travelled > DRAG_SLOP_PX) {
-      onDragged(node, { dx: mark.x - node.layoutX, dy: mark.y - node.layoutY });
+      // Every mark that ended up somewhere other than where the layout put it, not just
+      // the one under the pointer: the ones shoved aside have to keep their new places
+      // too, or they would spring back the moment anything re-rendered.
+      onDragged(
+        marks
+          .filter((other) => other.x !== other.layoutX || other.y !== other.layoutY)
+          .map((other) => ({
+            id: other.id,
+            dx: other.x - other.layoutX,
+            dy: other.y - other.layoutY,
+          })),
+      );
     }
   };
   group.on('pointerup', finish);

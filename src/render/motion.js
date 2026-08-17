@@ -91,6 +91,72 @@ export function settlePosition(from, to, progress) {
 }
 
 /**
+ * Push marks apart until none overlaps, holding one of them still.
+ *
+ * ⚠️ **Because dragging one mark on top of another is otherwise allowed**, and nothing
+ * stops a reader stacking the whole graph on a single point — a picture that says nothing
+ * and cannot be recovered from except by resetting. Marks that are in the way now move
+ * aside, which is what a graph tool does and what makes dragging useful for untangling
+ * rather than just for hiding things.
+ *
+ * The dragged mark is held fixed: it goes exactly where the pointer says. Everything else
+ * splits each overlap between the pair, iterating so a shove propagates through a crowd
+ * instead of stopping at the first neighbour. Pure, so the arithmetic is checkable without
+ * a pointer.
+ *
+ * @param {Array} marks     `{id, x, y, radius}` — mutated in place
+ * @param {object} [options]
+ * @param {string} [options.fixedId]  the mark under the pointer, which does not move
+ */
+export function pushApart(marks, { fixedId = null, padding = 6, iterations = 24 } = {}) {
+  const ordered = marks.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  for (let pass = 0; pass < iterations; pass++) {
+    let moved = false;
+    for (let i = 0; i < ordered.length; i++) {
+      for (let j = i + 1; j < ordered.length; j++) {
+        const a = ordered[i];
+        const b = ordered[j];
+        const need = (a.radius ?? 8) + (b.radius ?? 8) + padding;
+
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let distance = Math.hypot(dx, dy);
+        if (distance >= need) continue;
+
+        if (distance < 1e-6) {
+          // Exactly coincident marks have no direction to separate along. Deriving one
+          // from the pair's ids keeps it deterministic; anything random would not be.
+          const angle = driftPhase(`${a.id}|${b.id}`);
+          dx = Math.cos(angle);
+          dy = Math.sin(angle);
+          distance = 1e-6;
+        }
+
+        const aFixed = a.id === fixedId;
+        const bFixed = b.id === fixedId;
+        if (aFixed && bFixed) continue;
+
+        // The held mark takes none of the shove, so its neighbour absorbs all of it.
+        const shove = need - distance;
+        const aShare = aFixed ? 0 : bFixed ? shove : shove / 2;
+        const bShare = bFixed ? 0 : aFixed ? shove : shove / 2;
+        const ux = dx / distance;
+        const uy = dy / distance;
+
+        a.x -= ux * aShare;
+        a.y -= uy * aShare;
+        b.x += ux * bShare;
+        b.y += uy * bShare;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return marks;
+}
+
+/**
  * Whether the viewer has asked for less movement.
  *
  * Honoured rather than offered as a setting: a vestibular disorder is not a preference,
