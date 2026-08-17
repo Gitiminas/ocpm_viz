@@ -84,7 +84,33 @@ export function focusSet(adjacency, focusId, degree = 1) {
 /** Opacity for an object under the current focus: dimmed when outside the set. */
 export const DIM_OPACITY = 0.15;
 
-export function objectOpacity(objectId, focus) {
+/**
+ * How bright a mark is at each hop from the focused object.
+ *
+ * Index is the hop count: the focused object itself, then its neighbours, then theirs.
+ * Graded rather than binary because "in the focus set" is not one thing — a direct
+ * neighbour is what you clicked to see, and something two hops away is context. Drawn at
+ * one brightness they say the same thing, and the reader has to trace edges to work out
+ * which is which, which is the work the focus was supposed to save.
+ *
+ * The steps are wide apart on purpose. Three brightnesses a few percent apart are not
+ * three categories, they are one blur; these are far enough to be counted at a glance.
+ */
+export const FOCUS_FALLOFF = [1, 0.72, 0.4];
+
+/**
+ * Opacity for an object under the current focus.
+ *
+ * ⚠️ **Binary by default, graded only where asked**, and the default is not laziness. The
+ * timeline has drawn focus as in-or-out since the mockup, and its screenshots are the
+ * visual regression baseline; grading it here would change every one of them as a side
+ * effect of a change to a different mode. The structural mode asks for the graded form,
+ * where marks sit at arbitrary distances from each other and a hop count is the only
+ * thing that says how related two things are.
+ */
+export function objectOpacity(objectId, focus, { graded = false } = {}) {
   if (!focus) return 1;
-  return focus.has(objectId) ? 1 : DIM_OPACITY;
+  if (!focus.has(objectId)) return DIM_OPACITY;
+  if (!graded) return 1;
+  return FOCUS_FALLOFF[focus.get(objectId)] ?? DIM_OPACITY;
 }

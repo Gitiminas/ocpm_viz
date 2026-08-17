@@ -274,7 +274,7 @@ async function load(query) {
     if (snapshot) applyState(state, snapshot);
     else showToast('The link carried an unreadable view — showing defaults');
   }
-  state.focus = null;
+  state.focus = firstLoad ? state.focus : null;
   state.expandedBursts = new Set();
   state.expandedGroups = new Set();
   // A displacement is relative to a position in *this* sub-log; carrying it into another
@@ -767,6 +767,12 @@ function queryFromUrl() {
     // that is what the state holds, and because a date outside the span would silently
     // mean nothing.
     brush: parseBrush(params.get('brush')),
+    // A focused object, and how far the highlight reaches. Same reproducibility argument
+    // as the rest: a focused picture is a different picture. ⚠️ `focusDegree`, not
+    // `degree` — that one is the *traversal* degree, which decides what is in the sub-log
+    // at all. Two notions of degree, named apart, as CLAUDE.md requires.
+    focus: params.get('focus') || null,
+    focusDegree: params.get('focusDegree') ? Number(params.get('focusDegree')) : null,
   };
 }
 
@@ -789,6 +795,13 @@ if (initialQuery.mode) {
 if (initialQuery.layout) {
   state.structuralLayout = initialQuery.layout;
   markLayout(initialQuery.layout);
+}
+if (initialQuery.focus) {
+  state.focus = initialQuery.focus;
+  state.focusDegree = Math.min(
+    MAX_FOCUS_DEGREE,
+    Math.max(1, initialQuery.focusDegree || 1),
+  );
 }
 if (initialQuery.brush) {
   state.timeBrush = initialQuery.brush;

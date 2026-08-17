@@ -100,7 +100,10 @@ export function renderStructuralEdges({
       const brushed =
         overlapsBrush(source, brush) && overlapsBrush(target, brush) ? 1 : BRUSHED_OUT;
       const opacity =
-        Math.min(objectOpacity(source.objectId, focus), objectOpacity(target.objectId, focus)) *
+        Math.min(
+          objectOpacity(source.objectId, focus, { graded: true }),
+          objectOpacity(target.objectId, focus, { graded: true }),
+        ) *
         style.opacity *
         brushed;
       const color = evidence === 'validated' ? 'var(--color-neutral-500)' : COLORS.extracted;
@@ -361,7 +364,8 @@ export function renderStructuralNodes({
      * whole graph stays visible behind what was asked for.
      */
     const opacity =
-      objectOpacity(node.objectId, focus) * (overlapsBrush(node, brush) ? 1 : BRUSHED_OUT);
+      objectOpacity(node.objectId, focus, { graded: true }) *
+      (overlapsBrush(node, brush) ? 1 : BRUSHED_OUT);
 
     const group = gNode
       .append('g')

@@ -5,7 +5,14 @@ import { readFile } from 'node:fs/promises';
 import { loadObjectGraph, describeSubLog } from '../src/data/loadObjectGraph.js';
 import { indexObjectGraph, findGraphProblems, collectInstants } from '../src/model/objectGraph.js';
 import { deriveBursts, indexBurstsByCommit, MIN_BURST } from '../src/model/bursts.js';
-import { buildAdjacency, focusSet, MAX_FOCUS_DEGREE } from '../src/model/graph.js';
+import {
+  buildAdjacency,
+  focusSet,
+  objectOpacity,
+  DIM_OPACITY,
+  FOCUS_FALLOFF,
+  MAX_FOCUS_DEGREE,
+} from '../src/model/graph.js';
 import { classifyMethod, classifyLink, LINK_METHOD, EVIDENCE } from '../src/model/evidence.js';
 import {
   activityLabel,
@@ -503,5 +510,70 @@ describe('focus BFS', () => {
     // Focusing the PR must light up the folded push that delivered its commits.
     const fromPr = focusSet(adjacency, 'pr:243221', 1);
     assert.ok(fromPr.has(burst.id));
+  });
+});
+
+describe('focus fades with distance, where it is asked to', () => {
+  const focus = new Map([
+    ['pr:1', 0],
+    ['issue:1', 1],
+    ['commit:a', 2],
+  ]);
+
+  test('with no focus, everything is at full strength', () => {
+    assert.equal(objectOpacity('anything', null), 1);
+    assert.equal(objectOpacity('anything', null, { graded: true }), 1);
+  });
+
+  test('outside the focus set is dim, graded or not', () => {
+    assert.equal(objectOpacity('commit:z', focus), DIM_OPACITY);
+    assert.equal(objectOpacity('commit:z', focus, { graded: true }), DIM_OPACITY);
+  });
+
+  test('binary by default, so the timeline is untouched', () => {
+    // ⚠️ The timeline has drawn focus as in-or-out since the mockup and its screenshots
+    // are the visual regression baseline. Grading it by default would change every one of
+    // them as a side effect of a change to a different mode.
+    for (const id of ['pr:1', 'issue:1', 'commit:a']) {
+      assert.equal(objectOpacity(id, focus), 1, `${id} must be full strength when ungraded`);
+    }
+  });
+
+  test('graded, each hop is dimmer than the last', () => {
+    const at = (id) => objectOpacity(id, focus, { graded: true });
+    assert.equal(at('pr:1'), 1, 'the thing you clicked is full strength');
+    assert.ok(at('issue:1') < at('pr:1'), 'a neighbour is dimmer than the focus');
+    assert.ok(at('commit:a') < at('issue:1'), 'and two hops dimmer than one');
+    assert.ok(at('commit:a') > DIM_OPACITY, 'but still brighter than being outside entirely');
+  });
+
+  test('the steps are far enough apart to be told apart', () => {
+    // Three brightnesses a few percent apart are not three categories, they are one blur.
+    for (let hop = 1; hop < FOCUS_FALLOFF.length; hop++) {
+      assert.ok(
+        FOCUS_FALLOFF[hop - 1] - FOCUS_FALLOFF[hop] > 0.2,
+        `hops ${hop - 1} and ${hop} are ${FOCUS_FALLOFF[hop - 1]} and ${FOCUS_FALLOFF[hop]}`,
+      );
+    }
+  });
+
+  test('a hop beyond the table falls back to dim rather than to undefined', () => {
+    assert.equal(objectOpacity('x', new Map([['x', 9]]), { graded: true }), DIM_OPACITY);
+  });
+
+  test('it grades a real focus set from the graph', async () => {
+    const graph = await loadF1();
+    const index = indexObjectGraph(graph);
+    const adjacency = buildAdjacency(graph.links, deriveBursts(index.objectsOfType('commit')));
+    const seed = graph.objects.find((object) => object.type === 'pull_request').id;
+    const set = focusSet(adjacency, seed, 2);
+
+    assert.equal(objectOpacity(seed, set, { graded: true }), 1);
+    const neighbours = [...set.entries()].filter(([, hop]) => hop === 1);
+    assert.ok(neighbours.length > 0, 'sanity: F1 must have neighbours to grade');
+    for (const [id] of neighbours) {
+      const value = objectOpacity(id, set, { graded: true });
+      assert.ok(value < 1 && value > DIM_OPACITY, `${id} should be graded, got ${value}`);
+    }
   });
 });

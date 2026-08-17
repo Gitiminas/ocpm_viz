@@ -83,6 +83,9 @@ const degree = flag('degree', null);
 const layout = flag('layout', null);
 // The brushed time range, as two fractions: --brush 0.6,1
 const brush = flag('brush', null);
+// Focus a single object: --focus pr:243221 [--focusDegree 2]
+const focus = flag('focus', null);
+const focusDegree = flag('focusDegree', null);
 const fixture = positional[0] || 'LIVE1';
 
 const target = repo
@@ -96,7 +99,9 @@ const url =
   (page ? `&page=${encodeURIComponent(page)}` : '') +
   (mode ? `&mode=${encodeURIComponent(mode)}` : '') +
   (layout ? `&layout=${encodeURIComponent(layout)}` : '') +
-  (brush ? `&brush=${encodeURIComponent(brush)}` : '');
+  (brush ? `&brush=${encodeURIComponent(brush)}` : '') +
+  (focus ? `&focus=${encodeURIComponent(focus)}` : '') +
+  (focusDegree ? `&focusDegree=${encodeURIComponent(focusDegree)}` : '');
 
 // The browser writes where *it* can see. Under WSL that means a Windows path, so stage
 // the file on the Windows side and copy it back into the repo's scratch directory.
@@ -106,7 +111,7 @@ mkdirSync(outDir, { recursive: true });
 const label = repo
   ? [repo, seed, degree && `d${degree}`].filter(Boolean).join('-').replace(/[^\w.-]+/g, '-')
   : fixture;
-const name = `${label}${page ? `-${page}` : ''}${mode ? `-${mode}` : ''}${layout ? `-${layout}` : ''}${brush ? '-brushed' : ''}.png`;
+const name = `${label}${page ? `-${page}` : ''}${mode ? `-${mode}` : ''}${layout ? `-${layout}` : ''}${brush ? '-brushed' : ''}${focus ? '-focused' : ''}.png`;
 const finalPath = resolve(outDir, name);
 
 let browserTarget;
