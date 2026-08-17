@@ -233,6 +233,108 @@ export function orderLayers(rows, edges, { sweeps = ORDER_SWEEPS } = {}) {
 }
 
 /**
+ * One entry per distinct pair of nodes, whatever number of links justify it.
+ *
+ * ⚠️ **The layout must count connections, not links, and the difference is not cosmetic.**
+ * Two objects can be joined by several links at once — on kubernetes issue #47532 one pair
+ * carries six — and in this mode both ends sit at the same point, so those six draw as one
+ * line. Counting them separately inflated the crossing figure 4.5x (89 against 20 real
+ * ones), which is the smaller half of the problem: the barycentre is an *average over
+ * neighbours*, so a pair carrying six links also pulled six times harder than a pair
+ * carrying one, and the ordering was being dragged around by how many detection methods
+ * happened to agree rather than by the shape of the graph.
+ *
+ * The drawing still knows about every link — see `bundleEdges` in `structural.js`, which
+ * keeps them so none can be silently buried. This is only what the *arrangement* reads.
+ */
+export function dedupeEdges(edges) {
+  const seen = new Map();
+  for (const edge of edges) {
+    const key =
+      edge.source < edge.target
+        ? `${edge.source}||${edge.target}`
+        : `${edge.target}||${edge.source}`;
+    if (!seen.has(key)) seen.set(key, { source: edge.source, target: edge.target, key });
+  }
+  return [...seen.values()];
+}
+
+/**
+ * Route an edge that skips a row through a placeholder in the row it passes over.
+ *
+ * ⚠️ **Without this such an edge is invisible to the crossing count and slices straight
+ * through the middle row on screen.** Crossings are only counted between *adjacent* rows,
+ * so an issue→commit link — which bypasses pull requests entirely — scored zero however
+ * badly it cut across them. kubernetes #47532 has eight, none of them counted.
+ *
+ * The standard answer, and Sugiyama's: give the long edge a dummy node in each row it
+ * crosses and treat it as a chain of ordinary segments. The dummy takes part in the
+ * ordering, so the optimiser can finally see the edge; it takes a little space in the row,
+ * so the line bends *around* the pull requests rather than over them; and it is never
+ * drawn, because it stands for nothing in the data.
+ */
+export function insertDummies(rows, edges) {
+  const rowOf = new Map();
+  rows.forEach((row, r) => row.forEach((node) => rowOf.set(node.id, r)));
+
+  const withDummies = rows.map((row) => row.slice());
+  const segments = [];
+  const routeOf = new Map();
+
+  for (const edge of edges) {
+    const from = rowOf.get(edge.source);
+    const to = rowOf.get(edge.target);
+    if (from === undefined || to === undefined) continue;
+
+    const span = Math.abs(to - from);
+    if (span <= 1) {
+      segments.push(edge);
+      continue;
+    }
+
+    // Walk downwards whichever way the edge runs, so the chain is built in row order.
+    const [upper, lower] = from < to ? [edge.source, edge.target] : [edge.target, edge.source];
+    const [top, bottom] = from < to ? [from, to] : [to, from];
+
+    const chain = [upper];
+    for (let r = top + 1; r < bottom; r++) {
+      const dummy = {
+        id: `dummy:${edge.key ?? `${edge.source}||${edge.target}`}:${r}`,
+        lane: null,
+        isDummy: true,
+        radius: 4,
+        t: null,
+      };
+      withDummies[r].push(dummy);
+      chain.push(dummy.id);
+    }
+    chain.push(lower);
+
+    for (let i = 0; i + 1 < chain.length; i++) {
+      segments.push({ source: chain[i], target: chain[i + 1] });
+    }
+    // The waypoints, in the direction the caller gave the edge.
+    const waypoints = chain.slice(1, -1);
+    routeOf.set(
+      edge.key ?? `${edge.source}||${edge.target}`,
+      from < to ? waypoints : waypoints.slice().reverse(),
+    );
+  }
+
+  // Re-sort, so a dummy lands somewhere deterministic rather than at the end of the row.
+  for (const row of withDummies) {
+    row.sort((a, b) => {
+      const at = a.t ? +a.t : Infinity;
+      const bt = b.t ? +b.t : Infinity;
+      if (at !== bt) return at - bt;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  }
+
+  return { rows: withDummies, segments, routeOf };
+}
+
+/**
  * Give every node an x and a y.
  *
  * Rows are spread evenly down the box. Within a row, each node is pulled toward the
@@ -264,11 +366,30 @@ export function positionLayers(rows, edges, { width, height, padding = 60, radiu
     row.forEach((node, i) => x.set(node.id, padding + step * (i + 1)));
   });
 
+  /*
+   * ⚠️ **Alignment alternates direction; it does not average both at once.**
+   *
+   * Averaging a node's neighbours above *and* below in one step lets a narrow row act as
+   * an attractor on a wide one. Measured on kubernetes #47532: three issues occupying
+   * 279px pulled all eight pull requests into 465px while their commits were spread over
+   * 955px, so every edge became a long diagonal and the picture looked far more tangled
+   * than the graph is. Each pass now looks one way only — down toward children, then up
+   * toward parents — which is what lets a row take the width its own contents need
+   * instead of being compressed toward whatever is above it.
+   */
   for (let pass = 0; pass < ALIGN_PASSES; pass++) {
-    for (const row of rows) {
-      // Pull toward neighbours.
+    const downwards = pass % 2 === 0;
+    // Sweeping in the direction of the pull means a row is aligned against neighbours
+    // that have already moved this pass, so information travels the full depth in one
+    // sweep instead of one row per pass.
+    const order = downwards ? [...rows.keys()] : [...rows.keys()].reverse();
+
+    for (const r of order) {
+      const row = rows[r];
+      const reference = downwards ? above : below;
+
       for (const node of row) {
-        const ids = [...(above.get(node.id) || []), ...(below.get(node.id) || [])];
+        const ids = reference.get(node.id) || [];
         const positions = ids.map((id) => x.get(id)).filter((at) => at !== undefined);
         if (!positions.length) continue;
         const target = positions.reduce((sum, at) => sum + at, 0) / positions.length;
@@ -321,7 +442,10 @@ function centreAndFill(rows, x, radius, { width, padding }) {
 
   const span = maxX - minX;
   const available = Math.max(1, width - 2 * padding);
-  const scale = span > 0 ? Math.min(MAX_FILL_SCALE, available / span) : 1;
+  // ⚠️ Never below 1. Scaling *down* would compress a row that is already at its minimum
+  // spacing and push marks back into one another — the separation pass has the last word
+  // on how tight a row may be, and this must not overrule it.
+  const scale = span > 0 ? Math.max(1, Math.min(MAX_FILL_SCALE, available / span)) : 1;
 
   // Scaled span, then the offset that centres it in the box.
   const scaledSpan = span * scale;
@@ -349,26 +473,60 @@ function separateRow(row, x, radius, { width, padding }) {
 
   const needed = row.reduce((sum, node) => sum + 2 * radius(node), 0) + MIN_GAP * (row.length - 1);
   const available = Math.max(1, width - 2 * padding);
-  const gap = needed > available
-    ? Math.max(2, MIN_GAP - (needed - available) / Math.max(1, row.length - 1))
-    : MIN_GAP;
+  const gap =
+    needed > available
+      ? Math.max(2, MIN_GAP - (needed - available) / Math.max(1, row.length - 1))
+      : MIN_GAP;
 
-  // Left to right: nothing may sit closer than the gap to what precedes it.
-  let cursor = padding + radius(row[0]);
-  for (const node of row) {
-    const minimum = cursor;
-    if (x.get(node.id) < minimum) x.set(node.id, minimum);
-    cursor = x.get(node.id) + radius(node) + gap;
-    const next = row[row.indexOf(node) + 1];
-    if (next) cursor += radius(next);
+  /*
+   * ⚠️ **Overlaps are resolved symmetrically, not by chaining from the left.**
+   *
+   * The first version walked left to right pushing each node clear of its predecessor —
+   * which only ever moves things *right*. So if the leftmost node in row order happened to
+   * be aligned far right, everything after it was strung out from there at minimum
+   * spacing and the alignment was thrown away wholesale. Measured on kubernetes #47532:
+   * the pull requests came out at 484, 531, 578, 652… — a chain of minimum gaps — while
+   * the commits they belong to averaged 157, 241, 282…, so every edge left its pull
+   * request as a long diagonal and the picture read as far more tangled than the graph is.
+   *
+   * Splitting each violation between the two nodes keeps the row centred on where
+   * alignment wanted it, and iterating settles the knock-on effects.
+   */
+  const wanted = row.map((node) => x.get(node.id));
+
+  // One left-to-right chain guarantees every gap: a node keeps the position alignment
+  // chose for it unless its predecessor forces it right. Iterating half-steps instead was
+  // tried and does not converge — a violation propagates by half a gap per pass, so on
+  // F10's 24-node commit row eight passes left marks still overlapping by 13px.
+  for (let i = 0; i < row.length; i++) {
+    if (i === 0) continue;
+    const minimum = x.get(row[i - 1].id) + radius(row[i - 1]) + gap + radius(row[i]);
+    if (x.get(row[i].id) < minimum) x.set(row[i].id, minimum);
   }
 
-  // Right to left: pull the tail back inside the box, keeping the same gaps.
-  let limit = width - padding - radius(row[row.length - 1]);
-  for (let i = row.length - 1; i >= 0; i--) {
-    const node = row[i];
-    if (x.get(node.id) > limit) x.set(node.id, limit);
-    limit = x.get(node.id) - radius(node) - gap - (i > 0 ? radius(row[i - 1]) : 0);
+  /*
+   * ⚠️ Then undo the chain's **systematic rightward bias**, which is the whole reason the
+   * previous version threw the alignment away. Pushing right is the only move a chain can
+   * make, so a row whose leftmost node happens to sit far right drags everything after it
+   * — measured on kubernetes #47532, the pull requests came out at 484, 531, 578… in a
+   * chain of minimum gaps while their commits averaged 157, 241, 282…, so every edge left
+   * its pull request as a long diagonal. Shifting the settled row back by its mean
+   * displacement keeps the gaps exactly and restores the centre alignment asked for.
+   */
+  const drift =
+    row.reduce((sum, node, i) => sum + (x.get(node.id) - wanted[i]), 0) / row.length;
+  if (drift) for (const node of row) x.set(node.id, x.get(node.id) - drift);
+
+  // Finally slide the row inside the box. Shifting rather than clamping the end nodes:
+  // clamping would squash them back into their neighbours and undo the gaps above.
+  const first = row[0];
+  const last = row[row.length - 1];
+  const leftOver = padding + radius(first) - x.get(first.id);
+  if (leftOver > 0) for (const node of row) x.set(node.id, x.get(node.id) + leftOver);
+  const rightOver = x.get(last.id) + radius(last) - (width - padding);
+  if (rightOver > 0) {
+    const shift = Math.min(rightOver, x.get(first.id) - padding - radius(first));
+    if (shift > 0) for (const node of row) x.set(node.id, x.get(node.id) - shift);
   }
 }
 
@@ -378,10 +536,36 @@ function separateRow(row, x, radius, { width, padding }) {
  * @returns {{positions: Map, rows: Array<Array>, crossings: number}}
  */
 export function layoutLayered(nodes, edges, { width, height, padding = 60, radiusOf } = {}) {
-  if (!nodes.length) return { positions: new Map(), rows: [], crossings: 0 };
+  if (!nodes.length) {
+    return { positions: new Map(), rows: [], crossings: 0, waypoints: new Map() };
+  }
 
+  // One entry per connection, not per link, and long edges routed through placeholders.
+  // Both change what the ordering *sees*; neither changes what the data says.
+  const unique = dedupeEdges(edges);
   const assigned = assignLayers(nodes);
-  const { rows, crossings } = orderLayers(assigned, edges);
-  const positions = positionLayers(rows, edges, { width, height, padding, radiusOf });
-  return { positions, rows, crossings };
+  const { rows: withDummies, segments, routeOf } = insertDummies(assigned, unique);
+
+  const { rows, crossings } = orderLayers(withDummies, segments);
+  const positions = positionLayers(rows, segments, { width, height, padding, radiusOf });
+
+  // Where a long edge should bend. Keyed the same way `bundleEdges` keys a bundle, so the
+  // renderer can ask for a route without knowing anything about dummies.
+  const waypoints = new Map();
+  for (const [key, ids] of routeOf) {
+    waypoints.set(
+      key,
+      ids.map((id) => positions.get(id)).filter(Boolean),
+    );
+  }
+
+  // Dummies stand for nothing in the data and are never drawn, so they leave with the
+  // scaffolding rather than being handed to a renderer that would have to know to skip
+  // them. Their positions survive in `waypoints`, which is the only thing they were for.
+  const drawn = rows.map((row) => row.filter((node) => !node.isDummy));
+  for (const row of withDummies) {
+    for (const node of row) if (node.isDummy) positions.delete(node.id);
+  }
+
+  return { positions, rows: drawn, crossings, waypoints };
 }

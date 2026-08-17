@@ -30,6 +30,7 @@ import { objectOpacity } from '../model/graph.js';
 import { formatInstant, escapeHtml } from './format.js';
 import { activityLabel } from '../model/activities.js';
 import { legendKeyFor } from './nodes.js';
+import { bundleEdges } from '../layout/structural.js';
 
 /** Gap between a node's edge and where an arrowhead stops. */
 const ARROW_GAP = 4;
@@ -54,91 +55,172 @@ export function renderStructuralEdges({
   focus,
   tooltip,
   direction,
-  dimmed = () => false,
+  waypoints = new Map(),
 }) {
-  for (const edge of edges) {
-    const source = nodesById.get(edge.source);
-    const target = nodesById.get(edge.target);
+  for (const bundle of bundleEdges(edges)) {
+    const first = bundle.edges[0];
+    const source = nodesById.get(first.source);
+    const target = nodesById.get(first.target);
     if (!source || !target) continue;
 
-    const style = evidenceStyle(edge.evidence);
-    // Focus dims by object, and an edge is only as bright as its dimmer end: an edge
-    // half in the focus set and half out is not "in" it.
-    const opacity =
-      Math.min(
-        objectOpacity(source.objectId, focus),
-        objectOpacity(target.objectId, focus),
-      ) * style.opacity;
-
-    const [from, to] = trim(source, target);
-    const heading = direction(edge);
-    // ⚠️ Hoisted rather than written inline in the `.attr()` call. `tests/legend.test.js`
-    // reads every string literal on a line mentioning `data-legend`, so an inline
-    // `edge.evidence === 'validated' ? …` makes it report a mark called `validated` that
-    // nothing draws. Both keys are registered from `render/links.js`, which is the point:
-    // the evidence cue is identical in every mode and shares one legend row.
-    const legendKey = edge.evidence === 'validated' ? 'link-validated' : 'link-extracted';
-
-    const line = gLink
-      .append('line')
-      .attr('data-legend', legendKey)
-      .attr('x1', from.x)
-      .attr('y1', from.y)
-      .attr('x2', to.x)
-      .attr('y2', to.y)
-      .attr('stroke', edge.evidence === 'validated' ? 'var(--color-neutral-500)' : COLORS.extracted)
-      .attr('stroke-width', style.width)
-      .attr('stroke-dasharray', style.dash)
-      .attr('opacity', dimmed(edge) ? opacity * 0.15 : opacity);
-
-    if (heading !== 0) {
-      drawArrowhead(gLink, heading === 1 ? from : to, heading === 1 ? to : from, {
-        color: edge.evidence === 'validated' ? 'var(--color-neutral-500)' : COLORS.extracted,
-        opacity: dimmed(edge) ? opacity * 0.15 : opacity,
-      });
-    }
-
     /*
-     * ⚠️ **The hover target is a separate, invisible, fat line — not the drawn one.**
+     * ⚠️ **One line per EVIDENCE CLASS, not one per link.**
      *
-     * Binding to the visible stroke means a *dashed* edge only answers the pointer on its
-     * painted segments, so extracted links were effectively unhoverable while validated
-     * ones worked. That is the worst way round: the uncertain links are precisely the ones
-     * a reader needs to interrogate, and the failure looks like the feature simply not
-     * existing rather than like a bug. `render/links.js` already solved this the same way
-     * for the timeline; this now matches it, and `tooltip.bind` brings right-click pinning
-     * with it, which the hand-rolled handlers here did not have.
+     * Both ends of every link in a bundle sit at the same two points, so N links draw N
+     * exactly superimposed lines and the reader sees one. Measured on kubernetes #47532:
+     * 77 links over 43 pairs, one pair carrying six — and two bundles mixing the classes,
+     * which means a dashed *extracted* link was sitting invisibly underneath a solid
+     * *validated* one. That is decision 25's buried link again, in a mode with no fan to
+     * separate them, and it hides exactly the uncertainty cue (S8) this tool exists to
+     * show. Splitting by class and offsetting the two apart is the smallest thing that
+     * cannot hide one under the other; links that agree on their class are genuinely one
+     * mark and carry a count instead.
      */
-    if (tooltip) {
-      tooltip.bind(
-        gLink
-          .append('line')
-          .attr('x1', from.x)
-          .attr('y1', from.y)
-          .attr('x2', to.x)
-          .attr('y2', to.y)
-          .attr('stroke', '#000')
-          .attr('stroke-opacity', 0)
-          .attr('stroke-width', 16)
-          .style('cursor', 'pointer'),
-        () => edgeCard(edge, source, target, heading),
-      );
+    const byEvidence = new Map();
+    for (const edge of bundle.edges) {
+      if (!byEvidence.has(edge.evidence)) byEvidence.set(edge.evidence, []);
+      byEvidence.get(edge.evidence).push(edge);
     }
+    // Validated first, so the offset is stable rather than depending on link order.
+    const classes = [...byEvidence.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+
+    classes.forEach(([evidence, group], index) => {
+      const style = evidenceStyle(evidence);
+      const opacity =
+        Math.min(objectOpacity(source.objectId, focus), objectOpacity(target.objectId, focus)) *
+        style.opacity;
+      const color = evidence === 'validated' ? 'var(--color-neutral-500)' : COLORS.extracted;
+      const legendKey = evidence === 'validated' ? 'link-validated' : 'link-extracted';
+
+      // Only offset when there is something to separate from.
+      const shift = classes.length > 1 ? (index - (classes.length - 1) / 2) * 5 : 0;
+      const route = points(source, target, waypoints.get(bundle.key), shift);
+      const heading = direction(group[0]);
+
+      gLink
+        .append('path')
+        .attr('data-legend', legendKey)
+        .attr('d', pathThrough(route))
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', style.width)
+        .attr('stroke-dasharray', style.dash)
+        .attr('opacity', opacity);
+
+      if (heading !== 0) {
+        const [from, to] =
+          heading === 1
+            ? [route[route.length - 2], route[route.length - 1]]
+            : [route[1], route[0]];
+        drawArrowhead(gLink, from, to, { color, opacity });
+      }
+
+      // How many links this one mark stands for. Declared rather than left implicit —
+      // the same bargain decision 68 makes for the timeline's crowded bundles.
+      if (group.length > 1) {
+        const middle = route[Math.floor(route.length / 2)];
+        gLink
+          .append('text')
+          .attr('data-legend', 'link-bundle')
+          .attr('x', middle.x)
+          .attr('y', middle.y - 4)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', 9)
+          .attr('font-family', 'JetBrains Mono, monospace')
+          .attr('fill', color)
+          .attr('opacity', opacity)
+          .attr('pointer-events', 'none')
+          .attr('paint-order', 'stroke')
+          .attr('stroke', 'var(--color-bg)')
+          .attr('stroke-width', 3)
+          .text(`\u00d7${group.length}`);
+      }
+
+      /*
+       * ⚠️ **The hover target is a separate, invisible, fat path — not the drawn one.**
+       *
+       * Binding to the visible stroke means a *dashed* edge only answers the pointer on
+       * its painted segments, so extracted links were effectively unhoverable while
+       * validated ones worked. That is the worst way round: the uncertain links are
+       * precisely the ones a reader needs to interrogate, and the failure looks like the
+       * feature simply not existing rather than like a bug. `render/links.js` already
+       * solved this the same way for the timeline, and `tooltip.bind` brings right-click
+       * pinning with it.
+       */
+      if (tooltip) {
+        tooltip.bind(
+          gLink
+            .append('path')
+            .attr('d', pathThrough(route))
+            .attr('fill', 'none')
+            .attr('stroke', '#000')
+            .attr('stroke-opacity', 0)
+            .attr('stroke-width', 16)
+            .style('cursor', 'pointer'),
+          () => edgeCard(group, source, target, heading),
+        );
+      }
+    });
   }
 }
 
+/**
+ * The points a bundle's line passes through, trimmed to the node rims.
+ *
+ * `via` is the waypoint list for an edge that skips a row — an issue linked straight to a
+ * commit bends around the pull requests rather than cutting through them. `shift` moves
+ * the whole line sideways, perpendicular to its direction, so two evidence classes on one
+ * pair stay apart.
+ */
+function points(source, target, via, shift) {
+  const middle = (via || []).map((point) => ({ x: point.x, y: point.y }));
+  const [from, to] = trim(source, target, middle[0], middle[middle.length - 1]);
+  const all = [from, ...middle, to];
+
+  if (!shift) return all;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy) || 1;
+  return all.map((point) => ({ x: point.x + (-dy / length) * shift, y: point.y + (dx / length) * shift }));
+}
+
+/** A straight line, or a gently rounded polyline when the edge is routed. */
+function pathThrough(route) {
+  if (route.length === 2) return `M${route[0].x},${route[0].y} L${route[1].x},${route[1].y}`;
+  // Quadratic through each waypoint, so a routed edge reads as one bending line rather
+  // than as a chain of separate segments meeting at a corner.
+  let d = `M${route[0].x},${route[0].y}`;
+  for (let i = 1; i < route.length - 1; i++) {
+    const next = route[i + 1];
+    d += ` Q${route[i].x},${route[i].y} ${(route[i].x + next.x) / 2},${(route[i].y + next.y) / 2}`;
+  }
+  const last = route[route.length - 1];
+  d += ` L${last.x},${last.y}`;
+  return d;
+}
+
 /** Pull both ends back to the node's rim, so a line never runs under a glyph. */
-function trim(source, target) {
-  const dx = target.x - source.x;
-  const dy = target.y - source.y;
+function trim(source, target, firstVia, lastVia) {
+  const dx = (firstVia?.x ?? target.x) - source.x;
+  const dy = (firstVia?.y ?? target.y) - source.y;
   const length = Math.hypot(dx, dy) || 1;
   const ux = dx / length;
   const uy = dy / length;
   const sourceGap = (source.radius ?? 8) + 2;
+
+  // The far end is trimmed along its OWN incoming direction, which is only the same line
+  // when the edge is straight. A routed edge arrives from its last waypoint.
+  const backX = (lastVia?.x ?? source.x) - target.x;
+  const backY = (lastVia?.y ?? source.y) - target.y;
+  const backLength = Math.hypot(backX, backY) || 1;
   const targetGap = (target.radius ?? 8) + 2 + ARROW_GAP;
+
   return [
     { x: source.x + ux * sourceGap, y: source.y + uy * sourceGap },
-    { x: target.x - ux * targetGap, y: target.y - uy * targetGap },
+    {
+      x: target.x + (backX / backLength) * targetGap,
+      y: target.y + (backY / backLength) * targetGap,
+    },
   ];
 }
 
@@ -177,13 +259,27 @@ function drawArrowhead(group, from, to, { color, opacity }) {
     .attr('opacity', opacity);
 }
 
-function edgeCard(edge, source, target, heading) {
-  const rows = [
-    ['Qualifier', escapeHtml(edge.qualifier || '—'), 'mono'],
-    ['Evidence', edge.evidence],
-    ['Method', escapeHtml(edge.link?.method || '—'), 'mono'],
-  ];
-  if (edge.link?.n_methods > 1) {
+function edgeCard(group, source, target, heading) {
+  const edge = group[0];
+  const rows = [];
+
+  // Every link this mark stands for, so a bundle can never quietly speak for links it
+  // does not name. One line each: qualifier and method are what distinguish them.
+  if (group.length > 1) {
+    rows.push(['Links', `${group.length} of the same evidence class`]);
+    for (const member of group) {
+      rows.push([
+        escapeHtml(member.qualifier || '—'),
+        escapeHtml(member.link?.method || '—'),
+        'mono',
+      ]);
+    }
+  } else {
+    rows.push(['Qualifier', escapeHtml(edge.qualifier || '—'), 'mono']);
+    rows.push(['Method', escapeHtml(edge.link?.method || '—'), 'mono']);
+  }
+  rows.push(['Evidence', edge.evidence]);
+  if (group.length === 1 && edge.link?.n_methods > 1) {
     rows.push(['Agreed by', `${edge.link.n_methods} methods`]);
   }
   if (heading !== 0) {

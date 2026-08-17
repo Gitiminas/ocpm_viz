@@ -197,6 +197,9 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         focus,
         tooltip,
         direction: (edge) => edgeDirection(edge, nodesById),
+        // Where a row-skipping edge should bend, so it goes around the middle row
+        // rather than through it.
+        waypoints: layout.waypoints,
       });
       renderStructuralNodes({
         gNode: layers.node,

@@ -51,13 +51,21 @@ if (!browser) {
 const isWindows = browser.endsWith('.exe');
 
 const args = process.argv.slice(2);
-const positional = args.filter((a) => !a.startsWith('--'));
 const flag = (name, fallback) => {
   const i = args.indexOf(`--${name}`);
   return i === -1 ? fallback : args[i + 1];
 };
 
-const fixture = positional[0] || 'LIVE1';
+/*
+ * ⚠️ A flag's VALUE is not a positional argument. Filtering on `--` alone treated
+ * `--repo kubernetes/kubernetes` as both the flag and a fixture name, so the shot was
+ * written to `.shots/kubernetes/kubernetes-off.png` — a directory that does not exist.
+ */
+const flagValues = new Set(
+  args.flatMap((arg, i) => (arg.startsWith('--') ? [args[i + 1]] : [])),
+);
+const positional = args.filter((arg) => !arg.startsWith('--') && !flagValues.has(arg));
+
 const width = Number(flag('width', 1700));
 const height = Number(flag('height', 1400));
 const page = flag('page', null);
@@ -66,8 +74,21 @@ const page = flag('page', null);
 const mode = flag('mode', null);
 const port = flag('port', 8000);
 
+// A live sub-log rather than a fixture. Needs PostgREST up; `?source=database` is implied,
+// because a repo-and-seed query means nothing to the fixture catalogue.
+const repo = flag('repo', null);
+const seed = flag('seed', null);
+const degree = flag('degree', null);
+const fixture = positional[0] || 'LIVE1';
+
+const target = repo
+  ? `?source=database&repo=${encodeURIComponent(repo)}` +
+    (seed ? `&seed=${encodeURIComponent(seed)}` : '') +
+    (degree ? `&degree=${encodeURIComponent(degree)}` : '')
+  : `?fixture=${encodeURIComponent(fixture)}`;
+
 const url =
-  `http://localhost:${port}/?fixture=${encodeURIComponent(fixture)}` +
+  `http://localhost:${port}/${target}` +
   (page ? `&page=${encodeURIComponent(page)}` : '') +
   (mode ? `&mode=${encodeURIComponent(mode)}` : '');
 
@@ -75,7 +96,11 @@ const url =
 // the file on the Windows side and copy it back into the repo's scratch directory.
 const outDir = resolve(ROOT, '.shots');
 mkdirSync(outDir, { recursive: true });
-const name = `${fixture}${page ? `-${page}` : ''}${mode ? `-${mode}` : ''}.png`;
+// Slashes and colons in a repo name or a seed id are not filename characters.
+const label = repo
+  ? [repo, seed, degree && `d${degree}`].filter(Boolean).join('-').replace(/[^\w.-]+/g, '-')
+  : fixture;
+const name = `${label}${page ? `-${page}` : ''}${mode ? `-${mode}` : ''}.png`;
 const finalPath = resolve(outDir, name);
 
 let browserTarget;

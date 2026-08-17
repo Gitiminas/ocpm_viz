@@ -14,6 +14,8 @@ import {
   positionLayers,
   countCrossings,
   totalCrossings,
+  dedupeEdges,
+  insertDummies,
   LAYER_ORDER,
 } from '../src/layout/layered.js';
 
@@ -445,6 +447,124 @@ describe('the drawing sits in the middle of its canvas', () => {
             row[i - 1].radius;
           assert.ok(gap > 0, `${fixture}/${lane}: filling pushed ${row[i].id} into its neighbour`);
         }
+      }
+    }
+  });
+});
+
+describe('the layout counts connections, not links', () => {
+  test('a pair carrying six links is one connection', () => {
+    // ⚠️ Measured on kubernetes #47532: 77 links over 43 distinct pairs, one pair carrying
+    // six. Counting links inflated the crossing figure 4.5x (89 against 20) — but the
+    // worse half is that the barycentre is an AVERAGE over neighbours, so that pair pulled
+    // six times harder than a pair carrying one, and the ordering was being dragged around
+    // by how many detection methods agreed rather than by the shape of the graph.
+    const edges = [
+      { source: 'a', target: 'b', evidence: 'validated' },
+      { source: 'a', target: 'b', evidence: 'extracted' },
+      { source: 'b', target: 'a', evidence: 'validated' },
+      { source: 'a', target: 'c', evidence: 'validated' },
+    ];
+    const unique = dedupeEdges(edges);
+    assert.equal(unique.length, 2, 'a→b in either direction is one connection');
+  });
+
+  test('deduping does not change which nodes are connected', async () => {
+    const { nodes, edges } = await layeredFor('F10');
+    const unique = dedupeEdges(edges);
+    const pairs = (list) =>
+      new Set(list.map((e) => [e.source, e.target].sort().join('||')));
+    assert.deepEqual(pairs(unique), pairs(edges), 'no connection may be lost or invented');
+    assert.ok(unique.length <= edges.length);
+    assert.ok(nodes.length > 0);
+  });
+});
+
+describe('edges that skip a row are routed, not driven through it', () => {
+  const issue = { id: 'n_issue:1', lane: 'issue', radius: 15, t: new Date('2025-01-01') };
+  const pr = { id: 'n_pr:1', lane: 'pull_request', radius: 12, t: new Date('2025-01-02') };
+  const commit = { id: 'n_commit:a', lane: 'commit', radius: 6, t: new Date('2025-01-03') };
+
+  test('an issue→commit edge gains a placeholder in the pull-request row', () => {
+    const rows = assignLayers([issue, pr, commit]);
+    const { rows: withDummies, segments, routeOf } = insertDummies(rows, [
+      { source: 'n_issue:1', target: 'n_commit:a', key: 'k' },
+    ]);
+
+    assert.equal(withDummies[1].filter((node) => node.isDummy).length, 1, 'one placeholder');
+    assert.equal(segments.length, 2, 'the long edge becomes two ordinary segments');
+    assert.equal(routeOf.get('k').length, 1, 'and one waypoint to bend at');
+
+    // The segments chain end to end through the placeholder.
+    const dummyId = withDummies[1].find((node) => node.isDummy).id;
+    assert.ok(segments.some((s) => s.source === 'n_issue:1' && s.target === dummyId));
+    assert.ok(segments.some((s) => s.source === dummyId && s.target === 'n_commit:a'));
+  });
+
+  test('an edge between adjacent rows is left alone', () => {
+    const rows = assignLayers([issue, pr, commit]);
+    const { segments, routeOf } = insertDummies(rows, [
+      { source: 'n_issue:1', target: 'n_pr:1', key: 'k' },
+    ]);
+    assert.equal(segments.length, 1);
+    assert.equal(routeOf.size, 0, 'nothing to route');
+  });
+
+  test('placeholders are never handed to the renderer', async () => {
+    // They stand for nothing in the data. Their positions survive as waypoints, which is
+    // the only thing they were for.
+    const { nodes, positions, rows } = await layeredFor('F1');
+    assert.equal(positions.size, nodes.length, 'exactly the real nodes are positioned');
+    for (const row of rows) {
+      for (const node of row) assert.ok(!node.isDummy, 'a placeholder reached the drawing');
+    }
+  });
+
+  test('the crossing count can finally see a skipping edge', () => {
+    // Before this, crossings were only counted between ADJACENT rows, so an issue→commit
+    // edge scored zero however badly it cut across the pull requests. kubernetes #47532
+    // has eight such links and none of them was counted.
+    const issues = [issue];
+    const prs = ['a', 'b', 'c'].map((k, i) => ({
+      id: `n_pr:${k}`,
+      lane: 'pull_request',
+      radius: 12,
+      t: new Date(2025, 0, 2 + i),
+    }));
+    const commits = ['x', 'y'].map((k, i) => ({
+      id: `n_commit:${k}`,
+      lane: 'commit',
+      radius: 6,
+      t: new Date(2025, 0, 5 + i),
+    }));
+
+    const edges = [
+      { source: 'n_issue:1', target: 'n_pr:a', key: '1' },
+      { source: 'n_issue:1', target: 'n_pr:c', key: '2' },
+      { source: 'n_pr:a', target: 'n_commit:x', key: '3' },
+      { source: 'n_pr:c', target: 'n_commit:y', key: '4' },
+      // The skipper.
+      { source: 'n_issue:1', target: 'n_commit:y', key: '5' },
+    ];
+
+    const rows = assignLayers([...issues, ...prs, ...commits]);
+    const plain = totalCrossings(rows, edges);
+    const { segments } = insertDummies(rows, edges);
+    const routed = totalCrossings(insertDummies(rows, edges).rows, segments);
+
+    assert.ok(
+      routed >= plain,
+      'routing must expose crossings the flat count could not see, never hide them',
+    );
+    // And the routed form has something to say about the skipper at all.
+    assert.ok(segments.length > edges.length, 'the skipper was split into segments');
+  });
+
+  test('a real sub-log routes its skipping edges', async () => {
+    const { waypoints } = await layeredFor('F1');
+    for (const [, points] of waypoints) {
+      for (const point of points) {
+        assert.ok(Number.isFinite(point.x) && Number.isFinite(point.y), 'a waypoint is a point');
       }
     }
   });

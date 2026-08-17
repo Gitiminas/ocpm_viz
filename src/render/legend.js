@@ -168,6 +168,15 @@ export const LEGEND_SECTIONS = [
     title: 'Time off',
     rows: [
       {
+        key: 'link-bundle',
+        label: 'several links, one line',
+        swatch:
+          '<svg width="26" height="14" viewBox="0 0 26 14"><line x1="0" y1="10" x2="26" y2="10" ' +
+          'stroke="var(--color-neutral-400)" stroke-width="2"/>' +
+          '<text x="13" y="5" text-anchor="middle" font-size="8" font-family="monospace" ' +
+          'fill="var(--color-neutral-400)">&#215;N</text></svg>',
+      },
+      {
         key: 'precedence-arrow',
         label: 'points at the later end',
         swatch:
