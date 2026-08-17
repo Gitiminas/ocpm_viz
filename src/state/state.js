@@ -39,6 +39,21 @@ export function createState() {
     /** Active time scale: real | highlights | ordinal | off. */
     mode: 'real',
     /**
+     * Marks the reader has dragged, as an OFFSET from where the layout put them.
+     *
+     * ⚠️ An offset rather than a position, deliberately. Both structural layouts are pure
+     * functions of the sub-log, and storing absolute coordinates would mean a dragged
+     * mark stayed put while everything around it moved on a zoom, a resize or an expanded
+     * push — pinned to the canvas rather than to its neighbours. An offset survives all
+     * three: the mark keeps the displacement the reader gave it, relative to wherever its
+     * cluster now is.
+     *
+     * Deliberately NOT in a preset (decision 28): a preset captures what is shown, not
+     * where you were looking, and a hand-nudged node is the latter.
+     */
+    nodeNudges: new Map(),
+
+    /**
      * How the off mode arranges a sub-log: `layered` (rows) or `radial` (rings).
      *
      * Only read when `mode === 'off'`. Two geometries for one question — rows read as a

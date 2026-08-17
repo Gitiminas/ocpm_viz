@@ -241,6 +241,7 @@ function layoutStructural({
   isVisible = () => true,
   isLinkVisible = () => true,
   structuralLayout = DEFAULT_STRUCTURAL_LAYOUT,
+  nodeNudges = new Map(),
   margin,
   plotWidth,
   plotHeight = STRUCTURAL_PLOT_HEIGHT,
@@ -266,8 +267,15 @@ function layoutStructural({
 
   for (const node of nodes) {
     const at = positions.get(node.id);
-    node.x = margin.left + (at?.x ?? plotWidth / 2);
-    node.y = margin.top + (at?.y ?? plotHeight / 2);
+    // Where the layout put it, kept separately from where it ends up: a drag is measured
+    // against this, so nudges accumulate against the computed answer rather than against
+    // each other.
+    node.layoutX = margin.left + (at?.x ?? plotWidth / 2);
+    node.layoutY = margin.top + (at?.y ?? plotHeight / 2);
+
+    const nudge = nodeNudges.get(node.id);
+    node.x = node.layoutX + (nudge?.dx ?? 0);
+    node.y = node.layoutY + (nudge?.dy ?? 0);
   }
 
   /*

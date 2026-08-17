@@ -334,6 +334,8 @@ export function renderStructuralNodes({
   objectColors = new Map(),
   actorLogin = (id) => id,
   previous = new Map(),
+  onDragged = null,
+  repaint = () => {},
 }) {
   // What movement needs: where each mark belongs, where it was a moment ago, and how to
   // put it somewhere. The label rides along, so a name never parts company with its mark.
@@ -404,14 +406,7 @@ export function renderStructuralNodes({
         .text(node.burst.size);
     }
 
-    group.on('click', (event) => {
-      event.stopPropagation();
-      handlers?.onNodeClick?.(event, node);
-    });
-
-    if (tooltip) tooltip.bind(group, () => nodeCard(node, actorLogin));
-
-    live.push({
+    const mark = {
       id: node.id,
       x: node.x,
       y: node.y,
@@ -421,7 +416,22 @@ export function renderStructuralNodes({
       apply(point) {
         group.attr('transform', `translate(${point.x},${point.y})`);
       },
+    };
+
+    const drag = onDragged ? enableDrag(group, mark, node, { onDragged, repaint }) : null;
+
+    group.on('click', (event) => {
+      event.stopPropagation();
+      // ⚠️ A drag ends in a click, and without this every drag would also toggle focus or
+      // expand a push — so moving a mark to see it better would change what is on screen.
+      // A few pixels of slop, because a deliberate click is never perfectly still.
+      if (drag?.consumedClick()) return;
+      handlers?.onNodeClick?.(event, node);
     });
+
+    if (tooltip) tooltip.bind(group, () => nodeCard(node, actorLogin));
+
+    live.push(mark);
   }
 
   /*
@@ -470,6 +480,71 @@ export function renderStructuralNodes({
   }
 
   return live;
+}
+
+/** How far the pointer may travel before a press counts as a drag rather than a click. */
+const DRAG_SLOP_PX = 3;
+
+/**
+ * Let a mark be dragged.
+ *
+ * ⚠️ **The drag moves the mark, not the layout.** What it records is an *offset* from
+ * where the layout put the node (`node.layoutX`), which `state.nodeNudges` keeps and the
+ * engine re-applies on the next render. So both structural layouts stay pure functions of
+ * the sub-log — a dragged picture is still the computed picture plus a set of stated
+ * displacements, and clearing them returns exactly to the arrangement the algorithm chose.
+ *
+ * Pointer capture rather than window listeners: the pointer keeps talking to this element
+ * even when it leaves it, so a fast drag cannot slip off the mark and strand it mid-move.
+ */
+function enableDrag(group, mark, node, { onDragged, repaint }) {
+  let from = null;
+  let travelled = 0;
+
+  group.style('cursor', 'grab');
+
+  group.on('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    from = { x: event.clientX, y: event.clientY, markX: mark.x, markY: mark.y };
+    travelled = 0;
+    group.style('cursor', 'grabbing');
+    group.node().setPointerCapture?.(event.pointerId);
+  });
+
+  group.on('pointermove', (event) => {
+    if (!from) return;
+    const dx = event.clientX - from.x;
+    const dy = event.clientY - from.y;
+    travelled = Math.max(travelled, Math.hypot(dx, dy));
+    mark.x = from.markX + dx;
+    mark.y = from.markY + dy;
+    // Repaint rather than re-render: a full render rebuilds the SVG, and doing that per
+    // pointer event would drop frames and destroy the element being dragged mid-gesture.
+    repaint();
+  });
+
+  const finish = (event) => {
+    if (!from) return;
+    group.style('cursor', 'grab');
+    group.node().releasePointerCapture?.(event.pointerId);
+    from = null;
+    if (travelled > DRAG_SLOP_PX) {
+      onDragged(node, { dx: mark.x - node.layoutX, dy: mark.y - node.layoutY });
+    }
+  };
+  group.on('pointerup', finish);
+  group.on('pointercancel', finish);
+
+  return {
+    /** Whether the click that follows this gesture belongs to a drag and must be ignored. */
+    consumedClick() {
+      const wasDrag = travelled > DRAG_SLOP_PX;
+      travelled = 0;
+      return wasDrag;
+    },
+  };
 }
 
 /**

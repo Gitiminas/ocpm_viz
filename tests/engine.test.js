@@ -476,3 +476,86 @@ describe('the structural layout', () => {
     assert.ok(median < 120, `expanding a push shifted the typical node by ${Math.round(median)}px`);
   });
 });
+
+describe('a dragged mark displaces without disturbing the layout', () => {
+  const nudged = (context, nodeNudges) =>
+    createLayout({
+      mode: 'off',
+      graph: context.graph,
+      index: context.index,
+      laneTypes: LANE_TYPES,
+      visibleLanes: LANE_TYPES.slice(),
+      bursts: context.bursts,
+      commentBursts: context.commentBursts,
+      instants: context.instants,
+      expandedBursts: new Set(),
+      expandedCommentBursts: new Set(),
+      expandedGroups: new Set(),
+      isVisible: () => true,
+      nodeNudges,
+      margin: MARGIN,
+      plotWidth: PLOT_WIDTH,
+    });
+
+  test('the layout position is kept alongside the drawn one', async () => {
+    // A drag is measured against `layoutX`, so nudges accumulate against the computed
+    // answer rather than against each other — drag twice and you get one displacement,
+    // not a compounding one.
+    const context = await contextFor('F1');
+    for (const node of engineLayout(context, 'off').nodes) {
+      assert.equal(node.x, node.layoutX, 'unnudged, the two must agree');
+      assert.equal(node.y, node.layoutY);
+    }
+  });
+
+  test('a nudge moves exactly one mark, by exactly the offset given', async () => {
+    const context = await contextFor('F1');
+    const before = engineLayout(context, 'off');
+    const target = before.nodes.find((node) => node.lane === 'pull_request');
+    const wanted = new Map([[target.id, { dx: 40, dy: -25 }]]);
+
+    const after = nudged(context, wanted);
+    for (const node of after.nodes) {
+      const was = before.nodes.find((candidate) => candidate.id === node.id);
+      if (node.id === target.id) {
+        assert.equal(node.x, was.layoutX + 40, 'the dragged mark must move by the offset');
+        assert.equal(node.y, was.layoutY - 25);
+      } else {
+        assert.equal(node.x, was.x, `${node.id} moved when a different mark was dragged`);
+        assert.equal(node.y, was.y);
+      }
+    }
+  });
+
+  test('the underlying layout is untouched, so clearing the nudges restores it exactly', async () => {
+    // The whole point of storing an offset rather than a position: the arrangement is
+    // still the computed one, plus a set of stated displacements.
+    const context = await contextFor('F13');
+    const plain = engineLayout(context, 'off');
+    const dragged = nudged(context, new Map([[plain.nodes[0].id, { dx: 90, dy: 90 }]]));
+
+    for (const node of dragged.nodes) {
+      const was = plain.nodes.find((candidate) => candidate.id === node.id);
+      assert.equal(node.layoutX, was.layoutX, `${node.id}: the layout itself shifted`);
+      assert.equal(node.layoutY, was.layoutY);
+    }
+
+    const cleared = nudged(context, new Map());
+    for (const node of cleared.nodes) {
+      const was = plain.nodes.find((candidate) => candidate.id === node.id);
+      assert.equal(node.x, was.x, `${node.id} did not return to where the layout put it`);
+      assert.equal(node.y, was.y);
+    }
+  });
+
+  test('a nudge naming a mark that is not drawn is simply ignored', async () => {
+    // Hiding a lane, or loading another sub-log, can leave one behind.
+    const context = await contextFor('F1');
+    const plain = engineLayout(context, 'off');
+    const stale = nudged(context, new Map([['n_issue:does-not-exist', { dx: 500, dy: 500 }]]));
+    assert.equal(stale.nodes.length, plain.nodes.length);
+    for (const node of stale.nodes) {
+      assert.equal(node.x, plain.nodes.find((c) => c.id === node.id).x);
+    }
+  });
+});

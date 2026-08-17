@@ -184,6 +184,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       isVisible: (node) => isNodeVisible(node, state, groupsByCommit),
       isLinkVisible: (link) => isLinkVisible(link, index.byId, state, groupsByCommit),
       structuralLayout: state.structuralLayout,
+      nodeNudges: state.nodeNudges,
       margin: MARGIN,
       plotWidth: plotWidth(),
       plotHeight: structuralPlotHeight(),
@@ -224,6 +225,8 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         objectColors,
         actorLogin: (id) => index.byId.get(id)?.vmap?.login ?? id,
         previous: lastStructuralAt,
+        onDragged: (node, nudge) => handlers.onNodeDragged?.(node, nudge),
+        repaint: () => motion.repaint(),
       });
 
       // Slide into place, then drift. Remembered *before* the animation runs, so the next

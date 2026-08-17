@@ -176,6 +176,20 @@ const timeline = createTimeline({
       timeline.render();
     },
 
+    /*
+     * A mark the reader has dragged.
+     *
+     * Recorded as an offset from where the layout put it, so it survives a re-render, a
+     * zoom and an expanded push — and so the arrangement remains the computed one plus a
+     * set of stated displacements rather than a pile of absolute coordinates nobody can
+     * account for. Decision 27's rule applies: this changes the picture, so it is
+     * declared and it is undoable.
+     */
+    onNodeDragged(node, nudge) {
+      state.nodeNudges.set(node.id, nudge);
+      updateResetPositions();
+    },
+
     onCollapseCommentBurst(burst) {
       timeline.captureTween();
       state.expandedCommentBursts.delete(burst.id);
@@ -255,6 +269,10 @@ async function load(query) {
   state.focus = null;
   state.expandedBursts = new Set();
   state.expandedGroups = new Set();
+  // A displacement is relative to a position in *this* sub-log; carrying it into another
+  // would move a mark by an amount that meant something somewhere else.
+  state.nodeNudges.clear();
+  updateResetPositions();
 
   const objectColors = timeline.setGraph(graph, index, actorColors);
   const toggleContext = { relGroups, qualifiers, methods, commitGroups, objectsById: index.byId };
@@ -510,6 +528,28 @@ function markLayout(layout) {
     option.classList.toggle('on', option.dataset.layout === layout);
   }
 }
+
+/**
+ * Show the way back once anything has been dragged.
+ *
+ * Dragging subtracts nothing, so it does not belong in the hidden-state banner — but it
+ * does change the picture away from the one the algorithm computed, and decision 27's
+ * principle is that such a change is declared and undoable rather than a state the reader
+ * has to remember getting into. Hidden when there is nothing to undo, so it is never a
+ * control that does nothing.
+ */
+function updateResetPositions() {
+  const moved = state.nodeNudges.size;
+  const button = el('resetPositions');
+  button.style.display = moved ? '' : 'none';
+  button.title = `${moved} mark${moved === 1 ? '' : 's'} moved by hand — click to put them back`;
+}
+
+el('resetPositions').addEventListener('click', () => {
+  state.nodeNudges.clear();
+  updateResetPositions();
+  timeline.render();
+});
 
 for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
   option.addEventListener('click', () => {

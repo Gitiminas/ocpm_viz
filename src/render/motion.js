@@ -157,6 +157,17 @@ export function createMotion({
 
   return {
     /**
+     * Repaint immediately, without waiting for a frame.
+     *
+     * Dragging needs this: with reduced motion the loop stops once everything has
+     * settled, so a dragged mark would not be redrawn and would appear stuck until
+     * something else happened.
+     */
+    repaint() {
+      if (scene) paint(Math.max(SETTLE_MS, now() - startedAt));
+    },
+
+    /**
      * Mount a scene and start moving it.
      *
      * @param {{marks: Array, edges: Array}} next
