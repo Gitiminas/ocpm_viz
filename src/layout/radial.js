@@ -48,6 +48,22 @@ const MIN_ARC_GAP = 18;
 const RING_GAP = 90;
 /** How much of the box the outermost ring may use before everything is scaled down. */
 const FILL = 0.94;
+/**
+ * How much of the innermost ring's demand one node must own to be moved to the centre.
+ *
+ * ⚠️ **Because a hub with siblings is otherwise drawn beside its own children.** With one
+ * issue the centre is obvious and taken. With several, the innermost ring becomes a small
+ * circle and nothing is in the middle — so on kubernetes #47532 the issue owning eight of
+ * the nine pull requests sat at 138° on that circle while its children, needing almost the
+ * whole turn, spread around the *centre point*. The hub was off to one side of its own
+ * fan, which is the opposite of what a radial drawing is for.
+ *
+ * A threshold rather than "always centre the biggest": three issues of similar weight have
+ * no hub, and picking one would assert a hierarchy the data does not have. Two thirds is
+ * the point at which one node's children need more of the circle than everything else put
+ * together, so centring it costs the others nothing they were using.
+ */
+const HUB_SHARE = 0.66;
 
 /**
  * The circular mean of a list of angles, in radians.
@@ -207,56 +223,110 @@ function allocateWedges(rings, relation, radii, radius, gap) {
     }
   }
 
-  return { angle, primary };
+  return { angle, primary, demand };
 }
 
 /**
  * Spread a ring's nodes around it, honouring their preferred angles.
  *
- * Sorted by preference, then walked once around enforcing the minimum arc — the same
- * shape of algorithm as the layered layout's row separation, and for the same reason: one
- * pass guarantees the spacing, and a rotation afterwards removes the bias that walking in
- * one direction introduces.
+ * ⚠️ **The walk starts at the largest empty arc, not at zero**, and that is the whole
+ * difference between a ring that clusters and one that does not. Angles live in [0, 2π),
+ * so sorting them puts a cluster straddling the origin at *both ends of the list* — a
+ * pull request wanting 355° and its neighbour wanting 5° land 350° apart in the ordering,
+ * and the chain then walks between them and drives the group apart. Measured on kubernetes
+ * #47532: the pull requests spread across 10°–217° but sat nowhere near the issue at 138°
+ * that owns them, because their wedge crossed the seam.
+ *
+ * Rotating the sequence to begin just after the biggest gap puts the cut where nothing is,
+ * which is the only place a circular ordering can be broken without splitting something.
+ * The angles are then unwrapped so they increase monotonically, and the rest is the linear
+ * problem: one chaining pass to guarantee the arc spacing, then a rotation back by the
+ * mean displacement to undo the bias that walking in one direction introduces.
  */
 function placeRing(ring, preferred, radiusOf, ringR, gap) {
+  const TURN = Math.PI * 2;
   const angleFor = (node) => (2 * radiusOf(node) + gap) / Math.max(1, ringR);
 
-  const withAngle = ring.map((node, index) => ({
+  const entries = ring.map((node, index) => ({
     node,
     index,
-    want: preferred.get(node.id) ?? ((hashId(node.id) & 0xffff) / 0x10000) * Math.PI * 2,
+    want: preferred.get(node.id) ?? ((hashId(node.id) & 0xffff) / 0x10000) * TURN,
   }));
-  withAngle.sort((a, b) => a.want - b.want || a.index - b.index);
+  entries.sort((a, b) => a.want - b.want || a.index - b.index);
 
   const placed = new Map();
+  if (entries.length === 0) return placed;
+  if (entries.length === 1) {
+    placed.set(entries[0].node.id, entries[0].want);
+    return placed;
+  }
+
+  // Cut the circle where the biggest empty arc is.
+  let widest = -1;
+  let cutAt = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const next = entries[(i + 1) % entries.length];
+    const arc = (((next.want - entries[i].want) % TURN) + TURN) % TURN;
+    if (arc > widest) {
+      widest = arc;
+      cutAt = (i + 1) % entries.length;
+    }
+  }
+  const ordered = [...entries.slice(cutAt), ...entries.slice(0, cutAt)];
+
+  // Unwrap: from here it is an ordinary increasing sequence, not a circular one.
+  const base = ordered[0].want;
+  const wants = ordered.map((entry) => base + ((((entry.want - base) % TURN) + TURN) % TURN));
+
   let cursor = null;
-  for (const entry of withAngle) {
+  ordered.forEach((entry, i) => {
     const half = angleFor(entry.node) / 2;
-    let angle = entry.want;
+    let angle = wants[i];
     if (cursor !== null && angle < cursor + half) angle = cursor + half;
     placed.set(entry.node.id, angle);
     cursor = angle + half;
-  }
+  });
 
-  // Closing the circle: if the walk has run past a full turn the ring is genuinely full,
-  // and an equal share is the honest answer — the alternative is two marks on one spot.
-  const last = withAngle[withAngle.length - 1];
-  const first = withAngle[0];
-  if (first && last && placed.get(last.node.id) - placed.get(first.node.id) > Math.PI * 2 - angleFor(first.node)) {
-    withAngle.forEach((entry, i) => placed.set(entry.node.id, (i / withAngle.length) * Math.PI * 2));
+  // If the walk has consumed more than a full turn the ring is genuinely full, and an
+  // equal share is the honest answer — the alternative is two marks on one spot.
+  if (cursor - (wants[0] - angleFor(ordered[0].node) / 2) > TURN) {
+    ordered.forEach((entry, i) => placed.set(entry.node.id, (i / ordered.length) * TURN));
     return placed;
   }
 
   const drift = circularMean(
-    withAngle
-      .filter((entry) => preferred.has(entry.node.id))
-      .map((entry) => placed.get(entry.node.id) - entry.want),
+    ordered
+      .map((entry, i) => ({ entry, i }))
+      .filter(({ entry }) => preferred.has(entry.node.id))
+      .map(({ entry, i }) => placed.get(entry.node.id) - wants[i]),
   );
   if (drift != null) {
-    const shift = drift > Math.PI ? drift - Math.PI * 2 : drift;
+    const shift = drift > Math.PI ? drift - TURN : drift;
     for (const [id, angle] of placed) placed.set(id, angle - shift);
   }
   return placed;
+}
+
+/**
+ * The innermost node that belongs at the centre, or null if none does.
+ *
+ * One node: it is the centre, trivially. Several: only a genuine hub, by `HUB_SHARE`.
+ * Ties are broken on id so the choice is repeatable rather than dependent on order.
+ */
+function centreNode(ring, demand) {
+  if (!ring || ring.length === 0) return null;
+  if (ring.length === 1) return ring[0];
+
+  const total = ring.reduce((sum, node) => sum + (demand.get(node.id) ?? 0), 0);
+  if (total <= 0) return null;
+
+  const ranked = ring
+    .slice()
+    .sort(
+      (a, b) =>
+        (demand.get(b.id) ?? 0) - (demand.get(a.id) ?? 0) || (a.id < b.id ? -1 : 1),
+    );
+  return (demand.get(ranked[0].id) ?? 0) / total >= HUB_SHARE ? ranked[0] : null;
 }
 
 /**
@@ -284,16 +354,39 @@ export function layoutRadial(nodes, edges, { width, height, padding = 60, radius
     radii = ringRadii(rings, radius, gap);
   }
 
-  const { angle: wedgeAngle } = allocateWedges(rings, relation, radii, radius, gap);
+  const { angle: wedgeAngle, demand: wedgeDemand } = allocateWedges(
+    rings,
+    relation,
+    radii,
+    radius,
+    gap,
+  );
 
   const angles = new Map();
   const positions = new Map();
 
+  // Which innermost node, if any, belongs in the middle. A ring of one is a point, so it
+  // is always centred; a ring of several centres its hub only when one genuinely dominates.
+  const hub = centreNode(rings[0], wedgeDemand);
+
   rings.forEach((ring, r) => {
-    // A single innermost node goes exactly in the middle: a ring of one is a point, and
-    // putting it on a circle would leave a hole with nothing to explain it.
-    if (r === 0 && ring.length === 1) {
-      positions.set(ring[0].id, { x: 0, y: 0 });
+    if (r === 0) {
+      const rest = ring.filter((node) => node !== hub);
+      if (hub) positions.set(hub.id, { x: 0, y: 0 });
+      if (!rest.length) return;
+
+      // The others keep the wedge they were allocated, on the innermost circle. Their own
+      // children still hang off them; only the hub's position changed.
+      const preferred = new Map();
+      for (const node of rest) {
+        const wedge = wedgeAngle.get(node.id);
+        if (wedge != null) preferred.set(node.id, wedge);
+      }
+      const placed = placeRing(rest, preferred, radius, radii[0], gap);
+      for (const [id, value] of placed) {
+        angles.set(id, value);
+        positions.set(id, { x: Math.cos(value) * radii[0], y: Math.sin(value) * radii[0] });
+      }
       return;
     }
 

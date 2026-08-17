@@ -295,3 +295,67 @@ describe('the drawing is usable', () => {
     assert.ok(spread < 0.01, `an over-full ring must space evenly; spread was ${spread.toFixed(3)}`);
   });
 });
+
+describe('a dominant hub goes in the middle', () => {
+  /**
+   * ⚠️ With several issues nothing was in the centre, so the one owning almost everything
+   * sat on the innermost circle while its children — needing nearly the whole turn —
+   * spread around the centre point instead of around it. Measured on kubernetes #47532:
+   * the issue carrying eight of nine pull requests sat at 138° with its fan elsewhere. A
+   * radial drawing whose hub is beside its own fan is doing the opposite of its job.
+   */
+  const issue = (n, t) => ({ id: `n_issue:${n}`, lane: 'issue', radius: 15, t: new Date(t) });
+  const pr = (n, t) => ({ id: `n_pr:${n}`, lane: 'pull_request', radius: 12, t: new Date(t) });
+
+  test('the hub is centred when it owns most of the innermost ring', () => {
+    const nodes = [
+      issue(1, '2025-01-01'),
+      issue(2, '2025-01-02'),
+      ...Array.from({ length: 8 }, (_, i) => pr(i, `2025-02-0${(i % 8) + 1}`)),
+    ];
+    // Every pull request belongs to issue 1; issue 2 has none.
+    const edges = nodes
+      .filter((node) => node.lane === 'pull_request')
+      .map((node) => ({ source: 'n_issue:1', target: node.id }));
+
+    const { positions } = layoutRadial(nodes, edges, BOX);
+    assert.ok(
+      distanceFromCentre(positions.get('n_issue:1')) < 1e-6,
+      'the issue owning every pull request must take the centre',
+    );
+    assert.ok(
+      distanceFromCentre(positions.get('n_issue:2')) > 0,
+      'and the one owning none must not',
+    );
+  });
+
+  test('issues of similar weight leave the centre empty', () => {
+    // Picking one would assert a hierarchy the data does not have.
+    const nodes = [issue(1, '2025-01-01'), issue(2, '2025-01-02'), pr(1, '2025-02-01'), pr(2, '2025-02-02')];
+    const edges = [
+      { source: 'n_issue:1', target: 'n_pr:1' },
+      { source: 'n_issue:2', target: 'n_pr:2' },
+    ];
+    const { positions } = layoutRadial(nodes, edges, BOX);
+    for (const id of ['n_issue:1', 'n_issue:2']) {
+      assert.ok(distanceFromCentre(positions.get(id)) > 0, `${id} must not be centred`);
+    }
+  });
+
+  test('which node is centred does not depend on input order', () => {
+    const nodes = [
+      issue(1, '2025-01-01'),
+      issue(2, '2025-01-02'),
+      ...Array.from({ length: 6 }, (_, i) => pr(i, '2025-02-01')),
+    ];
+    const edges = nodes
+      .filter((node) => node.lane === 'pull_request')
+      .map((node) => ({ source: 'n_issue:1', target: node.id }));
+
+    const forwards = layoutRadial(nodes, edges, BOX);
+    const backwards = layoutRadial(nodes.slice().reverse(), edges.slice().reverse(), BOX);
+    for (const node of nodes) {
+      assert.deepEqual(forwards.positions.get(node.id), backwards.positions.get(node.id));
+    }
+  });
+});
