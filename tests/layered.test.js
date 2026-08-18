@@ -177,6 +177,51 @@ describe('marks do not overlap and stay inside the box', () => {
     const order = rows[0].map((node) => node.id);
     assert.deepEqual(order, [...order].sort(), 'the row order must survive the squeeze');
   });
+
+  test('a wide row hanging off one hub is compressed INTO the box, gaps and order intact', () => {
+    // ⚠️ The case the previous test does not cover: a row that fits at minimum spacing
+    // but has been spread wider than the box by alignment. kubernetes #68026 — one issue,
+    // 34 pull requests — came out 1400px wide in a 980px box with the leftmost mark on
+    // the edge, so nothing could slide and the right-hand third was simply lost. Off mode
+    // cannot scroll sideways; what runs off is gone. The forward chain only closes gaps
+    // that are too small, so the fix is the right-to-left sweep `separateRow` always
+    // said it had.
+    const box = { width: 1100, height: 620, padding: 60 };
+    const issue = { id: 'n_issue:1', lane: 'issue', radius: 15 };
+    const prs = Array.from({ length: 34 }, (_, i) => ({
+      id: `n_pr:${String(i).padStart(2, '0')}`,
+      lane: 'pull_request',
+      radius: 12,
+    }));
+    // The trigger is an ORDER-versus-ALIGNMENT conflict: a commit shared by a pull
+    // request near the left end of the row and one near the right end sits in the middle,
+    // so the upward alignment pass drags the left-hand owner toward the centre while the
+    // ordering keeps it second from the left — and the forward chain then pushes the other
+    // 32 marks after it. Sharing between the very first mark and the last does not
+    // trigger it (the first has nothing to its left to conflict with); second and last do.
+    const commit = { id: 'n_commit:a', lane: 'commit', radius: 6.5 };
+    const edges = [
+      ...prs.map((pr) => ({ source: issue.id, target: pr.id })),
+      { source: prs[1].id, target: commit.id },
+      { source: prs[33].id, target: commit.id },
+    ];
+    const { positions, rows } = layoutLayered([issue, ...prs, commit], edges, box);
+
+    const row = rows.find((r) => r[0].lane === 'pull_request');
+    const xs = row.map((node) => positions.get(node.id).x);
+    assert.ok(
+      Math.min(...xs) - 12 >= box.padding - 0.5 && Math.max(...xs) + 12 <= box.width - box.padding + 0.5,
+      `the row runs from ${Math.min(...xs).toFixed(0)} to ${Math.max(...xs).toFixed(0)} in a box of ${box.width}`,
+    );
+    for (let i = 1; i < xs.length; i++) {
+      assert.ok(xs[i] - xs[i - 1] >= 24 + 2 - 1e-6, `marks ${i - 1} and ${i} are ${(xs[i] - xs[i - 1]).toFixed(1)}px apart`);
+    }
+    assert.deepEqual(
+      row.map((n) => n.id),
+      [...row.map((n) => n.id)].sort(),
+      'compression must not reorder the row',
+    );
+  });
 });
 
 describe('crossing minimisation', () => {

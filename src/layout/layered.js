@@ -528,6 +528,30 @@ function separateRow(row, x, radius, { width, padding }) {
     const shift = Math.min(rightOver, x.get(first.id) - padding - radius(first));
     if (shift > 0) for (const node of row) x.set(node.id, x.get(node.id) - shift);
   }
+
+  /*
+   * ⚠️ **And when sliding is not enough, compress from the right.** The chain above only
+   * closes gaps that are too SMALL; a gap wider than the minimum is left where alignment
+   * put it. So a row can be wider than the box while every gap is legal — measured on
+   * kubernetes #68026, whose 34 pull requests hang off one issue: the row came out 1400px
+   * wide in a 980px box, with the leftmost mark already on the edge and nowhere to slide.
+   * Off mode cannot scroll sideways, so what ran off was simply lost, and this comment's
+   * own promise of a right-to-left sweep was not being kept.
+   *
+   * A right-to-left chain from the box's right edge clamps each mark to the most it may
+   * be given its successor, at the same gap the forward chain used. `gap` was chosen so
+   * the whole row fits at that spacing, so the cascade stops before the left edge; the
+   * order is preserved and no gap falls below the minimum. Marks that already had room
+   * to spare are the ones that give it up, which is the right trade: the alignment they
+   * had was a preference, and the box is a fact.
+   */
+  if (x.get(last.id) + radius(last) > width - padding) {
+    x.set(last.id, width - padding - radius(last));
+    for (let i = row.length - 2; i >= 0; i--) {
+      const most = x.get(row[i + 1].id) - radius(row[i + 1]) - gap - radius(row[i]);
+      if (x.get(row[i].id) > most) x.set(row[i].id, most);
+    }
+  }
 }
 
 /**

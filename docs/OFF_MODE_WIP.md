@@ -5,7 +5,7 @@ design record. When the branch merges, the decisions in §4 move to `DECISIONS.m
 file is deleted. It exists because the work spans more sessions than one context holds.
 
 Written 2026-08-18, updated the same day after the cluster/drag fixes below. Branch
-`feat/time-mode-off`, 26 commits ahead of `main`, **673 tests across 118 suites, all
+`feat/time-mode-off`, 27 commits ahead of `main`, **674 tests across 118 suites, all
 passing**.
 
 ---
@@ -25,7 +25,7 @@ Original brief: `/home/minas/projects/Time_Modes_Off.md`, with a mockup at
 
 ```
 npm start                                          # then http://localhost:8000
-npm test                                           # 673 assertions, no browser
+npm test                                           # 674 assertions, no browser
 
 node scripts/shot.mjs F10 --mode off --layout cluster
 node scripts/shot.mjs --repo kubernetes/kubernetes --seed issue:235959617 \
@@ -126,11 +126,26 @@ F10 and kubernetes #47532 @ degree 2. Layout costs 9–20 ms.
 
 ## 6. What is NOT done
 
-1. **Mode-to-mode tween.** Switching between a timeline and off mode cuts. `captureTween`
-   exists and the structural renderer already reports live marks; the missing piece is
-   mapping a timeline's per-event nodes onto off mode's per-object nodes.
-2. **Verification sweep.** `scripts/rpc-check.mjs` still exercises three modes, not four.
-   Off mode has never been run against more than two real sub-logs.
+1. ~~**Mode-to-mode tween.**~~ **Dropped, 2026-08-18 — a decision, not an omission.**
+   Switching between a timeline and off mode cuts. It is presentation only: no question in
+   Q1–Q10 and no metric depends on it, the motion cannot be verified headlessly (only its
+   end frames can), and the closing work below is worth more within the timebox. If a
+   successor wants it: `captureTween` (`render/timeline.js`) already snapshots per-node
+   positions and the structural renderer reports live marks; the missing piece is a pure
+   mapping in `layout/` between the timeline's per-EVENT nodes and off mode's per-OBJECT
+   nodes — the natural rule is an object ↔ its first event mark (its open/first-observed
+   glyph, which `nodeByObject` already resolves), and a push ↔ its burst node by `push_id`.
+   Goes into `DECISIONS.md` as "deferred; presentation only" when §4 migrates.
+2. ~~**Verification sweep.**~~ **Done, 2026-08-18.** `scripts/rpc-check.mjs` now runs off
+   mode through `createLayout` in both arrangements: finite positions, inside the box, no
+   overlapping marks, every edge end resolves, finite extent, and the clustered
+   arrangement's footprint claims (soft shortfalls reported; under ¾ of a claim fails).
+   Run over ten real sub-logs (vscode, kubernetes, react; degrees 1–3; 5 to 46 marks):
+   all PASS. Two defects found and fixed on the way, both on the biggest hub in the
+   database, kubernetes #68026 (one issue, 34 pull requests): the layered row overflowed
+   the box (trap 8.11 below), and the clustered footprints fell short by up to 9% — the
+   latter is a capacity limit, not a bug (zero overlapping marks, every commit nearest its
+   own PR), and the gate says so rather than failing.
 3. **The write-up.** No `DECISIONS.md` entry exists yet — §4 above is the raw material.
    `ARCHITECTURE.md`, `README.md` and `simple_architecture.md` all still describe three
    modes and one layout engine.
@@ -196,7 +211,19 @@ F10 and kubernetes #47532 @ degree 2. Layout costs 9–20 ms.
     the links and lanes; doing it per tick would be O(n²) work for nothing, and doing it
     outside would need the caller to know which nodes the simulation resolved.
 
+11. **A forward chain only closes gaps that are too small; it never closes gaps that are
+    too big.** `separateRow` in `layered.js` promised a right-to-left sweep and only
+    shifted the row. When one mark near the left end of the row order is aligned toward
+    the centre (a commit shared with a mark at the far end), the chain pushes every mark
+    after it right, the row ends up 1400px wide in a 980px box, and — since off mode
+    cannot scroll sideways — the right-hand third is silently lost. The trigger is
+    order-versus-alignment conflict, so a synthetic case needs *both*: the test that pins
+    it shares a commit between the second and the last pull request; sharing between the
+    first and the last does not trigger it.
 ## 9. Where to pick up
 
-Step 6.1 (the tween) is the last feature; 6.2 and 6.3 are the closing work and should not
-be skipped — the docs currently describe a tool that no longer exists.
+6.1 is dropped and 6.2 is done. What remains is 6.3, the write-up: migrate §4 into
+`DECISIONS.md` (as numbered decisions, with the tween deferral), then bring
+`ARCHITECTURE.md`, `README.md` and the two untracked `simple_*.md` files current — they
+still describe three modes and one layout engine — and delete this file. The known weak
+points in §7 (label collisions above all) are polish for whatever time is left.

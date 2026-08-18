@@ -37,6 +37,8 @@ import { createScales } from '../src/layout/scales.js';
 import { packRows, objectExtent } from '../src/layout/packing.js';
 import { computeLaneGeometry, rowY } from '../src/layout/lanes.js';
 import { createAnchors } from '../src/layout/anchors.js';
+import { createLayout, STRUCTURAL_LAYOUTS } from '../src/layout/engine.js';
+import { footprintPairs } from '../src/layout/cluster.js';
 
 const DB = process.env.PGDATABASE || 'gharchive_ocpm_viz_wsl';
 
@@ -273,12 +275,124 @@ for (const mode of ['real', 'highlights', 'ordinal']) {
   }
 }
 
+// ---- and in the OFF mode, through both structural arrangements -----------------------
+// The temporal checks above mirror the renderer's pipeline by hand; the structural ones go
+// through `createLayout` itself, because that seam is the whole point of the engine and a
+// gate that bypassed it would pass a payload the app cannot draw. What real data breaks
+// here is different from the timeline: a mark placed outside the box, two marks on top of
+// each other, an edge whose end resolves to nothing, or a cluster sitting inside another's
+// footprint — none of which is a NaN, all of which the fixture suites pass.
+{
+  const index = indexObjectGraph(graph);
+  const bursts = deriveBursts(index.objectsOfType('commit'));
+  const margin = { top: 16, right: 16, bottom: 16, left: 16 };
+  const box = { plotWidth: PLOT_WIDTH, plotHeight: 620 };
+  const summary = [];
+
+  for (const structuralLayout of STRUCTURAL_LAYOUTS) {
+    const tag = `[off/${structuralLayout}]`;
+    const layout = createLayout({
+      mode: 'off',
+      graph,
+      index,
+      laneTypes: LANES,
+      visibleLanes: LANES,
+      bursts,
+      structuralLayout,
+      margin,
+      ...box,
+    });
+    const radius = (node) => node.radius ?? 8;
+
+    for (const node of layout.nodes) {
+      if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) {
+        layoutFail.push(`${tag} node ${node.id} at (${node.x}, ${node.y})`);
+        continue;
+      }
+      const r = radius(node);
+      if (
+        node.x - r < margin.left ||
+        node.x + r > margin.left + box.plotWidth ||
+        node.y - r < margin.top ||
+        node.y + r > margin.top + box.plotHeight
+      ) {
+        layoutFail.push(`${tag} node ${node.id} lies outside the box at (${node.x.toFixed(0)}, ${node.y.toFixed(0)})`);
+      }
+    }
+
+    // No two marks on top of each other — the guarantee `separate()` makes in both
+    // arrangements, in the coordinates anyone actually sees.
+    let overlaps = 0;
+    const marks = layout.nodes;
+    for (let i = 0; i < marks.length; i++) {
+      for (let j = i + 1; j < marks.length; j++) {
+        const gap = Math.hypot(marks[i].x - marks[j].x, marks[i].y - marks[j].y);
+        if (gap < radius(marks[i]) + radius(marks[j])) overlaps++;
+      }
+    }
+    if (overlaps) layoutFail.push(`${tag} ${overlaps} pair(s) of marks overlap`);
+
+    // Every drawn edge must meet a drawn mark at both ends (a folded push counts for its
+    // commits), and the brush needs a span to brush.
+    for (const edge of layout.edges) {
+      for (const end of [edge.source, edge.target]) {
+        const mark = layout.nodeByObject.get(end) ?? layout.nodes.find((n) => n.id === end);
+        if (!mark) layoutFail.push(`${tag} edge end ${end} resolves to no mark`);
+      }
+    }
+    if (
+      layout.extent &&
+      !(Number.isFinite(layout.extent.min) && Number.isFinite(layout.extent.max))
+    ) {
+      layoutFail.push(`${tag} the time extent is not finite: ${JSON.stringify(layout.extent)}`);
+    }
+
+    // The clustered arrangement's own claim: no cluster inside another's footprint.
+    //
+    // ⚠️ The claim is SOFT (FOOTPRINT_STRENGTH < 1) and it has a capacity limit: a hub
+    // with 34 pull requests (kubernetes #68026) has its seed ring scaled down to fit the
+    // box while the marks keep their size, and the post-fit separation then nudges marks
+    // a little across claim boundaries — measured at 0.91× the claimed distance, with
+    // zero overlapping marks and every commit still nearest its own pull request. That is
+    // the arrangement degrading gracefully, so a shortfall is REPORTED here and only a
+    // mark well inside a foreign cluster (under ¾ of the claim) fails the gate.
+    let shortfalls = 0;
+    if (structuralLayout === 'cluster') {
+      if (!layout.anchorId) layoutFail.push(`${tag} no anchor root was named`);
+      const seeds = layout.nodes.map((n) => ({
+        id: n.id,
+        lane: n.lane,
+        radius: radius(n),
+        footprint: n.footprint,
+        x: n.x,
+        y: n.y,
+      }));
+      const links = layout.edges.map((e) => ({ source: e.source, target: e.target }));
+      for (const { a, b, need } of footprintPairs(seeds, links)) {
+        const ratio = Math.hypot(a.x - b.x, a.y - b.y) / need;
+        if (ratio < 0.75) {
+          layoutFail.push(`${tag} ${a.id} sits inside the footprint of ${b.id} (${ratio.toFixed(2)}× the claim)`);
+        } else if (ratio < 1) {
+          shortfalls++;
+        }
+      }
+    }
+
+    summary.push(
+      `${structuralLayout}: ${layout.nodes.length} marks · ${layout.edges.length} edges` +
+        (layout.crossings != null ? ` · ${layout.crossings} crossings` : '') +
+        (shortfalls ? ` · ${shortfalls} soft footprint shortfall(s)` : ''),
+    );
+  }
+  console.log(`off     ${summary.join('   ')}`);
+}
+
 if (layoutFail.length) {
   console.error(`\nFAIL — ${layoutFail.length} layout problem(s):`);
   for (const f of layoutFail.slice(0, 40)) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log('gate    layout in all three time modes (finite, banded, anchored)   ✓');
+console.log('gate    layout in all four time modes, both structural arrangements   ✓');
 
 // ---- and the app reaches it as web_anon, not as the owner ----------------------------
 /**
