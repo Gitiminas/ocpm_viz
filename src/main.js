@@ -15,7 +15,7 @@ import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
-import { MODES, STRUCTURAL_LAYOUTS, isStructuralMode } from './layout/engine.js';
+import { MODES, TEMPORAL_MODES, STRUCTURAL_LAYOUTS, isStructuralMode } from './layout/engine.js';
 import {
   createState,
   deriveRelGroups,
@@ -555,7 +555,13 @@ el('zrst').onclick = () => {
   setZoom(1);
 };
 
-/** Reflect the active mode in the segmented control. */
+/**
+ * The temporal mode to return to when "Time" is chosen after "Relationships" — the one
+ * that was on before, so the first level toggles between two pictures the reader has
+ * already seen rather than resetting the second level under them.
+ */
+let lastTemporalMode = TEMPORAL_MODES[0];
+
 /**
  * Put every piece of mode-dependent chrome in the state the mode calls for.
  *
@@ -573,12 +579,19 @@ el('zrst').onclick = () => {
  */
 function markMode(mode) {
   const structural = isStructuralMode(mode);
-  for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
+  // The two-level control (decision 114): the first level says what position means, the
+  // second refines it — which time axis, or which arrangement. Only the second-level
+  // control that applies is shown; the other would be a control that silently does
+  // nothing, which this project forbids.
+  for (const option of document.querySelectorAll('#facetSeg .seg-opt')) {
+    option.classList.toggle('on', (option.dataset.facet === 'relationships') === structural);
+  }
+  for (const option of document.querySelectorAll('#timeSeg .seg-opt')) {
     option.classList.toggle('on', option.dataset.mode === mode);
   }
-  // The arrangement control belongs to the relationships mode alone. Shown in the other two it
-  // would be a control that silently does nothing, which this project forbids.
+  el('timeSeg').style.display = structural ? 'none' : '';
   el('layoutSeg').style.display = structural ? '' : 'none';
+  if (!structural) lastTemporalMode = mode;
   // The minimap is a time overview and relationships mode has no time axis; the brush takes its
   // slot. `onRendered` hides the brush again for a sub-log with no span to brush.
   el('minimapWrap').style.display = structural ? 'none' : 'block';
@@ -655,13 +668,21 @@ function markLayout(layout) {
 
 
 
-for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
+function switchMode(mode) {
+  markMode(mode);
+  state.mode = mode;
+  timeline.captureTween();
+  timeline.render();
+}
+
+for (const option of document.querySelectorAll('#facetSeg .seg-opt')) {
   option.addEventListener('click', () => {
-    markMode(option.dataset.mode);
-    state.mode = option.dataset.mode;
-    timeline.captureTween();
-    timeline.render();
+    switchMode(option.dataset.facet === 'relationships' ? 'relationships' : lastTemporalMode);
   });
+}
+
+for (const option of document.querySelectorAll('#timeSeg .seg-opt')) {
+  option.addEventListener('click', () => switchMode(option.dataset.mode));
 }
 
 for (const option of document.querySelectorAll('#layoutSeg .seg-opt')) {

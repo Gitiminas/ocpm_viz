@@ -59,9 +59,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip.pinned .tip-row:hover{background:color-mix(in srgb, var(--color-text) 8%, transparent)}
 .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:1px solid currentColor}
 #minimap{cursor:pointer;display:block;width:100%}
-#modeSeg .seg-opt.on,#layoutSeg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
-#modeSeg .seg-opt:not(.on):hover,#layoutSeg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
-#modeSeg .seg-opt,#layoutSeg .seg-opt{cursor:pointer}
+.seg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
+.seg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
+.seg .seg-opt{cursor:pointer}
 /* One track, two thumbs. The inputs are stacked on the same rail and are transparent to
    the pointer except at the thumbs, so a click on the rail cannot make one handle leap
    across the other. */
@@ -205,22 +205,26 @@ html,body{height:100%;margin:0;overflow:hidden}
 </div>
 <div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
 <div class="mono" id="focusInfo" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
-<div class="seg" id="modeSeg">
-<div class="seg-opt on" data-mode="absolute"><span>Absolute</span></div>
-<div class="seg-opt" data-mode="discrete"><span>Discrete</span></div>
 <!--
-  The relationships mode releases the time axis entirely and lets position encode
-  relationship structure instead. Time is demoted, not deleted: it moves to the edge
-  arrowheads, the time brush and the hovercard. Last in the row because it is the one that
-  changes what position means, and the two before it are variations on a shared idea.
+  The mode control has two levels (decision 114). The FIRST chooses what position means:
+  Time — the timeline, x is a time axis — or Relationships, which releases the time axis
+  and lets position encode relationship structure (time is demoted, not deleted: it moves
+  to the edge arrowheads, the time brush and the hovercard). The SECOND refines the first:
+  under Time, which time axis (Absolute is linear in real time, Discrete is evenly spaced
+  by event order); under Relationships, which arrangement (Rows or Clusters). Only the
+  second-level control that applies is shown — the other would be a control that silently
+  does nothing, the rule this project applies to the traversal stepper and the minimap.
+
+  markMode() in main.js is the one place that reads state.mode into these three segments.
 -->
-<div class="seg-opt" data-mode="relationships" title="Release the time axis — position encodes relationships instead"><span>Relationships</span></div>
+<div class="seg" id="facetSeg">
+<div class="seg-opt on" data-facet="time" title="Position encodes time: a timeline with lanes and an axis"><span>Time</span></div>
+<div class="seg-opt" data-facet="relationships" title="Release the time axis — position encodes relationships instead"><span>Relationships</span></div>
 </div>
-<!--
-  How the relationships mode arranges things. Hidden in the two timeline modes, where it would be a
-  control that silently does nothing — the rule this project applies to the traversal
-  stepper and to the minimap alike.
--->
+<div class="seg" id="timeSeg">
+<div class="seg-opt on" data-mode="absolute" title="Absolute: linear in real time"><span>Absolute</span></div>
+<div class="seg-opt" data-mode="discrete" title="Discrete: events evenly spaced by order; long gaps annotated"><span>Discrete</span></div>
+</div>
 <div class="seg" id="layoutSeg" style="display:none">
 <div class="seg-opt on" data-layout="layered" title="Rows: issues, then pull requests, then commits"><span>Rows</span></div>
 <div class="seg-opt" data-layout="cluster" title="Clusters: each pull request a hub, its commits fanning around it"><span>Clusters</span></div>
