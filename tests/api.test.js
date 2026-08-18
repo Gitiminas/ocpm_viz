@@ -13,7 +13,12 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createRpcTransport, searchSeeds, DEFAULT_BASE_URL } from '../src/data/api.js';
+import {
+  createRpcTransport,
+  searchSeeds,
+  DEFAULT_BASE_URL,
+  TRAVERSAL_DEGREE,
+} from '../src/data/api.js';
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
 import { resolveQuery } from '../src/data/source.js';
 
@@ -46,7 +51,7 @@ describe('the RPC transport asks for the right thing', () => {
     const { fetchImpl, calls } = stubFetch({ status: 200, body: MINIMAL_GRAPH });
     const transport = createRpcTransport({ fetchImpl });
 
-    await transport({ repo: 'microsoft/vscode', seed: 'pr:1', traversalDegree: 3 });
+    await transport({ repo: 'microsoft/vscode', seed: 'pr:1', traversalDegree: 2 });
 
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, `${DEFAULT_BASE_URL}/rpc/get_object_graph`);
@@ -57,17 +62,36 @@ describe('the RPC transport asks for the right thing', () => {
     assert.deepEqual(calls[0].body, {
       repo: 'microsoft/vscode',
       seed: 'pr:1',
-      traversal_degree: 3,
+      traversal_degree: 2,
     });
   });
 
-  test('traversal degree defaults to 2 and is sent as a number', async () => {
+  test('traversal degree defaults to 1 and is sent as a number', async () => {
+    // Decision 111: the seed and what it directly touches is the question most loads ask.
     const { fetchImpl, calls } = stubFetch({ status: 200, body: MINIMAL_GRAPH });
     await createRpcTransport({ fetchImpl })({ repo: 'r', seed: 's' });
-    assert.equal(calls[0].body.traversal_degree, 2);
+    assert.equal(calls[0].body.traversal_degree, 1);
+    assert.equal(TRAVERSAL_DEGREE.default, 1);
 
-    await createRpcTransport({ fetchImpl })({ repo: 'r', seed: 's', traversalDegree: '3' });
-    assert.strictEqual(calls[1].body.traversal_degree, 3, 'a string degree must be coerced');
+    await createRpcTransport({ fetchImpl })({ repo: 'r', seed: 's', traversalDegree: '2' });
+    assert.strictEqual(calls[1].body.traversal_degree, 2, 'a string degree must be coerced');
+  });
+
+  test('a degree outside 0..2 is refused before anything is sent', async () => {
+    // Decision 110 caps the range at 2 — the third hop turns a 42-object sub-log into
+    // 291 on a busy seed and nothing the tool asks needs it. The SQL guard enforces the
+    // same range; refusing here says which field is wrong instead of surfacing a 400.
+    const { fetchImpl, calls } = stubFetch({ status: 200, body: MINIMAL_GRAPH });
+    const transport = createRpcTransport({ fetchImpl });
+    for (const bad of [3, -1, 1.5, 'two']) {
+      await assert.rejects(
+        () => transport({ repo: 'r', seed: 's', traversalDegree: bad }),
+        /traversalDegree must be an integer from 0 to 2/,
+        `degree ${bad} should be refused`,
+      );
+    }
+    assert.equal(calls.length, 0, 'nothing may reach the network');
+    assert.equal(TRAVERSAL_DEGREE.max, 2);
   });
 
   test('a missing repo or seed fails in the transport, naming the field', async () => {

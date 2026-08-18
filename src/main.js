@@ -10,6 +10,7 @@
 
 import { describeSubLog, seedObjects } from './data/loadObjectGraph.js';
 import { createSource, resolveQuery } from './data/source.js';
+import { TRAVERSAL_DEGREE } from './data/api.js';
 import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
@@ -780,7 +781,8 @@ function queryFromUrl() {
     fixture: params.get('fixture') || null,
     preset: params.get('preset') || null,
     // Server-side expansion (decision 35). Absent means "whatever the source defaults
-    // to", which for the RPC is 2 and for a fixture is whatever it was built at.
+    // to", which for the RPC is `TRAVERSAL_DEGREE.default` (1, decision 111) and for a
+    // fixture is whatever it was built at.
     traversalDegree: params.get('degree') ? Number(params.get('degree')) : undefined,
     page: params.get('page') === 'stats' ? 'stats' : 'timeline',
     /*
@@ -1041,10 +1043,11 @@ function updateTraversalInfo(graph) {
    * the database the condition that decision named is met and the control is real. On
    * fixtures it stays text, for exactly the original reason.
    *
-   * ⚠️ The steps are labelled with what they cost, because the cost is steep and
-   * non-obvious: on vscode PR #116416 the sub-log goes 1 → 39 → 42 → 291 objects from
-   * degree 0 to 3. A stepper that hid that would invite someone to drag it to 3 on a
-   * busy seed and conclude the tool had hung.
+   * ⚠️ The range is 0–2 and the default 1 (`TRAVERSAL_DEGREE` in `data/api.js`,
+   * decisions 110–111). A step is steep and non-obvious: on vscode PR #116416 the
+   * sub-log goes 1 → 39 → 42 objects from degree 0 to 2, and 291 at the third hop that
+   * is no longer offered — a stepper that reached it would invite someone to click it on
+   * a busy seed and conclude the tool had hung.
    */
   const degreeNote = source.traversalEditable
     ? `Traversal degree ${renderDegreeControl(degree)} · server-side expansion<br>`
@@ -1096,7 +1099,7 @@ function bindDegreeControl(graph) {
   for (const button of container.querySelectorAll('button[data-degree]')) {
     button.addEventListener('click', () => {
       const degree = Number(button.dataset.degree);
-      if (degree === (graph.meta?.traversal_degree ?? 2)) return;
+      if (degree === (graph.meta?.traversal_degree ?? TRAVERSAL_DEGREE.default)) return;
       reload({
         repo: graph.meta?.repo,
         seed: graph.meta?.seed?.[0]?.id,
@@ -1111,8 +1114,11 @@ function bindDegreeControl(graph) {
  * on every render and a listener bound to a replaced node would be lost.
  */
 function renderDegreeControl(degree) {
-  const current = degree ?? 2;
-  const options = [0, 1, 2, 3]
+  const current = degree ?? TRAVERSAL_DEGREE.default;
+  const options = Array.from(
+    { length: TRAVERSAL_DEGREE.max - TRAVERSAL_DEGREE.min + 1 },
+    (_, i) => TRAVERSAL_DEGREE.min + i,
+  )
     .map(
       (d) =>
         `<button data-degree="${d}" class="mono" style="cursor:pointer;border:1px solid ` +

@@ -244,7 +244,8 @@ a saved preset / shareable URL encodes, which is the reproducibility mechanism f
 evaluation.
 
 **Two degrees, kept apart:** `meta.traversal_degree` is server-side — how far the sub-log was
-expanded. The client-side focus BFS (`focusSet()`, capped at 2) controls only highlighting within an
+expanded, 0–2 and 1 when unstated (decisions 110–111; `TRAVERSAL_DEGREE` in `src/data/api.js`
+and the guard in `api.get_object_graph` agree, and must be changed together). The client-side focus BFS (`focusSet()`, capped at 2) controls only highlighting within an
 already-loaded sub-log. Do not conflate the names.
 
 ## 5. Activity vocabulary

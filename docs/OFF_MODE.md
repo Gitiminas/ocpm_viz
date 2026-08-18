@@ -63,7 +63,8 @@ What the renderer decides before the layout runs: only the **frame** — `frame(
 Measured (1100×620 box): zero overlapping marks and nothing outside the box on F1, F13, F10,
 kubernetes #47532 @ degree 2 and kubernetes #68026 @ degrees 1–2. Layout costs 9–50 ms.
 `scripts/rpc-check.mjs` runs both arrangements against a real payload and was run over ten
-real sub-logs (vscode, kubernetes, react; degrees 1–3) — all pass.
+real sub-logs (vscode, kubernetes, react; degrees 1–3, before decision 110 capped the range
+at 2) — all pass.
 
 ## 4. Known weak points
 

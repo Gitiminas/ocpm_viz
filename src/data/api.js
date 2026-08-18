@@ -79,6 +79,21 @@ function errorFromBody(status, body) {
 }
 
 /**
+ * How far `get_object_graph` may expand from the seed, and how far it does by default.
+ *
+ * ⚠️ **One place for both numbers.** The stepper in the sidebar, this transport's
+ * default and its validation all read these; the SQL guard in `api.get_object_graph`
+ * (`sql/fe_layer.sql`) enforces the same range server-side. Change them together.
+ *
+ * `max` is 2 (decision 110, amending 72's 3): a step is steep and non-obvious — on vscode
+ * PR #116416 the sub-log runs 1 → 39 → 42 objects across degrees 0–2 and 291 at 3 —
+ * and nothing this tool asks (Q1–Q10) needs the third hop. `default` is 1 (decision 111):
+ * the seed and what it directly touches is the question most loads are asking, and one
+ * click reaches the second hop when it is not.
+ */
+export const TRAVERSAL_DEGREE = Object.freeze({ min: 0, max: 2, default: 1 });
+
+/**
  * Build a transport bound to a particular PostgREST instance.
  *
  * Injectable rather than hardcoded so tests can point it at a stub and a deployment
@@ -93,7 +108,17 @@ export function createRpcTransport({
   }
 
   return async function rpcTransport(query = {}) {
-    const { repo, seed, traversalDegree = 2 } = query;
+    const { repo, seed, traversalDegree = TRAVERSAL_DEGREE.default } = query;
+    if (
+      !Number.isInteger(Number(traversalDegree)) ||
+      Number(traversalDegree) < TRAVERSAL_DEGREE.min ||
+      Number(traversalDegree) > TRAVERSAL_DEGREE.max
+    ) {
+      throw new Error(
+        `traversalDegree must be an integer from ${TRAVERSAL_DEGREE.min} to ` +
+          `${TRAVERSAL_DEGREE.max}, got ${traversalDegree}`,
+      );
+    }
 
     // Fail here rather than letting the RPC answer "no repository named null". The
     // query is the thing a preset or a URL encodes, so a malformed one is a bug in

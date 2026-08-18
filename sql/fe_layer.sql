@@ -1117,7 +1117,7 @@ SELECT (SELECT count(*) FROM fe.link)     AS live_rows,
 CREATE OR REPLACE FUNCTION api.get_object_graph(
   repo             text,
   seed             text,
-  traversal_degree integer DEFAULT 2
+  traversal_degree integer DEFAULT 1
 ) RETURNS jsonb
 LANGUAGE plpgsql STABLE AS $fn$
 DECLARE
@@ -1130,8 +1130,12 @@ DECLARE
   _shas     text[];
   _payload  jsonb;
 BEGIN
-  IF traversal_degree IS NULL OR traversal_degree < 0 THEN
-    RAISE EXCEPTION 'traversal_degree must be >= 0, got %', traversal_degree;
+  -- 0..2, and 1 when unstated. Mirrors TRAVERSAL_DEGREE in src/data/api.js — decisions
+  -- 110 and 111 — and is enforced HERE, where the cost is paid, not only in the stepper:
+  -- a third hop turns a 42-object sub-log into 291 on vscode PR #116416, and nothing the
+  -- tool asks needs it. Change the two together.
+  IF traversal_degree IS NULL OR traversal_degree < 0 OR traversal_degree > 2 THEN
+    RAISE EXCEPTION 'traversal_degree must be between 0 and 2, got %', traversal_degree;
   END IF;
 
   ------------------------------------------------------------------------------------
@@ -1394,8 +1398,8 @@ $fn$;
 
 COMMENT ON FUNCTION api.get_object_graph(text, text, integer) IS
   'Returns one ObjectGraph sub-log (docs/ADAPTER_AND_API.md §4). Seed is a prefixed object '
-  'id: issue:<id>, pr:<id>, commit:<sha>. traversal_degree is SERVER-SIDE expansion and is '
-  'unrelated to MAX_FOCUS_DEGREE. There is no case notion (decision 1).';
+  'id: issue:<id>, pr:<id>, commit:<sha>. traversal_degree is SERVER-SIDE expansion, 0..2, '
+  'default 1, and is unrelated to MAX_FOCUS_DEGREE. There is no case notion (decision 1).';
 
 
 -- =====================================================================================

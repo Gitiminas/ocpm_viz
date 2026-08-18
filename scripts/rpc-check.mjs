@@ -20,7 +20,7 @@
  * call, and it is skipped — not failed — when PostgREST is not running, so the gate still
  * works on a machine with only a database.
  *
- *   node scripts/rpc-check.mjs [repo] [seed] [degree]
+ *   node scripts/rpc-check.mjs [repo] [seed] [degree]        degree 0..2 (decision 110)
  *   node scripts/rpc-check.mjs microsoft/vscode issue:2902032454 2
  *
  *   PGRST_URL=http://localhost:3000   where to find PostgREST (default)
