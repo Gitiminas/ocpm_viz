@@ -37,7 +37,7 @@ import { createScales } from '../src/layout/scales.js';
 import { packRows, objectExtent } from '../src/layout/packing.js';
 import { computeLaneGeometry, rowY } from '../src/layout/lanes.js';
 import { createAnchors } from '../src/layout/anchors.js';
-import { createLayout, STRUCTURAL_LAYOUTS } from '../src/layout/engine.js';
+import { createLayout, STRUCTURAL_LAYOUTS, TEMPORAL_MODES } from '../src/layout/engine.js';
 import { footprintPairs } from '../src/layout/cluster.js';
 
 const DB = process.env.PGDATABASE || 'gharchive_ocpm_viz_wsl';
@@ -163,7 +163,7 @@ const MARGIN_LEFT = 180;
 const PLOT_WIDTH = 1100;
 const layoutFail = [];
 
-for (const mode of ['real', 'highlights', 'ordinal']) {
+for (const mode of TEMPORAL_MODES) {
   const index = indexObjectGraph(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
   const nodes = buildNodes({ graph, index, bursts, mode, laneTypes: LANES });
@@ -392,7 +392,7 @@ if (layoutFail.length) {
   for (const f of layoutFail.slice(0, 40)) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log('gate    layout in all four time modes, both structural arrangements   ✓');
+console.log('gate    layout in every time mode, both structural arrangements   ✓');
 
 // ---- and the app reaches it as web_anon, not as the owner ----------------------------
 /**

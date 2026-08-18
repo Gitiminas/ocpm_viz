@@ -69,18 +69,18 @@ describe('node construction over F1', () => {
     assert.equal(commitNodes.filter((n) => n.isBurst).length, 0);
   });
 
-  test('highlights mode folds unremarkable runs into count badges', async () => {
+  test('the node list does not depend on the mode — folding is by push_id alone', async () => {
+    // Decision 112 removed the Highlights mode and its own folding rule (runs of
+    // unremarkable commits into a count badge). Pinned: the same sub-log yields the same
+    // marks in every temporal mode, and no node is a "group" of anything but a push.
     const real = await f1Context({ mode: 'real' });
-    const highlights = await f1Context({ mode: 'highlights' });
-    const realCommits = real.nodes.filter((n) => n.lane === 'commit').length;
-    const highlightCommits = highlights.nodes.filter((n) => n.lane === 'commit').length;
-    assert.ok(highlightCommits < realCommits, 'grouping must reduce the commit count');
-    const groups = highlights.nodes.filter((n) => n.isGroup);
-    assert.ok(groups.length > 0);
-    for (const group of groups) {
-      assert.equal(group.groupCount, group.members.length);
-      assert.ok(group.groupCount > 1, 'a run of one is never grouped');
-    }
+    const ordinal = await f1Context({ mode: 'ordinal' });
+    assert.deepEqual(
+      ordinal.nodes.map((n) => n.id),
+      real.nodes.map((n) => n.id),
+      'the mode changed which marks exist',
+    );
+    assert.ok(real.nodes.every((n) => !n.isGroup && n.groupKey === undefined));
   });
 
   test('every node carries a resolvable time', async () => {

@@ -145,8 +145,8 @@ const timeline = createTimeline({
     },
 
     onNodeClick(event, node) {
-      // Expanding a burst or a group is a layout change; tween from the current
-      // positions so nodes visibly fly apart rather than jumping.
+      // Expanding a burst is a layout change; tween from the current positions so
+      // nodes visibly fly apart rather than jumping.
       if (node.isBurst) {
         timeline.captureTween();
         state.expandedBursts.add(node.burst.id);
@@ -159,19 +159,6 @@ const timeline = createTimeline({
         redraw();
         return;
       }
-      if (node.isGroup) {
-        timeline.captureTween();
-        state.expandedGroups.add(node.groupKey);
-        timeline.render();
-        return;
-      }
-      if (node.groupKey) {
-        timeline.captureTween();
-        state.expandedGroups.delete(node.groupKey);
-        timeline.render();
-        return;
-      }
-
       state.focus = state.focus === node.objectId ? null : node.objectId;
       state.focusDegree = 1;
       if (state.focus) showDegreeStepper(event.clientX, event.clientY);
@@ -277,7 +264,6 @@ async function load(query) {
   }
   state.focus = firstLoad ? state.focus : null;
   state.expandedBursts = new Set();
-  state.expandedGroups = new Set();
   // A displacement is relative to a position in *this* sub-log; carrying it into another
   // would move a mark by an amount that meant something somewhere else. The brush resets
   // for the same reason in reverse: "the last third" of one span is not the last third of

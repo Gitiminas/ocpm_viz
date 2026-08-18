@@ -84,7 +84,7 @@ const barY = (geometry, objectRow, object) =>
 describe('an edge meets an object where the object is drawn', () => {
   for (const fixture of ALL) {
     test(`${fixture}: every issue and PR anchors to its own band, in every mode`, async () => {
-      for (const mode of ['real', 'highlights', 'ordinal']) {
+      for (const mode of ['real', 'ordinal']) {
         const { index, objectRow, geometry, anchors } = await layout(fixture, { mode });
         for (const laneType of ['issue', 'pull_request']) {
           for (const object of index.objectsOfType(laneType)) {

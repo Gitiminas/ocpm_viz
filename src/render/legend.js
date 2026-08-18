@@ -124,14 +124,6 @@ export const LEGEND_SECTIONS = [
           '<svg width="16" height="16" viewBox="-8 -8 16 16"><rect x="-7" y="-7" width="14" ' +
           'height="14" rx="3" fill="none" stroke="var(--color-neutral-400)" stroke-width="2"/></svg>',
       },
-      {
-        key: 'fold-group',
-        label: 'folded commits (Highlights)',
-        swatch:
-          '<svg width="18" height="14" viewBox="-9 -7 18 14"><rect x="-8" y="-6" width="16" ' +
-          'height="12" rx="3" fill="none" stroke="var(--color-neutral-400)" stroke-width="1.5" ' +
-          'stroke-dasharray="3 3"/></svg>',
-      },
     ],
   },
   {

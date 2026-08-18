@@ -125,7 +125,7 @@ describe('every link joins two objects', () => {
 
 describe('ordering is monotonic in every time mode, for every fixture', () => {
   for (const fixture of ALL_FIXTURES) {
-    test(`${fixture} preserves temporal order in all three modes`, async () => {
+    test(`${fixture} preserves temporal order in every temporal mode`, async () => {
       for (const mode of MODES) {
         const { nodes } = await pipeline(fixture, { mode });
 

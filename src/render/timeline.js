@@ -26,7 +26,7 @@ import { createLayout, isStructuralMode } from '../layout/engine.js';
 import { edgeDirection, brushRange } from '../layout/structural.js';
 import { renderStructuralEdges, renderStructuralNodes } from './structural.js';
 import { createMotion } from './motion.js';
-import { renderAxis, highlightTickInstants } from './axis.js';
+import { renderAxis } from './axis.js';
 import { renderLinks } from './links.js';
 import {
   renderNodes,
@@ -35,7 +35,6 @@ import {
   renderActorTrails,
   renderBurstHandles,
   renderCommentBurstHandles,
-  renderGroupBoxes,
 } from './nodes.js';
 import { TYPE, drawSymbol, typeColor, objectShade } from './theme.js';
 import { isNodeVisible, isObjectVisible, isLinkVisible, actorPreview } from '../state/state.js';
@@ -230,7 +229,6 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       instants,
       expandedBursts: state.expandedBursts,
       expandedCommentBursts: state.expandedCommentBursts,
-      expandedGroups: state.expandedGroups,
       isVisible: (node) => isNodeVisible(node, state, groupsByCommit),
       isLinkVisible: (link) => isLinkVisible(link, index.byId, state, groupsByCommit),
       structuralLayout: state.structuralLayout,
@@ -313,8 +311,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     // Which objects actually survived the filters, so the lane caption can say so.
     const visibleObjectIds = new Set();
     for (const node of nodes) {
-      if (node.isGroup) node.members.forEach((m) => visibleObjectIds.add(m.objectId));
-      else if (node.objectId) visibleObjectIds.add(node.objectId);
+      if (node.objectId) visibleObjectIds.add(node.objectId);
     }
     for (const burst of bursts) {
       if (!visibleObjectIds.has(burst.id)) continue;
@@ -342,23 +339,11 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       objectRow,
       objectColors,
     });
-    renderGroupBoxes({ gBG: layers.bg, nodes });
-
     renderAxis({
       gAxis: layers.axis,
       mode: state.mode,
       scales,
       zoom: state.k,
-      highlightInstants:
-        state.mode === 'highlights'
-          ? highlightTickInstants({
-              index,
-              lanes: state.lanes,
-              bursts,
-              expandedBursts: state.expandedBursts,
-              laneTypes,
-            })
-          : [],
       rankOrder,
       rankMax,
       rankTimes,

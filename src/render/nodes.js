@@ -221,7 +221,6 @@ export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
 export function legendKeyFor(node) {
   if (node.isCommentBurst) return 'comment-burst';
   if (node.isBurst) return 'burst';
-  if (node.isGroup) return 'fold-group';
   if (node.isComment) return 'comments';
   return node.lane;
 }
@@ -241,7 +240,7 @@ export function renderNodes({
   const showLabel = new Set();
   let lastX = -1e9;
   for (const node of nodes
-    .filter((n) => n.lane === 'commit' && !n.isBurst && !n.isGroup && !n.inBurst)
+    .filter((n) => n.lane === 'commit' && !n.isBurst && !n.inBurst)
     .sort((a, b) => a.x - b.x)) {
     if (node.x - lastX > COMMIT_LABEL_MIN_GAP_PX) {
       showLabel.add(node.id);
@@ -250,7 +249,7 @@ export function renderNodes({
   }
 
   for (const node of nodes) {
-    const dim = node.isGroup ? 1 : objectOpacity(node.objectId, focus);
+    const dim = objectOpacity(node.objectId, focus);
     const previous = tweenFrom && tweenFrom.get(node.id);
     const startX = previous ? previous.x : node.x;
     const startY = previous ? previous.y : node.y;
@@ -279,10 +278,6 @@ export function renderNodes({
         .attr('transform', `translate(${node.x},${node.y})`);
     }
 
-    if (node.isGroup) {
-      drawGroupBadge(group, node);
-      continue;
-    }
     if (node.isBurst) {
       drawBurstNode(group, node);
       continue;
@@ -475,30 +470,6 @@ function drawCommentBurst(group, node, color) {
     .attr('fill', color)
     .attr('class', 'mono')
     .text(node.commentBurst.size);
-}
-
-function drawGroupBadge(group, node) {
-  group
-    .append('rect')
-    .attr('x', -13)
-    .attr('y', -11)
-    .attr('width', 26)
-    .attr('height', 22)
-    .attr('rx', 5)
-    .attr('fill', COLORS.commit)
-    .attr('fill-opacity', 0.12)
-    .attr('stroke', COLORS.commit)
-    .attr('stroke-width', 1.5)
-    .attr('stroke-dasharray', '3 3');
-  group
-    .append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dominant-baseline', 'central')
-    .attr('font-size', 11)
-    .attr('font-weight', 700)
-    .attr('fill', COLORS.commit)
-    .attr('class', 'mono')
-    .text(node.groupCount);
 }
 
 function drawBurstNode(group, node) {
@@ -707,48 +678,7 @@ export function renderCommentBurstHandles({
   }
 }
 
-/** Dashed bounding boxes around expanded highlight groups. */
-export function renderGroupBoxes({ gBG, nodes }) {
-  const boxes = new Map();
-  for (const node of nodes) {
-    if (!node.groupKey || node.isGroup) continue;
-    const box = boxes.get(node.groupKey) || { minX: Infinity, maxX: -Infinity, y: node.y };
-    box.minX = Math.min(box.minX, node.x);
-    box.maxX = Math.max(box.maxX, node.x);
-    box.y = node.y;
-    boxes.set(node.groupKey, box);
-  }
-  for (const box of boxes.values()) {
-    gBG
-      .append('rect')
-      .attr('x', box.minX - 16)
-      .attr('y', box.y - 14)
-      .attr('width', box.maxX - box.minX + 32)
-      .attr('height', 28)
-      .attr('rx', 8)
-      .attr('fill', 'none')
-      .attr('stroke', COLORS.commit)
-      .attr('stroke-width', 1.3)
-      .attr('stroke-dasharray', '3 3')
-      .attr('opacity', 0.55);
-  }
-}
-
 function nodeTooltipSpec(node, actorLogin) {
-  if (node.isGroup) {
-    return {
-      accent: COLORS.commit,
-      shape: 'square',
-      kicker: 'Commit · group',
-      title: `${node.groupCount} commits folded`,
-      rows: [
-        ['From', formatInstant(node.groupStart), 'time'],
-        ['To', formatInstant(node.groupEnd), 'time'],
-      ],
-      note: 'Grouped between highlighted commits to declutter the Highlights view. Click to expand.',
-    };
-  }
-
   if (node.isCommentBurst) {
     const burst = node.commentBurst;
     return {

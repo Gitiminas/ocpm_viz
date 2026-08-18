@@ -9,12 +9,14 @@
  * nodes for those two objects only — every other issue and PR in the sub-log was
  * silently dropped. Here every object of a lane-bearing type contributes its events.
  *
- * Two aggregation mechanisms reduce density, and they are independent:
+ * One aggregation mechanism reduces density: **bursts**, data-driven from `push_id` —
+ * N of them, or none, folded by default and expandable individually (decision 94).
  *
- *   bursts   data-driven, from `push_id`. N of them, or none. Collapsed by default
- *            above the size threshold; expandable individually.
- *   groups   computed, highlights mode only. Runs of consecutive unremarkable
- *            commits fold into a count badge between the notable ones.
+ * ⚠️ There used to be a second, "groups": the Highlights mode folded runs of
+ * unremarkable commits between two notable ones into a count badge. Highlights was
+ * removed (decision 112) and the grouping went with it — it was a presentation rule with
+ * no counterpart in the data, and the one thing it produced that the data did not was a
+ * mark whose count changed with the mode.
  */
 
 import {
@@ -32,8 +34,6 @@ import {
  * @param {object} options.index            from `indexObjectGraph`
  * @param {Array}  options.bursts           from `deriveBursts`
  * @param {Set}    options.expandedBursts   burst ids the user has unfolded
- * @param {Set}    options.expandedGroups   group keys the user has unfolded
- * @param {string} options.mode             active time mode
  * @param {string[]} options.laneTypes      lane-bearing object types, in order
  */
 export function buildNodes({
@@ -43,8 +43,6 @@ export function buildNodes({
   commentBursts = [],
   expandedBursts = new Set(),
   expandedCommentBursts = new Set(),
-  expandedGroups = new Set(),
-  mode = 'real',
   laneTypes = ['issue', 'pull_request', 'commit'],
 }) {
   const nodes = [];
@@ -108,15 +106,13 @@ export function buildNodes({
 
   // ---- commit nodes, with burst folding ---------------------------------------
   if (laneTypes.includes('commit')) {
-    nodes.push(
-      ...buildCommitNodes({ index, bursts, expandedBursts, expandedGroups, mode }),
-    );
+    nodes.push(...buildCommitNodes({ index, bursts, expandedBursts }));
   }
 
   return nodes;
 }
 
-function buildCommitNodes({ index, bursts, expandedBursts, expandedGroups, mode }) {
+function buildCommitNodes({ index, bursts, expandedBursts }) {
   const collapsedBursts = bursts.filter((b) => !expandedBursts.has(b.id));
   const foldedCommitIds = new Set();
   for (const burst of collapsedBursts) {
@@ -129,7 +125,7 @@ function buildCommitNodes({ index, bursts, expandedBursts, expandedGroups, mode 
     for (const id of burst.commitIds) memberOfExpandedBurst.add(id);
   }
 
-  let commitNodes = index
+  const commitNodes = index
     .objectsOfType('commit')
     .filter((commit) => !foldedCommitIds.has(commit.id))
     .map((commit) => ({
@@ -168,10 +164,6 @@ function buildCommitNodes({ index, bursts, expandedBursts, expandedGroups, mode 
   }
 
   commitNodes.sort((a, b) => a.t - b.t);
-
-  if (mode === 'highlights' && commitNodes.length > 1) {
-    commitNodes = groupUnremarkableRuns(commitNodes, expandedGroups);
-  }
   return commitNodes;
 }
 
@@ -214,58 +206,6 @@ function commitObservations(index, commit) {
       actorId: event.actor_id ?? null,
     }))
     .sort((a, b) => +a.time - +b.time);
-}
-
-/**
- * Fold runs of consecutive unremarkable commits into count badges.
- *
- * Anchors — kept individually — are the first and last commit, any collapsed burst,
- * and any member of an expanded burst. Everything between two anchors collapses,
- * unless the user has expanded that particular group.
- */
-function groupUnremarkableRuns(commitNodes, expandedGroups) {
-  const out = [];
-  let run = [];
-
-  const flush = () => {
-    if (!run.length) return;
-    if (run.length === 1) {
-      out.push(run[0]);
-    } else {
-      const groupKey = run[0].id;
-      if (expandedGroups.has(groupKey)) {
-        for (const member of run) {
-          member.groupKey = groupKey;
-          out.push(member);
-        }
-      } else {
-        out.push({
-          id: `grp_${groupKey}`,
-          lane: 'commit',
-          isGroup: true,
-          groupKey,
-          t: run[0].t,
-          groupCount: run.length,
-          groupStart: run[0].t,
-          groupEnd: run[run.length - 1].t,
-          members: run.slice(),
-        });
-      }
-    }
-    run = [];
-  };
-
-  commitNodes.forEach((node, i) => {
-    const isAnchor = i === 0 || i === commitNodes.length - 1 || node.isBurst || node.inBurst;
-    if (isAnchor) {
-      flush();
-      out.push(node);
-    } else {
-      run.push(node);
-    }
-  });
-  flush();
-  return out;
 }
 
 /**

@@ -259,7 +259,7 @@ describe('sub-lanes are allocated only when overlap forces them', () => {
   });
 
   test('an object keeps its band across every time mode', async () => {
-    for (const mode of ['real', 'highlights', 'ordinal']) {
+    for (const mode of ['real', 'ordinal']) {
       const { objectRow } = await layout('F3', { mode });
       assert.equal(
         distinctRows(objectRow, ['pr:20', 'pr:21']).size,
@@ -528,7 +528,7 @@ describe('layout invariants across all fixtures and modes', () => {
 
   for (const fixture of ALL) {
     test(`${fixture}: no two nodes overlap within a row`, async () => {
-      for (const mode of ['real', 'highlights', 'ordinal']) {
+      for (const mode of ['real', 'ordinal']) {
         const { nodes } = await layout(fixture, { mode });
         const byLaneRow = new Map();
         for (const node of nodes) {
@@ -550,7 +550,7 @@ describe('layout invariants across all fixtures and modes', () => {
     });
 
     test(`${fixture}: every node has a finite position and a row`, async () => {
-      for (const mode of ['real', 'highlights', 'ordinal']) {
+      for (const mode of ['real', 'ordinal']) {
         const { nodes } = await layout(fixture, { mode });
         for (const node of nodes) {
           assert.ok(Number.isFinite(node.x), `${fixture}/${mode}: ${node.id} has x=${node.x}`);

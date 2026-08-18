@@ -4,7 +4,7 @@
  * There are two ways this tool can arrange a sub-log, and they have nothing in common
  * beyond the question they answer:
  *
- *   temporal    real · highlights · ordinal — x is a time scale, y is a packed lane row
+ *   temporal    real · ordinal — x is a time scale, y is a packed lane row
  *   structural  off — x and y both come from a force simulation over the link graph
  *
  * `createLayout` picks one and returns the same shape either way, so `render/timeline.js`
@@ -14,9 +14,8 @@
  * only one of them has (lanes and an axis; edges and a ramp).
  *
  * ⚠️ **This does not make the mode branch literally singular, and claiming so would be
- * false.** The three temporal modes still branch inside `scales.js` (which curve x
- * follows), `layout/nodes.js` (highlights folds runs of unremarkable commits),
- * `render/axis.js` (which ticks to draw) and `render/nodes.js` (ordinal dims the
+ * false.** The two temporal modes still branch inside `scales.js` (which curve x
+ * follows), `render/axis.js` (which ticks to draw) and `render/nodes.js` (ordinal dims the
  * lifecycle bars, since a bar spanning a time axis means nothing when the axis is
  * rank-ordered). Every one of those is a branch *within* the temporal engine, which is
  * where they belong. What this module removes is the fifth kind of branch — the one that
@@ -82,7 +81,6 @@ export function isStructuralMode(mode) {
  * @param {number[]} options.instants             every distinct instant, sorted
  * @param {Set}    options.expandedBursts
  * @param {Set}    options.expandedCommentBursts
- * @param {Set}    options.expandedGroups
  * @param {Function} options.isVisible            node predicate
  * @param {object} options.margin                 `{top, right, bottom, left}`
  * @param {number} options.plotWidth
@@ -116,7 +114,6 @@ function layoutTemporal({
   instants = [],
   expandedBursts = new Set(),
   expandedCommentBursts = new Set(),
-  expandedGroups = new Set(),
   mode = 'real',
   isVisible = () => true,
   margin,
@@ -129,7 +126,6 @@ function layoutTemporal({
     commentBursts,
     expandedBursts,
     expandedCommentBursts,
-    expandedGroups,
     mode,
     laneTypes,
   });
@@ -183,11 +179,7 @@ function layoutTemporal({
   // into the commit lane must meet the node, not the lane's top (decisions 19 and 37).
   const nodeByObject = new Map();
   for (const node of nodes) {
-    if (node.isGroup) {
-      for (const member of node.members) nodeByObject.set(member.objectId, node);
-    } else if (node.objectId) {
-      nodeByObject.set(node.objectId, node);
-    }
+    if (node.objectId) nodeByObject.set(node.objectId, node);
   }
 
   return {

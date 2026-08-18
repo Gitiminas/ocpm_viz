@@ -34,7 +34,7 @@ const fileTransport = async (query) =>
   );
 
 const FIXTURES = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13'];
-const TEMPORAL_MODES = ['real', 'highlights', 'ordinal'];
+const TEMPORAL_MODES = ['real', 'ordinal'];
 
 const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
 const PLOT_WIDTH = 1100;
@@ -67,7 +67,6 @@ function referenceLayout({ graph, index, bursts, commentBursts, instants, mode }
     commentBursts,
     expandedBursts: new Set(),
     expandedCommentBursts: new Set(),
-    expandedGroups: new Set(),
     mode,
     laneTypes: LANE_TYPES,
   });
@@ -117,7 +116,6 @@ const engineLayoutOptions = (context, mode) => ({
   instants: context.instants,
   expandedBursts: new Set(),
   expandedCommentBursts: new Set(),
-  expandedGroups: new Set(),
   isVisible: () => true,
   margin: MARGIN,
   plotWidth: PLOT_WIDTH,
@@ -229,7 +227,6 @@ describe('the layout the engine hands back is complete', () => {
       instants: context.instants,
       expandedBursts: new Set(),
       expandedCommentBursts: new Set(),
-      expandedGroups: new Set(),
       isVisible: (node) => node.lane !== 'commit',
       margin: MARGIN,
       plotWidth: PLOT_WIDTH,
@@ -394,7 +391,6 @@ describe('the structural layout', () => {
       instants: context.instants,
       expandedBursts: new Set(),
       expandedCommentBursts: new Set(),
-      expandedGroups: new Set(),
       isVisible: () => true,
       isLinkVisible: (link) => link.evidence === 'validated',
       margin: MARGIN,
@@ -461,7 +457,6 @@ describe('the structural layout', () => {
       instants: context.instants,
       expandedBursts: new Set(),
       expandedCommentBursts: new Set(),
-      expandedGroups: new Set(),
       isVisible: () => false,
       margin: MARGIN,
       plotWidth: PLOT_WIDTH,
@@ -489,7 +484,6 @@ describe('the structural layout', () => {
       instants: context.instants,
       expandedBursts: new Set([burst.id]),
       expandedCommentBursts: new Set(),
-      expandedGroups: new Set(),
       isVisible: () => true,
       margin: MARGIN,
       plotWidth: PLOT_WIDTH,
@@ -529,7 +523,6 @@ describe('a dragged mark displaces without disturbing the layout', () => {
       instants: context.instants,
       expandedBursts: new Set(),
       expandedCommentBursts: new Set(),
-      expandedGroups: new Set(),
       isVisible: () => true,
       nodeNudges,
       margin: MARGIN,

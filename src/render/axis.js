@@ -2,9 +2,9 @@
  * The time axis: ticks, collision-aware labels, and gap annotation.
  *
  * Tick *selection* differs per mode. Real mode asks d3 for a sensible number of
- * round times. Highlights mode shows only meaningful instants — lifecycle
- * boundaries, out-of-span comments, the first and last commit, each folded push.
- * Ordinal mode spaces up to nine evenly by rank.
+ * round times. Ordinal mode spaces up to nine evenly by rank. (The removed Highlights
+ * mode ticked only "meaningful" instants — lifecycle boundaries, out-of-span comments,
+ * folded pushes; that selection went with the mode, decision 112.)
  *
  * Label handling is shared and is fussier than it looks: labels that would collide
  * merge, labels that are merely close stagger onto two rows, and seconds appear only
@@ -27,66 +27,8 @@ const MERGE_DISTANCE_PX = 14;
 /** Labels closer than this stagger onto alternating rows. */
 const STAGGER_DISTANCE_PX = 110;
 
-/**
- * Instants worth a tick in highlights mode.
- *
- * Generalized from the mockup, which read the single issue and single PR directly.
- * Every object of every visible lane contributes its lifecycle boundaries, so N
- * issues and N PRs each get their open and close marked.
- */
-export function highlightTickInstants({ index, lanes, bursts, expandedBursts, laneTypes }) {
-  const instants = [];
-  const push = (t) => {
-    if (t != null) instants.push(+t);
-  };
-
-  for (const laneType of laneTypes) {
-    if (laneType === 'commit' || !lanes[laneType]) continue;
-
-    for (const object of index.objectsOfType(laneType)) {
-      for (const interval of object.intervals) {
-        push(interval.start);
-        push(interval.end);
-      }
-      // Comments outside the object's lifecycle are notable precisely because they
-      // sit outside it — activity after a close, or before an open.
-      for (const event of index.eventsOf(object.id)) {
-        if (!event.comment) continue;
-        const inside = object.intervals.some(
-          (interval) =>
-            interval.start &&
-            +event.time >= +interval.start &&
-            (!interval.end || +event.time <= +interval.end),
-        );
-        if (!inside) push(event.time);
-      }
-    }
-  }
-
-  if (lanes.commit) {
-    const folded = new Set();
-    for (const burst of bursts) {
-      if (expandedBursts.has(burst.id)) continue;
-      for (const id of burst.commitIds) folded.add(id);
-      push(burst.time);
-    }
-    const loose = index
-      .objectsOfType('commit')
-      .filter((commit) => !folded.has(commit.id))
-      .map((commit) => commit.intervals?.[0]?.start)
-      .filter(Boolean)
-      .sort((a, b) => a - b);
-    if (loose.length) {
-      push(loose[0]);
-      push(loose[loose.length - 1]);
-    }
-  }
-
-  return [...new Set(instants)].sort((a, b) => a - b);
-}
-
 /** Choose tick positions for the active mode. */
-export function computeTicks({ mode, scales, zoom, highlightInstants, rankOrder, rankMax, plotWidth, marginLeft }) {
+export function computeTicks({ mode, scales, zoom, rankOrder, rankMax, plotWidth, marginLeft }) {
   if (mode === 'real') {
     const idealCount = Math.max(3, Math.min(200, Math.round(6 * zoom)));
     return d3
@@ -94,10 +36,6 @@ export function computeTicks({ mode, scales, zoom, highlightInstants, rankOrder,
       .domain([new Date(scales.first), new Date(scales.last)])
       .ticks(idealCount)
       .map((t) => ({ x: scales.x(t), t }));
-  }
-
-  if (mode === 'highlights') {
-    return highlightInstants.map((value) => ({ x: scales.x(new Date(value)), t: new Date(value) }));
   }
 
   const count = Math.min(9, rankOrder.length);
@@ -148,7 +86,6 @@ export function renderAxis({
   mode,
   scales,
   zoom,
-  highlightInstants,
   rankOrder,
   rankMax,
   rankTimes,
@@ -182,7 +119,6 @@ export function renderAxis({
     mode,
     scales,
     zoom,
-    highlightInstants,
     rankOrder,
     rankMax,
     plotWidth,

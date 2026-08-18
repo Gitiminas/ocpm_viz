@@ -36,7 +36,7 @@ export function createState() {
   return {
     /** Horizontal zoom multiplier. */
     k: 1,
-    /** Active time scale: real | highlights | ordinal | off. */
+    /** Active time mode: real | ordinal | off. */
     mode: 'real',
     /**
      * The brushed time range in the off mode, as two fractions of the sub-log's span.
@@ -116,7 +116,6 @@ export function createState() {
      */
     commentWindowDays: DEFAULT_COMMENT_WINDOW_DAYS,
     /** Highlight-mode group keys the user has unfolded. */
-    expandedGroups: new Set(),
   };
 }
 
@@ -239,10 +238,6 @@ export function isNodeVisible(node, state, groupsByCommit = new Map()) {
     }
     return false;
   }
-  if (node.isGroup) {
-    return node.members.some((member) => isNodeVisible(member, state, groupsByCommit));
-  }
-
   if (node.objectId && state.hiddenObjects.has(node.objectId)) return false;
   if (node.lane === 'commit' && node.objectId) {
     return isCommitInVisibleGroup(node.objectId, groupsByCommit, state.hiddenCommitGroups);

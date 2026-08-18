@@ -67,9 +67,6 @@ async function legendKeysFromNodes() {
   const keys = new Set();
   // Real nodes cover the lanes and, in F1, a collapsed burst and comments.
   for (const node of buildNodes({ graph, index, bursts })) keys.add(legendKeyFor(node));
-  // A fold group only exists in Highlights mode on a long commit run, so name it
-  // directly rather than hunting a fixture that happens to produce one.
-  keys.add(legendKeyFor({ isGroup: true }));
   keys.add(legendKeyFor({ isBurst: true }));
   keys.add(legendKeyFor({ isCommentBurst: true }));
   keys.add(legendKeyFor({ isComment: true, lane: 'issue' }));
@@ -104,7 +101,6 @@ describe('the legend is a complete key to what is drawn', () => {
       'landmark', // the solid ring — merged, issue closed
       'burst', // bulk push
       'comment-burst', // a run of comments folded together, decision 93
-      'fold-group', // folded run in Highlights mode
       'link-crowded', // the ×N badge, decision 68
       'sequence', // an object's own spine
       'actor-trail', // the selected actor's dashed path

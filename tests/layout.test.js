@@ -4,14 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
 import { collectInstants } from '../src/model/objectGraph.js';
-import {
-  createScales,
-  compressionOffsets,
-  findLargeGaps,
-  COMPRESSION_BASE_MS,
-  COMPRESSION_CAP_MS,
-  GAP_THRESHOLD_MS,
-} from '../src/layout/scales.js';
+import { createScales, findLargeGaps, GAP_THRESHOLD_MS, MODES } from '../src/layout/scales.js';
 import { packRows, collisionThreshold, ROW_HEIGHT } from '../src/layout/packing.js';
 import { computeLaneGeometry, rowY } from '../src/layout/lanes.js';
 
@@ -22,33 +15,7 @@ const loadF1 = () => loadObjectGraph({ fixture: 'F1' }, { transport: fileTranspo
 const MARGIN_LEFT = 180;
 const PLOT_WIDTH = 1100;
 
-describe('compression maths', () => {
-  test('offsets match the reference formula: base plus the capped gap', () => {
-    const instants = [0, 60_000, 60_000 + 10 * 60 * 60 * 1000, 60_000 + 10 * 60 * 60 * 1000 + 1];
-    const offsets = compressionOffsets(instants);
-
-    const expected = [0];
-    for (let i = 1; i < instants.length; i++) {
-      expected.push(
-        expected[i - 1] + COMPRESSION_BASE_MS + Math.min(instants[i] - instants[i - 1], COMPRESSION_CAP_MS),
-      );
-    }
-    assert.deepEqual(offsets, expected);
-  });
-
-  test('a gap longer than the cap contributes exactly base + cap', () => {
-    const week = 7 * 24 * 60 * 60 * 1000;
-    const [, second] = compressionOffsets([0, week]);
-    assert.equal(second, COMPRESSION_BASE_MS + COMPRESSION_CAP_MS);
-  });
-
-  test('simultaneous instants still separate by the base width', () => {
-    const [, second] = compressionOffsets([1000, 1000]);
-    assert.equal(second, COMPRESSION_BASE_MS);
-  });
-});
-
-describe('the three scales agree on the plot edges', () => {
+describe('the two scales agree on the plot edges', () => {
   const instants = [1000, 5000, 900_000];
   const build = (mode) =>
     createScales({
@@ -66,12 +33,6 @@ describe('the three scales agree on the plot edges', () => {
     assert.equal(scales.x(instants[2]), MARGIN_LEFT + PLOT_WIDTH);
   });
 
-  test('compressed mode pins first and last instants to the edges', () => {
-    const scales = build('highlights');
-    assert.equal(scales.x(instants[0]), MARGIN_LEFT);
-    assert.equal(scales.x(instants[2]), MARGIN_LEFT + PLOT_WIDTH);
-  });
-
   test('ordinal mode spaces ranks evenly', () => {
     const scales = build('ordinal');
     assert.equal(scales.x(null, { rank: 0 }), MARGIN_LEFT);
@@ -79,17 +40,15 @@ describe('the three scales agree on the plot edges', () => {
     assert.equal(scales.x(null, { rank: 2 }), MARGIN_LEFT + PLOT_WIDTH);
   });
 
-  test('compression pulls a long idle period in, relative to real time', () => {
-    // instants[1] sits 0.4% through real time but a third of the way through
-    // compressed time, because the long gap after it is capped.
-    const real = build('real').x(instants[1]);
-    const compressed = build('highlights').x(instants[1]);
-    assert.ok(compressed > real, 'the compressed position must be further right');
+  test('there are exactly two temporal modes, and Highlights is not one of them', () => {
+    // Decision 112 removed the compressed axis. Pinned so it cannot creep back under
+    // another name without being argued for.
+    assert.deepEqual(MODES, ['real', 'ordinal']);
   });
 });
 
 describe('scales are monotonic over F1 in every mode', () => {
-  for (const mode of ['real', 'highlights', 'ordinal']) {
+  for (const mode of MODES) {
     test(`${mode} preserves temporal order`, async () => {
       const graph = await loadF1();
       const instants = collectInstants(graph);
@@ -115,7 +74,7 @@ describe('scales are monotonic over F1 in every mode', () => {
   test('positions stay inside the plot area', async () => {
     const graph = await loadF1();
     const instants = collectInstants(graph);
-    for (const mode of ['real', 'highlights']) {
+    for (const mode of ['real']) {
       const scales = createScales({ instants, marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode });
       for (const instant of instants) {
         const x = scales.x(instant);
@@ -127,7 +86,7 @@ describe('scales are monotonic over F1 in every mode', () => {
 
 describe('degenerate sub-logs do not produce NaN coordinates', () => {
   test('a sub-log spanning zero time collapses to the left edge', () => {
-    for (const mode of ['real', 'highlights', 'ordinal']) {
+    for (const mode of MODES) {
       const scales = createScales({
         instants: [1700000000000],
         marginLeft: MARGIN_LEFT,
@@ -157,12 +116,27 @@ describe('invert round-trips well enough to anchor a zoom', () => {
     }
   });
 
-  test('compressed mode inverts to within a millisecond', () => {
-    const instants = [1000, 500_000, 900_000];
-    const scales = createScales({ instants, marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode: 'highlights' });
-    for (const instant of instants) {
-      assert.ok(Math.abs(+scales.invert(scales.x(instant)) - instant) <= 1);
-    }
+  test('ordinal mode inverts its own ranks exactly, and interpolates between them', () => {
+    // The ordinal inverse used to borrow the (removed) compressed scale's inverse as an
+    // approximation. It now inverts rank positions: a rank's pixel comes back as that
+    // rank's instant, and a pixel between two ranks as an instant between theirs.
+    const rankTimes = [1000, 500_000, 900_000];
+    const scales = createScales({
+      instants: rankTimes,
+      marginLeft: MARGIN_LEFT,
+      plotWidth: PLOT_WIDTH,
+      mode: 'ordinal',
+      rankTimes,
+      rankMax: 2,
+    });
+    rankTimes.forEach((instant, rank) => {
+      assert.equal(+scales.invert(scales.x(null, { rank })), instant);
+    });
+    const between = +scales.invert(MARGIN_LEFT + PLOT_WIDTH * 0.25);
+    assert.ok(between > 1000 && between < 500_000, `${between} is not between ranks 0 and 1`);
+    // Off the plot on either side clamps to the ends rather than extrapolating.
+    assert.equal(+scales.invert(MARGIN_LEFT - 50), 1000);
+    assert.equal(+scales.invert(MARGIN_LEFT + PLOT_WIDTH + 50), 900_000);
   });
 });
 

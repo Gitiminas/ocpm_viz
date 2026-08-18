@@ -86,7 +86,7 @@ browser: that is how Task 2 was shown not to disturb F1.
 | 3 | Burst badge `21` → `20` | **Mandated** — the count is now derived |
 | 4 | `OCEL CASE` → `Sub-log`; `Case statistics` → `Per-object statistics` | **Mandated** — decision 1 |
 | 5 | Links coloured by the object they reach | **Mandated** — decision 24 |
-| 6 | Highlights tick `22:47:51` → `21:47:49` | ⚠️ **Open** — decision 21, awaiting a call |
+| 6 | Highlights tick `22:47:51` → `21:47:49` | **Closed 2026-08-19** — the Highlights mode was removed (decision 112, retiring decision 21), and its ticks with it |
 
 **Decision 41 adds no seventh difference.** Deleting F1's 42 event→actor links changes nothing on
 screen, because nothing ever drew them: `isLinkVisible` returned false for the class

@@ -1,45 +1,28 @@
 /**
- * The three time scales and the coordinate dispatcher.
+ * The two time scales of the timeline, and the coordinate dispatcher.
  *
- * This is the highest-risk logic in the app to port: mode switching lives in
- * exactly one function, and a subtle error here moves every node a little without
- * looking wrong. The compression constants and the interpolation are reproduced
- * from the mockup unchanged.
+ * This is the highest-risk logic in the app: mode switching lives in exactly one
+ * function, and a subtle error here moves every node a little without looking wrong.
  *
  *   real        linear in real time
- *   highlights  compressed — each inter-event gap contributes a fixed base plus the
- *               gap itself capped at three hours, so idle periods shrink but order
- *               and relative magnitude survive
  *   ordinal     equal spacing by event rank; real durations are discarded and the
  *               large gaps are annotated separately by the axis
+ *
+ * ⚠️ There was a third, *highlights* — a compressed axis where each inter-event gap
+ * contributed a fixed base plus the gap capped at three hours. Removed (decision 112):
+ * it sat between the other two without answering a question either could not, and it
+ * carried its own folding rule for commits. Its one lasting trace is that the ordinal
+ * inverse below used to borrow the compressed inverse as an approximation; it now has
+ * an inverse of its own.
  *
  * Everything here is pure: it takes numbers and returns numbers, so it can be
  * checked without rendering anything.
  */
 
-/** Each gap contributes at least this much width, so simultaneous events separate. */
-export const COMPRESSION_BASE_MS = 9 * 60 * 1000;
-/** ...and at most this much, so a week of silence does not dominate the axis. */
-export const COMPRESSION_CAP_MS = 3 * 60 * 60 * 1000;
 /** Gaps longer than this get an annotated band in ordinal mode. */
 export const GAP_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
-export const MODES = ['real', 'highlights', 'ordinal'];
-
-/**
- * Precompute the compressed-axis offsets for a sorted list of instants.
- *
- * Returns cumulative positions in "compressed milliseconds", where index i is the
- * position of `instants[i]`.
- */
-export function compressionOffsets(instants) {
-  const positions = [0];
-  for (let i = 1; i < instants.length; i++) {
-    const gap = instants[i] - instants[i - 1];
-    positions.push(positions[i - 1] + COMPRESSION_BASE_MS + Math.min(gap, COMPRESSION_CAP_MS));
-  }
-  return positions;
-}
+export const MODES = ['real', 'ordinal'];
 
 /**
  * Build the coordinate functions for one render pass.
@@ -62,8 +45,6 @@ export function createScales({
 }) {
   const first = instants.length ? instants[0] : 0;
   const last = instants.length ? instants[instants.length - 1] : 0;
-  const offsets = compressionOffsets(instants);
-  const totalCompressed = offsets.length ? offsets[offsets.length - 1] : 0;
 
   // A sub-log can legitimately span zero time — one instant, or several objects
   // sharing a timestamp. The mockup divided by (t1 - t0) unguarded and produced NaN
@@ -74,22 +55,6 @@ export function createScales({
   function real(t) {
     if (realSpan <= 0) return marginLeft;
     return marginLeft + ((+t - first) / realSpan) * plotWidth;
-  }
-
-  function compressed(t) {
-    const time = +t;
-    if (!instants.length || totalCompressed <= 0) return marginLeft;
-    if (time <= first) return marginLeft;
-    if (time >= last) return marginLeft + plotWidth;
-    for (let i = 1; i < instants.length; i++) {
-      if (time <= instants[i]) {
-        const span = instants[i] - instants[i - 1] || 1;
-        const fraction = (time - instants[i - 1]) / span;
-        const position = offsets[i - 1] + fraction * (offsets[i] - offsets[i - 1]);
-        return marginLeft + (position / totalCompressed) * plotWidth;
-      }
-    }
-    return marginLeft + plotWidth;
   }
 
   /**
@@ -122,7 +87,6 @@ export function createScales({
    */
   function x(t, node) {
     if (mode === 'real') return real(t);
-    if (mode === 'highlights') return compressed(t);
     if (node && node.rank != null) return ordinalRank(node.rank);
     return ordinalTime(t);
   }
@@ -130,27 +94,23 @@ export function createScales({
   /**
    * Pixel → time, for the minimap's drag-to-zoom time anchoring.
    *
-   * Ordinal mode deliberately falls through to the compressed inverse, matching the
-   * mockup. It is approximate there — ordinal discards real durations, so no exact
-   * inverse exists — and it only affects which instant stays pinned under the cursor
-   * while dragging, never a rendered position.
+   * In ordinal mode the inverse interpolates between the two ranks that bracket the
+   * pixel — the exact inverse of `ordinalTime` for an instant between ranks, and of
+   * `ordinalRank` at a rank. It only decides which instant stays pinned under the cursor
+   * while dragging, never a rendered position. (It used to borrow the removed
+   * compressed scale's inverse as an approximation; this is the honest one.)
    */
   function invert(px) {
-    if (mode === 'real') {
-      if (plotWidth <= 0) return new Date(first);
-      const fraction = (px - marginLeft) / plotWidth;
-      return new Date(first + fraction * realSpan);
-    }
-    if (!instants.length) return new Date(first);
-    const position = ((px - marginLeft) / plotWidth) * totalCompressed;
-    for (let i = 1; i < offsets.length; i++) {
-      if (position <= offsets[i]) {
-        const span = offsets[i] - offsets[i - 1] || 1;
-        const fraction = (position - offsets[i - 1]) / span;
-        return new Date(instants[i - 1] + fraction * (instants[i] - instants[i - 1]));
-      }
-    }
-    return new Date(last);
+    if (plotWidth <= 0) return new Date(first);
+    const fraction = Math.max(0, Math.min(1, (px - marginLeft) / plotWidth));
+    if (mode === 'real') return new Date(first + fraction * realSpan);
+    if (!rankTimes.length) return new Date(first);
+    const rank = fraction * rankMax;
+    const lo = Math.min(rankTimes.length - 1, Math.floor(rank));
+    const hi = Math.min(rankTimes.length - 1, Math.ceil(rank));
+    const loTime = +rankTimes[lo];
+    const hiTime = +rankTimes[hi];
+    return new Date(loTime + (rank - lo) * (hiTime - loTime));
   }
 
   /**
@@ -171,13 +131,11 @@ export function createScales({
     x,
     xAtZoom,
     real,
-    compressed,
     ordinalTime,
     ordinalRank,
     invert,
     first,
     last,
-    totalCompressed,
   };
 }
 
