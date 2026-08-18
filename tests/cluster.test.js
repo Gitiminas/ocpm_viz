@@ -446,10 +446,8 @@ describe('the drag simulation is the layout’s own, running', () => {
   });
 
   test('a pinned mark never moves, however hard the forces pull', () => {
-    // ⚠️ Everything outside the dragged neighbourhood is pinned rather than anchored.
-    // Leaving the graph free was tried and is wrong: with nothing held down, repulsion
-    // from the dragged mark travels further than the springs do, so pulling a pull request
-    // 250px carried its own commit 7px and shoved an unrelated one 210px.
+    // Only the mark under the pointer is pinned during a drag, and the layout pins its
+    // busiest root. Both rely on d3 honouring fx/fy absolutely.
     const nodes = marks.map((m) => ({ ...m }));
     const sim = createDragSimulation(nodes, links());
     for (let i = 0; i < 60; i++) sim.tick();

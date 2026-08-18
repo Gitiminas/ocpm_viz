@@ -409,7 +409,33 @@ export function layoutCluster(nodes, edges, { width, height, padding = 60, radiu
    * looked at, and this one has to be a pure function of the sub-log. The ease-in a reader
    * actually sees is presentation and lives in `render/motion.js`.
    */
-  const rootIds = new Set((levels[0] || []).map((node) => node.id));
+  /*
+   * ⚠️ **Only ONE root is pinned — the busiest — and the rest are left to the forces.**
+   *
+   * Pinning every root froze the seed's guess about where they belong, and the seed shares
+   * the innermost ring by demand, so a minor issue got a sliver of it and could never
+   * reach its own work. Measured on kubernetes #47532: issue #64894's single pull request
+   * sat 316px away against a rest length of 130, and F4's two issues 306 and 394 away.
+   * Freed, #64894 lands at 141. The other issues were not so much placed as parked, which
+   * is what made them look like afterthoughts.
+   *
+   * One root stays pinned so the drawing has something to be built around, and so it
+   * cannot rotate or drift as a body between renders. Busiest by link count, with the id
+   * as a tie-break, because that is stable and is also the one a reader is most likely to
+   * have come for.
+   */
+  const degree = new Map();
+  for (const edge of edges) {
+    degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
+    degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+  }
+  const anchorRoot = (levels[0] || [])
+    .slice()
+    .sort(
+      (a, b) =>
+        (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || (a.id < b.id ? -1 : 1),
+    )[0];
+  const rootIds = new Set(anchorRoot ? [anchorRoot.id] : []);
 
   const simNodes = nodes
     .filter((node) => positions.has(node.id))

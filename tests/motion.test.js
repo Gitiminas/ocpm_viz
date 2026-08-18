@@ -1,7 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { neighbourhood } from '../src/render/structural.js';
 import {
   createMotion,
   driftOffset,
@@ -345,45 +344,5 @@ describe('a gesture holds the drift still', () => {
       );
     }
     motion.stop();
-  });
-});
-
-describe('a drag reaches only as far as its neighbourhood', () => {
-  const edges = [
-    { source: 'issue:1', target: 'pr:1' },
-    { source: 'issue:1', target: 'pr:2' },
-    { source: 'pr:1', target: 'commit:a' },
-    { source: 'pr:1', target: 'commit:b' },
-    { source: 'pr:2', target: 'commit:c' },
-    { source: 'commit:c', target: 'commit:d' },
-  ];
-
-  test('one hop brings a mark’s own children and nothing else', () => {
-    const near = neighbourhood('pr:1', edges, 1);
-    assert.deepEqual([...near].sort(), ['commit:a', 'commit:b', 'issue:1', 'pr:1']);
-  });
-
-  test('two hops reach a sibling, but not the whole graph', () => {
-    /*
-     * ⚠️ The reach is bounded on purpose. Dragging a pull request should bring its commits
-     * and the issue it resolves — the unit a reader is thinking about when they pull one
-     * out of a tangle. Unbounded, a single drag rearranges the whole sub-log, which is not
-     * a gesture anyone asked for.
-     */
-    const near = neighbourhood('pr:1', edges, 2);
-    assert.ok(near.has('pr:2'), 'a sibling two hops away should follow');
-    assert.ok(!near.has('commit:d'), 'three hops away must stay put');
-  });
-
-  test('the set is computed once and cannot grow as the drag travels', () => {
-    // Recomputing it mid-gesture would let the neighbourhood creep outward as marks moved,
-    // so a long drag would end up towing things it never picked up.
-    const first = neighbourhood('pr:1', edges, 2);
-    const second = neighbourhood('pr:1', edges, 2);
-    assert.deepEqual([...first].sort(), [...second].sort());
-  });
-
-  test('a mark with no edges brings only itself', () => {
-    assert.deepEqual([...neighbourhood('lonely', edges, 2)], ['lonely']);
   });
 });

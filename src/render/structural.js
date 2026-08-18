@@ -531,41 +531,6 @@ export function renderStructuralNodes({
 /** How far the pointer may travel before a press counts as a drag rather than a click. */
 const DRAG_SLOP_PX = 3;
 /**
- * How many hops out from a dragged mark are allowed to follow it.
- *
- * Two: a pull request brings its commits and the issue it resolves, which is the unit a
- * reader is thinking about when they pull one out of a tangle. Further and a single drag
- * starts rearranging the whole sub-log, which is not a gesture anyone asked for.
- */
-const DRAG_REACH = 2;
-
-/** Every mark within `hops` of a starting one, along the drawn edges. */
-export function neighbourhood(startId, edges, hops) {
-  const adjacent = new Map();
-  for (const edge of edges) {
-    if (!adjacent.has(edge.source)) adjacent.set(edge.source, []);
-    if (!adjacent.has(edge.target)) adjacent.set(edge.target, []);
-    adjacent.get(edge.source).push(edge.target);
-    adjacent.get(edge.target).push(edge.source);
-  }
-
-  const seen = new Set([startId]);
-  let edge = [startId];
-  for (let hop = 0; hop < hops; hop++) {
-    const next = [];
-    for (const id of edge) {
-      for (const other of adjacent.get(id) || []) {
-        if (seen.has(other)) continue;
-        seen.add(other);
-        next.push(other);
-      }
-    }
-    edge = next;
-  }
-  return seen;
-}
-
-/**
  * Let a mark be dragged.
  *
  * ⚠️ **The drag moves the mark, not the layout.** What it records is an *offset* from
@@ -590,17 +555,22 @@ function enableDrag(
   group.style('cursor', 'grab');
 
   /**
-   * Start a live simulation over the marks this gesture is allowed to move.
+   * Start a live simulation over the whole drawing.
    *
-   * ⚠️ **Everything outside the neighbourhood is pinned, not merely anchored.** Leaving the
-   * whole graph free was tried and is wrong: with nothing held down, repulsion from the
-   * dragged mark travels further than the springs do, so pulling a pull request 250px
-   * carried its own commit 7px and shoved an unrelated one 210px. Pinning states the
-   * intent — this gesture moves this cluster — instead of hoping the forces express it,
-   * and it makes each tick cheap because only a handful of nodes are free.
+   * ⚠️ **Nothing is pinned but the mark under the pointer**, and an earlier version pinned
+   * everything more than two hops away. That was added after a measurement showing a drag
+   * flinging an unrelated pull request 210px — but that measurement was taken with the
+   * hand-written solver and its charge signs inverted, so repulsion was running some four
+   * orders of magnitude too strong. The reason for pinning was a bug, and it went with the
+   * bug; the pinning stayed, and quietly cost the thing dragging is for. Reported as the
+   * re-order being minimal, with everything settling back where it was.
+   *
+   * Re-measured with these forces on kubernetes #47532: dragging a pull request 240px now
+   * moves all 34 marks more than 5px and only 3 of them more than 60px — the whole picture
+   * shuffling gently to make room, which is what a graph tool does and what makes a drag
+   * worth performing.
    */
   function begin() {
-    const reachable = neighbourhood(mark.id, edges, DRAG_REACH);
     const simNodes = marks.map((other) => {
       const seed = {
         id: other.id,
@@ -609,7 +579,8 @@ function enableDrag(
         x: other.x,
         y: other.y,
       };
-      if (other.id === mark.id || !reachable.has(other.id)) {
+      // Only the mark under the pointer is held. Everything else is free.
+      if (other.id === mark.id) {
         seed.fx = other.x;
         seed.fy = other.y;
       }
