@@ -275,7 +275,7 @@ for (const mode of TEMPORAL_MODES) {
   }
 }
 
-// ---- and in the OFF mode, through both structural arrangements -----------------------
+// ---- and in the RELATIONSHIPS mode, through both structural arrangements -------------
 // The temporal checks above mirror the renderer's pipeline by hand; the structural ones go
 // through `createLayout` itself, because that seam is the whole point of the engine and a
 // gate that bypassed it would pass a payload the app cannot draw. What real data breaks

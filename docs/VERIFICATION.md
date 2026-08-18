@@ -174,7 +174,7 @@ database (`gharchive_ocpm_viz_wsl`, MVs last refreshed 2026-08-02 19:32–19:45 
 | `npm test` unaffected | 377 tests | pass |
 
 **Coverage of that gate:** six sub-logs — all three repositories, all three seed types
-(issue, pull request, commit), traversal degrees 0–3, sizes from 5 to 404 objects.
+(issue, pull request, commit), traversal degrees 0–3 (3 was still allowed then; capped at 2 since decision 110), sizes from 5 to 404 objects.
 
 **Latency:** 1.7–3.4 s per sub-log end to end, from 19.4 s before indexing and tuning.
 Step-by-step measurements are in `sql/fe_layer.sql` §0.1. `fe.refresh_links()` is ~6 s.
