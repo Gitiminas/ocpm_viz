@@ -688,12 +688,25 @@ elements.scroll.addEventListener('scroll', () => {
   minimap.syncViewport();
 });
 
+/**
+ * The sidebar's collapsible sections — Views, Lanes, Relationships, Folding, Actors, Legend.
+ *
+ * ⚠️ **All of them start CLOSED, and nothing about loading a sub-log opens them.** They
+ * used to start open, so every load presented the whole control surface at once and the
+ * sub-log itself — the thing just asked for — sat below a wall of toggles; reported as the
+ * menus "auto-expanding". A section stays however the reader left it for the rest of the
+ * session: loading another sub-log re-renders a section's *contents* (`renderSidebar`)
+ * but never touches whether it is open. The Sub-log section has no header and is always
+ * shown, because it is where the next query is typed.
+ */
+function setSectionOpen(header, open) {
+  el(header.dataset.target).style.display = open ? 'flex' : 'none';
+  header.querySelector('.chev').style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+}
 for (const header of document.querySelectorAll('.collapseHeader')) {
+  setSectionOpen(header, false);
   header.addEventListener('click', () => {
-    const target = el(header.dataset.target);
-    const collapsed = target.style.display === 'none';
-    target.style.display = collapsed ? 'flex' : 'none';
-    header.querySelector('.chev').style.transform = collapsed ? 'rotate(0deg)' : 'rotate(-90deg)';
+    setSectionOpen(header, el(header.dataset.target).style.display === 'none');
   });
 }
 

@@ -90,7 +90,10 @@ export function renderHiddenBanner({ container, summary, state, onRestore }) {
  */
 export function renderPresetPanel({ container, state, context, query, onApply, onToast }) {
   container.innerHTML = '';
-  container.style.cssText = 'display:flex;flex-direction:column;gap:4px';
+  // ⚠️ The container's `display` is NOT set here. It is the sidebar section the collapse
+  // header opens and closes (`main.js`), and this used to overwrite its whole `cssText`
+  // with `display:flex` on every render — so the Views section sprang open again on
+  // every load, alone among the sections. Layout comes from the markup in `index.html`.
 
   const button = (text, { primary = false } = {}) => {
     const el = document.createElement('button');
