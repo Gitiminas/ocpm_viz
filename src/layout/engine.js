@@ -33,7 +33,7 @@ import { packRows } from './packing.js';
 import { computeLaneGeometry, rowY } from './lanes.js';
 import { createAnchors } from './anchors.js';
 import { layoutLayered } from './layered.js';
-import { layoutRadial } from './radial.js';
+import { layoutCluster } from './cluster.js';
 import { buildStructuralNodes, buildStructuralEdges, timeExtent } from './structural.js';
 
 /** Which engine a mode uses. `off` is the only structural one. */
@@ -45,11 +45,13 @@ export const STRUCTURAL_MODES = ['off'];
  * Both are structural — position encodes relationships either way — and they answer the
  * same question with different geometry. `layered` puts issues, pull requests and commits
  * in rows, which reads as a process direction and matches the timeline's lane order.
- * `radial` puts them in rings, which reads as containment and suits a hub-shaped sub-log,
- * where one issue has everything hanging off it and rows have to flatten the symmetry.
- * Neither is right in general, so the reader chooses.
+ * `cluster` makes every object a small hub for what hangs off it — the issue in the
+ * middle, its pull requests around it, and each pull request's commits fanning around
+ * *that pull request*. It reads as grouping rather than as a process direction, and suits
+ * a sub-log where the question is "what belongs with what". Neither is right in general,
+ * so the reader chooses.
  */
-export const STRUCTURAL_LAYOUTS = ['layered', 'radial'];
+export const STRUCTURAL_LAYOUTS = ['layered', 'cluster'];
 export const DEFAULT_STRUCTURAL_LAYOUT = 'layered';
 
 /**
@@ -255,11 +257,11 @@ function layoutStructural({
   const edges = buildStructuralEdges(graph.links.filter(isLinkVisible), nodes);
 
   const box = { width: plotWidth, height: plotHeight, padding: STRUCTURAL_PADDING };
-  const arrange = structuralLayout === 'radial' ? layoutRadial : layoutLayered;
+  const arrange = structuralLayout === 'cluster' ? layoutCluster : layoutLayered;
   // `rings` and `rows` are the same thing under two names; `crossings` is a property only
   // the layered arrangement can meaningfully report, since a crossing count between two
   // rows says nothing about a circle.
-  const { positions, rows, rings, crossings = null, waypoints = new Map() } = arrange(
+  const { positions, rows, levels, crossings = null, waypoints = new Map() } = arrange(
     nodes,
     edges,
     box,
@@ -331,9 +333,9 @@ function layoutStructural({
     extent: timeExtent(nodes),
     // The bands as arranged, whichever geometry produced them, and what the ordering
     // achieved. `crossings` is reported rather than kept private because "how tangled is
-    // this sub-log" is a finding, not a detail; it is null for the radial arrangement,
+    // this sub-log" is a finding, not a detail; it is null for the clustered arrangement,
     // which has no adjacent-row count to give.
-    rows: rows ?? rings ?? [],
+    rows: rows ?? levels ?? [],
     crossings,
     waypoints: placedWaypoints,
     structuralLayout,
