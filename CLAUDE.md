@@ -40,6 +40,7 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | `docs/VERIFICATION.md` | What was checked, how, and what was not | Task 6 output; §3b covers the data layer. **Read §4 before trusting any figure** |
 | `docs/LINK_FANNING.md` | Why link fanning exists, how it broke on real data, and what it does now | Worked example of a defect no test could catch |
 | `docs/COMMIT_PR_NARROWING.md` | Which commits count as a pull request's, why the rule changed, and what it costs | Decision 80. Read before quoting any commit-link figure |
+| `docs/OFF_MODE.md` | The structural (`off`) time mode: how to see it, where it lives, known weak points, and the traps its construction paid for | Field notes. Decisions are 95–109 in `DECISIONS.md`; read §5 before touching `layout/cluster.js` or `layout/layered.js` |
 | `README.md` | Human entry point: run, test, extend | Keep current |
 | `docs/ONBOARDING.md` | Reading path: what to read, in what order, and what to skip | Orientation |
 | ~~`tasks/*.md`~~ | Was one file per work package. **Deleted in `a1e2a9c` and staying deleted.** Work packages 00–06 are complete | Gone — do not restore |
@@ -53,7 +54,8 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | `sql/fe_layer.sql` | **The PostgREST data layer**: schema `fe` (8 views + 7 diagnostics) and `api.get_object_graph`. Idempotent — re-run it to apply changes | **Work here** for anything about what the payload contains. Read its header before editing: the load-bearing conventions are listed there, and each one is a defect someone already shipped |
 | `scripts/rpc-check.mjs` | Acceptance gate: a real RPC payload through `loadObjectGraph`, then the real layout pipeline, then one unauthenticated HTTP call as `web_anon` | Run after any change to `sql/fe_layer.sql`. `findGraphProblems()` must return `[]`. The HTTP probe skips if PostgREST is down |
 | `scripts/pull-sublog.mjs` | Snapshots RPC output to `tests/fixtures/LIVE*.json` so a real sub-log can be rendered | These are **samples, not fixtures** — nothing asserts against them |
-| `scripts/shot.mjs` | Headless screenshot of the running app, via Edge over WSL interop | Writes to `.shots/` (gitignored). **Never to `screenshots/`** — that baseline stays read-only |
+| `scripts/shot.mjs` | Headless screenshot of the running app, via Edge over WSL interop. Flags for mode, layout, repo/seed/degree, width/height | Writes to `.shots/` (gitignored). **Never to `screenshots/`** — that baseline stays read-only. ⚠️ Headless lays out ~90px shorter than `--window-size`; compare fill between shots, not against the box |
+| `vendor/d3-force.js` | d3-force 3.0.0, ISC, unmodified (decision 104) | Never edit; replace whole from the esm.sh bundled build, and re-read `vendor/README.md` |
 | `scripts/build-f1.mjs` | Builds `tests/fixtures/F1.json` from `ocel-data.json` | Re-runnable. `--check` fails if the committed fixture is stale |
 | `scripts/serve.mjs` | Zero-dependency static server (`npm start`) | Needed because ES modules and `fetch` are blocked on `file://` |
 | `../ocpm.sh` | Outside the repo. Clean start (`./ocpm.sh`), and `./ocpm.sh db` to apply the data layer in the one order that works | Prefer `db` over running the SQL by hand — `fe_layer.sql` resets the api functions to `SECURITY INVOKER` and `fe.link_mat` goes stale silently |

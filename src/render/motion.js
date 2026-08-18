@@ -8,7 +8,7 @@
  *
  * ⚠️ **Motion here is presentation only, and that is a hard rule rather than an
  * implementation detail.** The layout is a pure function of the sub-log — `layered.js` and
- * `radial.js` both return the same coordinates on every call, which is what makes a
+ * `cluster.js` both return the same coordinates on every call, which is what makes a
  * re-render leave the picture alone and what lets two people compare two screenshots. If
  * movement fed back into position, the resting arrangement would depend on when you
  * looked at it. So this module animates *toward* the computed positions and never changes
