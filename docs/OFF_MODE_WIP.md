@@ -4,8 +4,9 @@
 design record. When the branch merges, the decisions in §4 move to `DECISIONS.md` and this
 file is deleted. It exists because the work spans more sessions than one context holds.
 
-Written 2026-08-18. Branch `feat/time-mode-off`, 24 commits ahead of `main`, **658 tests
-across 115 suites, all passing**.
+Written 2026-08-18, updated the same day after the cluster/drag fixes below. Branch
+`feat/time-mode-off`, 26 commits ahead of `main`, **673 tests across 118 suites, all
+passing**.
 
 ---
 
@@ -24,7 +25,7 @@ Original brief: `/home/minas/projects/Time_Modes_Off.md`, with a mockup at
 
 ```
 npm start                                          # then http://localhost:8000
-npm test                                           # 658 assertions, no browser
+npm test                                           # 673 assertions, no browser
 
 node scripts/shot.mjs F10 --mode off --layout cluster
 node scripts/shot.mjs --repo kubernetes/kubernetes --seed issue:235959617 \
@@ -75,6 +76,36 @@ whether a module is in the right folder, and it is what forced the vendoring dec
    offsets restores the computed arrangement exactly.
 9. **Vendored d3-force rather than installed.** No package manager, no bundler, and a
    browser cannot resolve a bare specifier without one.
+10. **A hub claims its whole cluster's room, not just its own mark.** `forceFootprint` in
+    `cluster.js` keeps two unrelated marks `footprint + footprint + gap` apart, where a
+    hub's footprint is the reach of the fan hanging off it. Exempt: ancestor/descendant
+    (a fan sits inside its issue's footprint by design), co-parents (two issues sharing a
+    PR are legitimately close — the shared node is drawn between them), and leaf–leaf
+    (that is the collision force's job). Siblings are *not* exempt: sharing a parent is
+    what makes two PRs neighbours, not a licence to overlap. `footprintPairs` is exported
+    and its exemptions are each pinned by a test. Measured on kubernetes #47532 and F10:
+    every claim holds in the fitted picture.
+11. **A drag rearranges the neighbourhood and leaves the picture's orientation alone.**
+    `createDragSimulation` now: (a) draws every free mark toward where it stood when the
+    gesture began (home springs, 0.08), except the marks *linked to* the one in hand,
+    which are the neighbourhood being rearranged and follow freely; (b) keeps the
+    layout's anchor root pinned unless it is the mark in hand; (c) ranges the charge at
+    260px so unlinked marks stop pushing each other; (d) runs the footprint force, so a
+    fan pushed into another fan makes it step aside *as a fan*. Before: on kubernetes
+    #47532 the anchor issue itself travelled 256px during a drag, all 23 unrelated marks
+    moved >30px (one 500px), and on F10 three marks left the box. After: anchor 0px, F10
+    max unrelated 56px and nothing outside, no commit→PR link stretched >1.5×. Reported
+    as "once you start moving items it messes up the orientation".
+12. **Off mode has its own frame, and the mode's chrome is settled BEFORE the layout
+    measures the surface.** `STRUCTURAL_MARGIN` (16px) in `render/timeline.js` replaces
+    the timeline's `MARGIN` (180/120/150/32 — lane labels and axis, which off mode does
+    not draw); `frame()` is the renderer's one look at the mode before `createLayout`.
+    `markMode` in `main.js` now hides the minimap and shows the brush *before* the render
+    that follows a mode change, and runs on preset apply too. Together these were the
+    "cramped" complaint: on a 1500×900 window the layout was fitted into 850×498 of a
+    1150×680 surface, and then the surface grew underneath it. The picture is now about
+    twice its former linear size at the same viewport. `MAX_FILL_SCALE` was blamed and
+    was not the cause — see its comment.
 
 ## 5. What is done
 
@@ -105,13 +136,25 @@ F10 and kubernetes #47532 @ degree 2. Layout costs 9–20 ms.
    modes and one layout engine.
 4. **Label collisions** where two pull requests sit close. The halo keeps them legible, not
    clean.
-5. **`?mode=off` is not in any preset.** `serializeState` carries `mode`, so a saved view
-   should restore it — unverified.
+5. **`?mode=off` is not in any preset.** `serializeState` carries `mode`, and applying a
+   preset now calls `markMode`/`markLayout` so the controls and chrome follow the restored
+   mode — but a full round-trip (save in off mode, reload, apply) is still unverified by
+   eye.
 
 ## 7. Known weak points
 
 - **Clusters on a mesh.** kubernetes #47532 has 3 issues, cross-linked pull requests and 7
   level-skipping links. Rows are the better layout there; clusters are readable but busy.
+  Better since the footprint force (fans no longer graze) and the frame fix (twice the
+  size), but the two minor issues still sit inside the main issue's neighbourhood — they
+  are co-parents of its pull requests, so that is where the links put them.
+- **The clustered drawing is round, and the box is wide.** A balloon layout fills its
+  height and leaves ~half the width; the anisotropic centring in `cluster.js` softens
+  this only slightly. Not fixed; a non-uniform stretch would distort distances, which
+  the layout's claim forbids.
+- **Dragging a fan into another fan moves the other fan a long way** (measured up to
+  ~330px on kubernetes #47532) — intact, commits and all, but far. That is the footprint
+  force keeping its promise; if it reads as too eager, `FOOTPRINT_STRENGTH` is the dial.
 - **F3 lays out in a vertical line** (0% of the width). Three nodes with a pinned root and
   no commits — degenerate, but it looks odd.
 - **`velocityDecay` (0.55) in `cluster.js` is the drag feel dial.** Lower rings for
@@ -137,6 +180,21 @@ F10 and kubernetes #47532 @ degree 2. Layout costs 9–20 ms.
 7. **A test that fails may be asserting the wrong property.** Three did here: F7 has no
    links at all; "a commit is nearer its own PR than any other" is false for a wide group;
    "a lone issue sits at the canvas centre" is false once the fit centres the *drawing*.
+8. **The surface is measured when the layout runs, and the chrome around it must already
+   be in its final state.** The minimap was hidden from `onRendered` — after the layout
+   had fitted the drawing into a surface the minimap was still shortening. Nothing errors;
+   the picture is just half the size it has room for, and every measurement of the layout
+   in Node says it is fine. Anything else that changes the column's height (banner, brush)
+   has the same power. `markMode` runs first now; keep it that way.
+9. **Headless Edge lays the page out in a viewport ~90px shorter than `--window-size`,
+   then captures at the full size.** `window.innerHeight` reads 807 for a 900px window
+   while the app renders. A real browser fires `resize` and re-renders; the screenshot
+   does not, so a viewport-fitted drawing is ~10% smaller in a shot than on a screen of
+   the same size. Compare fill between shots, never against the box. Noted in `shot.mjs`.
+10. **A d3 custom force gets its nodes from `initialize`, and pairs are best decided
+    there.** `forceFootprint` computes its constrained pairs once, in `initialize`, from
+    the links and lanes; doing it per tick would be O(n²) work for nothing, and doing it
+    outside would need the caller to know which nodes the simulation resolved.
 
 ## 9. Where to pick up
 

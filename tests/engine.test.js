@@ -106,23 +106,24 @@ function referenceLayout({ graph, index, bursts, commentBursts, instants, mode }
   return { nodes, geometry, height, objectRow, repeatRow };
 }
 
-const engineLayout = (context, mode) =>
-  createLayout({
-    mode,
-    graph: context.graph,
-    index: context.index,
-    laneTypes: LANE_TYPES,
-    visibleLanes: LANE_TYPES.slice(),
-    bursts: context.bursts,
-    commentBursts: context.commentBursts,
-    instants: context.instants,
-    expandedBursts: new Set(),
-    expandedCommentBursts: new Set(),
-    expandedGroups: new Set(),
-    isVisible: () => true,
-    margin: MARGIN,
-    plotWidth: PLOT_WIDTH,
-  });
+const engineLayoutOptions = (context, mode) => ({
+  mode,
+  graph: context.graph,
+  index: context.index,
+  laneTypes: LANE_TYPES,
+  visibleLanes: LANE_TYPES.slice(),
+  bursts: context.bursts,
+  commentBursts: context.commentBursts,
+  instants: context.instants,
+  expandedBursts: new Set(),
+  expandedCommentBursts: new Set(),
+  expandedGroups: new Set(),
+  isVisible: () => true,
+  margin: MARGIN,
+  plotWidth: PLOT_WIDTH,
+});
+
+const engineLayout = (context, mode) => createLayout(engineLayoutOptions(context, mode));
 
 describe('the extraction did not move anything', () => {
   for (const fixture of FIXTURES) {
@@ -308,6 +309,44 @@ describe('the structural layout', () => {
     for (const node of layout.nodes) {
       assert.ok(node.t, `${node.id} has no timestamp, so the ramp cannot place it`);
     }
+  });
+
+  test('the clustered arrangement names its anchor and sizes every cluster, in canvas pixels', async () => {
+    // What a drag needs from the layout, threaded through the engine: which root the
+    // relaxation pinned (so a drag keeps it pinned) and how much room each hub's cluster
+    // claims (so a drag keeps whole fans apart). Both are cluster-only notions; the
+    // layered arrangement pins nothing and simulates nothing, and reports neither.
+    const context = await contextFor('F10');
+    const clustered = createLayout({
+      ...engineLayoutOptions(context, 'off'),
+      structuralLayout: 'cluster',
+    });
+    assert.ok(
+      clustered.nodes.some((node) => node.id === clustered.anchorId && node.lane === 'issue'),
+      'the anchor is one of the drawn issues',
+    );
+    const pr = clustered.nodes.find((node) => node.lane === 'pull_request');
+    const commit = clustered.nodes.find((node) => node.lane === 'commit');
+    assert.ok(pr.footprint > pr.radius, 'a pull request with commits claims its fan');
+    assert.equal(commit.footprint, commit.radius, 'a leaf claims only itself');
+    // Canvas pixels: the pull request's own commits fall inside its footprint, measured
+    // against the positions the renderer draws at (margin included on both sides).
+    const own = clustered.edges
+      .filter((edge) => edge.source === pr.id || edge.target === pr.id)
+      .map((edge) => (edge.source === pr.id ? edge.target : edge.source))
+      .map((id) => clustered.nodes.find((node) => node.id === id))
+      .filter((node) => node?.lane === 'commit');
+    assert.ok(own.length > 0);
+    for (const c of own) {
+      assert.ok(
+        Math.hypot(c.x - pr.x, c.y - pr.y) <= pr.footprint + c.radius + 1,
+        `${c.id} lies ${Math.hypot(c.x - pr.x, c.y - pr.y).toFixed(0)}px from ${pr.id}, outside its footprint of ${pr.footprint.toFixed(0)}`,
+      );
+    }
+
+    const layered = engineLayout(context, 'off');
+    assert.equal(layered.anchorId, null);
+    assert.ok(layered.nodes.every((node) => node.footprint === undefined));
   });
 
   test('it reports the rows and what the ordering achieved', async () => {

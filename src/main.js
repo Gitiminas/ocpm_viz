@@ -384,6 +384,10 @@ function renderSidebar() {
     query: { repo: graph.meta.repo, seed: graph.meta.seed?.[0]?.id, fixture: query?.fixture },
     onApply: (snapshot) => {
       applyState(state, snapshot);
+      // A saved view may carry a different mode and arrangement; the controls and the
+      // mode's chrome have to follow, and the chrome before the draw (see `markMode`).
+      markMode(state.mode);
+      markLayout(state.structuralLayout);
       renderSidebar();
       redraw();
     },
@@ -551,13 +555,33 @@ el('zrst').onclick = () => {
 };
 
 /** Reflect the active mode in the segmented control. */
+/**
+ * Put every piece of mode-dependent chrome in the state the mode calls for.
+ *
+ * ⚠️ **This must run BEFORE the render that follows a mode change, not after it.** The
+ * off mode fits its layout into the surface it can see, and the surface's height depends
+ * on what sits above it — the minimap in the timeline modes, the time brush in off mode.
+ * When the minimap was hidden from `onRendered`, the first off-mode render measured a
+ * surface still shortened by the minimap, fitted the drawing into that, and the surface
+ * then grew underneath a picture that had already been sized: on a 1500×900 window the
+ * layout got 443px of a 640px-tall surface, and the drawing came out at half the height
+ * it had room for. Reported as the graph being cramped.
+ *
+ * `onRendered` still applies the same two toggles, so a render reached by any other path
+ * ends in a consistent state; this is the one that runs early enough to matter.
+ */
 function markMode(mode) {
+  const structural = isStructuralMode(mode);
   for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
     option.classList.toggle('on', option.dataset.mode === mode);
   }
   // The arrangement control belongs to the off mode alone. Shown in the other three it
   // would be a control that silently does nothing, which this project forbids.
-  el('layoutSeg').style.display = isStructuralMode(mode) ? '' : 'none';
+  el('layoutSeg').style.display = structural ? '' : 'none';
+  // The minimap is a time overview and off mode has no time axis; the brush takes its
+  // slot. `onRendered` hides the brush again for a sub-log with no span to brush.
+  el('minimapWrap').style.display = structural ? 'none' : 'block';
+  el('timeBrushWrap').style.display = structural ? 'block' : 'none';
 }
 
 /**

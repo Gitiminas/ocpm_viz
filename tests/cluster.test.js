@@ -7,7 +7,12 @@ import { indexObjectGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { LANE_TYPES } from '../src/model/activities.js';
 import { buildStructuralNodes, buildStructuralEdges } from '../src/layout/structural.js';
-import { layoutCluster, circularMean, createDragSimulation } from '../src/layout/cluster.js';
+import {
+  layoutCluster,
+  circularMean,
+  createDragSimulation,
+  footprintPairs,
+} from '../src/layout/cluster.js';
 
 /**
  * The radial layout: the alternative arrangement for the off time mode.
@@ -497,5 +502,213 @@ describe('the drag simulation is the layout’s own, running', () => {
       assert.ok(sim.force(name), `the drag simulation is missing the ${name} force`);
     }
     sim.stop();
+  });
+});
+
+describe('a footprint is a claim on the whole cluster’s room, with stated exemptions', () => {
+  // issue:1 → pr:1 → commit:a, commit:b ; issue:1 → pr:2 → commit:c ; issue:2 → pr:2 (co-parent)
+  const nodes = [
+    { id: 'issue:1', lane: 'issue', radius: 15, footprint: 200 },
+    { id: 'issue:2', lane: 'issue', radius: 15, footprint: 80 },
+    { id: 'issue:3', lane: 'issue', radius: 15, footprint: 15 },
+    { id: 'pr:1', lane: 'pull_request', radius: 12, footprint: 60 },
+    { id: 'pr:2', lane: 'pull_request', radius: 12, footprint: 40 },
+    { id: 'commit:a', lane: 'commit', radius: 6 },
+    { id: 'commit:b', lane: 'commit', radius: 6 },
+    { id: 'commit:c', lane: 'commit', radius: 6 },
+  ];
+  const links = [
+    { source: 'issue:1', target: 'pr:1' },
+    { source: 'issue:1', target: 'pr:2' },
+    { source: 'issue:2', target: 'pr:2' },
+    { source: 'pr:1', target: 'commit:a' },
+    { source: 'pr:1', target: 'commit:b' },
+    { source: 'pr:2', target: 'commit:c' },
+  ];
+  const pairs = footprintPairs(nodes, links, 20);
+  const has = (x, y) =>
+    pairs.some(({ a, b }) => (a.id === x && b.id === y) || (a.id === y && b.id === x));
+  const need = (x, y) =>
+    pairs.find(({ a, b }) => (a.id === x && b.id === y) || (a.id === y && b.id === x))?.need;
+
+  test('sibling pull requests are held a footprint apart — the point of the force', () => {
+    assert.ok(has('pr:1', 'pr:2'), 'two pull requests of one issue must be constrained');
+    assert.equal(need('pr:1', 'pr:2'), 60 + 40 + 20);
+  });
+
+  test('a foreign commit is kept out of a pull request’s fan', () => {
+    // commit:c belongs to pr:2; pr:1 has no claim on it, and it must not sit in pr:1's fan.
+    assert.ok(has('pr:1', 'commit:c'));
+    assert.equal(need('pr:1', 'commit:c'), 60 + 6 + 20);
+  });
+
+  test('ancestor and descendant are exempt: a cluster is not blown open from within', () => {
+    assert.ok(!has('issue:1', 'pr:1'), 'a pull request sits inside its issue’s footprint');
+    assert.ok(!has('issue:1', 'commit:a'), 'so does its commit, two levels down');
+    assert.ok(!has('pr:1', 'commit:a'), 'a commit sits inside its own pull request’s fan');
+  });
+
+  test('co-parents are exempt: two issues sharing a pull request are legitimately close', () => {
+    assert.ok(!has('issue:1', 'issue:2'), 'issue:1 and issue:2 share pr:2');
+    // But an issue with no shared child IS held off — this is what gives each issue its
+    // own neighbourhood.
+    assert.ok(has('issue:1', 'issue:3'));
+    assert.equal(need('issue:1', 'issue:3'), 200 + 15 + 20);
+  });
+
+  test('two leaves are not listed: that pair is the collision force’s job', () => {
+    assert.ok(!has('commit:a', 'commit:c'));
+    assert.ok(!has('commit:a', 'commit:b'));
+  });
+
+  test('a node without a footprint is a leaf, and links may already be resolved to nodes', () => {
+    // d3's forceLink replaces ids with node objects; the pairing must read either form.
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const resolved = links.map((l) => ({ source: byId.get(l.source), target: byId.get(l.target) }));
+    const again = footprintPairs(nodes, resolved, 20);
+    assert.equal(again.length, pairs.length);
+    // issue:3 has footprint === radius, so against a leaf it is not a hub either.
+    assert.ok(!has('issue:3', 'commit:a'));
+  });
+
+  test('the pair list is a function of the graph, not of input order', () => {
+    const shuffled = footprintPairs(nodes.slice().reverse(), links.slice().reverse(), 20);
+    assert.deepEqual(
+      shuffled.map(({ a, b, need }) => `${a.id}|${b.id}|${need}`),
+      pairs.map(({ a, b, need }) => `${a.id}|${b.id}|${need}`),
+    );
+  });
+});
+
+describe('the layout keeps whole clusters apart, and says how big each one is', () => {
+  test('every footprint claim holds in the fitted picture, on the busiest fixture', async () => {
+    // ⚠️ Post-fit — trap 8.1. Footprints and positions must be in the same pixels for
+    // this to mean anything, which is why `layoutCluster` scales the footprints itself.
+    const { nodes, edges, positions, footprints } = await clusterFor('F10');
+    const marks = nodes.map((n) => ({
+      id: n.id,
+      lane: n.lane,
+      radius: n.radius ?? 8,
+      footprint: footprints.get(n.id),
+      ...positions.get(n.id),
+    }));
+    const pairs = footprintPairs(marks, edges.map((e) => ({ source: e.source, target: e.target })));
+    assert.ok(pairs.length > 20, `expected many constrained pairs on F10, got ${pairs.length}`);
+    const broken = pairs.filter(({ a, b, need }) => Math.hypot(a.x - b.x, a.y - b.y) < need * 0.98);
+    assert.deepEqual(
+      broken.map(({ a, b }) => `${a.id} ↔ ${b.id}`),
+      [],
+      'a cluster is sitting inside another’s footprint',
+    );
+  });
+
+  test('a hub’s footprint is its cluster, a leaf’s is its own radius', async () => {
+    const { nodes, positions, footprints } = await clusterFor('F10');
+    const pr = nodes.find((n) => n.lane === 'pull_request');
+    const commit = nodes.find((n) => n.lane === 'commit');
+    assert.ok(footprints.get(pr.id) > pr.radius, 'a pull request with commits claims more than itself');
+    assert.equal(footprints.get(commit.id), commit.radius ?? 8);
+    // And it is in fitted pixels: the furthest commit of a pull request lies within it.
+    const own = nodes.filter((n) => n.lane === 'commit');
+    const at = (id) => positions.get(id);
+    const furthest = Math.min(...own.map((c) => Math.hypot(at(c.id).x - at(pr.id).x, at(c.id).y - at(pr.id).y)));
+    assert.ok(furthest < footprints.get(pr.id) * 3, 'footprint is not in the same pixels as positions');
+  });
+
+  test('the anchor is named, and it is the busiest issue', async () => {
+    const { nodes, edges, anchorId } = await clusterFor('F10');
+    assert.ok(nodes.some((n) => n.id === anchorId && n.lane === 'issue'));
+    const degree = new Map();
+    for (const e of edges) {
+      degree.set(e.source, (degree.get(e.source) ?? 0) + 1);
+      degree.set(e.target, (degree.get(e.target) ?? 0) + 1);
+    }
+    const busiest = nodes
+      .filter((n) => n.lane === 'issue')
+      .sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0))[0];
+    assert.equal(anchorId, busiest.id);
+  });
+});
+
+describe('a drag rearranges the neighbourhood and leaves the picture’s orientation alone', () => {
+  // A picture with two unrelated hubs and a stray commit far away.
+  const picture = () => [
+    { id: 'issue:1', lane: 'issue', radius: 15, footprint: 150, x: 0, y: 0 },
+    { id: 'pr:1', lane: 'pull_request', radius: 12, footprint: 40, x: 130, y: 0 },
+    { id: 'commit:a', lane: 'commit', radius: 6, x: 180, y: 0 },
+    { id: 'pr:2', lane: 'pull_request', radius: 12, footprint: 40, x: -130, y: 0 },
+    { id: 'commit:b', lane: 'commit', radius: 6, x: -180, y: 0 },
+    { id: 'issue:9', lane: 'issue', radius: 15, footprint: 15, x: 0, y: 400 },
+  ];
+  const links = () => [
+    { source: 'issue:1', target: 'pr:1' },
+    { source: 'pr:1', target: 'commit:a' },
+    { source: 'issue:1', target: 'pr:2' },
+    { source: 'pr:2', target: 'commit:b' },
+  ];
+  const run = (nodes, opts) => {
+    const sim = createDragSimulation(nodes, links(), opts);
+    sim.alphaTarget(0.3).restart().stop();
+    for (let i = 0; i < 300; i++) sim.tick(); // a held gesture
+    sim.alphaTarget(0);
+    for (let i = 0; i < 300; i++) sim.tick(); // released, coasting to rest
+    sim.stop();
+    return nodes;
+  };
+  const drag = (nodes, id, dx) => {
+    const handle = nodes.find((n) => n.id === id);
+    handle.fx = handle.x + dx;
+    handle.fy = handle.y;
+    return nodes;
+  };
+
+  test('the anchor stays put unless it is the mark in hand', () => {
+    const nodes = run(drag(picture(), 'pr:1', 240), { anchorId: 'issue:1' });
+    const anchor = nodes.find((n) => n.id === 'issue:1');
+    assert.equal(anchor.x, 0);
+    assert.equal(anchor.y, 0);
+
+    // Dragging the anchor itself must work: the caller's fx wins over the pinning.
+    const again = run(drag(picture(), 'issue:1', 240), { anchorId: 'issue:1' });
+    assert.equal(again.find((n) => n.id === 'issue:1').x, 240);
+  });
+
+  test('an unrelated mark drifts a little and comes home; a linked neighbour follows', () => {
+    const nodes = run(drag(picture(), 'pr:1', 240), { anchorId: 'issue:1' });
+    const stray = nodes.find((n) => n.id === 'issue:9');
+    assert.ok(
+      Math.hypot(stray.x - 0, stray.y - 400) < 15,
+      `an unrelated issue wandered ${Math.hypot(stray.x, stray.y - 400).toFixed(0)}px`,
+    );
+    const follower = nodes.find((n) => n.id === 'commit:a');
+    assert.ok(follower.x > 180 + 120, `the dragged pull request’s commit did not follow: ${follower.x}`);
+  });
+
+  test('without the memory, the same drag lets a whole side of the picture wander', () => {
+    // ⚠️ This is the control: it pins the fix to its cause. Home springs off, and the
+    // unrelated issue is repelled from wherever the drag sends the neighbourhood, with
+    // nothing to bring it back.
+    const nodes = run(drag(picture(), 'pr:1', 240), { anchorId: 'issue:1', homeStrength: 0 });
+    const held = run(drag(picture(), 'pr:1', 240), { anchorId: 'issue:1' });
+    const wander = (list) => {
+      const n = list.find((m) => m.id === 'pr:2');
+      return Math.hypot(n.x + 130, n.y);
+    };
+    assert.ok(
+      wander(nodes) > wander(held),
+      `home springs made no difference: ${wander(nodes).toFixed(0)} vs ${wander(held).toFixed(0)}`,
+    );
+  });
+
+  test('two clusters pushed together step aside as clusters — fans do not interpenetrate', () => {
+    // Drag pr:1 across the picture onto pr:2's fan.
+    const nodes = run(drag(picture(), 'pr:1', -260), { anchorId: 'issue:1' });
+    const pr1 = nodes.find((n) => n.id === 'pr:1');
+    const pr2 = nodes.find((n) => n.id === 'pr:2');
+    const b = nodes.find((n) => n.id === 'commit:b');
+    // pr:2 has moved out of the way rather than letting pr:1 land on top of it…
+    assert.ok(Math.hypot(pr1.x - pr2.x, pr1.y - pr2.y) > 40 + 40, 'the two fans overlap');
+    // …and took its own commit with it, so the fan is still a fan.
+    assert.ok(Math.hypot(pr2.x - b.x, pr2.y - b.y) < 50 * 1.6, 'pr:2 lost its commit on the way');
   });
 });

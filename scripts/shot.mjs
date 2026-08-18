@@ -143,6 +143,14 @@ try {
        * it honours a reader who has asked for less movement — same picture, no journey.
        */
       '--force-prefers-reduced-motion',
+      /*
+       * ⚠️ The page lays out in a viewport SHORTER than this, and is then captured at
+       * this size. Measured: `--window-size=1500,900` gives `window.innerHeight` 807 while
+       * the app renders, and a 900px-tall image afterwards. A real browser fires `resize`
+       * and the app re-renders; headless does not, so anything sized to the viewport —
+       * the off mode fits its drawing to the surface — comes out ~10% smaller here than
+       * on a screen of the same size. Compare fill between shots, not against the box.
+       */
       `--window-size=${width},${height}`,
       // The app fetches its payload and lays out with d3 before anything is drawn, so a
       // naive screenshot catches a blank page. Virtual time lets the render finish

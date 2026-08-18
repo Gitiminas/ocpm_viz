@@ -22,7 +22,7 @@ import { deriveBursts, indexBurstsByCommit } from '../model/bursts.js';
 import { deriveCommentBursts } from '../model/commentBursts.js';
 import { buildAdjacency, focusSet } from '../model/graph.js';
 import { deriveCommitGroups } from '../model/commitGroups.js';
-import { createLayout } from '../layout/engine.js';
+import { createLayout, isStructuralMode } from '../layout/engine.js';
 import { edgeDirection, brushRange } from '../layout/structural.js';
 import { renderStructuralEdges, renderStructuralNodes } from './structural.js';
 import { createMotion } from './motion.js';
@@ -40,7 +40,22 @@ import {
 import { TYPE, drawSymbol, typeColor, objectShade } from './theme.js';
 import { isNodeVisible, isObjectVisible, isLinkVisible, actorPreview } from '../state/state.js';
 
+/**
+ * The timeline's frame: room on the left for lane labels, at the bottom for the time axis
+ * and its ticks, on the right for the last label to overhang.
+ */
 export const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
+/**
+ * The off mode's frame. Nothing is drawn in its margins — no lane labels, no axis — so
+ * they are a hairline, and the structural layout gets the drawing surface.
+ *
+ * ⚠️ It used to get the timeline's frame, and that was most of the "cramped" complaint:
+ * on a 1500×900 window the timeline margins reserve 300px of width and 182px of height
+ * for things off mode does not draw, so the layout was fitted into 850×498 of a
+ * 1150×680 surface and came out at a third of the width. The layout's own `padding`
+ * (see `engine.js`) still keeps labels off the edge; this is only the frame around it.
+ */
+export const STRUCTURAL_MARGIN = { top: 16, right: 16, bottom: 16, left: 16 };
 const MIN_PLOT_WIDTH = 820;
 
 export function createTimeline({ elements, state, laneTypes, tooltip, minimap, handlers }) {
@@ -101,8 +116,35 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
    * stayed fixed while `plotWidth` grew.
    */
   function structuralPlotHeight() {
-    const available = elements.scroll.clientHeight - MARGIN.top - MARGIN.bottom;
+    const available =
+      elements.scroll.clientHeight - STRUCTURAL_MARGIN.top - STRUCTURAL_MARGIN.bottom;
     return Math.max(420, available) * state.k;
+  }
+
+  /** The structural layout's width — the surface less its own frame, times the zoom. */
+  function structuralPlotWidth() {
+    const available =
+      elements.scroll.clientWidth - STRUCTURAL_MARGIN.left - STRUCTURAL_MARGIN.right;
+    return Math.max(MIN_PLOT_WIDTH, available) * state.k;
+  }
+
+  /**
+   * The box the active engine draws into: its margin and the plot size inside it.
+   *
+   * This is the renderer's one look at the mode before the layout runs, and it is here
+   * because the frame is a property of the drawing surface, not of the arrangement — the
+   * engine is told what room it has, it does not measure the page. Everything after
+   * `createLayout` reads `layout.kind`, never `state.mode`.
+   */
+  function frame() {
+    if (isStructuralMode(state.mode)) {
+      return {
+        margin: STRUCTURAL_MARGIN,
+        plotWidth: structuralPlotWidth(),
+        plotHeight: structuralPlotHeight(),
+      };
+    }
+    return { margin: MARGIN, plotWidth: plotWidth() };
   }
 
   /** Swap in a new sub-log. Everything derived from the graph is rebuilt here. */
@@ -193,9 +235,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       isLinkVisible: (link) => isLinkVisible(link, index.byId, state, groupsByCommit),
       structuralLayout: state.structuralLayout,
       nodeNudges: state.nodeNudges,
-      margin: MARGIN,
-      plotWidth: plotWidth(),
-      plotHeight: structuralPlotHeight(),
+      ...frame(),
     });
 
     const { nodes, geometry, anchors, objectRow, scales, rankOrder, rankMax, rankTimes,
@@ -244,6 +284,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         // off them.
         edges: layout.edges,
         settling: layout.structuralLayout === 'cluster',
+        anchorId: layout.anchorId,
         // Stop the idle drift for the duration of a gesture: a deliberate act should not
         // have the picture breathing under it.
         hold: () => motion.hold(),
@@ -260,7 +301,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       handlers.onRendered({
         nodes,
         scales: null,
-        plotWidth: plotWidth(),
+        plotWidth: structuralPlotWidth(),
         basePlotWidth,
         kind: 'structural',
         extent: layout.extent,

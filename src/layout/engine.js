@@ -212,7 +212,13 @@ function layoutTemporal({
 
 /** Default drawing box for the structural layout, when the caller measures nothing. */
 export const STRUCTURAL_PLOT_HEIGHT = 620;
-const STRUCTURAL_PADDING = 60;
+/**
+ * Room kept clear inside the box, so a mark on the rim still has its label and its
+ * hovercard anchor on the surface. This — not the renderer's frame — is what keeps the
+ * drawing off the edge; the frame around it is a hairline in off mode (`STRUCTURAL_MARGIN`
+ * in `render/timeline.js`).
+ */
+const STRUCTURAL_PADDING = 48;
 
 /**
  * The structural layout: position encodes relationships, and time is demoted.
@@ -261,14 +267,23 @@ function layoutStructural({
   // `rings` and `rows` are the same thing under two names; `crossings` is a property only
   // the layered arrangement can meaningfully report, since a crossing count between two
   // rows says nothing about a circle.
-  const { positions, rows, levels, crossings = null, waypoints = new Map() } = arrange(
-    nodes,
-    edges,
-    box,
-  );
+  const {
+    positions,
+    rows,
+    levels,
+    crossings = null,
+    waypoints = new Map(),
+    footprints = new Map(),
+    anchorId = null,
+  } = arrange(nodes, edges, box);
 
   for (const node of nodes) {
     const at = positions.get(node.id);
+    // The radius of the cluster hanging off this node, in canvas pixels — what a drag's
+    // simulation needs to keep whole fans apart. Only the clustered arrangement has the
+    // notion; the layered one leaves it undefined and the simulation treats the node as
+    // a leaf, which is right, since a drag there runs no simulation at all.
+    node.footprint = footprints.get(node.id);
     // Where the layout put it, kept separately from where it ends up: a drag is measured
     // against this, so nudges accumulate against the computed answer rather than against
     // each other.
@@ -339,6 +354,9 @@ function layoutStructural({
     crossings,
     waypoints: placedWaypoints,
     structuralLayout,
+    // The root the clustered relaxation pinned, so a drag can keep it pinned. Null for the
+    // layered arrangement, which pins nothing because it simulates nothing.
+    anchorId,
   };
 }
 

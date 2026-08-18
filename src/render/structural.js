@@ -348,6 +348,7 @@ export function renderStructuralNodes({
   brush = null,
   edges = [],
   settling = false,
+  anchorId = null,
   hold = () => {},
   release = () => {},
 }) {
@@ -440,6 +441,8 @@ export function renderStructuralNodes({
       // layout put the mark rather than from wherever it currently sits.
       radius: node.radius,
       lane: node.lane,
+      // The cluster's radius, where the arrangement knows one — see `layoutStructural`.
+      footprint: node.footprint,
       layoutX: node.layoutX ?? node.x,
       layoutY: node.layoutY ?? node.y,
       // Where this mark was drawn last time, so it slides rather than jumps. A mark that
@@ -457,6 +460,7 @@ export function renderStructuralNodes({
           marks: live,
           edges,
           settling,
+          anchorId,
           hold,
           release,
         })
@@ -546,7 +550,16 @@ function enableDrag(
   group,
   mark,
   node,
-  { onDragged, repaint, marks, edges, settling, hold = () => {}, release = () => {} },
+  {
+    onDragged,
+    repaint,
+    marks,
+    edges,
+    settling,
+    anchorId = null,
+    hold = () => {},
+    release = () => {},
+  },
 ) {
   let from = null;
   let travelled = 0;
@@ -557,18 +570,28 @@ function enableDrag(
   /**
    * Start a live simulation over the whole drawing.
    *
-   * ⚠️ **Nothing is pinned but the mark under the pointer**, and an earlier version pinned
-   * everything more than two hops away. That was added after a measurement showing a drag
-   * flinging an unrelated pull request 210px — but that measurement was taken with the
-   * hand-written solver and its charge signs inverted, so repulsion was running some four
-   * orders of magnitude too strong. The reason for pinning was a bug, and it went with the
-   * bug; the pinning stayed, and quietly cost the thing dragging is for. Reported as the
-   * re-order being minimal, with everything settling back where it was.
+   * ⚠️ **Nothing is pinned but the mark under the pointer and the layout's anchor root,
+   * and every free mark remembers where it started.** Two earlier versions got this wrong
+   * in opposite directions, and both are worth knowing about:
    *
-   * Re-measured with these forces on kubernetes #47532: dragging a pull request 240px now
-   * moves all 34 marks more than 5px and only 3 of them more than 60px — the whole picture
-   * shuffling gently to make room, which is what a graph tool does and what makes a drag
-   * worth performing.
+   *   - The first pinned everything more than two hops away, after a measurement showed a
+   *     drag flinging an unrelated pull request 210px. That measurement was taken with a
+   *     hand-written solver whose charge signs were inverted, so repulsion ran four orders
+   *     of magnitude too strong; the pinning outlived the bug and quietly cost the thing
+   *     dragging is for. Reported as the re-order being minimal.
+   *   - The second freed everything and pinned only the mark in hand. With no centring
+   *     force, no range on the repulsion and no anchor, a held gesture let unlinked marks
+   *     push each other without limit: on kubernetes #47532 the anchor issue itself
+   *     travelled 256px, all 23 unrelated marks moved more than 30px and one 500px, and
+   *     on F10 three marks left the box. Reported as the picture losing its orientation
+   *     so that nothing could be understood any more.
+   *
+   * What runs now is in `createDragSimulation`: home springs, a ranged charge, the
+   * footprint force, and the anchor held. Re-measured on the same sub-logs: the anchor
+   * moves 0px, F10's unrelated marks move at most 56px and none leave the box, and no
+   * commit→pull-request link stretches. What still moves a long way is a *whole fan* that
+   * the dragged fan is pushed into — it steps aside intact, commits and all, which is the
+   * behaviour a graph tool owes a drag.
    */
   function begin() {
     const simNodes = marks.map((other) => {
@@ -576,10 +599,14 @@ function enableDrag(
         id: other.id,
         lane: other.lane,
         radius: other.radius,
+        footprint: other.footprint,
         x: other.x,
         y: other.y,
       };
-      // Only the mark under the pointer is held. Everything else is free.
+      // The mark under the pointer is held here; the layout's anchor root is held by the
+      // simulation itself (`createDragSimulation`), unless it is the mark in hand.
+      // Everything else is free — and remembers where it started, which is what keeps
+      // a drag from re-orienting the whole picture.
       if (other.id === mark.id) {
         seed.fx = other.x;
         seed.fy = other.y;
@@ -591,7 +618,7 @@ function enableDrag(
       .filter((edge) => byId.has(edge.source) && byId.has(edge.target))
       .map((edge) => ({ source: edge.source, target: edge.target }));
 
-    simulation = createDragSimulation(simNodes, simLinks);
+    simulation = createDragSimulation(simNodes, simLinks, { anchorId });
     simulation.on('tick', () => {
       for (const other of marks) {
         const at = byId.get(other.id);

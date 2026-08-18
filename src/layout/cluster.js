@@ -41,7 +41,7 @@
  * Pure, DOM-free and deterministic, like every other module here.
  */
 
-import { assignLayers, hashId } from './layered.js';
+import { assignLayers, hashId, LAYER_ORDER } from './layered.js';
 import {
   forceSimulation,
   forceLink,
@@ -53,13 +53,6 @@ import {
 
 /** Clear space between two marks, in pixels. */
 const GAP = 20;
-/**
- * How hard each kind of mark holds others off, in the simulation.
- *
- * A pull request has to keep a whole fan's worth of room clear around it, so it pushes far
- * harder than a commit does — two commits inside one fan should sit close, because that
- * closeness is what makes the fan read as one group.
- */
 /**
  * How hard each kind of mark holds others off.
  *
@@ -95,6 +88,40 @@ const CENTRING = 0.05;
 /** Extra clear space the collision force keeps between two marks. */
 const COLLIDE_PADDING = 5;
 /**
+ * Beyond this distance two marks stop pushing each other at all.
+ *
+ * ⚠️ Without a cutoff, repulsion between two marks that share no link has nothing to
+ * balance it, and while a drag holds the simulation warm the pair separates without
+ * limit — measured on kubernetes #47532: dragging one pull request 240px moved every
+ * one of the 23 unrelated marks more than 30px, one of them 500px, and on F10 three left
+ * the box altogether. Repulsion is a *local* claim ("do not sit on me"), so it is given a
+ * local range. Long enough to keep two fans from touching, and no longer.
+ */
+const CHARGE_RANGE = 260;
+/**
+ * How firmly a mark holds its cluster's room against marks that are not part of it.
+ *
+ * Under 1 on purpose: a footprint is a *claim*, and where two claims cannot both be met
+ * — a pull request pinned by the pointer inside another's fan — the springs and the
+ * collision force still get a say. Ties are settled by compromise rather than by whichever
+ * force ran last.
+ */
+const FOOTPRINT_STRENGTH = 0.5;
+/**
+ * How firmly a dragged picture remembers where everything was.
+ *
+ * The drag simulation carries no centring force — that would haul the neighbourhood back
+ * toward the middle of a drawing the reader is deliberately pulling something out of.
+ * What it needs instead is a memory: each free mark is drawn gently toward where it stood
+ * when the gesture began, so a drag rearranges the neighbourhood of the mark in hand and
+ * leaves the orientation of the picture alone. Strong enough that an unrelated mark
+ * drifts a few pixels and comes back rather than wandering off. Marks linked to the one in
+ * hand carry no memory at all (see `createDragSimulation`): they ARE the neighbourhood
+ * being rearranged, and a spring home would leave a dragged fan permanently stretched —
+ * measured at 81px against a 50px rest length before that exemption existed.
+ */
+const HOME_STRENGTH = 0.08;
+/**
  * How much of a full turn a child fan may use.
  *
  * ⚠️ Less than a full circle on purpose: a cluster fans *outward*, away from its parent's
@@ -109,10 +136,17 @@ const FILL = 0.94;
 /**
  * How far a small drawing may be stretched to use the space it has.
  *
- * Capped for the same reason the layered arrangement caps its own: filling the box
- * unconditionally would push two commits of one pull request as far apart as two
- * unrelated ones, and proximity is the entire claim this layout makes. A cap lets a
- * compact graph take the room without pretending to be a big one.
+ * Capped for the same reason the layered arrangement caps its own. A uniform scale keeps
+ * every *ratio* of distances — but the marks do not scale with it, and a reader judges
+ * "near" against the size of the marks. Blow a three-node sub-log up to fill a screen and
+ * its 50px rest length becomes 300px of empty canvas: proximity, which is the entire claim
+ * this layout makes, stops reading as proximity. A cap lets a compact graph take the room
+ * without pretending to be a big one.
+ *
+ * ⚠️ If the picture looks small, check the FRAME before touching this. The cap was blamed
+ * for a cramped picture that was in fact fitted into a surface still shortened by the
+ * minimap (`markMode` in `main.js`) and framed by the timeline's margins
+ * (`STRUCTURAL_MARGIN` in `render/timeline.js`). Neither was this number.
  */
 const MAX_FILL_SCALE = 2.6;
 
@@ -244,6 +278,153 @@ function placeChildren(node, at, facing, { children, primary, ring, reach, posit
 }
 
 /**
+ * The level a lane sits at, for the footprint force. Same order the layers use, so
+ * "deeper" means the same thing here as it does in `assignLayers`.
+ */
+const levelOfLane = (lane) => {
+  const level = LAYER_ORDER.indexOf(lane);
+  return level === -1 ? LAYER_ORDER.length : level;
+};
+
+/**
+ * Which pairs of marks the footprint force keeps apart, and how far.
+ *
+ * A mark's `footprint` is the radius of the cluster hanging off it — its own radius for a
+ * leaf, the whole fan's reach for a hub. Two marks that have nothing to do with each other
+ * must stay `footprint + footprint + padding` apart, which is what stops a pull request's
+ * fan from grazing its neighbour's and keeps a foreign issue from nesting inside one.
+ *
+ * ⚠️ **What "nothing to do with each other" excludes, and why each exclusion is there:**
+ *
+ *   ancestor / descendant   a pull request sits *inside* its issue's footprint by
+ *                           design, and its commits inside its own. Constraining these
+ *                           would blow every cluster open from within.
+ *   co-parents              two issues that share a pull request, or two pull requests
+ *                           that share a commit, are legitimately close — the shared
+ *                           node is drawn between them (see `layoutCluster`). Holding
+ *                           them a full footprint apart would stretch the very link that
+ *                           makes them neighbours.
+ *   two leaves              radius + radius is exactly what the collision force already
+ *                           enforces; listing the pair twice would double-count it.
+ *
+ * Siblings — two pull requests of one issue, two commits of one pull request — are *not*
+ * exempt. Sharing a parent is what makes them neighbours in the ring; it is not a licence
+ * to overlap, and keeping sibling fans apart is the whole point.
+ *
+ * Exported for the tests, which pin the exemptions: each one is a rule that, if silently
+ * dropped, would produce a picture that looks plausible and is wrong.
+ *
+ * @param {Array<{id:string, lane:string, radius:number, footprint?:number}>} nodes
+ * @param {Array<{source:string|object, target:string|object}>} links
+ * @param {number} padding
+ * @returns {Array<{a:object, b:object, need:number}>}
+ */
+export function footprintPairs(nodes, links, padding = GAP) {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const footprint = (node) => node.footprint ?? node.radius ?? 0;
+  const isHub = (node) => footprint(node) > (node.radius ?? 0);
+  const idOf = (end) => (typeof end === 'object' ? end.id : end);
+
+  // Down-neighbours: the linked marks one level deeper. Ancestry follows these.
+  const below = new Map(nodes.map((node) => [node.id, new Set()]));
+  for (const link of links) {
+    const a = byId.get(idOf(link.source));
+    const b = byId.get(idOf(link.target));
+    if (!a || !b) continue;
+    const la = levelOfLane(a.lane);
+    const lb = levelOfLane(b.lane);
+    if (la < lb) below.get(a.id).add(b.id);
+    else if (lb < la) below.get(b.id).add(a.id);
+  }
+
+  // Everything reachable going only downwards — three levels, so this is small.
+  const descendants = new Map();
+  const descend = (id) => {
+    if (descendants.has(id)) return descendants.get(id);
+    const found = new Set();
+    for (const child of below.get(id) ?? []) {
+      found.add(child);
+      for (const deeper of descend(child)) found.add(deeper);
+    }
+    descendants.set(id, found);
+    return found;
+  };
+  for (const node of nodes) descend(node.id);
+
+  const shareAChild = (a, b) => {
+    for (const child of below.get(a.id)) if (below.get(b.id).has(child)) return true;
+    return false;
+  };
+
+  const pairs = [];
+  // In id order on both sides: the force sums in list order, and float addition is not
+  // associative, so an unordered pair list would make the picture depend on input order.
+  const ordered = nodes.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (let i = 0; i < ordered.length; i++) {
+    for (let j = i + 1; j < ordered.length; j++) {
+      const a = ordered[i];
+      const b = ordered[j];
+      if (!isHub(a) && !isHub(b)) continue;
+      if (descendants.get(a.id).has(b.id) || descendants.get(b.id).has(a.id)) continue;
+      if (levelOfLane(a.lane) === levelOfLane(b.lane) && shareAChild(a, b)) continue;
+      pairs.push({ a, b, need: footprint(a) + footprint(b) + padding });
+    }
+  }
+  return pairs;
+}
+
+/**
+ * A force that keeps whole clusters apart, not just marks.
+ *
+ * `forceCollide` knows each mark's radius and nothing else, so it lets one pull request's
+ * fan run straight through another's as long as no two marks touch — the fans on
+ * kubernetes #47532 did exactly that. This force treats a hub as if it were as large as
+ * the cluster it carries. It is written like `forceCollide`: a positional correction split
+ * between the pair, applied through the velocities so damping still applies, and not
+ * scaled by alpha so the claim holds all the way to rest.
+ *
+ * Which pairs, and how far, is decided once in `initialize` by `footprintPairs`; the
+ * per-tick work is one distance per constrained pair.
+ */
+export function forceFootprint(links, { padding = GAP, strength = FOOTPRINT_STRENGTH } = {}) {
+  let pairs = [];
+
+  function force() {
+    for (const { a, b, need } of pairs) {
+      let dx = b.x - a.x;
+      let dy = b.y - a.y;
+      let distance = Math.hypot(dx, dy);
+      if (distance >= need) continue;
+      if (distance < 1e-6) {
+        // Coincident: pick a direction from the ids, so the tie-break is deterministic.
+        const angle = ((hashId(`${a.id}|${b.id}`) & 0xffff) / 0x10000) * Math.PI * 2;
+        dx = Math.cos(angle);
+        dy = Math.sin(angle);
+        distance = 1e-6;
+      }
+      const push = ((need - distance) / distance) * strength * 0.5;
+      // A pinned mark (fx/fy set) does not move; d3 resets its position each tick, so
+      // giving it velocity is harmless — but the free partner should then take the whole
+      // correction rather than half, or the pair never separates.
+      const aFixed = a.fx != null && a.fy != null;
+      const bFixed = b.fx != null && b.fy != null;
+      const shareA = aFixed ? 0 : bFixed ? 2 : 1;
+      const shareB = bFixed ? 0 : aFixed ? 2 : 1;
+      a.vx -= dx * push * shareA;
+      a.vy -= dy * push * shareA;
+      b.vx += dx * push * shareB;
+      b.vy += dy * push * shareB;
+    }
+  }
+
+  force.initialize = (nodes) => {
+    pairs = footprintPairs(nodes, links, padding);
+  };
+
+  return force;
+}
+
+/**
  * Apply the shared force configuration to a simulation.
  *
  * ⚠️ **One configuration, two callers.** The layout ticks a simulation to convergence; a
@@ -252,6 +433,10 @@ function placeChildren(node, at, facing, { children, primary, ring, reach, posit
  * touched, and the reader would have no way to know which was the arrangement's real
  * answer. Defining it once is what makes dragging feel like moving the same graph rather
  * than provoking a different one.
+ *
+ * Nodes may carry a `footprint` — the radius of the cluster hanging off them, in the same
+ * pixels as their positions — which `forceFootprint` uses to keep whole clusters apart.
+ * A node without one is treated as a leaf.
  */
 export function withForces(simulation, links, laneOf) {
   const kind = (link) => {
@@ -270,12 +455,15 @@ export function withForces(simulation, links, laneOf) {
     )
     .force(
       'charge',
-      forceManyBody().strength((node) => CHARGE[node.lane] ?? CHARGE.commit),
+      forceManyBody()
+        .strength((node) => CHARGE[node.lane] ?? CHARGE.commit)
+        .distanceMax(CHARGE_RANGE),
     )
     .force(
       'collide',
       forceCollide().radius((node) => node.radius + COLLIDE_PADDING),
-    );
+    )
+    .force('footprint', forceFootprint(links));
 }
 
 /**
@@ -288,23 +476,76 @@ export function withForces(simulation, links, laneOf) {
  * the picture wobbles for seconds after you let go, higher and it may as well be the
  * solver it replaced.
  *
- * Returned stopped. The caller pins what must not move, reheats it, and drives its own
+ * Two things hold the picture together while it runs, and both were missing in the
+ * version that scattered kubernetes #47532 across the screen:
+ *
+ *   home springs   every free mark is drawn toward where it stood when the gesture began
+ *                  (`homeX` / `homeY`, taken from the node's position on entry) — except
+ *                  the marks linked to the one in hand, which are the neighbourhood being
+ *                  rearranged and follow it freely. The rest of the picture keeps its
+ *                  orientation, so what the reader learned from it still holds.
+ *   the anchor     the root the layout pinned stays pinned here too, unless it is the mark
+ *                  in hand. The layout pins it so the drawing cannot rotate or drift as a
+ *                  body between renders; letting a drag do exactly that undid the point.
+ *
+ * ⚠️ Mutates the nodes it is given, as d3-force always does — and additionally stamps
+ * `homeX` / `homeY` / `homeStrength` where they are absent. Callers pass throwaway seeds.
+ *
+ * Returned stopped. The caller pins the mark in hand (`fx`/`fy`) BEFORE calling this, so
+ * its neighbours can be told apart from the rest; then reheats it and drives its own
  * redraw from the tick event.
+ *
+ * @param {Array}  nodes  the mark being dragged already carries `fx`/`fy`
+ * @param {Array}  links
+ * @param {object} [options]
+ * @param {string|null} [options.anchorId]  the layout's pinned root, held still unless
+ *   it is the mark being dragged (which the caller has already pinned by setting `fx`)
+ * @param {number} [options.homeStrength]
  */
-export function createDragSimulation(nodes, links) {
+export function createDragSimulation(
+  nodes,
+  links,
+  { anchorId = null, homeStrength = HOME_STRENGTH } = {},
+) {
   const laneOf = new Map(nodes.map((node) => [node.id, node.lane]));
+  const idOf = (end) => (typeof end === 'object' ? end.id : end);
+
+  // The marks in hand are the pinned ones that are not the anchor; their graph neighbours
+  // are the neighbourhood, and go without a memory.
+  const held = new Set(
+    nodes.filter((node) => node.fx != null && node.id !== anchorId).map((node) => node.id),
+  );
+  const neighbourhood = new Set();
+  for (const link of links) {
+    const a = idOf(link.source);
+    const b = idOf(link.target);
+    if (held.has(a)) neighbourhood.add(b);
+    if (held.has(b)) neighbourhood.add(a);
+  }
+
+  for (const node of nodes) {
+    node.homeX ??= node.x;
+    node.homeY ??= node.y;
+    node.homeStrength ??= neighbourhood.has(node.id) ? 0 : homeStrength;
+    if (node.id === anchorId && node.fx == null) {
+      node.fx = node.x;
+      node.fy = node.y;
+    }
+  }
   return withForces(forceSimulation(nodes), links, laneOf)
-    // No centring force while dragging: it would haul the neighbourhood back toward the
-    // middle of a drawing the reader is deliberately pulling something out of.
+    .force('homeX', forceX((node) => node.homeX).strength((node) => node.homeStrength))
+    .force('homeY', forceY((node) => node.homeY).strength((node) => node.homeStrength))
     .velocityDecay(0.55)
     .alphaDecay(0.06)
     .stop();
 }
-
 /**
  * Lay a sub-log out as clusters of clusters.
  *
- * @returns {{positions: Map, levels: Array<Array>, waypoints: Map}}
+ * @returns {{positions: Map, levels: Array<Array>, waypoints: Map, footprints: Map,
+ *   anchorId: string|null}} — `footprints` is each node's cluster radius in the SAME
+ *   pixels as `positions` (post-fit), so a drag can hand it straight to the simulation;
+ *   `anchorId` is the one root the relaxation pinned, so a drag can keep it pinned
  */
 export function layoutCluster(nodes, edges, { width, height, padding = 60, radiusOf } = {}) {
   const radius = radiusOf || ((node) => node.radius ?? 8);
@@ -443,7 +684,16 @@ export function layoutCluster(nodes, edges, { width, height, padding = 60, radiu
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
     .map((node) => {
       const at = positions.get(node.id);
-      const seed = { id: node.id, lane: node.lane, radius: radius(node), x: at.x, y: at.y };
+      const seed = {
+        id: node.id,
+        lane: node.lane,
+        radius: radius(node),
+        // The whole cluster's radius, so `forceFootprint` can keep fans apart. Pre-fit
+        // pixels, like everything else in the simulation.
+        footprint: reach.get(node.id) ?? radius(node),
+        x: at.x,
+        y: at.y,
+      };
       // Roots are pinned. A middle that drifts is not a middle, and pinning is also what
       // stops the springs walking the whole drawing off as a body.
       if (rootIds.has(node.id)) {
@@ -501,7 +751,7 @@ export function layoutCluster(nodes, edges, { width, height, padding = 60, radiu
   for (const node of simNodes) positions.set(node.id, { x: node.x, y: node.y });
 
   const waypoints = routeSkips(edges, levelOf, positions);
-  centreInBox(nodes, positions, waypoints, { width, height, padding, radius });
+  const scale = centreInBox(nodes, positions, waypoints, { width, height, padding, radius });
 
   /*
    * ⚠️ Separated **again**, after the fit, and the first pass is not enough on its own.
@@ -512,7 +762,20 @@ export function layoutCluster(nodes, edges, { width, height, padding = 60, radiu
    * coordinates is what makes the guarantee hold in the coordinates anyone actually sees.
    */
   separate(nodes, positions, radius);
-  return { positions, levels, waypoints };
+
+  /*
+   * ⚠️ Footprints leave here in POST-FIT pixels — trap 8.1 again. The simulation measured
+   * reach against pre-fit rest lengths; a drag will compare it against on-screen positions,
+   * so it is scaled by the same factor the positions were. A leaf's footprint is its
+   * radius, which the fit does not scale, so leaves are left alone.
+   */
+  const footprints = new Map();
+  for (const node of nodes) {
+    const own = radius(node);
+    const cluster = reach.get(node.id) ?? own;
+    footprints.set(node.id, cluster > own ? cluster * scale : own);
+  }
+  return { positions, levels, waypoints, footprints, anchorId: anchorRoot?.id ?? null };
 }
 
 /** Place anything the tree never reached, on a ring outside everything else. */
@@ -615,6 +878,9 @@ function routeSkips(edges, levelOf, positions) {
  *
  * Scaling **down** shrinks the distance between marks while the marks keep their size, so
  * it is a last resort rather than a fit-to-window default.
+ *
+ * @returns {number} the factor positions were multiplied by, so a caller can put any other
+ *   pre-fit length — a footprint, a rest length — into the same pixels
  */
 function centreInBox(nodes, positions, waypoints, { width, height, padding, radius }) {
   const radiusById = new Map(nodes.map((node) => [node.id, radius(node)]));
@@ -639,7 +905,7 @@ function centreInBox(nodes, positions, waypoints, { width, height, padding, radi
     minY = Math.min(minY, at.y - r);
     maxY = Math.max(maxY, at.y + r);
   }
-  if (!Number.isFinite(minX)) return;
+  if (!Number.isFinite(minX)) return 1;
 
   const spanX = maxX - minX;
   const spanY = maxY - minY;
@@ -660,4 +926,5 @@ function centreInBox(nodes, positions, waypoints, { width, height, padding, radi
   });
   for (const [id, at] of positions) positions.set(id, shift(at));
   for (const [key, via] of waypoints) waypoints.set(key, via.map(shift));
+  return scale;
 }
