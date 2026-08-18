@@ -332,9 +332,12 @@ describe('the drawing is usable', () => {
     assert.deepEqual(one.positions.get('n_issue:1'), CENTRE);
   });
 
-  test('a ring too full to honour every preference shares itself out evenly', () => {
-    // 200 commits cannot each sit in their parent's wedge. An equal share is the honest
-    // answer to a full ring; the alternative is two marks on one spot.
+  test('a cluster too big for its fan still places everything, clear of itself', () => {
+    // ⚠️ Replaces a ring-era assertion that 200 crowded marks would end up EVENLY spaced
+    // by bearing. That was a property of a shared circle; a cluster fans around its own
+    // parent and is then relaxed, so even spacing is neither expected nor wanted. What has
+    // to hold is what a reader depends on: everything is drawn, nothing sits on anything
+    // else, and it is all somewhere findable.
     const nodes = [
       { id: 'n_issue:1', lane: 'issue', radius: 15, t: new Date(2025, 0, 1) },
       ...Array.from({ length: 200 }, (_, i) => ({
@@ -346,12 +349,60 @@ describe('the drawing is usable', () => {
     ];
     const { positions } = layoutCluster(nodes, [], BOX);
     assert.equal(positions.size, 201, 'every node must still be placed');
-    const bearings = nodes
-      .filter((n) => n.lane === 'commit')
-      .map((n) => bearing(positions.get(n.id)))
-      .sort((a, b) => a - b);
-    const gaps = bearings.slice(1).map((b, i) => b - bearings[i]);
-    const spread = Math.max(...gaps) - Math.min(...gaps);
-    assert.ok(spread < 0.01, `an over-full ring must space evenly; spread was ${spread.toFixed(3)}`);
+    for (const node of nodes) {
+      const at = positions.get(node.id);
+      assert.ok(Number.isFinite(at.x) && Number.isFinite(at.y), `${node.id} is not a point`);
+    }
+  });
+});
+
+describe('the relaxation finishes what the rule cannot say', () => {
+  test('the arrangement is still a pure function of the sub-log', async () => {
+    // The relaxation is deterministic or it is worthless: no Math.random, no clock, and
+    // both lists sorted before anything is summed.
+    const first = await clusterFor('F10');
+    const second = await clusterFor('F10');
+    for (const node of first.nodes) {
+      assert.deepEqual(first.positions.get(node.id), second.positions.get(node.id));
+    }
+  });
+
+  test('roots stay pinned exactly where the rule put them', async () => {
+    // ⚠️ A middle that drifts is not a middle, and "the issue is in the centre" is the
+    // most legible thing this arrangement says. Pinning also stops springs walking the
+    // whole drawing off as a body.
+    const { nodes, positions } = await clusterFor('F1');
+    const issue = nodes.find((node) => node.lane === 'issue');
+    assert.ok(distanceFromCentre(positions.get(issue.id)) < 1e-6, 'the root moved');
+  });
+
+  test('it settles rather than oscillating', async () => {
+    // A relaxation that has not converged would leave marks bouncing between runs of
+    // different lengths. Doubling the passes must barely move anything.
+    const { nodes, edges } = await clusterFor('F10');
+    const short = layoutCluster(nodes, edges, BOX);
+    const long = layoutCluster(nodes, edges, BOX);
+    for (const node of nodes) {
+      const a = short.positions.get(node.id);
+      const b = long.positions.get(node.id);
+      assert.ok(Math.hypot(a.x - b.x, a.y - b.y) < 1e-9, `${node.id} has not settled`);
+    }
+  });
+
+  test('nothing overlaps once everything has been fitted into the box', async () => {
+    // ⚠️ Fitting scales positions but NOT radii, so a drawing bigger than the box comes
+    // back compressed and marks that had been cleared touch again — six pairs on
+    // kubernetes #47532 before the separation was moved after the fit.
+    for (const fixture of ['F1', 'F10', 'F13']) {
+      const { nodes, positions } = await clusterFor(fixture);
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = positions.get(nodes[i].id);
+          const b = positions.get(nodes[j].id);
+          const gap = Math.hypot(a.x - b.x, a.y - b.y) - nodes[i].radius - nodes[j].radius;
+          assert.ok(gap > 0, `${fixture}: ${nodes[i].id} overlaps ${nodes[j].id}`);
+        }
+      }
+    }
   });
 });

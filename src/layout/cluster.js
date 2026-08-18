@@ -42,6 +42,7 @@
  */
 
 import { assignLayers, hashId } from './layered.js';
+import { relax } from './relax.js';
 
 /** Clear space between two marks, in pixels. */
 const GAP = 20;
@@ -285,10 +286,61 @@ export function layoutCluster(nodes, edges, { width, height, padding = 60, radiu
     positions.set(id, { x: (own.x + mean.x) / 2, y: (own.y + mean.y) / 2 });
   }
 
+  /*
+   * The rule has said everything it can say; this settles what it could not.
+   *
+   * Springs, repulsion and collision run over the whole graph while an anchor holds every
+   * node toward the position the rule chose — so clusters stay where the fan put them and
+   * only the slack moves. That slack is where the cases the rule has nothing to say about
+   * live: a commit claimed by two pull requests belongs in one fan and is wanted in two,
+   * and two clusters of very different sizes can graze without either parent noticing.
+   *
+   * ⚠️ **Roots are pinned.** A middle that drifts is not a middle, and "the issue is in
+   * the centre" is the most legible thing this arrangement says. Pinning also keeps the
+   * whole drawing from wandering off as a body, which springs alone would allow.
+   */
+  const rootIds = new Set((levels[0] || []).map((node) => node.id));
+  const settled = relax(
+    nodes.map((node) => ({
+      id: node.id,
+      radius: radius(node),
+      pinned: rootIds.has(node.id),
+    })),
+    edges,
+    {
+      anchors: positions,
+      // A pull request hangs further from its issue than a commit hangs from its pull
+      // request, which is the same proportion the fans already draw — the springs agree
+      // with the rule rather than arguing with it.
+      restLength: (edge) => {
+        const a = levelOf.get(edge.source);
+        const b = levelOf.get(edge.target);
+        if (a === undefined || b === undefined) return 110;
+        // A link that skips a level joins things two rings apart, so it wants a longer
+        // rest length or it would drag a commit up into the pull-request ring.
+        if (Math.abs(a - b) > 1) return 200;
+        return Math.max(a, b) >= 2 ? 62 : 130;
+      },
+    },
+  );
+  for (const [id, at] of settled) positions.set(id, at);
+
+  // A last guarantee. The relaxation gets marks apart in almost every case; this is what
+  // makes "almost" into "always", and it is cheap once nothing much is overlapping.
   separate(nodes, positions, radius);
 
   const waypoints = routeSkips(edges, levelOf, positions);
   centreInBox(nodes, positions, waypoints, { width, height, padding, radius });
+
+  /*
+   * ⚠️ Separated **again**, after the fit, and the first pass is not enough on its own.
+   * Fitting scales positions but not radii, so a drawing bigger than the box comes back
+   * compressed and marks that had just been cleared are touching again — measured on
+   * kubernetes #47532, six pairs overlapped after a pass that had left none. The same trap
+   * the layered arrangement hit at its own fit step. Running it once more in final
+   * coordinates is what makes the guarantee hold in the coordinates anyone actually sees.
+   */
+  separate(nodes, positions, radius);
   return { positions, levels, waypoints };
 }
 
