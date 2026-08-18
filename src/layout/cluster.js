@@ -42,18 +42,58 @@
  */
 
 import { assignLayers, hashId } from './layered.js';
-import { relax } from './relax.js';
+import {
+  forceSimulation,
+  forceLink,
+  forceManyBody,
+  forceCollide,
+  forceX,
+  forceY,
+} from '../../vendor/d3-force.js';
 
 /** Clear space between two marks, in pixels. */
 const GAP = 20;
 /**
- * How hard each kind of mark holds others off, during the relaxation.
+ * How hard each kind of mark holds others off, in the simulation.
  *
  * A pull request has to keep a whole fan's worth of room clear around it, so it pushes far
  * harder than a commit does — two commits inside one fan should sit close, because that
  * closeness is what makes the fan read as one group.
  */
-export const CHARGE = { issue: 3.4, pull_request: 2.6, commit: 1 };
+/**
+ * How hard each kind of mark holds others off.
+ *
+ * A pull request has to keep a whole fan's worth of room clear around it; two commits
+ * inside one fan should sit close, because that closeness is what makes the fan read as
+ * one group. One uniform charge cannot do both: low enough for the second and the clusters
+ * collide, high enough for the first and the fans blow open.
+ */
+export const CHARGE = { issue: -400, pull_request: -400, commit: -35 };
+
+/**
+ * How long each kind of link wants to be, in pixels.
+ *
+ * ⚠️ **Every kind in the data model is named here, and the fallback exists only to be
+ * unreachable.** The link vocabulary is four qualifiers over three lane pairs (decision
+ * 43), so an unnamed kind would be one nobody decided about, quietly taking whatever the
+ * library happens to use. `commit ↔ issue` is the level-skipping one — `references_issue`,
+ * a commit naming an issue directly — and it is long on purpose: measured earlier, a short
+ * rest length there hauls commits out of their fan and up into the pull-request ring.
+ */
+const LINK_DISTANCE = {
+  'issue|pull_request': 130,
+  'commit|pull_request': 50,
+  'commit|issue': 200,
+};
+
+/** Springs to a pull request's commits pull harder — that fan is the tightest grouping. */
+const LINK_STRENGTH = { 'commit|pull_request': 0.9 };
+const DEFAULT_LINK_STRENGTH = 0.7;
+
+/** How firmly everything is drawn toward the middle, so components cannot drift apart. */
+const CENTRING = 0.05;
+/** Extra clear space the collision force keeps between two marks. */
+const COLLIDE_PADDING = 5;
 /**
  * How much of a full turn a child fan may use.
  *
@@ -295,48 +335,101 @@ export function layoutCluster(nodes, edges, { width, height, padding = 60, radiu
   }
 
   /*
-   * The rule has said everything it can say; this settles what it could not.
+   * The rule has said everything it can say; the simulation settles what it could not.
    *
-   * Springs, repulsion and collision run over the whole graph while an anchor holds every
-   * node toward the position the rule chose — so clusters stay where the fan put them and
-   * only the slack moves. That slack is where the cases the rule has nothing to say about
-   * live: a commit claimed by two pull requests belongs in one fan and is wanted in two,
-   * and two clusters of very different sizes can graze without either parent noticing.
+   * The balloon placement above is the **seed**, not a suggestion to be overruled: it puts
+   * every node in its parent's fan by a stated rule, which is what makes the arrangement
+   * explainable and keeps it recognisable from one sub-log to the next. What a per-parent
+   * rule cannot do is settle the cases it does not cover — a commit claimed by two pull
+   * requests belongs in one fan and is wanted in two, and clusters of very different sizes
+   * graze each other without either parent noticing. Springs, charges and collision do
+   * that, starting from the answer the rule already gave.
    *
-   * ⚠️ **Roots are pinned.** A middle that drifts is not a middle, and "the issue is in
-   * the centre" is the most legible thing this arrangement says. Pinning also keeps the
-   * whole drawing from wandering off as a body, which springs alone would allow.
+   * ⚠️ **The simulation never runs itself.** `forceSimulation` starts an internal timer on
+   * construction, so it is stopped immediately and ticked by hand to convergence. A layout
+   * that animated its own way to an answer would make the result depend on when it was
+   * looked at, and this one has to be a pure function of the sub-log. The ease-in a reader
+   * actually sees is presentation and lives in `render/motion.js`.
    */
   const rootIds = new Set((levels[0] || []).map((node) => node.id));
-  const settled = relax(
-    nodes.map((node) => ({
-      id: node.id,
-      radius: radius(node),
-      charge: CHARGE[node.lane] ?? 1,
-      pinned: rootIds.has(node.id),
-    })),
-    edges,
-    {
-      anchors: positions,
-      // A pull request hangs further from its issue than a commit hangs from its pull
-      // request, which is the same proportion the fans already draw — the springs agree
-      // with the rule rather than arguing with it.
-      restLength: (edge) => {
-        const a = levelOf.get(edge.source);
-        const b = levelOf.get(edge.target);
-        if (a === undefined || b === undefined) return 110;
-        // A link that skips a level joins things two rings apart, so it wants a longer
-        // rest length or it would drag a commit up into the pull-request ring.
-        if (Math.abs(a - b) > 1) return 200;
-        return Math.max(a, b) >= 2 ? 62 : 130;
-      },
-    },
-  );
-  for (const [id, at] of settled) positions.set(id, at);
 
-  // A last guarantee. The relaxation gets marks apart in almost every case; this is what
-  // makes "almost" into "always", and it is cheap once nothing much is overlapping.
-  separate(nodes, positions, radius);
+  const simNodes = nodes
+    .filter((node) => positions.has(node.id))
+    .slice()
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map((node) => {
+      const at = positions.get(node.id);
+      const seed = { id: node.id, lane: node.lane, radius: radius(node), x: at.x, y: at.y };
+      // Roots are pinned. A middle that drifts is not a middle, and pinning is also what
+      // stops the springs walking the whole drawing off as a body.
+      if (rootIds.has(node.id)) {
+        seed.fx = at.x;
+        seed.fy = at.y;
+      }
+      return seed;
+    });
+
+  const laneOf = new Map(simNodes.map((node) => [node.id, node.lane]));
+  const kindOf = (link) => {
+    const a = laneOf.get(typeof link.source === 'object' ? link.source.id : link.source);
+    const b = laneOf.get(typeof link.target === 'object' ? link.target.id : link.target);
+    return [a, b].sort().join('|');
+  };
+
+  // Sorted, like the nodes: the simulation accumulates forces in list order and float
+  // addition is not associative, so an unsorted list would make the result depend on the
+  // order the caller happened to build its links in.
+  const simLinks = edges
+    .filter((edge) => positions.has(edge.source) && positions.has(edge.target))
+    .map((edge) => ({ source: edge.source, target: edge.target }))
+    .sort((a, b) =>
+      a.source < b.source
+        ? -1
+        : a.source > b.source
+          ? 1
+          : a.target < b.target
+            ? -1
+            : a.target > b.target
+              ? 1
+              : 0,
+    );
+
+  const simulation = forceSimulation(simNodes)
+    .force(
+      'link',
+      forceLink(simLinks)
+        .id((node) => node.id)
+        .distance((link) => LINK_DISTANCE[kindOf(link)] ?? 110)
+        .strength((link) => LINK_STRENGTH[kindOf(link)] ?? DEFAULT_LINK_STRENGTH),
+    )
+    .force(
+      'charge',
+      forceManyBody().strength((node) => CHARGE[node.lane] ?? CHARGE.commit),
+    )
+    .force(
+      'collide',
+      forceCollide().radius((node) => node.radius + COLLIDE_PADDING),
+    )
+    /*
+     * Toward the ORIGIN, which is where the seed is centred — the drawing is only moved
+     * into the canvas afterwards, by `centreInBox`. Aiming at the canvas centre here would
+     * shove everything into a corner of a space it is not in yet.
+     *
+     * ⚠️ **The two are deliberately unequal, in proportion to the canvas.** Equal centring
+     * pulls a graph into a circle, and a circle can never use a wide box: fitted into
+     * 1100×620 it fills the height and leaves nearly half the width empty — measured at
+     * 18–38% of the width against ~70% of the height. Pulling more gently sideways than
+     * vertically lets the drawing take the shape of the space it has to live in, without
+     * distorting anything, because the forces act on the layout rather than on the
+     * finished picture.
+     */
+    .force('x', forceX(0).strength(CENTRING * Math.min(1, height / width)))
+    .force('y', forceY(0).strength(CENTRING * Math.min(1, width / height)))
+    .stop();
+
+  while (simulation.alpha() > simulation.alphaMin()) simulation.tick();
+
+  for (const node of simNodes) positions.set(node.id, { x: node.x, y: node.y });
 
   const waypoints = routeSkips(edges, levelOf, positions);
   centreInBox(nodes, positions, waypoints, { width, height, padding, radius });
