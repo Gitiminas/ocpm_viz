@@ -32,6 +32,8 @@ import { activityLabel } from '../model/activities.js';
 import { legendKeyFor } from './nodes.js';
 import { bundleEdges, overlapsBrush } from '../layout/structural.js';
 import { pushApart } from './motion.js';
+import { relax } from '../layout/relax.js';
+import { CHARGE } from '../layout/cluster.js';
 
 /** How faint a mark outside the brushed range becomes. Dimmed, never removed. */
 const BRUSHED_OUT = 0.13;
@@ -345,6 +347,8 @@ export function renderStructuralNodes({
   onDragged = null,
   repaint = () => {},
   brush = null,
+  edges = [],
+  settling = false,
 }) {
   // What movement needs: where each mark belongs, where it was a moment ago, and how to
   // put it somewhere. The label rides along, so a name never parts company with its mark.
@@ -431,6 +435,7 @@ export function renderStructuralNodes({
       // The shove needs a size to work with, and an offset is measured from where the
       // layout put the mark rather than from wherever it currently sits.
       radius: node.radius,
+      lane: node.lane,
       layoutX: node.layoutX ?? node.x,
       layoutY: node.layoutY ?? node.y,
       // Where this mark was drawn last time, so it slides rather than jumps. A mark that
@@ -442,7 +447,7 @@ export function renderStructuralNodes({
     };
 
     const drag = onDragged
-      ? enableDrag(group, mark, node, { onDragged, repaint, marks: live })
+      ? enableDrag(group, mark, node, { onDragged, repaint, marks: live, edges, settling })
       : null;
 
     group.on('click', (event) => {
@@ -522,7 +527,7 @@ const DRAG_SLOP_PX = 3;
  * Pointer capture rather than window listeners: the pointer keeps talking to this element
  * even when it leaves it, so a fast drag cannot slip off the mark and strand it mid-move.
  */
-function enableDrag(group, mark, node, { onDragged, repaint, marks }) {
+function enableDrag(group, mark, node, { onDragged, repaint, marks, edges, settling }) {
   let from = null;
   let travelled = 0;
 
@@ -545,8 +550,49 @@ function enableDrag(group, mark, node, { onDragged, repaint, marks }) {
     travelled = Math.max(travelled, Math.hypot(dx, dy));
     mark.x = from.markX + dx;
     mark.y = from.markY + dy;
-    // Anything in the way moves aside. Without it a reader can stack the whole graph on
-    // one point — a picture that says nothing and cannot be read back out of.
+
+    /*
+     * ⚠️ **What "in the way" means depends on the arrangement.**
+     *
+     * In the clustered layout the neighbourhood *settles*: a few relaxation steps per
+     * pointer event, with the dragged mark pinned, so its links stretch and its
+     * neighbours follow it while the anchors keep everything else recognisable. That is
+     * the behaviour a graph tool has, and it is why dragging is worth having at all —
+     * pulling one node teases its cluster out of a tangle instead of merely making a hole.
+     *
+     * In the layered arrangement the rows are the whole point: y is the object's type and
+     * springs would pull marks off their rows, which would say something false. There,
+     * dragging only shoves what it collides with, as before.
+     */
+    if (settling) {
+      const settled = relax(
+        marks.map((other) => ({
+          id: other.id,
+          radius: other.radius,
+          charge: CHARGE[other.lane] ?? 1,
+          pinned: other.id === mark.id,
+        })),
+        edges,
+        {
+          anchors: new Map(marks.map((other) => [other.id, { x: other.layoutX, y: other.layoutY }])),
+          // Seeded from where things are *now*, so the gesture continues from the last
+          // frame rather than restarting from the layout on every pointer event.
+          seed: new Map(marks.map((other) => [other.id, { x: other.x, y: other.y }])),
+          // A handful of steps: enough to follow the pointer, few enough to stay ahead of
+          // it. A full settle per event would drop frames and lag behind the cursor.
+          iterations: 3,
+        },
+      );
+      for (const other of marks) {
+        const at = settled.get(other.id);
+        if (at && other.id !== mark.id) {
+          other.x = at.x;
+          other.y = at.y;
+        }
+      }
+    }
+    // Whatever is still overlapping is pushed clear. Without it a reader can stack the
+    // whole graph on one point — a picture that says nothing and cannot be read back.
     pushApart(marks, { fixedId: mark.id });
     // Repaint rather than re-render: a full render rebuilds the SVG, and doing that per
     // pointer event would drop frames and destroy the element being dragged mid-gesture.

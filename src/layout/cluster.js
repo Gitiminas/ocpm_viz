@@ -47,6 +47,14 @@ import { relax } from './relax.js';
 /** Clear space between two marks, in pixels. */
 const GAP = 20;
 /**
+ * How hard each kind of mark holds others off, during the relaxation.
+ *
+ * A pull request has to keep a whole fan's worth of room clear around it, so it pushes far
+ * harder than a commit does — two commits inside one fan should sit close, because that
+ * closeness is what makes the fan read as one group.
+ */
+export const CHARGE = { issue: 3.4, pull_request: 2.6, commit: 1 };
+/**
  * How much of a full turn a child fan may use.
  *
  * ⚠️ Less than a full circle on purpose: a cluster fans *outward*, away from its parent's
@@ -66,7 +74,7 @@ const FILL = 0.94;
  * unrelated ones, and proximity is the entire claim this layout makes. A cap lets a
  * compact graph take the room without pretending to be a big one.
  */
-const MAX_FILL_SCALE = 1.8;
+const MAX_FILL_SCALE = 2.6;
 
 /**
  * The circular mean of a list of angles, in radians.
@@ -304,6 +312,7 @@ export function layoutCluster(nodes, edges, { width, height, padding = 60, radiu
     nodes.map((node) => ({
       id: node.id,
       radius: radius(node),
+      charge: CHARGE[node.lane] ?? 1,
       pinned: rootIds.has(node.id),
     })),
     edges,
@@ -447,21 +456,45 @@ function routeSkips(edges, levelOf, positions) {
  */
 function centreInBox(nodes, positions, waypoints, { width, height, padding, radius }) {
   const radiusById = new Map(nodes.map((node) => [node.id, radius(node)]));
-  let extent = 0;
+
+  /*
+   * ⚠️ **Fitted to the BOX, not to a circle inscribed in it**, and the difference is most
+   * of the screen. The first version measured the drawing's reach from the origin and
+   * scaled that against `min(width, height) / 2`, which fits a circle — so on a chart 1450
+   * wide and 670 tall it sized everything to a 550px circle and left the remaining
+   * two-thirds of the width empty. Measuring the actual bounding box and scaling each way
+   * against the room available in that direction uses the space the drawing is given,
+   * while one shared factor keeps the aspect and therefore every relative distance.
+   */
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
   for (const [id, at] of positions) {
-    extent = Math.max(extent, Math.hypot(at.x, at.y) + (radiusById.get(id) ?? 0));
+    const r = radiusById.get(id) ?? 0;
+    minX = Math.min(minX, at.x - r);
+    maxX = Math.max(maxX, at.x + r);
+    minY = Math.min(minY, at.y - r);
+    maxY = Math.max(maxY, at.y + r);
   }
+  if (!Number.isFinite(minX)) return;
 
-  const available = Math.min(width, height) / 2 - padding;
-  // Scaled to fit when too big, and up to the cap when there is room going spare — a
-  // drawing sitting in the middle third of an empty canvas is harder to read than the
-  // same drawing filling it.
-  const scale =
-    extent > 0 ? Math.min(MAX_FILL_SCALE, ((available * FILL) / extent) || 1) : 1;
+  const spanX = maxX - minX;
+  const spanY = maxY - minY;
+  const roomX = Math.max(1, width - 2 * padding);
+  const roomY = Math.max(1, height - 2 * padding);
 
+  const fit = Math.min(
+    spanX > 0 ? roomX / spanX : Infinity,
+    spanY > 0 ? roomY / spanY : Infinity,
+  );
+  const scale = Number.isFinite(fit) ? Math.min(MAX_FILL_SCALE, fit * FILL) : 1;
+
+  const centreX = (minX + maxX) / 2;
+  const centreY = (minY + maxY) / 2;
   const shift = (point) => ({
-    x: width / 2 + point.x * scale,
-    y: height / 2 + point.y * scale,
+    x: width / 2 + (point.x - centreX) * scale,
+    y: height / 2 + (point.y - centreY) * scale,
   });
   for (const [id, at] of positions) positions.set(id, shift(at));
   for (const [key, via] of waypoints) waypoints.set(key, via.map(shift));

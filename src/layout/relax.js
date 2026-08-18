@@ -63,6 +63,7 @@ export function relax(
   edges,
   {
     anchors,
+    seed = null,
     restLength = () => 90,
     iterations = DEFAULT_ITERATIONS,
     spring = SPRING,
@@ -87,17 +88,25 @@ export function relax(
   const dx = new Float64Array(count);
   const dy = new Float64Array(count);
   const radii = new Float64Array(count);
+  const charges = new Float64Array(count);
   const anchorX = new Float64Array(count);
   const anchorY = new Float64Array(count);
   const pinned = new Uint8Array(count);
 
   ordered.forEach((node, i) => {
-    const at = anchors.get(node.id);
-    x[i] = at.x;
-    y[i] = at.y;
-    anchorX[i] = at.x;
-    anchorY[i] = at.y;
+    const home = anchors.get(node.id);
+    // ⚠️ Where a node *starts* and where it is *pulled back to* are two different things,
+    // and separating them is what lets this run during a drag. At layout time they are
+    // the same — the rule's position, settled in place. Mid-drag the seed is wherever
+    // everything currently is, while the anchor stays the arrangement's home, so
+    // neighbours follow the pointer without the whole picture forgetting its shape.
+    const start = seed?.get(node.id) ?? home;
+    x[i] = start.x;
+    y[i] = start.y;
+    anchorX[i] = home.x;
+    anchorY[i] = home.y;
     radii[i] = node.radius ?? 8;
+    charges[i] = node.charge ?? 1;
     pinned[i] = node.pinned ? 1 : 0;
   });
 
@@ -133,8 +142,16 @@ export function relax(
           deltaY = ((i * 104729 + j * 7919) % 89) / 89 - 0.5;
           distance = 1e-6;
         }
+        /*
+         * ⚠️ **How hard two marks push depends on what they are.** A pull request needs
+         * room for a whole fan of commits around it, so it has to hold other pull requests
+         * much further off than two commits need to hold each other. One uniform charge
+         * gives the opposite: with it low the clusters collide, with it high the commits
+         * inside a fan are blown apart and the fan stops reading as one thing.
+         */
         const reach = radii[i] + radii[j] + padding;
-        const force = (repulsion * reach * reach) / Math.max(distance, 1);
+        const force =
+          (repulsion * charges[i] * charges[j] * reach * reach) / Math.max(distance, 1);
         const ux = (deltaX / distance) * force;
         const uy = (deltaY / distance) * force;
         dx[i] += ux;

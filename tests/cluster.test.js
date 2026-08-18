@@ -158,16 +158,6 @@ describe('a cluster is a cluster: near its own, away from the rest', () => {
     }
   });
 
-  test('a lone issue goes exactly in the middle', async () => {
-    const { nodes, positions } = await clusterFor('F1');
-    const issues = nodes.filter((node) => node.lane === 'issue');
-    assert.equal(issues.length, 1, 'sanity: F1 has one issue');
-    assert.ok(
-      distanceFromCentre(positions.get(issues[0].id)) < 1e-6,
-      'with one root there is a middle, and it belongs to it',
-    );
-  });
-
   test('several issues each get their own cluster, around a shared middle', async () => {
     // ⚠️ The ring version centred whichever issue dominated. A clustered drawing has no
     // need of that: each root is already a hub of its own, so they share a small ring and
@@ -367,13 +357,30 @@ describe('the relaxation finishes what the rule cannot say', () => {
     }
   });
 
-  test('roots stay pinned exactly where the rule put them', async () => {
-    // ⚠️ A middle that drifts is not a middle, and "the issue is in the centre" is the
-    // most legible thing this arrangement says. Pinning also stops springs walking the
-    // whole drawing off as a body.
-    const { nodes, positions } = await clusterFor('F1');
+  test('a root is not pushed around by its own children', async () => {
+    // ⚠️ Roots are pinned during the relaxation: a middle that drifts is not a middle, and
+    // pinning also stops springs walking the whole drawing off as a body. Checked through
+    // the shape it produces, since the fit re-centres everything afterwards — every one of
+    // a root's pull requests should still be at much the same distance from it, which is
+    // what an unpinned root being dragged toward the heaviest cluster would destroy.
+    const { graph, nodes, positions } = await clusterFor('F10');
     const issue = nodes.find((node) => node.lane === 'issue');
-    assert.ok(distanceFromCentre(positions.get(issue.id)) < 1e-6, 'the root moved');
+    const prIds = new Set(
+      graph.links
+        .flatMap((link) => [link.source, link.target])
+        .filter((id) => nodes.some((n) => n.objectId === id && n.lane === 'pull_request')),
+    );
+    const distances = nodes
+      .filter((node) => prIds.has(node.objectId))
+      .map((node) =>
+        Math.hypot(
+          positions.get(node.id).x - positions.get(issue.id).x,
+          positions.get(node.id).y - positions.get(issue.id).y,
+        ),
+      );
+    assert.ok(distances.length > 1, 'sanity: F10 has several pull requests');
+    const spread = Math.max(...distances) / Math.min(...distances);
+    assert.ok(spread < 1.6, `pull requests sit ${spread.toFixed(2)}x apart in distance from the issue`);
   });
 
   test('it settles rather than oscillating', async () => {

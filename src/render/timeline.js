@@ -230,6 +230,11 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         onDragged: (nudges) => handlers.onNodeDragged?.(nudges),
         repaint: () => motion.repaint(),
         brush,
+        // Dragging settles the neighbourhood only where settling means something: the
+        // layered arrangement's rows ARE the object's type, and springs would pull marks
+        // off them.
+        edges: layout.edges,
+        settling: layout.structuralLayout === 'cluster',
       });
 
       // Slide into place, then drift. Remembered *before* the animation runs, so the next
