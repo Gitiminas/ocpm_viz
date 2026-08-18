@@ -88,7 +88,23 @@ export function renderHiddenBanner({ container, summary, state, onRestore }) {
  * The preset panel: built-ins, saved views, save / rename / delete, and a copyable
  * shareable link.
  */
-export function renderPresetPanel({ container, state, context, query, onApply, onToast }) {
+/**
+ * @param {object} options
+ * @param {object} options.query   `{repo, seed, fixture, source, traversalDegree}` — what
+ *   `presetUrl` needs to name the sub-log
+ * @param {Function} [options.view] returns the live `{page, brush, focus, focusDegree,
+ *   layout}` at the moment Copy link is pressed — a function, because focus and brush
+ *   change after this panel was rendered and the link has to carry what is on screen NOW
+ */
+export function renderPresetPanel({
+  container,
+  state,
+  context,
+  query,
+  view = () => ({}),
+  onApply,
+  onToast,
+}) {
   container.innerHTML = '';
   // ⚠️ The container's `display` is NOT set here. It is the sidebar section the collapse
   // header opens and closes (`main.js`), and this used to overwrite its whole `cssText`
@@ -214,7 +230,7 @@ export function renderPresetPanel({ container, state, context, query, onApply, o
   shareButton.title =
     'A URL carrying both the query and the filters — the reproducibility mechanism for the evaluation';
   shareButton.addEventListener('click', async () => {
-    const url = presetUrl(window.location.href, query, serializeState(state));
+    const url = presetUrl(window.location.href, query, serializeState(state), view());
     try {
       await navigator.clipboard.writeText(url);
       onToast('Link copied');
@@ -227,6 +243,6 @@ export function renderPresetPanel({ container, state, context, query, onApply, o
   container.appendChild(actions);
 
   function rerender() {
-    renderPresetPanel({ container, state, context, query, onApply, onToast });
+    renderPresetPanel({ container, state, context, query, view, onApply, onToast });
   }
 }

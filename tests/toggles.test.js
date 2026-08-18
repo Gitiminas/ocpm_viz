@@ -327,6 +327,63 @@ describe('presets', () => {
     assert.equal(decodePreset(params.get('preset')).lanes.commit, false);
   });
 
+  test('a share URL carries everything the opening URL is parsed for — source above all', async () => {
+    // ⚠️ The regression this pins: the link used to carry repo, seed and preset only.
+    // Against the database it therefore had no `?source=`, opened on the fixtures
+    // source, and could not find the seed — "copy link doesn't work anymore".
+    const c = await context('F1');
+    c.state.mode = 'off';
+    c.state.structuralLayout = 'cluster';
+    const url = presetUrl(
+      'http://localhost:8000/?source=database&repo=old',
+      {
+        repo: 'kubernetes/kubernetes',
+        seed: 'issue:235959617',
+        source: 'database',
+        traversalDegree: 2,
+      },
+      serializeState(c.state),
+      { page: 'stats', brush: [0.2, 0.8], focus: 'pr:1', focusDegree: 2 },
+    );
+    const params = new URL(url).searchParams;
+    assert.equal(params.get('source'), 'database');
+    assert.equal(params.get('repo'), 'kubernetes/kubernetes');
+    assert.equal(params.get('seed'), 'issue:235959617');
+    assert.equal(params.get('degree'), '2');
+    assert.equal(params.get('mode'), 'off');
+    assert.equal(params.get('layout'), 'cluster');
+    assert.equal(params.get('page'), 'stats');
+    assert.equal(params.get('brush'), '0.2,0.8');
+    assert.equal(params.get('focus'), 'pr:1');
+    assert.equal(params.get('focusDegree'), '2');
+    // And the arrangement travels inside the snapshot too, like the mode.
+    assert.equal(decodePreset(params.get('preset')).structuralLayout, 'cluster');
+  });
+
+  test('defaults are left implicit, so a plain link stays short', async () => {
+    const c = await context('F1');
+    const url = presetUrl(
+      'http://localhost:8000/',
+      { repo: 'microsoft/vscode', seed: 'issue:242864', source: 'fixtures' },
+      serializeState(c.state),
+      { page: 'timeline', brush: [0, 1], focus: null },
+    );
+    const params = new URL(url).searchParams;
+    for (const absent of ['source', 'page', 'brush', 'focus', 'focusDegree', 'degree']) {
+      assert.equal(params.get(absent), null, `${absent} should not be written when default`);
+    }
+  });
+
+  test('a snapshot restores the arrangement along with the mode', async () => {
+    const from = await context('F1');
+    from.state.mode = 'off';
+    from.state.structuralLayout = 'cluster';
+    const to = await context('F1');
+    applyState(to.state, decodePreset(encodePreset(serializeState(from.state))));
+    assert.equal(to.state.mode, 'off');
+    assert.equal(to.state.structuralLayout, 'cluster');
+  });
+
   test('a share URL replaces the previous query rather than appending to it', async () => {
     const c = await context('F1');
     const url = presetUrl(

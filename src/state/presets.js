@@ -37,6 +37,9 @@ export function serializeState(state) {
   return {
     v: SNAPSHOT_VERSION,
     mode: state.mode,
+    // Which arrangement the relationships mode uses — part of the view, like the mode:
+    // rows and clusters are two different pictures of one configuration.
+    structuralLayout: state.structuralLayout,
     lanes: { ...state.lanes },
     showComments: { ...state.showComments },
     hiddenObjects: [...state.hiddenObjects],
@@ -58,6 +61,7 @@ export function applyState(state, snapshot) {
   if (!snapshot || typeof snapshot !== 'object') return state;
 
   if (snapshot.mode) state.mode = snapshot.mode;
+  if (snapshot.structuralLayout) state.structuralLayout = snapshot.structuralLayout;
   // `burstThreshold` was dropped in decision 94 — pushes fold by push_id, always. An
   // older snapshot may still carry it; ignoring it is right, and saying so here is what
   // stops the next reader hunting for the field it sets.
@@ -113,21 +117,58 @@ export function decodePreset(encoded) {
 }
 
 /**
- * The shareable URL for a configuration.
+ * The shareable URL for a configuration — a URL that reproduces the current screen.
  *
- * Carries the *query* — repository and seed — alongside the toggles, so the link
- * reproduces both what was selected and how it was filtered. Those are the two
- * halves of what someone else needs to see the same screen.
+ * Carries the *query* — source, repository, seed, traversal degree — alongside the
+ * toggles, so the link reproduces both what was selected and how it was filtered; and the
+ * *view* — page, brushed range, focused object — that lives in the URL rather than in a
+ * preset because it belongs to this sub-log and this moment rather than to a reusable
+ * configuration.
+ *
+ * ⚠️ **This is the write side of `queryFromUrl()` in `main.js`, and the two must name the
+ * same parameters.** It used to write `repo`, `seed` and `preset` only. Against the
+ * database that produced a link with no `?source=`, which opened on the *fixtures* source
+ * and could not find the seed — reported as "copy link doesn't work anymore" — and it also
+ * dropped the traversal degree, the arrangement, the brush and the focus, so even on
+ * fixtures the link opened a different picture from the one copied. Every parameter the
+ * reader parses is written here; `tests/toggles.test.js` pins the round trip.
+ *
+ * @param {string} baseUrl                     the page's own URL; its query is replaced
+ * @param {object} query                        `{repo, seed, fixture, source, traversalDegree}`
+ * @param {object} snapshot                     `serializeState(state)`
+ * @param {object} [view]                       `{page, brush, focus, focusDegree, layout}`
  */
-export function presetUrl(baseUrl, query, snapshot) {
+export function presetUrl(baseUrl, query, snapshot, view = {}) {
   const url = new URL(baseUrl);
   url.search = '';
-  if (query?.repo) url.searchParams.set('repo', query.repo);
-  if (query?.seed) url.searchParams.set('seed', query.seed);
-  if (query?.fixture && !query.repo) url.searchParams.set('fixture', query.fixture);
-  url.searchParams.set('preset', encodePreset(snapshot));
+  const set = (key, value) => {
+    if (value != null && value !== '') url.searchParams.set(key, String(value));
+  };
+  // The source first: it decides how every other parameter is interpreted. Fixtures is
+  // the default and is left implicit, as `?source=` parsing treats it.
+  if (query?.source && query.source !== 'fixtures') set('source', query.source);
+  set('repo', query?.repo);
+  set('seed', query?.seed);
+  if (query?.fixture && !query.repo) set('fixture', query.fixture);
+  set('degree', query?.traversalDegree);
+  set('preset', encodePreset(snapshot));
+  // The view. `mode` and `layout` also travel inside the snapshot; they are written
+  // here as well so a hand-edited link can change one knob without decoding a preset,
+  // exactly as `queryFromUrl` reads them.
+  set('mode', snapshot?.mode);
+  set('layout', view.layout ?? snapshot?.structuralLayout);
+  if (view.page && view.page !== 'timeline') set('page', view.page);
+  if (Array.isArray(view.brush) && (view.brush[0] > 0 || view.brush[1] < 1)) {
+    set('brush', `${round3(view.brush[0])},${round3(view.brush[1])}`);
+  }
+  if (view.focus) {
+    set('focus', view.focus);
+    set('focusDegree', view.focusDegree);
+  }
   return url.toString();
 }
+
+const round3 = (n) => Math.round(n * 1000) / 1000;
 
 // ---------------------------------------------------------------------------
 // storage

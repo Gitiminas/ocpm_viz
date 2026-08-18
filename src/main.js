@@ -382,7 +382,21 @@ function renderSidebar() {
     container: elements.presets,
     state,
     context: toggleContext,
-    query: { repo: graph.meta.repo, seed: graph.meta.seed?.[0]?.id, fixture: query?.fixture },
+    query: {
+      repo: graph.meta.repo,
+      seed: graph.meta.seed?.[0]?.id,
+      fixture: query?.fixture,
+      source: source.name,
+      traversalDegree: graph.meta.traversal_degree,
+    },
+    // Read at click time, not at render time: see `renderPresetPanel`.
+    view: () => ({
+      page: activePage,
+      brush: state.timeBrush,
+      focus: state.focus,
+      focusDegree: state.focusDegree,
+      layout: state.structuralLayout,
+    }),
     onApply: (snapshot) => {
       applyState(state, snapshot);
       // A saved view may carry a different mode and arrangement; the controls and the
@@ -711,8 +725,12 @@ for (const header of document.querySelectorAll('.collapseHeader')) {
   });
 }
 
+/** Which page is showing — what a copied link has to carry (`presetUrl`). */
+let activePage = 'timeline';
+
 /** Switch pages. Extracted so `?page=stats` can drive it as a click would. */
 function showPage(page) {
+  activePage = page;
   for (const other of document.querySelectorAll('.pageTab')) {
     const isThis = other.dataset.page === page;
     other.classList.toggle('on', isThis);
