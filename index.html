@@ -206,18 +206,18 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
 <div class="mono" id="focusInfo" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
 <div class="seg" id="modeSeg">
-<div class="seg-opt on" data-mode="real"><span>Real</span></div>
-<div class="seg-opt" data-mode="ordinal"><span>Ordinal</span></div>
+<div class="seg-opt on" data-mode="absolute"><span>Absolute</span></div>
+<div class="seg-opt" data-mode="discrete"><span>Discrete</span></div>
 <!--
-  The fourth mode releases the time axis entirely and lets position encode relationship
-  structure instead. Time is demoted, not deleted: it moves to the fill ramp, the edge
-  arrowheads and the hovercard. Last in the row because it is the one that changes what
-  position means, and the three before it are variations on a shared idea.
+  The relationships mode releases the time axis entirely and lets position encode
+  relationship structure instead. Time is demoted, not deleted: it moves to the edge
+  arrowheads, the time brush and the hovercard. Last in the row because it is the one that
+  changes what position means, and the two before it are variations on a shared idea.
 -->
-<div class="seg-opt" data-mode="off" title="Release the time axis — position encodes relationships instead"><span>Off</span></div>
+<div class="seg-opt" data-mode="relationships" title="Release the time axis — position encodes relationships instead"><span>Relationships</span></div>
 </div>
 <!--
-  How the off mode arranges things. Hidden in the three timeline modes, where it would be a
+  How the relationships mode arranges things. Hidden in the two timeline modes, where it would be a
   control that silently does nothing — the rule this project applies to the traversal
   stepper and to the minimap alike.
 -->
@@ -233,7 +233,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 </div>
 </div>
 <!--
-  Hidden in the off time mode: the minimap is a *time* overview, and that mode has no time
+  Hidden in the relationships time mode: the minimap is a *time* overview, and that mode has no time
   axis for it to describe. Its space is given back rather than blanked, so nothing reads
   as a strip that failed to draw. See onRendered in main.js.
 -->
@@ -241,10 +241,10 @@ html,body{height:100%;margin:0;overflow:hidden}
 <svg id="minimap"></svg>
 </div>
 <!--
-  The time brush, in the slot the minimap vacates in off mode.
+  The time brush, in the slot the minimap vacates in relationships mode.
 
   Deliberately the same piece of the screen: it is where a time overview already lives, so
-  a reader looking for "when" looks in one place whichever mode is on. Off mode releases
+  a reader looking for "when" looks in one place whichever mode is on. Relationships mode releases
   the time axis, and this is the control that gives time back — dimming what was not alive
   in the chosen window rather than removing it, so the shape of the whole sub-log stays
   visible behind the part being asked about.

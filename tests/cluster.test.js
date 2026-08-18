@@ -15,7 +15,7 @@ import {
 } from '../src/layout/cluster.js';
 
 /**
- * The radial layout: the alternative arrangement for the off time mode.
+ * The clustered layout: the alternative arrangement for the relationships time mode.
  *
  * What it has to prove is that the rings are a rule rather than an accident, that a node
  * lands in its parents' wedge — which is what makes clusters legible — and that a commit

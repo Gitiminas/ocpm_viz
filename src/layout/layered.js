@@ -1,5 +1,5 @@
 /**
- * The layered layout for the **off** time mode.
+ * The layered layout for the **relationships** time mode.
  *
  * Three rows — issue, pull request, commit — in the same top-to-bottom order as the
  * timeline's lanes, so the vertical vocabulary transfers between modes. Within a row,
@@ -535,7 +535,7 @@ function separateRow(row, x, radius, { width, padding }) {
    * put it. So a row can be wider than the box while every gap is legal — measured on
    * kubernetes #68026, whose 34 pull requests hang off one issue: the row came out 1400px
    * wide in a 980px box, with the leftmost mark already on the edge and nowhere to slide.
-   * Off mode cannot scroll sideways, so what ran off was simply lost, and this comment's
+   * Relationships mode cannot scroll sideways, so what ran off was simply lost, and this comment's
    * own promise of a right-to-left sweep was not being kept.
    *
    * A right-to-left chain from the box's right edge clamps each mark to the most it may

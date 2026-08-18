@@ -34,7 +34,7 @@ const fileTransport = async (query) =>
   );
 
 const FIXTURES = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13'];
-const TEMPORAL_MODES = ['real', 'ordinal'];
+const TEMPORAL_MODES = ['absolute', 'discrete'];
 
 const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
 const PLOT_WIDTH = 1100;
@@ -177,7 +177,7 @@ describe('the extraction did not move anything', () => {
 describe('the layout the engine hands back is complete', () => {
   test('a temporal layout carries everything the render pass needs', async () => {
     const context = await contextFor('F1');
-    const layout = engineLayout(context, 'real');
+    const layout = engineLayout(context, 'absolute');
     for (const field of [
       'kind',
       'nodes',
@@ -203,7 +203,7 @@ describe('the layout the engine hands back is complete', () => {
     // structural engine has to hand back the same shape, or `render/links.js` would need
     // to learn which engine ran.
     const context = await contextFor('F1');
-    const layout = engineLayout(context, 'real');
+    const layout = engineLayout(context, 'absolute');
     const pr = context.index.objectsOfType('pull_request')[0];
 
     for (const method of ['x', 'y', 'xAt', 'clampToLifecycle', 'xOfTime']) {
@@ -215,9 +215,9 @@ describe('the layout the engine hands back is complete', () => {
 
   test('hiding a lane removes its nodes and shortens the chart', async () => {
     const context = await contextFor('F1');
-    const all = engineLayout(context, 'real');
+    const all = engineLayout(context, 'absolute');
     const withoutCommits = createLayout({
-      mode: 'real',
+      mode: 'absolute',
       graph: context.graph,
       index: context.index,
       laneTypes: LANE_TYPES,
@@ -239,27 +239,27 @@ describe('the layout the engine hands back is complete', () => {
 });
 
 describe('the engine chooses by mode, and says which it chose', () => {
-  test('the three temporal modes are temporal', () => {
+  test('the temporal modes are temporal', () => {
     for (const mode of TEMPORAL_MODES) {
       assert.equal(isStructuralMode(mode), false, `${mode} must use the scale-based engine`);
     }
   });
 
-  test('off is the structural one', () => {
-    assert.deepEqual(STRUCTURAL_MODES, ['off']);
-    assert.equal(isStructuralMode('off'), true);
+  test('relationships is the structural one', () => {
+    assert.deepEqual(STRUCTURAL_MODES, ['relationships']);
+    assert.equal(isStructuralMode('relationships'), true);
   });
 
-  test('off returns a structural layout, and says so', async () => {
+  test('relationships returns a structural layout, and says so', async () => {
     const context = await contextFor('F1');
-    assert.equal(engineLayout(context, 'off').kind, 'structural');
+    assert.equal(engineLayout(context, 'relationships').kind, 'structural');
   });
 });
 
 describe('the structural layout', () => {
   test('every node gets a finite position inside the drawing box', async () => {
     const context = await contextFor('F1');
-    const layout = engineLayout(context, 'off');
+    const layout = engineLayout(context, 'relationships');
 
     assert.ok(layout.nodes.length > 0, 'F1 must lay out something');
     for (const node of layout.nodes) {
@@ -274,13 +274,13 @@ describe('the structural layout', () => {
     // The same property `structural.test.js` proves of the model, asserted here through
     // the engine, because this is the seam the renderer actually calls.
     const context = await contextFor('F1');
-    const temporal = engineLayout(context, 'real');
-    const structural = engineLayout(context, 'off');
+    const temporal = engineLayout(context, 'absolute');
+    const structural = engineLayout(context, 'relationships');
 
     const issueNodes = (layout) => layout.nodes.filter((node) => node.lane === 'issue');
     assert.ok(
       issueNodes(temporal).length > issueNodes(structural).length,
-      'the timeline draws an issue once per event; off mode draws it once',
+      'the timeline draws an issue once per event; relationships mode draws it once',
     );
     assert.equal(issueNodes(structural).length, context.index.objectsOfType('issue').length);
   });
@@ -289,8 +289,8 @@ describe('the structural layout', () => {
     // Acceptance criterion 2. A layout that re-rolls itself on every render is an
     // animation, not a layout.
     const context = await contextFor('F13');
-    const first = engineLayout(context, 'off');
-    const second = engineLayout(context, 'off');
+    const first = engineLayout(context, 'relationships');
+    const second = engineLayout(context, 'relationships');
     for (const node of first.nodes) {
       const other = second.nodes.find((candidate) => candidate.id === node.id);
       assert.equal(node.x, other.x, `${node.id} moved horizontally between renders`);
@@ -300,7 +300,7 @@ describe('the structural layout', () => {
 
   test('it carries the time span the ramp and the brush read', async () => {
     const context = await contextFor('F1');
-    const layout = engineLayout(context, 'off');
+    const layout = engineLayout(context, 'relationships');
     assert.ok(layout.extent, 'time is demoted, not deleted — the span must survive');
     assert.ok(layout.extent.max > layout.extent.min);
     for (const node of layout.nodes) {
@@ -315,7 +315,7 @@ describe('the structural layout', () => {
     // layered arrangement pins nothing and simulates nothing, and reports neither.
     const context = await contextFor('F10');
     const clustered = createLayout({
-      ...engineLayoutOptions(context, 'off'),
+      ...engineLayoutOptions(context, 'relationships'),
       structuralLayout: 'cluster',
     });
     assert.ok(
@@ -341,14 +341,14 @@ describe('the structural layout', () => {
       );
     }
 
-    const layered = engineLayout(context, 'off');
+    const layered = engineLayout(context, 'relationships');
     assert.equal(layered.anchorId, null);
     assert.ok(layered.nodes.every((node) => node.footprint === undefined));
   });
 
   test('it reports the rows and what the ordering achieved', async () => {
     const context = await contextFor('F1');
-    const layout = engineLayout(context, 'off');
+    const layout = engineLayout(context, 'relationships');
     assert.ok(Array.isArray(layout.rows), 'the rows are part of the answer');
     assert.ok(layout.rows.every((row) => row.length > 0), 'an empty row is dropped, not drawn');
     assert.equal(
@@ -366,8 +366,8 @@ describe('the structural layout', () => {
     // depends only on the graph, so re-rendering is not merely stable — it is identical,
     // and there is no state that could go stale.
     const context = await contextFor('F13');
-    const first = engineLayout(context, 'off');
-    const second = engineLayout(context, 'off');
+    const first = engineLayout(context, 'relationships');
+    const second = engineLayout(context, 'relationships');
     for (const node of first.nodes) {
       const other = second.nodes.find((candidate) => candidate.id === node.id);
       assert.equal(node.x, other.x, `${node.id} moved horizontally on a re-render`);
@@ -377,11 +377,11 @@ describe('the structural layout', () => {
 
   test('edges reflect the links, and hiding one rearranges rather than merely erasing', async () => {
     const context = await contextFor('F1');
-    const all = engineLayout(context, 'off');
+    const all = engineLayout(context, 'relationships');
     assert.ok(all.edges.length > 0, 'F1 has links');
 
     const validatedOnly = createLayout({
-      mode: 'off',
+      mode: 'relationships',
       graph: context.graph,
       index: context.index,
       laneTypes: LANE_TYPES,
@@ -407,7 +407,7 @@ describe('the structural layout', () => {
   test('anchors expose the same interface as the temporal ones', async () => {
     // So `render/links.js` never learns which engine ran.
     const context = await contextFor('F1');
-    const layout = engineLayout(context, 'off');
+    const layout = engineLayout(context, 'relationships');
     const pr = context.index.objectsOfType('pull_request')[0];
 
     for (const method of ['x', 'y', 'xAt', 'clampToLifecycle', 'xOfTime']) {
@@ -421,7 +421,7 @@ describe('the structural layout', () => {
 
   test('a link into a folded push anchors on the push', async () => {
     const context = await contextFor('F10');
-    const layout = engineLayout(context, 'off');
+    const layout = engineLayout(context, 'relationships');
     const burst = context.bursts[0];
     const member = [...burst.commitIds][0];
     const burstNode = layout.nodes.find((node) => node.id === `n_${burst.id}`);
@@ -438,7 +438,7 @@ describe('the structural layout', () => {
     // There is no time axis here, so any number it returned would be fiction — and it
     // would flow into a translate() and put a mark somewhere wrong with no error.
     const context = await contextFor('F1');
-    const layout = engineLayout(context, 'off');
+    const layout = engineLayout(context, 'relationships');
     assert.throws(() => layout.anchors.xOfTime(new Date()), /no time axis/);
   });
 
@@ -447,7 +447,7 @@ describe('the structural layout', () => {
     // reachable and declared, not prevented.
     const context = await contextFor('F1');
     const layout = createLayout({
-      mode: 'off',
+      mode: 'relationships',
       graph: context.graph,
       index: context.index,
       laneTypes: LANE_TYPES,
@@ -470,11 +470,11 @@ describe('the structural layout', () => {
   test('folding and unfolding a push changes what is drawn, not where everything is', async () => {
     // Acceptance criterion 2's second half, and the reason `layoutForce` warm-starts.
     const context = await contextFor('F10');
-    const folded = engineLayout(context, 'off');
+    const folded = engineLayout(context, 'relationships');
     const burst = context.bursts[0];
 
     const expanded = createLayout({
-      mode: 'off',
+      mode: 'relationships',
       graph: context.graph,
       index: context.index,
       laneTypes: LANE_TYPES,
@@ -513,7 +513,7 @@ describe('the structural layout', () => {
 describe('a dragged mark displaces without disturbing the layout', () => {
   const nudged = (context, nodeNudges) =>
     createLayout({
-      mode: 'off',
+      mode: 'relationships',
       graph: context.graph,
       index: context.index,
       laneTypes: LANE_TYPES,
@@ -534,7 +534,7 @@ describe('a dragged mark displaces without disturbing the layout', () => {
     // answer rather than against each other — drag twice and you get one displacement,
     // not a compounding one.
     const context = await contextFor('F1');
-    for (const node of engineLayout(context, 'off').nodes) {
+    for (const node of engineLayout(context, 'relationships').nodes) {
       assert.equal(node.x, node.layoutX, 'unnudged, the two must agree');
       assert.equal(node.y, node.layoutY);
     }
@@ -542,7 +542,7 @@ describe('a dragged mark displaces without disturbing the layout', () => {
 
   test('a nudge moves exactly one mark, by exactly the offset given', async () => {
     const context = await contextFor('F1');
-    const before = engineLayout(context, 'off');
+    const before = engineLayout(context, 'relationships');
     const target = before.nodes.find((node) => node.lane === 'pull_request');
     const wanted = new Map([[target.id, { dx: 40, dy: -25 }]]);
 
@@ -563,7 +563,7 @@ describe('a dragged mark displaces without disturbing the layout', () => {
     // The whole point of storing an offset rather than a position: the arrangement is
     // still the computed one, plus a set of stated displacements.
     const context = await contextFor('F13');
-    const plain = engineLayout(context, 'off');
+    const plain = engineLayout(context, 'relationships');
     const dragged = nudged(context, new Map([[plain.nodes[0].id, { dx: 90, dy: 90 }]]));
 
     for (const node of dragged.nodes) {
@@ -583,7 +583,7 @@ describe('a dragged mark displaces without disturbing the layout', () => {
   test('a nudge naming a mark that is not drawn is simply ignored', async () => {
     // Hiding a lane, or loading another sub-log, can leave one behind.
     const context = await contextFor('F1');
-    const plain = engineLayout(context, 'off');
+    const plain = engineLayout(context, 'relationships');
     const stale = nudged(context, new Map([['n_issue:does-not-exist', { dx: 500, dy: 500 }]]));
     assert.equal(stale.nodes.length, plain.nodes.length);
     for (const node of stale.nodes) {

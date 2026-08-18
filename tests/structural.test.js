@@ -20,7 +20,7 @@ import {
 } from '../src/layout/structural.js';
 
 /**
- * The off-mode node and edge model.
+ * The relationships-mode node and edge model.
  *
  * The property under test throughout is that **one node is one object**, which is the
  * substantive difference from every other mode: the timeline draws one node per event in
@@ -138,7 +138,7 @@ describe('one node stands for one object', () => {
 
 describe('nothing collapses except by push_id', () => {
   /**
-   * ⚠️ **The off mode introduces no folding rule of its own, and this pins that.**
+   * ⚠️ **The relationships mode introduces no folding rule of its own, and this pins that.**
    *
    * `push_id` is a fact in the data and decision 94 folds on it, always. Anything further
    * — clustering by PR, by time, by density — would be a *new* research decision about

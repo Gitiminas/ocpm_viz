@@ -1,6 +1,6 @@
-# Time mode "off" — the structural mode
+# The relationships time mode — the structural mode
 
-What the fourth time mode is, how to see it, where it lives, what it is known not to do well,
+What the relationships time mode is, how to see it, where it lives, what it is known not to do well,
 and the traps its construction paid for. **The design decisions are in `DECISIONS.md` 95–109
 and are not repeated here**; this file is the orientation and the field notes.
 
@@ -11,10 +11,14 @@ Branch `feat/time-mode-off`, written 2026-08-18. Began life as a handover note
 
 ## 1. What the feature is
 
-A fourth time mode beside `real` / `highlights` / `ordinal`. The three timelines spend
-position on time (x) and object identity (y); **off** releases the time axis so position can
-encode *relationship structure* instead. Time is demoted, not deleted — it survives on edge
-arrowheads, a time brush, and the hovercard (decision 95).
+A third time mode beside `absolute` / `discrete` — the two timelines spend position on time
+(x) and object identity (y); **relationships** releases the time axis so position can encode
+*relationship structure* instead. Time is demoted, not deleted — it survives on edge
+arrowheads, a time brush, and the hovercard (decision 95). ⚠️ Built and first documented as
+the "off" mode, beside "real", "highlights" and "ordinal"; renamed by decision 113 after
+Highlights was removed (112). Decisions 95–112 and the branch name `feat/time-mode-off`
+use the old words — read `off` as `relationships`, `real` as `absolute`, `ordinal` as
+`discrete`.
 
 Original brief: `/home/minas/projects/Time_Modes_Off.md`, outside the repo, with a mockup at
 `/mnt/c/Users/Gedim/Desktop/Thesis Tool/UI_Mockup_Meeting/time_off_structural_mode_sized.png`.
@@ -27,13 +31,13 @@ ramp (99), click-to-re-layout (100) and the mode-to-mode tween (108).
 npm start                                          # then http://localhost:8000
 npm test                                           # 674 assertions, no browser
 
-node scripts/shot.mjs F10 --mode off --layout cluster --width 1500 --height 900
+node scripts/shot.mjs F10 --mode relationships --layout cluster --width 1500 --height 900
 node scripts/shot.mjs --repo kubernetes/kubernetes --seed issue:235959617 \
-     --degree 2 --mode off --layout cluster        # needs PostgREST up
-node scripts/rpc-check.mjs kubernetes/kubernetes issue:355336120 2   # the gate, off mode included
+     --degree 2 --mode relationships --layout cluster        # needs PostgREST up
+node scripts/rpc-check.mjs kubernetes/kubernetes issue:355336120 2   # the gate, relationships mode included
 ```
 
-URL parameters, all for reproducibility: `?mode=off`, `?layout=layered|cluster`,
+URL parameters, all for reproducibility: `?mode=relationships`, `?layout=layered|cluster`,
 `?brush=0.2,0.8`, `?focus=<objectId>&focusDegree=2`. `shot.mjs` has a flag for each.
 
 Sub-logs worth looking at: **F10** (one issue, three fans — clusters at their best),
@@ -46,7 +50,7 @@ the capacity limit of both arrangements).
 | File | Role |
 |---|---|
 | `src/layout/engine.js` | `createLayout()` — picks temporal or structural and returns one shape (`kind`). **The one mode branch** (decision 96). |
-| `src/layout/structural.js` | The off-mode node/edge model: one node per object, bursts, arrowhead direction, brush maths |
+| `src/layout/structural.js` | The relationships-mode node/edge model: one node per object, bursts, arrowhead direction, brush maths |
 | `src/layout/layered.js` | Rows (Sugiyama). Also owns `assignLayers`, `hashId`, `LAYER_ORDER` |
 | `src/layout/cluster.js` | Clusters. Balloon seed, then d3-force. Owns the shared force config (`withForces`), `forceFootprint`, `createDragSimulation` |
 | `src/render/structural.js` | Drawing, hovercards, dragging |
@@ -84,8 +88,8 @@ at 2) — all pass.
   in either arrangement, though the *shape* still reads. The halo keeps labels legible, not
   clean. The obvious next step is a label-placement pass (offset by quadrant, or hide labels
   below a density and show them on hover); nothing is built.
-- **A saved view carrying `mode: off` restores its controls and chrome** (`markMode` runs
-  on preset apply), but a full round-trip — save in off mode, reload, apply — has not been
+- **A saved view carrying `mode: relationships` restores its controls and chrome** (`markMode` runs
+  on preset apply), but a full round-trip — save in relationships mode, reload, apply — has not been
   checked by eye.
 - **F3 lays out in a vertical line** (0% of the width). Three nodes with a pinned root and
   no commits — degenerate, but it looks odd.
@@ -132,7 +136,7 @@ at 2) — all pass.
     too big.** `separateRow` in `layered.js` promised a right-to-left sweep and only
     shifted the row. When one mark near the left end of the row order is aligned toward
     the centre (a commit shared with a mark at the far end), the chain pushes every mark
-    after it right, the row ends up 1400px wide in a 980px box, and — since off mode
+    after it right, the row ends up 1400px wide in a 980px box, and — since relationships mode
     cannot scroll sideways — the right-hand third is silently lost. The trigger is
     order-versus-alignment conflict, so a synthetic case needs *both*: the test that pins
     it shares a commit between the second and the last pull request; sharing between the

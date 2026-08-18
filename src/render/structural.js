@@ -1,10 +1,10 @@
 /**
- * Drawing the **off** (structural) mode.
+ * Drawing the **relationships** (structural) mode.
  *
  * The timeline's renderers assume a time axis and lanes — `render/links.js` slides an
  * endpoint along a lifecycle bar, `render/axis.js` draws ticks, `render/nodes.js` packs
  * marks into rows. None of that exists here, so this is a second, small renderer rather
- * than a pile of `if (mode === 'off')` inside the first. It draws exactly two things:
+ * than a pile of `if (mode === 'relationships')` inside the first. It draws exactly two things:
  * edges, then nodes.
  *
  * **What is held constant, deliberately** — the point of the mode is that only *position*

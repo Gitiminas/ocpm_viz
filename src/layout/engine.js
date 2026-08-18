@@ -4,7 +4,7 @@
  * There are two ways this tool can arrange a sub-log, and they have nothing in common
  * beyond the question they answer:
  *
- *   temporal    real · ordinal — x is a time scale, y is a packed lane row
+ *   temporal    absolute · discrete — x is a time scale, y is a packed lane row
  *   structural  off — x and y both come from a force simulation over the link graph
  *
  * `createLayout` picks one and returns the same shape either way, so `render/timeline.js`
@@ -15,7 +15,7 @@
  *
  * ⚠️ **This does not make the mode branch literally singular, and claiming so would be
  * false.** The two temporal modes still branch inside `scales.js` (which curve x
- * follows), `render/axis.js` (which ticks to draw) and `render/nodes.js` (ordinal dims the
+ * follows), `render/axis.js` (which ticks to draw) and `render/nodes.js` (discrete dims the
  * lifecycle bars, since a bar spanning a time axis means nothing when the axis is
  * rank-ordered). Every one of those is a branch *within* the temporal engine, which is
  * where they belong. What this module removes is the fifth kind of branch — the one that
@@ -35,11 +35,11 @@ import { layoutLayered } from './layered.js';
 import { layoutCluster } from './cluster.js';
 import { buildStructuralNodes, buildStructuralEdges, timeExtent } from './structural.js';
 
-/** Which engine a mode uses. `off` is the only structural one. */
-export const STRUCTURAL_MODES = ['off'];
+/** Which engine a mode uses. `relationships` is the only structural one. */
+export const STRUCTURAL_MODES = ['relationships'];
 
 /**
- * The two ways the off mode can arrange a sub-log.
+ * The two ways the relationships mode can arrange a sub-log.
  *
  * Both are structural — position encodes relationships either way — and they answer the
  * same question with different geometry. `layered` puts issues, pull requests and commits
@@ -57,8 +57,8 @@ export const DEFAULT_STRUCTURAL_LAYOUT = 'layered';
  * Every mode the tool has, in the order the control offers them.
  *
  * Assembled here rather than kept in `scales.js`, whose own `MODES` is correctly the
- * three modes *that module* implements — `off` draws no scale at all. This module is the
- * one place that knows both engines exist, so it is the one place that can name them all.
+ * two modes *that module* implements — `relationships` draws no scale at all. This module is
+ * the one place that knows both engines exist, so it is the one place that can name them all.
  */
 export { TEMPORAL_MODES };
 export const MODES = [...TEMPORAL_MODES, ...STRUCTURAL_MODES];
@@ -100,7 +100,7 @@ export function createLayout(options) {
  *
  *   build nodes → filter → rank → position (x) → pack rows → lane geometry → position (y)
  *
- * Ranking happens *after* filtering so that hiding comments cannot shift the ordinal
+ * Ranking happens *after* filtering so that hiding comments cannot shift the discrete
  * positions of the nodes that remain; row packing happens after x is known because
  * collisions are horizontal.
  */
@@ -114,7 +114,7 @@ function layoutTemporal({
   instants = [],
   expandedBursts = new Set(),
   expandedCommentBursts = new Set(),
-  mode = 'real',
+  mode = 'absolute',
   isVisible = () => true,
   margin,
   plotWidth,
@@ -145,13 +145,13 @@ function layoutTemporal({
 
   // Where each observation falls. Taken from the scale by *time*, never through the
   // node: the node's rank belongs to its first observation, so passing it here would
-  // stack every repeat on top of the glyph in ordinal mode.
+  // stack every repeat on top of the glyph in discrete mode.
   for (const node of nodes) {
     if (!node.observations?.length) continue;
     node.observations.forEach((observation, i) => {
       // The first observation *is* the glyph, so it takes the node's x rather than
       // recomputing it. Later ones carry their own rank (`assignRanks`), which is what
-      // gives them a real slot in ordinal mode instead of an interpolated one.
+      // gives them a real slot in discrete mode instead of an interpolated one.
       observation.x = i === 0 ? node.x : scales.x(observation.time, observation);
     });
   }
@@ -207,7 +207,7 @@ export const STRUCTURAL_PLOT_HEIGHT = 620;
 /**
  * Room kept clear inside the box, so a mark on the rim still has its label and its
  * hovercard anchor on the surface. This — not the renderer's frame — is what keeps the
- * drawing off the edge; the frame around it is a hairline in off mode (`STRUCTURAL_MARGIN`
+ * drawing off the edge; the frame around it is a hairline in relationships mode (`STRUCTURAL_MARGIN`
  * in `render/timeline.js`).
  */
 const STRUCTURAL_PADDING = 48;
@@ -365,7 +365,7 @@ function layoutStructural({
  * the time axis — and this mode has no time axis, so any number it returned would be
  * fiction. Returning null instead would flow into a `translate(null, …)` and produce a
  * mark in the wrong place with no error, which is the failure this project keeps finding
- * by eye. The burst handles are not drawn in off mode; a collapsed push is a node here
+ * by eye. The burst handles are not drawn in relationships mode; a collapsed push is a node here
  * and is expanded by clicking it.
  */
 function createStructuralAnchors(nodeByObject) {
@@ -378,7 +378,7 @@ function createStructuralAnchors(nodeByObject) {
     clampToLifecycle: (anchorId) => at(anchorId)?.x ?? 0,
     xOfTime: () => {
       throw new Error(
-        'xOfTime() has no meaning in the off (structural) mode: there is no time axis to ' +
+        'xOfTime() has no meaning in the relationships (structural) mode: there is no time axis to ' +
           'project onto. Its caller draws burst handles, which this mode does not — a ' +
           'collapsed push is a node here, expanded by clicking it.',
       );

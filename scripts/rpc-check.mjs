@@ -266,7 +266,7 @@ for (const mode of TEMPORAL_MODES) {
     }
   }
 
-  if (mode === 'real') {
+  if (mode === 'absolute') {
     console.log(
       `layout  ${nodes.length} nodes · ${bursts.length} bursts · bands per lane ` +
         LANES.map((l) => `${l}:${(maxRowByLane.get(l) ?? 0) + 1}`).join(' ') +
@@ -292,7 +292,7 @@ for (const mode of TEMPORAL_MODES) {
   for (const structuralLayout of STRUCTURAL_LAYOUTS) {
     const tag = `[off/${structuralLayout}]`;
     const layout = createLayout({
-      mode: 'off',
+      mode: 'relationships',
       graph,
       index,
       laneTypes: LANES,
@@ -384,7 +384,7 @@ for (const mode of TEMPORAL_MODES) {
         (shortfalls ? ` · ${shortfalls} soft footprint shortfall(s)` : ''),
     );
   }
-  console.log(`off     ${summary.join('   ')}`);
+  console.log(`rel     ${summary.join('   ')}`);
 }
 
 if (layoutFail.length) {

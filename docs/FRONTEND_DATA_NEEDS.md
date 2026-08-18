@@ -120,7 +120,7 @@ every link in a payload is now an object→object traceability edge that every c
 The filter vocabulary is **derived from the loaded sub-log**, never enumerated
 (`deriveRelGroups`/`deriveQualifiers`/`deriveMethods`, `state.js:97–158`). State keys:
 
-`k` · `mode` (`real`/`highlights`/`ordinal`) · `focus` · `focusDegree` · `actors` · `lanes` ·
+`k` · `mode` (`absolute`/`discrete`/`relationships`) · `focus` · `focusDegree` · `actors` · `lanes` ·
 `showComments` · `laneOpen` · `hiddenObjects` · `hiddenCommitGroups` · `relPairs` · `qualifiers` ·
 `methods` · `relOpen` · `expandedBursts` · `expandedGroups` · `expandedCommentBursts` ·
 `commentWindowDays`

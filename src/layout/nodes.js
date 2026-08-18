@@ -209,7 +209,7 @@ function commitObservations(index, commit) {
 }
 
 /**
- * Assign ranks for ordinal mode: strict temporal order over every visible node,
+ * Assign ranks for discrete mode: strict temporal order over every visible node,
  * with lane and id as deterministic tie-breakers so equal timestamps never reorder
  * between renders.
  */
@@ -221,9 +221,9 @@ export function assignRanks(nodes) {
     /*
      * ⚠️ **A repeat observation needs a rank of its own.**
      *
-     * Ordinal mode spaces marks by event order and discards real durations. A repeat
+     * Discrete mode spaces marks by event order and discards real durations. A repeat
      * push is an event and it is drawn, but it used to get no rank — so its x came
-     * from `ordinalTime`, which *interpolates a timestamp* between the ranks around
+     * from `discreteTime`, which *interpolates a timestamp* between the ranks around
      * it. Anything later than the last ranked node clamped to the right edge, which
      * put re-pushes exactly on top of whatever ended the sub-log (reported as "the
      * later push aligns perfectly with the issue closing, even though it happened
@@ -265,7 +265,7 @@ export function assignRanks(nodes) {
  * objects, commit groups or any control added later.
  *
  * Kept separate from construction so the toggles cannot accidentally change ranks:
- * hiding a node must happen *before* ranking, or ordinal positions would shift
+ * hiding a node must happen *before* ranking, or discrete positions would shift
  * under a filter that is supposed to be purely subtractive.
  */
 export function filterNodes(nodes, isVisible) {

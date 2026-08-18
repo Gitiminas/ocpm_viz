@@ -20,7 +20,7 @@ import {
 } from '../src/layout/layered.js';
 
 /**
- * The layered layout behind the off time mode.
+ * The layered layout behind the relationships time mode.
  *
  * The properties that matter are the ones a force layout could not give: rows are a
  * *rule* rather than an accident, the arrangement is a pure function of the graph, and a
@@ -182,7 +182,7 @@ describe('marks do not overlap and stay inside the box', () => {
     // ⚠️ The case the previous test does not cover: a row that fits at minimum spacing
     // but has been spread wider than the box by alignment. kubernetes #68026 — one issue,
     // 34 pull requests — came out 1400px wide in a 980px box with the leftmost mark on
-    // the edge, so nothing could slide and the right-hand third was simply lost. Off mode
+    // the edge, so nothing could slide and the right-hand third was simply lost. Relationships mode
     // cannot scroll sideways; what runs off is gone. The forward chain only closes gaps
     // that are too small, so the fix is the right-to-left sweep `separateRow` always
     // said it had.

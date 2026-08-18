@@ -66,7 +66,7 @@ const PLOT_WIDTH = 1100;
 const LANES = ['issue', 'pull_request', 'commit'];
 
 /** Run the real layout pipeline over a fixture, exactly as the renderer does. */
-async function layout(fixture, { mode = 'real' } = {}) {
+async function layout(fixture, { mode = 'absolute' } = {}) {
   const graph = await load(fixture);
   const index = indexObjectGraph(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
@@ -259,7 +259,7 @@ describe('sub-lanes are allocated only when overlap forces them', () => {
   });
 
   test('an object keeps its band across every time mode', async () => {
-    for (const mode of ['real', 'ordinal']) {
+    for (const mode of ['absolute', 'discrete']) {
       const { objectRow } = await layout('F3', { mode });
       assert.equal(
         distinctRows(objectRow, ['pr:20', 'pr:21']).size,
@@ -528,7 +528,7 @@ describe('layout invariants across all fixtures and modes', () => {
 
   for (const fixture of ALL) {
     test(`${fixture}: no two nodes overlap within a row`, async () => {
-      for (const mode of ['real', 'ordinal']) {
+      for (const mode of ['absolute', 'discrete']) {
         const { nodes } = await layout(fixture, { mode });
         const byLaneRow = new Map();
         for (const node of nodes) {
@@ -550,7 +550,7 @@ describe('layout invariants across all fixtures and modes', () => {
     });
 
     test(`${fixture}: every node has a finite position and a row`, async () => {
-      for (const mode of ['real', 'ordinal']) {
+      for (const mode of ['absolute', 'discrete']) {
         const { nodes } = await layout(fixture, { mode });
         for (const node of nodes) {
           assert.ok(Number.isFinite(node.x), `${fixture}/${mode}: ${node.id} has x=${node.x}`);

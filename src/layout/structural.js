@@ -1,7 +1,7 @@
 /**
- * The node and edge model for the **off** time mode.
+ * The node and edge model for the **relationships** time mode.
  *
- * Off mode is the same two-step design procedure as the timeline, run with *relationships*
+ * Relationships mode is the same two-step design procedure as the timeline, run with *relationships*
  * as the primary facet and *time* as the secondary one. Time is not deleted, it is
  * demoted: position stops encoding it and it moves to weaker channels — a fill ramp, edge
  * arrowheads, a time brush, and the hovercard's first row. This module is the primary
@@ -16,7 +16,7 @@
  * disappear: every non-comment event is carried on the node as `lifecycle`, and the
  * comments as a count, for the hovercard to list.
  *
- * ⚠️ **This makes an off-mode node a different thing from a timeline node**, and the UI
+ * ⚠️ **This makes an relationships-mode node a different thing from a timeline node**, and the UI
  * has to say so rather than let the reader assume the marks correspond. The hovercard
  * kicker reads `Pull request · entire lifecycle` where the timeline's reads
  * `Pull request · event`, and the title is the object's own label rather than an activity
@@ -57,7 +57,7 @@ export function burstRadius(size) {
 }
 
 /**
- * Build the off-mode nodes: one per visible object, plus one per collapsed burst.
+ * Build the relationships-mode nodes: one per visible object, plus one per collapsed burst.
  *
  * @param {object}   options
  * @param {object}   options.index            from `indexObjectGraph`

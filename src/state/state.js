@@ -36,10 +36,10 @@ export function createState() {
   return {
     /** Horizontal zoom multiplier. */
     k: 1,
-    /** Active time mode: real | ordinal | off. */
-    mode: 'real',
+    /** Active time mode: real | discrete | off. */
+    mode: 'absolute',
     /**
-     * The brushed time range in the off mode, as two fractions of the sub-log's span.
+     * The brushed time range in the relationships mode, as two fractions of the sub-log's span.
      *
      * Fractions rather than instants, so the range keeps its meaning when the sub-log
      * changes underneath it — "the last third" survives an expanded push or a hidden
@@ -64,9 +64,9 @@ export function createState() {
     nodeNudges: new Map(),
 
     /**
-     * How the off mode arranges a sub-log: `layered` (rows) or `radial` (rings).
+     * How the relationships mode arranges a sub-log: `layered` (rows) or `cluster` (clusters).
      *
-     * Only read when `mode === 'off'`. Two geometries for one question — rows read as a
+     * Only read when `mode === 'relationships'`. Two geometries for one question — rows read as a
      * process direction and match the timeline's lane order, rings read as containment
      * and suit a hub-shaped sub-log. Neither is right in general, so it is the reader's.
      */

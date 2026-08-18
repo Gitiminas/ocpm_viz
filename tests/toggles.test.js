@@ -332,7 +332,7 @@ describe('presets', () => {
     // Against the database it therefore had no `?source=`, opened on the fixtures
     // source, and could not find the seed — "copy link doesn't work anymore".
     const c = await context('F1');
-    c.state.mode = 'off';
+    c.state.mode = 'relationships';
     c.state.structuralLayout = 'cluster';
     const url = presetUrl(
       'http://localhost:8000/?source=database&repo=old',
@@ -350,7 +350,7 @@ describe('presets', () => {
     assert.equal(params.get('repo'), 'kubernetes/kubernetes');
     assert.equal(params.get('seed'), 'issue:235959617');
     assert.equal(params.get('degree'), '2');
-    assert.equal(params.get('mode'), 'off');
+    assert.equal(params.get('mode'), 'relationships');
     assert.equal(params.get('layout'), 'cluster');
     assert.equal(params.get('page'), 'stats');
     assert.equal(params.get('brush'), '0.2,0.8');
@@ -376,11 +376,11 @@ describe('presets', () => {
 
   test('a snapshot restores the arrangement along with the mode', async () => {
     const from = await context('F1');
-    from.state.mode = 'off';
+    from.state.mode = 'relationships';
     from.state.structuralLayout = 'cluster';
     const to = await context('F1');
     applyState(to.state, decodePreset(encodePreset(serializeState(from.state))));
-    assert.equal(to.state.mode, 'off');
+    assert.equal(to.state.mode, 'relationships');
     assert.equal(to.state.structuralLayout, 'cluster');
   });
 

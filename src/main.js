@@ -197,10 +197,10 @@ const timeline = createTimeline({
       el('zout').disabled = state.k <= MIN_ZOOM + 0.001;
 
       /*
-       * ⚠️ **The minimap is hidden in off mode, not left showing the last picture.**
+       * ⚠️ **The minimap is hidden in relationships mode, not left showing the last picture.**
        *
        * It is a *time* overview — a strip of every event's instant, with a viewport you
-       * drag along it — and off mode has no time axis for it to describe. Leaving it up
+       * drag along it — and relationships mode has no time axis for it to describe. Leaving it up
        * would be a control that silently does nothing and a picture that quietly belongs
        * to a different mode, which is the stale-picture failure decision 87 guards
        * against in the other direction. Its space is given back rather than blanked, so
@@ -560,9 +560,9 @@ el('zrst').onclick = () => {
  * Put every piece of mode-dependent chrome in the state the mode calls for.
  *
  * ⚠️ **This must run BEFORE the render that follows a mode change, not after it.** The
- * off mode fits its layout into the surface it can see, and the surface's height depends
- * on what sits above it — the minimap in the timeline modes, the time brush in off mode.
- * When the minimap was hidden from `onRendered`, the first off-mode render measured a
+ * relationships mode fits its layout into the surface it can see, and the surface's height depends
+ * on what sits above it — the minimap in the timeline modes, the time brush in relationships mode.
+ * When the minimap was hidden from `onRendered`, the first relationships-mode render measured a
  * surface still shortened by the minimap, fitted the drawing into that, and the surface
  * then grew underneath a picture that had already been sized: on a 1500×900 window the
  * layout got 443px of a 640px-tall surface, and the drawing came out at half the height
@@ -576,10 +576,10 @@ function markMode(mode) {
   for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
     option.classList.toggle('on', option.dataset.mode === mode);
   }
-  // The arrangement control belongs to the off mode alone. Shown in the other three it
+  // The arrangement control belongs to the relationships mode alone. Shown in the other two it
   // would be a control that silently does nothing, which this project forbids.
   el('layoutSeg').style.display = structural ? '' : 'none';
-  // The minimap is a time overview and off mode has no time axis; the brush takes its
+  // The minimap is a time overview and relationships mode has no time axis; the brush takes its
   // slot. `onRendered` hides the brush again for a sub-log with no span to brush.
   el('minimapWrap').style.display = structural ? 'none' : 'block';
   el('timeBrushWrap').style.display = structural ? 'block' : 'none';
@@ -791,9 +791,9 @@ function queryFromUrl() {
     page: params.get('page') === 'stats' ? 'stats' : 'timeline',
     /*
      * The time mode, for the same reason `?page=` exists: a link has to reproduce what
-     * someone was looking at. It matters more now than it did with three modes, because
-     * the fourth changes what *position* means — "look at this sub-log" and "look at this
-     * sub-log with time off" are two different requests, and the task-based evaluation
+     * someone was looking at. It matters more than it did when every mode was a timeline,
+     * because the relationships mode changes what *position* means — "look at this sub-log" and "look at this
+     * sub-log with time released" are two different requests, and the task-based evaluation
      * needs to be able to make the second one.
      *
      * A preset also carries the mode (`serializeState`), but a preset is a whole
@@ -801,7 +801,7 @@ function queryFromUrl() {
      * than defaulted loudly — it is a URL someone typed, not a payload.
      */
     mode: MODES.includes(params.get('mode')) ? params.get('mode') : null,
-    // Which arrangement the off mode uses. Same reasoning as `mode`: a link has to be
+    // Which arrangement the relationships mode uses. Same reasoning as `mode`: a link has to be
     // able to reproduce the picture, and rows and rings are two different pictures.
     layout: STRUCTURAL_LAYOUTS.includes(params.get('layout')) ? params.get('layout') : null,
     // The brushed range, as two fractions — `?brush=0.6,1` is "the last two fifths". Same

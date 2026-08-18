@@ -69,12 +69,12 @@ export function renderLifecycleBars({
           .attr('height', 6)
           .attr('rx', 3)
           .attr('fill', color)
-          .attr('fill-opacity', state.mode === 'ordinal' ? 0.08 : 0.18)
+          .attr('fill-opacity', state.mode === 'discrete' ? 0.08 : 0.18)
           .attr('stroke', color)
           .attr('stroke-width', 1);
 
-        // Ordinal mode discards real durations, so state the span in text instead.
-        if (state.mode === 'ordinal') {
+        // Discrete mode discards real durations, so state the span in text instead.
+        if (state.mode === 'discrete') {
           group
             .append('text')
             .attr('x', (x1 + x2) / 2)

@@ -1,8 +1,8 @@
 /**
  * The time axis: ticks, collision-aware labels, and gap annotation.
  *
- * Tick *selection* differs per mode. Real mode asks d3 for a sensible number of
- * round times. Ordinal mode spaces up to nine evenly by rank. (The removed Highlights
+ * Tick *selection* differs per mode. Absolute mode asks d3 for a sensible number of
+ * round times. Discrete mode spaces up to nine evenly by rank. (The removed Highlights
  * mode ticked only "meaningful" instants — lifecycle boundaries, out-of-span comments,
  * folded pushes; that selection went with the mode, decision 112.)
  *
@@ -29,7 +29,7 @@ const STAGGER_DISTANCE_PX = 110;
 
 /** Choose tick positions for the active mode. */
 export function computeTicks({ mode, scales, zoom, rankOrder, rankMax, plotWidth, marginLeft }) {
-  if (mode === 'real') {
+  if (mode === 'absolute') {
     const idealCount = Math.max(3, Math.min(200, Math.round(6 * zoom)));
     return d3
       .scaleUtc()
@@ -53,7 +53,7 @@ export function computeTicks({ mode, scales, zoom, rankOrder, rankMax, plotWidth
 /** Build one label per tick, adding seconds only where minutes would be ambiguous. */
 function buildLabels(ticks, mode) {
   return ticks.map((tick, i) => {
-    if (mode === 'real') {
+    if (mode === 'absolute') {
       const isMidnight = tick.t.getUTCHours() === 0 && tick.t.getUTCMinutes() === 0;
       return i === 0 || isMidnight ? formatDate(tick.t) : formatTime(tick.t);
     }
@@ -127,14 +127,14 @@ export function renderAxis({
   const merged = mergeTicks(ticks, buildLabels(ticks, mode));
 
   const hasHourTicks =
-    mode === 'real' && ticks.some((t) => t.t.getUTCHours() !== 0 || t.t.getUTCMinutes() !== 0);
+    mode === 'absolute' && ticks.some((t) => t.t.getUTCHours() !== 0 || t.t.getUTCMinutes() !== 0);
 
   let lastX = -1e9;
   let staggered = false;
 
   for (const tick of merged) {
     const isDateTick = hasHourTicks && (tick.isFirst || !/:/.test(tick.label));
-    const closeSpacing = mode !== 'real' && tick.x - lastX < STAGGER_DISTANCE_PX;
+    const closeSpacing = mode !== 'absolute' && tick.x - lastX < STAGGER_DISTANCE_PX;
     const yOffset = closeSpacing ? (staggered ? 34 : 16) : 16;
     staggered = closeSpacing ? !staggered : false;
     lastX = tick.x;
@@ -170,9 +170,9 @@ export function renderAxis({
       .text(tick.label);
   }
 
-  // Ordinal mode discards real durations, so silence becomes invisible. Annotate the
+  // Discrete mode discards real durations, so silence becomes invisible. Annotate the
   // large gaps with their true length to keep the compression honest.
-  if (mode === 'ordinal') {
+  if (mode === 'discrete') {
     for (const gap of findLargeGaps(rankTimes)) {
       const x0 = marginLeft + (gap.fromRank / rankMax) * plotWidth;
       const x1 = marginLeft + (gap.toRank / rankMax) * plotWidth;

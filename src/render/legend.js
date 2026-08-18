@@ -149,8 +149,8 @@ export const LEGEND_SECTIONS = [
   },
   {
     /*
-     * Only drawn in the off time mode, and dimmed like any other absent row in the other
-     * three (decision 83) rather than removed — a row that vanishes cannot say whether
+     * Only drawn in the relationships time mode, and dimmed like any other absent row in the
+     * other two (decision 83) rather than removed — a row that vanishes cannot say whether
      * the mark is absent because the data has none or because you switched modes.
      *
      * Two rows have been removed from here. A light-to-dark fill ramp carrying time —
@@ -160,7 +160,7 @@ export const LEGEND_SECTIONS = [
      * anyway. What the badge was really guarding against — a dashed link hidden under a
      * solid one — is handled by drawing one line per evidence class, not by counting.
      */
-    title: 'Time off',
+    title: 'Relationships mode',
     rows: [
       {
         key: 'precedence-arrow',

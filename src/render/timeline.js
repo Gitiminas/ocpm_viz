@@ -6,7 +6,7 @@
  *   build nodes → filter by toggles → rank → position (x) → pack rows → lane
  *   geometry → position (y) → draw
  *
- * Ranking happens *after* filtering so that hiding comments cannot shift ordinal
+ * Ranking happens *after* filtering so that hiding comments cannot shift discrete
  * positions of the nodes that remain, and row packing happens after x is known
  * because collisions are horizontal.
  *
@@ -45,12 +45,12 @@ import { isNodeVisible, isObjectVisible, isLinkVisible, actorPreview } from '../
  */
 export const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
 /**
- * The off mode's frame. Nothing is drawn in its margins — no lane labels, no axis — so
+ * The relationships mode's frame. Nothing is drawn in its margins — no lane labels, no axis — so
  * they are a hairline, and the structural layout gets the drawing surface.
  *
  * ⚠️ It used to get the timeline's frame, and that was most of the "cramped" complaint:
  * on a 1500×900 window the timeline margins reserve 300px of width and 182px of height
- * for things off mode does not draw, so the layout was fitted into 850×498 of a
+ * for things relationships mode does not draw, so the layout was fitted into 850×498 of a
  * 1150×680 surface and came out at a third of the width. The layout's own `padding`
  * (see `engine.js`) still keeps labels off the edge; this is only the frame around it.
  */
@@ -80,7 +80,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   let lastNodes = [];
   let pendingTween = null;
   /*
-   * Movement for the off mode. One instance for the session, replayed on every draw —
+   * Movement for the relationships mode. One instance for the session, replayed on every draw —
    * `play` stops whatever was running first, so two loops can never fight over one mark.
    * Nothing here feeds back into the layout: see `render/motion.js`.
    */
@@ -247,7 +247,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
     // ---- the one branch -------------------------------------------------------
     //
-    // Off mode has no lanes, no axis, no lifecycle bars and no sequence spines, because
+    // Relationships mode has no lanes, no axis, no lifecycle bars and no sequence spines, because
     // every one of those is a statement about a time axis. It draws edges and nodes.
     if (layout.kind === 'structural') {
       const nodesById = new Map(nodes.map((node) => [node.id, node]));

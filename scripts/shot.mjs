@@ -6,7 +6,7 @@
  *   node scripts/shot.mjs LIVE1
  *   node scripts/shot.mjs F1 --height 2000
  *   node scripts/shot.mjs LIVE2 --page stats
- *   node scripts/shot.mjs F13 --mode off
+ *   node scripts/shot.mjs F13 --mode relationships
  *
  * ⚠️ **This does not replace looking at it.** `npm test` covers the arithmetic and this
  * covers "did anything draw at all"; neither can tell you the picture is *right*. It
@@ -69,8 +69,8 @@ const positional = args.filter((arg) => !arg.startsWith('--') && !flagValues.has
 const width = Number(flag('width', 1700));
 const height = Number(flag('height', 1400));
 const page = flag('page', null);
-// The time mode. Worth a flag rather than only a preset, because the off mode changes
-// what position means, so "F13" and "F13 with time off" are two different pictures.
+// The time mode. Worth a flag rather than only a preset, because the relationships mode changes
+// what position means, so "F13" and "F13 with time released" are two different pictures.
 const mode = flag('mode', null);
 const port = flag('port', 8000);
 
@@ -79,7 +79,7 @@ const port = flag('port', 8000);
 const repo = flag('repo', null);
 const seed = flag('seed', null);
 const degree = flag('degree', null);
-// Which arrangement the off mode uses: layered (rows) or radial (rings).
+// Which arrangement the relationships mode uses: layered (rows) or cluster (clusters).
 const layout = flag('layout', null);
 // The brushed time range, as two fractions: --brush 0.6,1
 const brush = flag('brush', null);
@@ -136,7 +136,7 @@ try {
       /*
        * ⚠️ Motion off, so two shots of one sub-log are comparable.
        *
-       * The off mode drifts its marks a couple of pixels around where the layout put
+       * The relationships mode drifts its marks a couple of pixels around where the layout put
        * them, which is fine to look at and useless to compare: two screenshots taken a
        * second apart would differ everywhere, and a screenshot is exactly the tool used
        * here to check whether a change moved anything. The app honours this the same way
@@ -148,7 +148,7 @@ try {
        * this size. Measured: `--window-size=1500,900` gives `window.innerHeight` 807 while
        * the app renders, and a 900px-tall image afterwards. A real browser fires `resize`
        * and the app re-renders; headless does not, so anything sized to the viewport —
-       * the off mode fits its drawing to the surface — comes out ~10% smaller here than
+       * the relationships mode fits its drawing to the surface — comes out ~10% smaller here than
        * on a screen of the same size. Compare fill between shots, not against the box.
        */
       `--window-size=${width},${height}`,

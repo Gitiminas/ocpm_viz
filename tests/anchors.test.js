@@ -42,7 +42,7 @@ const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11',
  * The renderer's own pipeline, up to the point where anchors are created —
  * `timeline.js` lines 140–186, with the drawing left out.
  */
-async function layout(fixture, { mode = 'real' } = {}) {
+async function layout(fixture, { mode = 'absolute' } = {}) {
   const graph = await load(fixture);
   const index = indexObjectGraph(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
@@ -84,7 +84,7 @@ const barY = (geometry, objectRow, object) =>
 describe('an edge meets an object where the object is drawn', () => {
   for (const fixture of ALL) {
     test(`${fixture}: every issue and PR anchors to its own band, in every mode`, async () => {
-      for (const mode of ['real', 'ordinal']) {
+      for (const mode of ['absolute', 'discrete']) {
         const { index, objectRow, geometry, anchors } = await layout(fixture, { mode });
         for (const laneType of ['issue', 'pull_request']) {
           for (const object of index.objectsOfType(laneType)) {

@@ -27,14 +27,14 @@ describe('the two scales agree on the plot edges', () => {
       rankMax: instants.length - 1,
     });
 
-  test('real mode pins first and last instants to the edges', () => {
-    const scales = build('real');
+  test('absolute mode pins first and last instants to the edges', () => {
+    const scales = build('absolute');
     assert.equal(scales.x(instants[0]), MARGIN_LEFT);
     assert.equal(scales.x(instants[2]), MARGIN_LEFT + PLOT_WIDTH);
   });
 
-  test('ordinal mode spaces ranks evenly', () => {
-    const scales = build('ordinal');
+  test('discrete mode spaces ranks evenly', () => {
+    const scales = build('discrete');
     assert.equal(scales.x(null, { rank: 0 }), MARGIN_LEFT);
     assert.equal(scales.x(null, { rank: 1 }), MARGIN_LEFT + PLOT_WIDTH / 2);
     assert.equal(scales.x(null, { rank: 2 }), MARGIN_LEFT + PLOT_WIDTH);
@@ -43,7 +43,7 @@ describe('the two scales agree on the plot edges', () => {
   test('there are exactly two temporal modes, and Highlights is not one of them', () => {
     // Decision 112 removed the compressed axis. Pinned so it cannot creep back under
     // another name without being argued for.
-    assert.deepEqual(MODES, ['real', 'ordinal']);
+    assert.deepEqual(MODES, ['absolute', 'discrete']);
   });
 });
 
@@ -74,7 +74,7 @@ describe('scales are monotonic over F1 in every mode', () => {
   test('positions stay inside the plot area', async () => {
     const graph = await loadF1();
     const instants = collectInstants(graph);
-    for (const mode of ['real']) {
+    for (const mode of ['absolute']) {
       const scales = createScales({ instants, marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode });
       for (const instant of instants) {
         const x = scales.x(instant);
@@ -102,22 +102,22 @@ describe('degenerate sub-logs do not produce NaN coordinates', () => {
   });
 
   test('an empty sub-log does not throw', () => {
-    const scales = createScales({ instants: [], marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode: 'real' });
+    const scales = createScales({ instants: [], marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode: 'absolute' });
     assert.ok(Number.isFinite(scales.x(0)));
   });
 });
 
 describe('invert round-trips well enough to anchor a zoom', () => {
-  test('real mode inverts exactly', () => {
+  test('absolute mode inverts exactly', () => {
     const instants = [1000, 500_000, 900_000];
-    const scales = createScales({ instants, marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode: 'real' });
+    const scales = createScales({ instants, marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode: 'absolute' });
     for (const instant of instants) {
       assert.equal(+scales.invert(scales.x(instant)), instant);
     }
   });
 
-  test('ordinal mode inverts its own ranks exactly, and interpolates between them', () => {
-    // The ordinal inverse used to borrow the (removed) compressed scale's inverse as an
+  test('discrete mode inverts its own ranks exactly, and interpolates between them', () => {
+    // The discrete inverse used to borrow the (removed) compressed scale's inverse as an
     // approximation. It now inverts rank positions: a rank's pixel comes back as that
     // rank's instant, and a pixel between two ranks as an instant between theirs.
     const rankTimes = [1000, 500_000, 900_000];
@@ -125,7 +125,7 @@ describe('invert round-trips well enough to anchor a zoom', () => {
       instants: rankTimes,
       marginLeft: MARGIN_LEFT,
       plotWidth: PLOT_WIDTH,
-      mode: 'ordinal',
+      mode: 'discrete',
       rankTimes,
       rankMax: 2,
     });
@@ -163,7 +163,7 @@ describe('row packing', () => {
   test('no two nodes in one row sit closer than the collision threshold', async () => {
     const graph = await loadF1();
     const instants = collectInstants(graph);
-    const scales = createScales({ instants, marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode: 'real' });
+    const scales = createScales({ instants, marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode: 'absolute' });
 
     const nodes = graph.events.map((e) => ({
       id: e.id,
@@ -263,11 +263,11 @@ describe('large gap annotation', () => {
     assert.equal(GAP_THRESHOLD_MS, day);
   });
 
-  test('F1 has the two gaps the ordinal baseline shows', async () => {
+  test('F1 has the two gaps the discrete baseline shows', async () => {
     const graph = await loadF1();
     const instants = collectInstants(graph);
     const gaps = findLargeGaps(instants);
-    // The ordinal screenshots annotate bands of roughly 1 day and roughly 7 days.
+    // The discrete screenshots annotate bands of roughly 1 day and roughly 7 days.
     assert.equal(gaps.length, 2);
     const days = gaps.map((g) => Math.round(g.duration / (24 * 60 * 60 * 1000)));
     assert.deepEqual(days, [1, 7]);

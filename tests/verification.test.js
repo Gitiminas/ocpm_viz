@@ -43,7 +43,7 @@ const LANES = ['issue', 'pull_request', 'commit'];
 const MARGIN_LEFT = 180;
 const PLOT_WIDTH = 1100;
 
-async function pipeline(fixture, { mode = 'real', state } = {}) {
+async function pipeline(fixture, { mode = 'absolute', state } = {}) {
   const graph = await load(fixture);
   const index = indexObjectGraph(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
@@ -295,7 +295,7 @@ describe('the large sub-log behaves (F10)', () => {
     // Not a benchmark, a tripwire. ARCHITECTURE says report it rather than
     // pre-optimise, so this fails loudly if a change makes the largest fixture slow.
     const started = performance.now();
-    await pipeline('F10', { mode: 'ordinal' });
+    await pipeline('F10', { mode: 'discrete' });
     const elapsed = performance.now() - started;
     assert.ok(elapsed < 3000, `F10 layout took ${Math.round(elapsed)}ms`);
   });

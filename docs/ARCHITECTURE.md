@@ -60,19 +60,19 @@ src/
     commitGroups.js    ✚ commits grouped by the PR they reach
   layout/
     engine.js          ✚ createLayout(): the ONE mode branch — temporal or structural (96)
-    scales.js          the three temporal modes' x scale (real / highlights / ordinal)
+    scales.js          the two temporal modes' x scale (absolute / discrete)
     packing.js         row allocation (per-object sub-lanes: Task 2)
     lanes.js           lane geometry
     nodes.js           ✚ node model construction — which nodes exist, in what order
     anchors.js         ✚ where a link meets an object
-    structural.js      ✚ off mode's node/edge model: one node per object, brush maths (95, 97)
-    layered.js         ✚ off mode, Rows: Sugiyama layers, ordering, row compression (101, 109)
-    cluster.js         ✚ off mode, Clusters: balloon seed + d3-force; the shared force
+    structural.js      ✚ relationships mode's node/edge model: one node per object, brush maths (95, 97)
+    layered.js         ✚ relationships mode, Rows: Sugiyama layers, ordering, row compression (101, 109)
+    cluster.js         ✚ relationships mode, Clusters: balloon seed + d3-force; the shared force
                          config, forceFootprint, createDragSimulation (101, 105, 106)
   render/
     timeline.js  nodes.js  links.js  axis.js  minimap.js  tooltip.js  legend.js
-    structural.js      ✚ drawing off mode: edges, marks, hovercards, dragging (103)
-    motion.js          ✚ settle + idle drift for off mode — presentation only (102)
+    structural.js      ✚ drawing relationships mode: edges, marks, hovercards, dragging (103)
+    motion.js          ✚ settle + idle drift for relationships mode — presentation only (102)
     theme.js           ✚ colours, shapes, glyphs shared by every renderer
     format.js          ✚ the one place a timestamp becomes text
     message.js         ✚ a page's message surface: why it cannot draw (decision 87)
@@ -147,14 +147,14 @@ exist. `createLayout({mode, …})` returns the same shape from either — `nodes
 `anchors`, `width`, `height` and a `kind` of `'temporal'` or `'structural'` — so
 `render/timeline.js` asks once and then draws, reading `kind` and never `mode`. The temporal
 engine is the timeline as it always was (x from `scales.js`, y from `packing.js` + `lanes.js`);
-the structural engine (`off` mode) is `structural.js` for the node model and `layered.js` or
+the structural engine (`relationships` mode) is `structural.js` for the node model and `layered.js` or
 `cluster.js` for the arrangement, and returns `edges`, `extent`, `waypoints`, `footprints` and
 `anchorId` besides. The renderer's one look at the mode before the layout runs is `frame()`,
 which decides how much surface each engine gets (decision 107). The structural renderer
-(`render/structural.js`) is a second, small renderer rather than a pile of `if (mode === 'off')`
+(`render/structural.js`) is a second, small renderer rather than a pile of `if (mode === 'relationships')`
 in the first, and `render/motion.js` animates *toward* computed positions without ever
 feeding back into them. Field notes, known weak points and the traps this construction paid
-for are in `OFF_MODE.md`; the decisions are 95–109.
+for are in `RELATIONSHIPS_MODE.md`; the decisions are 95–109.
 
 **Where visibility is decided.** All of it lives in `state/state.js` as pure predicates —
 `isObjectVisible`, `isNodeVisible`, `isLinkVisible`. `layout/` takes a predicate rather than the

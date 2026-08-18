@@ -1,5 +1,5 @@
 /**
- * The clustered layout for the **off** time mode — the alternative to `layered.js`.
+ * The clustered layout for the **relationships** time mode — the alternative to `layered.js`.
  *
  * Every object becomes a small hub for the things below it: the issue sits in the middle,
  * its pull requests stand off around it, and each pull request's commits fan out around

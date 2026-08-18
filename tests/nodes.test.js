@@ -23,7 +23,7 @@ const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture || 'F1'}.json`, import.meta.url), 'utf8'));
 const loadF1 = () => loadObjectGraph({ fixture: 'F1' }, { transport: fileTransport });
 
-async function f1Context({ mode = 'real', expandedBursts = new Set() } = {}) {
+async function f1Context({ mode = 'absolute', expandedBursts = new Set() } = {}) {
   const graph = await loadF1();
   const index = indexObjectGraph(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
@@ -73,10 +73,10 @@ describe('node construction over F1', () => {
     // Decision 112 removed the Highlights mode and its own folding rule (runs of
     // unremarkable commits into a count badge). Pinned: the same sub-log yields the same
     // marks in every temporal mode, and no node is a "group" of anything but a push.
-    const real = await f1Context({ mode: 'real' });
-    const ordinal = await f1Context({ mode: 'ordinal' });
+    const real = await f1Context({ mode: 'absolute' });
+    const discrete = await f1Context({ mode: 'discrete' });
     assert.deepEqual(
-      ordinal.nodes.map((n) => n.id),
+      discrete.nodes.map((n) => n.id),
       real.nodes.map((n) => n.id),
       'the mode changed which marks exist',
     );
@@ -392,7 +392,7 @@ describe('repeat observations get their own row, and pushes are attributed per p
   });
 });
 
-describe('ordinal mode gives every drawn mark its own slot', () => {
+describe('discrete mode gives every drawn mark its own slot', () => {
   test('repeat observations are ranked, in time order, alongside the nodes', () => {
     const graph = repeatedCommitGraph();
     const index = indexObjectGraph(graph);
@@ -411,11 +411,11 @@ describe('ordinal mode gives every drawn mark its own slot', () => {
     }
 
     // Every repeat carries a distinct rank. Without this they had none at all, and
-    // `ordinalTime` interpolated them — anything past the last ranked node clamped to
+    // `discreteTime` interpolated them — anything past the last ranked node clamped to
     // the right edge and landed on top of whatever ended the sub-log.
     const commit = nodes.find((n) => n.lane === 'commit');
     const ranks = commit.observations.map((o) => o.rank ?? commit.rank);
-    assert.equal(new Set(ranks).size, 3, 'each observation needs its own ordinal slot');
+    assert.equal(new Set(ranks).size, 3, 'each observation needs its own discrete slot');
   });
 
   test('a sub-log with no repeats ranks exactly as before', async () => {

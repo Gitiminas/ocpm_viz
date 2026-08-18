@@ -1,5 +1,5 @@
 /**
- * Movement for the off mode: settling into place, and a slow idle drift.
+ * Movement for the relationships mode: settling into place, and a slow idle drift.
  *
  * Graph tools move. Neo4j's browser, Gephi and the rest run a live simulation, so their
  * nodes glide into position and keep breathing afterwards, and a picture that simply

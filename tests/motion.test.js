@@ -12,7 +12,7 @@ import {
 } from '../src/render/motion.js';
 
 /**
- * Movement in the off mode.
+ * Movement in the relationships mode.
  *
  * The property that matters most is the one that is easiest to lose: motion must never
  * become part of the layout. The marks are animated *toward* positions the layout

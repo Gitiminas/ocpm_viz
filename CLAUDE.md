@@ -40,7 +40,7 @@ not catch a subtle rendering bug by reading a diff — verification matters more
 | `docs/VERIFICATION.md` | What was checked, how, and what was not | Task 6 output; §3b covers the data layer. **Read §4 before trusting any figure** |
 | `docs/LINK_FANNING.md` | Why link fanning exists, how it broke on real data, and what it does now | Worked example of a defect no test could catch |
 | `docs/COMMIT_PR_NARROWING.md` | Which commits count as a pull request's, why the rule changed, and what it costs | Decision 80. Read before quoting any commit-link figure |
-| `docs/OFF_MODE.md` | The structural (`off`) time mode: how to see it, where it lives, known weak points, and the traps its construction paid for | Field notes. Decisions are 95–109 in `DECISIONS.md`; read §5 before touching `layout/cluster.js` or `layout/layered.js` |
+| `docs/RELATIONSHIPS_MODE.md` | The structural (`relationships`) time mode: how to see it, where it lives, known weak points, and the traps its construction paid for | Field notes. Decisions are 95–109 in `DECISIONS.md`; read §5 before touching `layout/cluster.js` or `layout/layered.js` |
 | `README.md` | Human entry point: run, test, extend | Keep current |
 | `docs/ONBOARDING.md` | Reading path: what to read, in what order, and what to skip | Orientation |
 | ~~`tasks/*.md`~~ | Was one file per work package. **Deleted in `a1e2a9c` and staying deleted.** Work packages 00–06 are complete | Gone — do not restore |
