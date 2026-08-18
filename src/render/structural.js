@@ -32,8 +32,7 @@ import { activityLabel } from '../model/activities.js';
 import { legendKeyFor } from './nodes.js';
 import { bundleEdges, overlapsBrush } from '../layout/structural.js';
 import { pushApart } from './motion.js';
-import { relax } from '../layout/relax.js';
-import { CHARGE } from '../layout/cluster.js';
+import { createDragSimulation } from '../layout/cluster.js';
 
 /** How faint a mark outside the brushed range becomes. Dimmed, never removed. */
 const BRUSHED_OUT = 0.13;
@@ -355,6 +354,9 @@ export function renderStructuralNodes({
   // What movement needs: where each mark belongs, where it was a moment ago, and how to
   // put it somewhere. The label rides along, so a name never parts company with its mark.
   const live = [];
+  // Every gesture handler this pass created, so a re-render can shut down a simulation
+  // that would otherwise go on driving marks which no longer exist.
+  const gestures = [];
 
   for (const node of nodes) {
     // The object's own shade, exactly as every other mode draws it (decision 24, and the
@@ -459,6 +461,7 @@ export function renderStructuralNodes({
           release,
         })
       : null;
+    if (drag) gestures.push(drag);
 
     group.on('click', (event) => {
       event.stopPropagation();
@@ -519,6 +522,9 @@ export function renderStructuralNodes({
     };
   }
 
+  live.dispose = () => {
+    for (const gesture of gestures) gesture.dispose?.();
+  };
   return live;
 }
 
@@ -579,26 +585,88 @@ function enableDrag(
 ) {
   let from = null;
   let travelled = 0;
+  let simulation = null;
 
   group.style('cursor', 'grab');
+
+  /**
+   * Start a live simulation over the marks this gesture is allowed to move.
+   *
+   * ⚠️ **Everything outside the neighbourhood is pinned, not merely anchored.** Leaving the
+   * whole graph free was tried and is wrong: with nothing held down, repulsion from the
+   * dragged mark travels further than the springs do, so pulling a pull request 250px
+   * carried its own commit 7px and shoved an unrelated one 210px. Pinning states the
+   * intent — this gesture moves this cluster — instead of hoping the forces express it,
+   * and it makes each tick cheap because only a handful of nodes are free.
+   */
+  function begin() {
+    const reachable = neighbourhood(mark.id, edges, DRAG_REACH);
+    const simNodes = marks.map((other) => {
+      const seed = {
+        id: other.id,
+        lane: other.lane,
+        radius: other.radius,
+        x: other.x,
+        y: other.y,
+      };
+      if (other.id === mark.id || !reachable.has(other.id)) {
+        seed.fx = other.x;
+        seed.fy = other.y;
+      }
+      return seed;
+    });
+    const byId = new Map(simNodes.map((entry) => [entry.id, entry]));
+    const simLinks = edges
+      .filter((edge) => byId.has(edge.source) && byId.has(edge.target))
+      .map((edge) => ({ source: edge.source, target: edge.target }));
+
+    simulation = createDragSimulation(simNodes, simLinks);
+    simulation.on('tick', () => {
+      for (const other of marks) {
+        const at = byId.get(other.id);
+        if (!at || other.id === mark.id) continue;
+        other.x = at.x;
+        other.y = at.y;
+      }
+      repaint();
+    });
+    simulation.on('end', () => {
+      // Recorded when the motion stops rather than on release, so what is remembered is
+      // where things came to rest — not where they happened to be mid-flight.
+      if (travelled > DRAG_SLOP_PX) recordNudges();
+    });
+
+    return byId.get(mark.id);
+  }
+
+  function recordNudges() {
+    onDragged(
+      marks
+        .filter((other) => other.x !== other.layoutX || other.y !== other.layoutY)
+        .map((other) => ({
+          id: other.id,
+          dx: other.x - other.layoutX,
+          dy: other.y - other.layoutY,
+        })),
+    );
+  }
 
   group.on('pointerdown', (event) => {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    from = {
-      x: event.clientX,
-      y: event.clientY,
-      markX: mark.x,
-      markY: mark.y,
-      // Which marks this gesture is allowed to move. Computed once, so the set cannot
-      // grow as the drag travels and quietly start dragging the whole graph.
-      neighbourhood: neighbourhood(mark.id, edges, DRAG_REACH),
-    };
+    from = { x: event.clientX, y: event.clientY, markX: mark.x, markY: mark.y };
     travelled = 0;
     hold();
     group.style('cursor', 'grabbing');
     group.node().setPointerCapture?.(event.pointerId);
+
+    if (settling) {
+      from.handle = begin();
+      // Reheated, so the gesture has momentum from the first pixel rather than starting
+      // cold and catching up.
+      simulation.alphaTarget(0.3).restart();
+    }
   });
 
   group.on('pointermove', (event) => {
@@ -609,68 +677,17 @@ function enableDrag(
     mark.x = from.markX + dx;
     mark.y = from.markY + dy;
 
-    /*
-     * ⚠️ **What "in the way" means depends on the arrangement.**
-     *
-     * In the clustered layout the neighbourhood *settles*: a few relaxation steps per
-     * pointer event, with the dragged mark pinned, so its links stretch and its
-     * neighbours follow it while the anchors keep everything else recognisable. That is
-     * the behaviour a graph tool has, and it is why dragging is worth having at all —
-     * pulling one node teases its cluster out of a tangle instead of merely making a hole.
-     *
-     * In the layered arrangement the rows are the whole point: y is the object's type and
-     * springs would pull marks off their rows, which would say something false. There,
-     * dragging only shoves what it collides with, as before.
-     */
-    if (settling) {
-      /*
-       * ⚠️ **Only the neighbourhood moves, and everything else is pinned.**
-       *
-       * The first version weakened the anchor everywhere so the springs could win, and
-       * unmoored the whole picture: measured on F10, dragging a pull request 250px carried
-       * its own commit 7px and shoved an *unrelated* pull request 210px, because with
-       * nothing held down repulsion from the dragged mark travelled further than the
-       * springs did. Exactly backwards.
-       *
-       * Pinning everything outside a couple of hops states the intent directly instead of
-       * hoping the forces express it: dragging a pull request brings its commits, and the
-       * rest of the drawing stays where the reader left it. It is also far less work per
-       * pointer event, since only a handful of marks are free to move.
-       */
-      const settled = relax(
-        marks.map((other) => ({
-          id: other.id,
-          radius: other.radius,
-          charge: CHARGE[other.lane] ?? 1,
-          pinned: other.id === mark.id || !from.neighbourhood.has(other.id),
-        })),
-        edges,
-        {
-          anchors: new Map(marks.map((other) => [other.id, { x: other.layoutX, y: other.layoutY }])),
-          // Seeded from where things are *now*, so the gesture continues from the last
-          // frame rather than restarting from the layout on every pointer event.
-          seed: new Map(marks.map((other) => [other.id, { x: other.x, y: other.y }])),
-          // Light, not absent. Enough that a neighbourhood towed a long way still
-          // remembers roughly where it belongs; not enough to fight the drag.
-          anchor: 0.02,
-          // Enough steps for a tug to travel a hop or two per event, few enough to stay
-          // ahead of the pointer. A full settle per event would lag behind the cursor.
-          iterations: 8,
-        },
-      );
-      for (const other of marks) {
-        const at = settled.get(other.id);
-        if (at && other.id !== mark.id) {
-          other.x = at.x;
-          other.y = at.y;
-        }
-      }
+    if (from.handle) {
+      // The dragged mark is where the pointer says, exactly. Its neighbours are the
+      // simulation's business, and it will move them on its own schedule.
+      from.handle.fx = mark.x;
+      from.handle.fy = mark.y;
+    } else {
+      // No simulation here — the layered arrangement's rows ARE the object's type, and
+      // springs would pull marks off them, which would say something false. Dragging
+      // there only shoves what it collides with.
+      pushApart(marks, { fixedId: mark.id });
     }
-    // Whatever is still overlapping is pushed clear. Without it a reader can stack the
-    // whole graph on one point — a picture that says nothing and cannot be read back.
-    pushApart(marks, { fixedId: mark.id });
-    // Repaint rather than re-render: a full render rebuilds the SVG, and doing that per
-    // pointer event would drop frames and destroy the element being dragged mid-gesture.
     repaint();
   });
 
@@ -679,21 +696,15 @@ function enableDrag(
     release();
     group.style('cursor', 'grab');
     group.node().releasePointerCapture?.(event.pointerId);
-    from = null;
-    if (travelled > DRAG_SLOP_PX) {
-      // Every mark that ended up somewhere other than where the layout put it, not just
-      // the one under the pointer: the ones shoved aside have to keep their new places
-      // too, or they would spring back the moment anything re-rendered.
-      onDragged(
-        marks
-          .filter((other) => other.x !== other.layoutX || other.y !== other.layoutY)
-          .map((other) => ({
-            id: other.id,
-            dx: other.x - other.layoutX,
-            dy: other.y - other.layoutY,
-          })),
-      );
+
+    if (simulation) {
+      // Let it coast to a stop instead of freezing mid-motion. `end` records where things
+      // actually settled.
+      simulation.alphaTarget(0);
+    } else if (travelled > DRAG_SLOP_PX) {
+      recordNudges();
     }
+    from = null;
   };
   group.on('pointerup', finish);
   group.on('pointercancel', finish);
@@ -704,6 +715,11 @@ function enableDrag(
       const wasDrag = travelled > DRAG_SLOP_PX;
       travelled = 0;
       return wasDrag;
+    },
+    /** Stop any live simulation, so a re-render cannot leave one driving vanished marks. */
+    dispose() {
+      simulation?.stop();
+      simulation = null;
     },
   };
 }

@@ -244,6 +244,64 @@ function placeChildren(node, at, facing, { children, primary, ring, reach, posit
 }
 
 /**
+ * Apply the shared force configuration to a simulation.
+ *
+ * ⚠️ **One configuration, two callers.** The layout ticks a simulation to convergence; a
+ * drag runs one live. If the two were tuned separately they would disagree — a mark would
+ * settle in one place when the picture was drawn and drift to another the moment it was
+ * touched, and the reader would have no way to know which was the arrangement's real
+ * answer. Defining it once is what makes dragging feel like moving the same graph rather
+ * than provoking a different one.
+ */
+export function withForces(simulation, links, laneOf) {
+  const kind = (link) => {
+    const a = laneOf.get(typeof link.source === 'object' ? link.source.id : link.source);
+    const b = laneOf.get(typeof link.target === 'object' ? link.target.id : link.target);
+    return [a, b].sort().join('|');
+  };
+
+  return simulation
+    .force(
+      'link',
+      forceLink(links)
+        .id((node) => node.id)
+        .distance((link) => LINK_DISTANCE[kind(link)] ?? 110)
+        .strength((link) => LINK_STRENGTH[kind(link)] ?? DEFAULT_LINK_STRENGTH),
+    )
+    .force(
+      'charge',
+      forceManyBody().strength((node) => CHARGE[node.lane] ?? CHARGE.commit),
+    )
+    .force(
+      'collide',
+      forceCollide().radius((node) => node.radius + COLLIDE_PADDING),
+    );
+}
+
+/**
+ * A live simulation for dragging: same forces, running rather than ticked.
+ *
+ * ⚠️ **This is what a hand-rolled relaxation could not give.** Solving from scratch on
+ * every pointer event has no velocity, so marks lurch toward equilibrium and stop dead —
+ * reported as "weird and springy". A simulation carries momentum and damps it, which is
+ * why every graph tool feels the way it does. `velocityDecay` is the whole feel: lower and
+ * the picture wobbles for seconds after you let go, higher and it may as well be the
+ * solver it replaced.
+ *
+ * Returned stopped. The caller pins what must not move, reheats it, and drives its own
+ * redraw from the tick event.
+ */
+export function createDragSimulation(nodes, links) {
+  const laneOf = new Map(nodes.map((node) => [node.id, node.lane]));
+  return withForces(forceSimulation(nodes), links, laneOf)
+    // No centring force while dragging: it would haul the neighbourhood back toward the
+    // middle of a drawing the reader is deliberately pulling something out of.
+    .velocityDecay(0.55)
+    .alphaDecay(0.06)
+    .stop();
+}
+
+/**
  * Lay a sub-log out as clusters of clusters.
  *
  * @returns {{positions: Map, levels: Array<Array>, waypoints: Map}}
@@ -394,22 +452,7 @@ export function layoutCluster(nodes, edges, { width, height, padding = 60, radiu
               : 0,
     );
 
-  const simulation = forceSimulation(simNodes)
-    .force(
-      'link',
-      forceLink(simLinks)
-        .id((node) => node.id)
-        .distance((link) => LINK_DISTANCE[kindOf(link)] ?? 110)
-        .strength((link) => LINK_STRENGTH[kindOf(link)] ?? DEFAULT_LINK_STRENGTH),
-    )
-    .force(
-      'charge',
-      forceManyBody().strength((node) => CHARGE[node.lane] ?? CHARGE.commit),
-    )
-    .force(
-      'collide',
-      forceCollide().radius((node) => node.radius + COLLIDE_PADDING),
-    )
+  const simulation = withForces(forceSimulation(simNodes), simLinks, laneOf)
     /*
      * Toward the ORIGIN, which is where the seed is centred — the drawing is only moved
      * into the canvas afterwards, by `centreInBox`. Aiming at the canvas centre here would

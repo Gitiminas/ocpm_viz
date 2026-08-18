@@ -7,7 +7,7 @@ import { indexObjectGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { LANE_TYPES } from '../src/model/activities.js';
 import { buildStructuralNodes, buildStructuralEdges } from '../src/layout/structural.js';
-import { layoutCluster, circularMean } from '../src/layout/cluster.js';
+import { layoutCluster, circularMean, createDragSimulation } from '../src/layout/cluster.js';
 
 /**
  * The radial layout: the alternative arrangement for the off time mode.
@@ -411,5 +411,93 @@ describe('the relaxation finishes what the rule cannot say', () => {
         }
       }
     }
+  });
+});
+
+describe('the drag simulation is the layout’s own, running', () => {
+  const marks = [
+    { id: 'issue:1', lane: 'issue', radius: 15, x: 0, y: 0, fx: 0, fy: 0 },
+    { id: 'pr:1', lane: 'pull_request', radius: 12, x: 100, y: 0 },
+    { id: 'commit:a', lane: 'commit', radius: 6, x: 160, y: 0 },
+  ];
+  /*
+   * ⚠️ **Fresh links per simulation, never a shared array.** `forceLink` MUTATES what it
+   * is given: it replaces each `source`/`target` id with a reference to the node object it
+   * resolved. Reuse the array and the second simulation silently keeps the first one's
+   * nodes — this test failed exactly that way, with a neighbour travelling 18px instead of
+   * 370 because its link pointed at objects from a simulation that had already finished.
+   * `layoutCluster` and the drag both build their link objects fresh, which is why the
+   * same trap does not exist in the code being tested.
+   */
+  const links = () => [
+    { source: 'issue:1', target: 'pr:1' },
+    { source: 'pr:1', target: 'commit:a' },
+  ];
+
+  test('it comes back stopped, so nothing runs before the caller says so', () => {
+    // forceSimulation starts a timer on construction. Handing back a running one would
+    // have it moving marks before the gesture that wants it has even begun.
+    const sim = createDragSimulation(marks.map((m) => ({ ...m })), links());
+    // Ticking by hand proves it is alive but idle; a running one would already have moved.
+    const alpha = sim.alpha();
+    sim.tick();
+    assert.ok(sim.alpha() < alpha, 'ticking should advance it');
+    sim.stop();
+  });
+
+  test('a pinned mark never moves, however hard the forces pull', () => {
+    // ⚠️ Everything outside the dragged neighbourhood is pinned rather than anchored.
+    // Leaving the graph free was tried and is wrong: with nothing held down, repulsion
+    // from the dragged mark travels further than the springs do, so pulling a pull request
+    // 250px carried its own commit 7px and shoved an unrelated one 210px.
+    const nodes = marks.map((m) => ({ ...m }));
+    const sim = createDragSimulation(nodes, links());
+    for (let i = 0; i < 60; i++) sim.tick();
+    sim.stop();
+    const issue = nodes.find((n) => n.id === 'issue:1');
+    assert.equal(issue.x, 0, 'a pinned mark moved horizontally');
+    assert.equal(issue.y, 0, 'a pinned mark moved vertically');
+  });
+
+  test('a free neighbour follows the mark it is linked to', () => {
+    const nodes = marks.map((m) => ({ ...m }));
+    const pr = nodes.find((n) => n.id === 'pr:1');
+    // Pin the pull request far away, as a drag would.
+    pr.fx = 600;
+    pr.fy = 0;
+    const before = nodes.find((n) => n.id === 'commit:a').x;
+
+    const sim = createDragSimulation(nodes, links());
+    for (let i = 0; i < 120; i++) sim.tick();
+    sim.stop();
+
+    const after = nodes.find((n) => n.id === 'commit:a').x;
+    assert.ok(after > before + 50, `the commit barely followed: ${before} → ${after}`);
+  });
+
+  test('it damps, so a release coasts rather than ringing', () => {
+    // ⚠️ velocityDecay is the whole feel, and it is why a simulation beats solving from
+    // scratch each event: that has no velocity at all, so marks lurch to equilibrium and
+    // stop dead — reported as "weird and springy".
+    const nodes = marks.map((m) => ({ ...m }));
+    const sim = createDragSimulation(nodes, links());
+    for (let i = 0; i < 200; i++) sim.tick();
+    sim.stop();
+    for (const node of nodes) {
+      assert.ok(
+        Math.hypot(node.vx ?? 0, node.vy ?? 0) < 1,
+        `${node.id} is still moving at ${Math.hypot(node.vx, node.vy).toFixed(2)}/tick`,
+      );
+    }
+  });
+
+  test('layout and drag share one force configuration', () => {
+    // Tuned separately they would disagree, and a mark would settle in one place when the
+    // picture was drawn and drift to another the moment it was touched.
+    const sim = createDragSimulation(marks.map((m) => ({ ...m })), links());
+    for (const name of ['link', 'charge', 'collide']) {
+      assert.ok(sim.force(name), `the drag simulation is missing the ${name} force`);
+    }
+    sim.stop();
   });
 });

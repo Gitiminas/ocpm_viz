@@ -73,6 +73,12 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   const motion = createMotion();
   /** Where each structural mark was drawn last time, so a re-render slides into place. */
   let lastStructuralAt = new Map();
+  /*
+   * The previous pass's gesture handlers. A drag runs a live simulation, and a re-render
+   * replaces every mark it was driving — so the old one has to be shut down or it goes on
+   * writing coordinates into elements that are no longer in the document.
+   */
+  let lastGestures = null;
 
   function measure() {
     basePlotWidth = Math.max(
@@ -121,6 +127,8 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     lastNodes = [];
     pendingTween = null;
     motion.stop();
+    lastGestures?.dispose?.();
+    lastGestures = null;
     // Positions from one sub-log say nothing about another, so a new graph appears rather
     // than sliding in from wherever the last one happened to leave its marks.
     lastStructuralAt = new Map();
@@ -218,6 +226,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         waypoints: layout.waypoints,
         brush,
       });
+      lastGestures?.dispose?.();
       const liveMarks = renderStructuralNodes({
         gNode: layers.node,
         nodes,
@@ -246,6 +255,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       // drift had wandered to at that instant — otherwise a re-render would inherit a
       // fraction of the wobble and the picture would creep.
       lastStructuralAt = new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+      lastGestures = liveMarks;
       motion.play({ marks: liveMarks, edges: liveEdges });
       handlers.onRendered({
         nodes,
