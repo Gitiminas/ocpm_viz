@@ -18,7 +18,7 @@
  * without the app saying so.
  */
 
-import { glyph, typeColor, TYPE } from './theme.js';
+import { glyph, typeColor, TYPE, chevron } from './theme.js';
 import { escapeHtml } from './format.js';
 
 const CHECKBOX = 'accent-color:var(--color-accent);width:14px;height:14px;flex:0 0 auto;cursor:pointer';
@@ -26,17 +26,6 @@ const SUB_CHECKBOX = 'accent-color:var(--color-accent);width:13px;height:13px;cu
 const ROW = 'display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:var(--radius-sm)';
 const SUB_WRAP =
   'flex-direction:column;gap:2px;padding:4px 8px 6px 30px;border-left:1px solid var(--color-neutral-800);margin-left:14px';
-
-function chevron(open) {
-  const span = document.createElement('span');
-  span.style.cssText =
-    'display:inline-flex;flex:0 0 auto;cursor:pointer;color:var(--color-neutral-500);' +
-    `transition:transform .15s ease;transform:rotate(${open ? 90 : 0}deg)`;
-  span.innerHTML =
-    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>';
-  return span;
-}
 
 /** A nested checkbox row: label, optional colour swatch, optional count badge. */
 function subRow({ label, checked, swatch, count, onChange }) {

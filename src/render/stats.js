@@ -13,7 +13,7 @@
  */
 
 import { formatDuration, formatInstant, escapeHtml } from './format.js';
-import { typeColor } from './theme.js';
+import { typeColor, chevronMarkup } from './theme.js';
 import { TYPE_LABELS } from '../state/labels.js';
 import {
   perObjectMetrics,
@@ -141,7 +141,8 @@ function buildTable(groups, onRerender, objectColors = new Map()) {
     groupRow.innerHTML =
       `<td style="padding:8px 7px;border-bottom:1px solid var(--color-neutral-800);white-space:nowrap">` +
       `<span style="display:inline-flex;align-items:center;gap:8px">` +
-      `<span style="color:var(--color-neutral-500);font-size:10px">${collapsed ? '▸' : '▾'}</span>` +
+      // Same chevron as the sidebar's collapsibles, pointing down when the group is open.
+      chevronMarkup(!collapsed) +
       `<span style="width:8px;height:8px;border-radius:2px;background:${color}"></span>` +
       `<span style="font-weight:500;color:var(--color-text)">${plural}</span></span></td>` +
       cell(

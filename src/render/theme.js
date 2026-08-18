@@ -160,6 +160,40 @@ export function glyph(shape, color) {
   return `<svg width="12" height="12">${inner}</svg>`;
 }
 
+/**
+ * The disclosure chevron: `›` pointing right when closed, rotated to point down when open.
+ *
+ * One drawing for every collapsible in the tool — the sidebar's lane and relationship
+ * rows and the statistics page's per-type groups — so "this can be opened" looks the same
+ * wherever it appears. The stats page used to draw `▸`/`▾` as 10px text, which rendered
+ * as a dot and was reported as unclear; the sidebar's SVG was legible, so it became the
+ * one drawing.
+ *
+ * `chevronMarkup` returns a string, for callers building a row as HTML; `chevron` wraps
+ * the same markup in an element, for callers that need to attach a listener to it.
+ */
+export const CHEVRON_SVG =
+  '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>';
+
+export function chevronStyle(open) {
+  return (
+    'display:inline-flex;flex:0 0 auto;cursor:pointer;color:var(--color-neutral-500);' +
+    `transition:transform .15s ease;transform:rotate(${open ? 90 : 0}deg)`
+  );
+}
+
+export function chevronMarkup(open) {
+  return `<span style="${chevronStyle(open)}">${CHEVRON_SVG}</span>`;
+}
+
+export function chevron(open) {
+  const span = document.createElement('span');
+  span.style.cssText = chevronStyle(open);
+  span.innerHTML = CHEVRON_SVG;
+  return span;
+}
+
 /** Draw a node glyph into an SVG group. */
 export function drawSymbol(group, shape, size, fill, stroke, strokeWidth) {
   let element;
