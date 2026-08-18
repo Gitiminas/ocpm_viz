@@ -169,7 +169,8 @@ database (`gharchive_ocpm_viz_wsl`, MVs last refreshed 2026-08-02 19:32–19:45 
 | `fe.link_mat` matches its live definition | `fe.diag_link_staleness` | drift 0 |
 | Payload satisfies the frontend contract | `scripts/rpc-check.mjs` → `findGraphProblems()` | `[]` |
 | Contract facts the validator has no opinion on | `rpc-check.mjs`: `contract_version`, parseable timestamps, the 4 qualifiers, `link_methods` an array containing `method`, no `repo` type, no `is_bot`, no `CommitsPushed` | pass |
-| Real layout pipeline, all 3 time modes | `rpc-check.mjs`: finite x/y, every issue and PR banded, one interval per commit, forward-going extents, every link endpoint anchored | pass |
+| Real layout pipeline, all 3 timeline modes | `rpc-check.mjs`: finite x/y, every issue and PR banded, one interval per commit, forward-going extents, every link endpoint anchored | pass |
+| Off mode, both arrangements (added 2026-08-18) | `rpc-check.mjs` through `createLayout`: finite positions, every mark inside the box, no two marks overlapping, every edge end resolving to a drawn mark, finite time extent; clusters additionally name an anchor and honour their footprint claims (soft shortfalls reported; under ¾ of a claim fails) | pass on ten real sub-logs — vscode, kubernetes, react; degrees 1–3; 5–46 marks; the 34-pull-request hub kubernetes #68026 reports 30 soft shortfalls and no failure |
 | `npm test` unaffected | 377 tests | pass |
 
 **Coverage of that gate:** six sub-logs — all three repositories, all three seed types

@@ -22,11 +22,10 @@ import { deriveBursts, indexBurstsByCommit } from '../model/bursts.js';
 import { deriveCommentBursts } from '../model/commentBursts.js';
 import { buildAdjacency, focusSet } from '../model/graph.js';
 import { deriveCommitGroups } from '../model/commitGroups.js';
-import { buildNodes, assignRanks, filterNodes } from '../layout/nodes.js';
-import { createScales } from '../layout/scales.js';
-import { packRows } from '../layout/packing.js';
-import { computeLaneGeometry, rowY } from '../layout/lanes.js';
-import { createAnchors } from '../layout/anchors.js';
+import { createLayout, isStructuralMode } from '../layout/engine.js';
+import { edgeDirection, brushRange } from '../layout/structural.js';
+import { renderStructuralEdges, renderStructuralNodes } from './structural.js';
+import { createMotion } from './motion.js';
 import { renderAxis, highlightTickInstants } from './axis.js';
 import { renderLinks } from './links.js';
 import {
@@ -39,9 +38,24 @@ import {
   renderGroupBoxes,
 } from './nodes.js';
 import { TYPE, drawSymbol, typeColor, objectShade } from './theme.js';
-import { isNodeVisible, isObjectVisible, actorPreview } from '../state/state.js';
+import { isNodeVisible, isObjectVisible, isLinkVisible, actorPreview } from '../state/state.js';
 
+/**
+ * The timeline's frame: room on the left for lane labels, at the bottom for the time axis
+ * and its ticks, on the right for the last label to overhang.
+ */
 export const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
+/**
+ * The off mode's frame. Nothing is drawn in its margins — no lane labels, no axis — so
+ * they are a hairline, and the structural layout gets the drawing surface.
+ *
+ * ⚠️ It used to get the timeline's frame, and that was most of the "cramped" complaint:
+ * on a 1500×900 window the timeline margins reserve 300px of width and 182px of height
+ * for things off mode does not draw, so the layout was fitted into 850×498 of a
+ * 1150×680 surface and came out at a third of the width. The layout's own `padding`
+ * (see `engine.js`) still keeps labels off the edge; this is only the frame around it.
+ */
+export const STRUCTURAL_MARGIN = { top: 16, right: 16, bottom: 16, left: 16 };
 const MIN_PLOT_WIDTH = 820;
 
 export function createTimeline({ elements, state, laneTypes, tooltip, minimap, handlers }) {
@@ -66,6 +80,20 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
   let context = null; // set by setGraph
   let lastNodes = [];
   let pendingTween = null;
+  /*
+   * Movement for the off mode. One instance for the session, replayed on every draw —
+   * `play` stops whatever was running first, so two loops can never fight over one mark.
+   * Nothing here feeds back into the layout: see `render/motion.js`.
+   */
+  const motion = createMotion();
+  /** Where each structural mark was drawn last time, so a re-render slides into place. */
+  let lastStructuralAt = new Map();
+  /*
+   * The previous pass's gesture handlers. A drag runs a live simulation, and a re-render
+   * replaces every mark it was driving — so the old one has to be shut down or it goes on
+   * writing coordinates into elements that are no longer in the document.
+   */
+  let lastGestures = null;
 
   function measure() {
     basePlotWidth = Math.max(
@@ -76,6 +104,47 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
   function plotWidth() {
     return basePlotWidth * state.k;
+  }
+
+  /**
+   * The box the structural layout is fitted into.
+   *
+   * The timeline's height falls out of how many rows its lanes needed; a force layout has
+   * no such number, so it takes the space that is actually on screen and fills it. Zoom
+   * multiplies it exactly as it multiplies the width, so zooming spreads the graph rather
+   * than stretching it in one direction only — which is what would happen if the height
+   * stayed fixed while `plotWidth` grew.
+   */
+  function structuralPlotHeight() {
+    const available =
+      elements.scroll.clientHeight - STRUCTURAL_MARGIN.top - STRUCTURAL_MARGIN.bottom;
+    return Math.max(420, available) * state.k;
+  }
+
+  /** The structural layout's width — the surface less its own frame, times the zoom. */
+  function structuralPlotWidth() {
+    const available =
+      elements.scroll.clientWidth - STRUCTURAL_MARGIN.left - STRUCTURAL_MARGIN.right;
+    return Math.max(MIN_PLOT_WIDTH, available) * state.k;
+  }
+
+  /**
+   * The box the active engine draws into: its margin and the plot size inside it.
+   *
+   * This is the renderer's one look at the mode before the layout runs, and it is here
+   * because the frame is a property of the drawing surface, not of the arrangement — the
+   * engine is told what room it has, it does not measure the page. Everything after
+   * `createLayout` reads `layout.kind`, never `state.mode`.
+   */
+  function frame() {
+    if (isStructuralMode(state.mode)) {
+      return {
+        margin: STRUCTURAL_MARGIN,
+        plotWidth: structuralPlotWidth(),
+        plotHeight: structuralPlotHeight(),
+      };
+    }
+    return { margin: MARGIN, plotWidth: plotWidth() };
   }
 
   /** Swap in a new sub-log. Everything derived from the graph is rebuilt here. */
@@ -99,6 +168,12 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     };
     lastNodes = [];
     pendingTween = null;
+    motion.stop();
+    lastGestures?.dispose?.();
+    lastGestures = null;
+    // Positions from one sub-log say nothing about another, so a new graph appears rather
+    // than sliding in from wherever the last one happened to leave its marks.
+    lastStructuralAt = new Map();
     return context.objectColors;
   }
 
@@ -140,83 +215,99 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
     const visibleLanes = laneTypes.filter((lane) => state.lanes[lane]);
 
-    // ---- node model -----------------------------------------------------------
-    const allNodes = buildNodes({
+    // ---- layout ---------------------------------------------------------------
+    //
+    // One call, one engine chosen inside it. Everything below reads the result rather
+    // than the mode, which is what keeps "is time on?" out of the render pass.
+    const layout = createLayout({
+      mode: state.mode,
       graph,
       index,
+      laneTypes,
+      visibleLanes,
       bursts,
       commentBursts,
+      instants,
       expandedBursts: state.expandedBursts,
       expandedCommentBursts: state.expandedCommentBursts,
       expandedGroups: state.expandedGroups,
-      mode: state.mode,
-      laneTypes,
+      isVisible: (node) => isNodeVisible(node, state, groupsByCommit),
+      isLinkVisible: (link) => isLinkVisible(link, index.byId, state, groupsByCommit),
+      structuralLayout: state.structuralLayout,
+      nodeNudges: state.nodeNudges,
+      ...frame(),
     });
-    const nodes = filterNodes(allNodes, (node) => isNodeVisible(node, state, groupsByCommit));
-    const { rankOrder, rankMax, rankTimes } = assignRanks(nodes);
 
-    // ---- horizontal position --------------------------------------------------
-    const scales = createScales({
-      instants,
-      marginLeft: MARGIN.left,
-      plotWidth: plotWidth(),
-      mode: state.mode,
-      rankTimes,
-      rankMax,
-    });
-    for (const node of nodes) node.x = scales.x(node.t, node);
-    // Where each observation falls. Taken from the scale by *time*, never through the
-    // node: the node's rank belongs to its first observation, so passing it here would
-    // stack every repeat on top of the glyph in ordinal mode.
-    for (const node of nodes) {
-      if (!node.observations?.length) continue;
-      node.observations.forEach((observation, i) => {
-        // The first observation *is* the glyph, so it takes the node's x rather than
-        // recomputing it. Later ones carry their own rank (`assignRanks`), which is
-        // what gives them a real slot in ordinal mode instead of an interpolated one.
-        observation.x = i === 0 ? node.x : scales.x(observation.time, observation);
-      });
-    }
+    const { nodes, geometry, anchors, objectRow, scales, rankOrder, rankMax, rankTimes,
+      width, height } = layout;
     lastNodes = nodes;
 
-    // ---- vertical position ----------------------------------------------------
-    // Objects are passed in so a lane can allocate sub-lanes when two of its
-    // objects overlap in time; without them the packer can only see nodes, and an
-    // object's *span* is what decides whether it needs its own band.
-    const laneObjects = new Map(visibleLanes.map((lane) => [lane, index.objectsOfType(lane)]));
-    const { maxRowByLane, objectRow, repeatRow } = packRows(nodes, visibleLanes, { laneObjects });
-    const { lanes: geometry, height } = computeLaneGeometry(visibleLanes, maxRowByLane, MARGIN);
-    for (const node of nodes) node.y = rowY(geometry, node.lane, node.row);
-
-    // Repeat observations live on their own reserved row, so each carries the y it is
-    // drawn at. The first observation stays on the glyph: it *is* the glyph.
-    const repeatY = repeatRow == null ? null : rowY(geometry, 'commit', repeatRow);
-    for (const node of nodes) {
-      if (!node.observations?.length) continue;
-      node.observations.forEach((observation, i) => {
-        observation.y = i === 0 || repeatY == null ? node.y : repeatY;
-      });
-    }
-
-    // Which drawn node stands for which object — commits carry their packed row, so
-    // a link into the commit lane must meet the node, not the lane's top.
-    const nodeByObject = new Map();
-    for (const node of nodes) {
-      if (node.isGroup) {
-        for (const member of node.members) nodeByObject.set(member.objectId, node);
-      } else if (node.objectId) {
-        nodeByObject.set(node.objectId, node);
-      }
-    }
-
-    const width = MARGIN.left + plotWidth() + MARGIN.right;
     svg.attr('width', width).attr('height', height);
     for (const layer of Object.values(layers)) layer.selectAll('*').remove();
 
     const focus = focusSet(adjacency, state.focus, state.focusDegree);
-    // `objectRow` is what tells an edge which band its issue or PR was packed into;
-    // without it every link into a lane lands on band 0.
-    const anchors = createAnchors({ nodes, nodeByObject, geometry, scales, objectRow });
+
+    // ---- the one branch -------------------------------------------------------
+    //
+    // Off mode has no lanes, no axis, no lifecycle bars and no sequence spines, because
+    // every one of those is a statement about a time axis. It draws edges and nodes.
+    if (layout.kind === 'structural') {
+      const nodesById = new Map(nodes.map((node) => [node.id, node]));
+      const brush = brushRange(layout.extent, state.timeBrush[0], state.timeBrush[1]);
+      const liveEdges = renderStructuralEdges({
+        gLink: layers.link,
+        edges: layout.edges,
+        nodesById,
+        focus,
+        tooltip,
+        direction: (edge) => edgeDirection(edge, nodesById),
+        // Where a row-skipping edge should bend, so it goes around the middle row
+        // rather than through it.
+        waypoints: layout.waypoints,
+        brush,
+      });
+      lastGestures?.dispose?.();
+      const liveMarks = renderStructuralNodes({
+        gNode: layers.node,
+        nodes,
+        focus,
+        tooltip,
+        handlers,
+        objectColors,
+        actorLogin: (id) => index.byId.get(id)?.vmap?.login ?? id,
+        previous: lastStructuralAt,
+        onDragged: (nudges) => handlers.onNodeDragged?.(nudges),
+        repaint: () => motion.repaint(),
+        brush,
+        // Dragging settles the neighbourhood only where settling means something: the
+        // layered arrangement's rows ARE the object's type, and springs would pull marks
+        // off them.
+        edges: layout.edges,
+        settling: layout.structuralLayout === 'cluster',
+        anchorId: layout.anchorId,
+        // Stop the idle drift for the duration of a gesture: a deliberate act should not
+        // have the picture breathing under it.
+        hold: () => motion.hold(),
+        release: () => motion.release(),
+      });
+
+      // Slide into place, then drift. Remembered *before* the animation runs, so the next
+      // render starts from where the layout put things rather than from wherever the
+      // drift had wandered to at that instant — otherwise a re-render would inherit a
+      // fraction of the wobble and the picture would creep.
+      lastStructuralAt = new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+      lastGestures = liveMarks;
+      motion.play({ marks: liveMarks, edges: liveEdges });
+      handlers.onRendered({
+        nodes,
+        scales: null,
+        plotWidth: structuralPlotWidth(),
+        basePlotWidth,
+        kind: 'structural',
+        extent: layout.extent,
+      });
+      return;
+    }
 
     // ---- draw -----------------------------------------------------------------
     // Which objects actually survived the filters, so the lane caption can say so.

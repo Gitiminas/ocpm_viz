@@ -17,3 +17,6 @@ postgrest.conf
 # Its own header says the binding documents win wherever it disagrees, so tracking it
 # would put a second, staler account of the project's decisions under version control.
 docs/OCEL_TOOL_SPEC.md
+
+# Personal walkthrough notes, kept out of the repo on purpose
+simple_*.md

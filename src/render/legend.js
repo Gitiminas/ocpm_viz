@@ -156,6 +156,31 @@ export const LEGEND_SECTIONS = [
     ],
   },
   {
+    /*
+     * Only drawn in the off time mode, and dimmed like any other absent row in the other
+     * three (decision 83) rather than removed — a row that vanishes cannot say whether
+     * the mark is absent because the data has none or because you switched modes.
+     *
+     * Two rows have been removed from here. A light-to-dark fill ramp carrying time —
+     * colour means "which object" in every mode now. And a ×N badge on an edge standing
+     * for several links: it was one number too many beside a push node that already
+     * carries its own count, and the hovercard names every link the mark stands for
+     * anyway. What the badge was really guarding against — a dashed link hidden under a
+     * solid one — is handled by drawing one line per evidence class, not by counting.
+     */
+    title: 'Time off',
+    rows: [
+      {
+        key: 'precedence-arrow',
+        label: 'points at the later end',
+        swatch:
+          '<svg width="22" height="12" viewBox="0 0 22 12"><line x1="0" y1="6" x2="13" y2="6" ' +
+          'stroke="var(--color-neutral-500)" stroke-width="2"/>' +
+          '<path d="M20 6L13 9.2L13 2.8Z" fill="var(--color-neutral-500)"/></svg>',
+      },
+    ],
+  },
+  {
     title: 'Lines',
     rows: [
       { key: 'sequence', label: "one object's own history", swatch: stroke('stroke-width="2"') },

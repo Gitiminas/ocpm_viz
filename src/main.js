@@ -14,6 +14,7 @@ import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
 import { LANE_TYPES } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
+import { MODES, STRUCTURAL_LAYOUTS, isStructuralMode } from './layout/engine.js';
 import {
   createState,
   deriveRelGroups,
@@ -38,6 +39,7 @@ import { createTimeline, MARGIN } from './render/timeline.js';
 import { renderLegend, legendKeysPresentIn } from './render/legend.js';
 import { createMessageSurface, messageHtml, errorHtml } from './render/message.js';
 import { renderStats } from './render/stats.js';
+import { formatInstant } from './render/format.js';
 import {
   renderLaneRows,
   renderRelationshipRows,
@@ -105,6 +107,8 @@ const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.wrap });
 const actorCard = createActorCard({ element: elements.actorCard });
 
 let current = null; // { graph, index, actorColors, description }
+/** So a `?brush=` in the opening URL survives the first load's reset. */
+let firstLoad = true;
 let relSync = () => {};
 
 // ---------------------------------------------------------------------------
@@ -175,6 +179,19 @@ const timeline = createTimeline({
       timeline.render();
     },
 
+    /*
+     * A mark the reader has dragged.
+     *
+     * Recorded as an offset from where the layout put it, so it survives a re-render, a
+     * zoom and an expanded push — and so the arrangement remains the computed one plus a
+     * set of stated displacements rather than a pile of absolute coordinates nobody can
+     * account for. Decision 27's rule applies: this changes the picture, so it is
+     * declared and it is undoable.
+     */
+    onNodeDragged(nudges) {
+      for (const { id, dx, dy } of nudges) state.nodeNudges.set(id, { dx, dy });
+    },
+
     onCollapseCommentBurst(burst) {
       timeline.captureTween();
       state.expandedCommentBursts.delete(burst.id);
@@ -187,9 +204,30 @@ const timeline = createTimeline({
       timeline.render();
     },
 
-    onRendered({ nodes, scales, plotWidth, basePlotWidth }) {
+    onRendered({ nodes, scales, plotWidth, basePlotWidth, kind, extent }) {
       el('zin').disabled = state.k >= MAX_ZOOM - 0.001;
       el('zout').disabled = state.k <= MIN_ZOOM + 0.001;
+
+      /*
+       * ⚠️ **The minimap is hidden in off mode, not left showing the last picture.**
+       *
+       * It is a *time* overview — a strip of every event's instant, with a viewport you
+       * drag along it — and off mode has no time axis for it to describe. Leaving it up
+       * would be a control that silently does nothing and a picture that quietly belongs
+       * to a different mode, which is the stale-picture failure decision 87 guards
+       * against in the other direction. Its space is given back rather than blanked, so
+       * nothing suggests a strip that failed to draw.
+       */
+      const structural = kind === 'structural';
+      el('minimapWrap').style.display = structural ? 'none' : 'block';
+      // The brush takes the minimap's slot: one place to look for "when", whichever mode
+      // is on. Hidden with no span to brush — a sub-log of one instant has no range.
+      el('timeBrushWrap').style.display = structural && extent ? 'block' : 'none';
+      if (structural) {
+        updateTimeBrushLabel(extent);
+        return;
+      }
+
       minimap.render({
         nodes,
         plotWidth,
@@ -236,9 +274,23 @@ async function load(query) {
     if (snapshot) applyState(state, snapshot);
     else showToast('The link carried an unreadable view — showing defaults');
   }
-  state.focus = null;
+  state.focus = firstLoad ? state.focus : null;
   state.expandedBursts = new Set();
   state.expandedGroups = new Set();
+  // A displacement is relative to a position in *this* sub-log; carrying it into another
+  // would move a mark by an amount that meant something somewhere else. The brush resets
+  // for the same reason in reverse: "the last third" of one span is not the last third of
+  // another, and a range silently carried over would hide marks nobody chose to hide.
+  state.nodeNudges.clear();
+  // ⚠️ Not on the first load, or a `?brush=` link would reset itself before drawing
+  // anything — the range would be in the URL, in the sliders, and applied to nothing.
+  if (!firstLoad) {
+    state.timeBrush = [0, 1];
+    el('timeBrushFrom').value = 0;
+    el('timeBrushTo').value = 1000;
+    syncTimeBrush();
+  }
+  firstLoad = false;
 
   const objectColors = timeline.setGraph(graph, index, actorColors);
   const toggleContext = { relGroups, qualifiers, methods, commitGroups, objectsById: index.byId };
@@ -332,6 +384,10 @@ function renderSidebar() {
     query: { repo: graph.meta.repo, seed: graph.meta.seed?.[0]?.id, fixture: query?.fixture },
     onApply: (snapshot) => {
       applyState(state, snapshot);
+      // A saved view may carry a different mode and arrangement; the controls and the
+      // mode's chrome have to follow, and the chrome before the draw (see `markMode`).
+      markMode(state.mode);
+      markLayout(state.structuralLayout);
       renderSidebar();
       redraw();
     },
@@ -476,13 +532,141 @@ function setZoom(value) {
 
 el('zin').onclick = () => setZoom(state.k * 1.3);
 el('zout').onclick = () => setZoom(state.k / 1.3);
-el('zrst').onclick = () => setZoom(1);
+/*
+ * One "put it back" control, not several.
+ *
+ * It resets everything the reader can do to the *view* without changing what was loaded:
+ * the zoom, any marks dragged out of place, and the brushed time range. A separate button
+ * per thing was the alternative and is worse — two or three reset controls side by side
+ * make the reader work out which one they want before any of them does anything.
+ *
+ * ⚠️ The brush was left out of this when the drag reset was folded in, so the pill undid
+ * two of the three things it appears to promise and quietly kept dimming half the graph.
+ * A control that resets *some* of the view is worse than one that resets none, because
+ * the reader stops looking for the rest.
+ */
+el('zrst').onclick = () => {
+  state.nodeNudges.clear();
+  state.timeBrush = [0, 1];
+  el('timeBrushFrom').value = 0;
+  el('timeBrushTo').value = 1000;
+  syncTimeBrush();
+  setZoom(1);
+};
+
+/** Reflect the active mode in the segmented control. */
+/**
+ * Put every piece of mode-dependent chrome in the state the mode calls for.
+ *
+ * ⚠️ **This must run BEFORE the render that follows a mode change, not after it.** The
+ * off mode fits its layout into the surface it can see, and the surface's height depends
+ * on what sits above it — the minimap in the timeline modes, the time brush in off mode.
+ * When the minimap was hidden from `onRendered`, the first off-mode render measured a
+ * surface still shortened by the minimap, fitted the drawing into that, and the surface
+ * then grew underneath a picture that had already been sized: on a 1500×900 window the
+ * layout got 443px of a 640px-tall surface, and the drawing came out at half the height
+ * it had room for. Reported as the graph being cramped.
+ *
+ * `onRendered` still applies the same two toggles, so a render reached by any other path
+ * ends in a consistent state; this is the one that runs early enough to matter.
+ */
+function markMode(mode) {
+  const structural = isStructuralMode(mode);
+  for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
+    option.classList.toggle('on', option.dataset.mode === mode);
+  }
+  // The arrangement control belongs to the off mode alone. Shown in the other three it
+  // would be a control that silently does nothing, which this project forbids.
+  el('layoutSeg').style.display = structural ? '' : 'none';
+  // The minimap is a time overview and off mode has no time axis; the brush takes its
+  // slot. `onRendered` hides the brush again for a sub-log with no span to brush.
+  el('minimapWrap').style.display = structural ? 'none' : 'block';
+  el('timeBrushWrap').style.display = structural ? 'block' : 'none';
+}
+
+/**
+ * Say what the brush is currently letting through.
+ *
+ * Named in UTC instants rather than as percentages, because "1 Mar – 14 Mar" is a fact
+ * about the sub-log and "20%–60%" is a fact about a slider. Decision 9's rule applies here
+ * as everywhere: the times are UTC and labelled as such.
+ */
+function updateTimeBrushLabel(extent) {
+  const [from, to] = state.timeBrush;
+  const label = el('timeBrushLabel');
+  if (!extent) {
+    label.textContent = '';
+    return;
+  }
+  if (from <= 0 && to >= 1) {
+    label.textContent = 'the whole sub-log';
+    return;
+  }
+  const span = extent.max - extent.min;
+  const at = (fraction) => formatInstant(new Date(extent.min + span * fraction));
+  label.textContent = `${at(Math.min(from, to))} → ${at(Math.max(from, to))}`;
+}
+
+/**
+ * Keep the two handles in order and paint the filled span between them.
+ *
+ * ⚠️ The handles are stopped from crossing rather than being allowed to swap. Swapping
+ * works arithmetically — the range is read as min-to-max either way — but on screen the
+ * handle under the pointer would jump to the other side of the one it passed, and the
+ * reader would be dragging a different handle from the one they grabbed.
+ */
+function syncTimeBrush(changed) {
+  const from = el('timeBrushFrom');
+  const to = el('timeBrushTo');
+  if (changed === 'from' && Number(from.value) > Number(to.value)) from.value = to.value;
+  if (changed === 'to' && Number(to.value) < Number(from.value)) to.value = from.value;
+
+  const low = Number(from.value) / 1000;
+  const high = Number(to.value) / 1000;
+  state.timeBrush = [low, high];
+
+  const fill = el('timeBrushFill');
+  fill.style.left = `${low * 100}%`;
+  fill.style.width = `${(high - low) * 100}%`;
+}
+
+for (const [id, which] of [
+  ['timeBrushFrom', 'from'],
+  ['timeBrushTo', 'to'],
+]) {
+  el(id).addEventListener('input', () => {
+    syncTimeBrush(which);
+    // A redraw, not a reload: the brush dims, it does not change what was loaded.
+    timeline.render();
+  });
+}
+
+// Paint the filled span once at startup. Without this the rail shows empty on a first
+// load — the range covers everything and the control says it covers nothing.
+syncTimeBrush();
+
+/** Reflect the active structural arrangement. */
+function markLayout(layout) {
+  for (const option of document.querySelectorAll('#layoutSeg .seg-opt')) {
+    option.classList.toggle('on', option.dataset.layout === layout);
+  }
+}
+
+
 
 for (const option of document.querySelectorAll('#modeSeg .seg-opt')) {
   option.addEventListener('click', () => {
-    for (const other of document.querySelectorAll('#modeSeg .seg-opt')) other.classList.remove('on');
-    option.classList.add('on');
+    markMode(option.dataset.mode);
     state.mode = option.dataset.mode;
+    timeline.captureTween();
+    timeline.render();
+  });
+}
+
+for (const option of document.querySelectorAll('#layoutSeg .seg-opt')) {
+  option.addEventListener('click', () => {
+    markLayout(option.dataset.layout);
+    state.structuralLayout = option.dataset.layout;
     timeline.captureTween();
     timeline.render();
   });
@@ -586,10 +770,69 @@ function queryFromUrl() {
     // to", which for the RPC is 2 and for a fixture is whatever it was built at.
     traversalDegree: params.get('degree') ? Number(params.get('degree')) : undefined,
     page: params.get('page') === 'stats' ? 'stats' : 'timeline',
+    /*
+     * The time mode, for the same reason `?page=` exists: a link has to reproduce what
+     * someone was looking at. It matters more now than it did with three modes, because
+     * the fourth changes what *position* means — "look at this sub-log" and "look at this
+     * sub-log with time off" are two different requests, and the task-based evaluation
+     * needs to be able to make the second one.
+     *
+     * A preset also carries the mode (`serializeState`), but a preset is a whole
+     * configuration; this is the one knob on its own. An unknown value is ignored rather
+     * than defaulted loudly — it is a URL someone typed, not a payload.
+     */
+    mode: MODES.includes(params.get('mode')) ? params.get('mode') : null,
+    // Which arrangement the off mode uses. Same reasoning as `mode`: a link has to be
+    // able to reproduce the picture, and rows and rings are two different pictures.
+    layout: STRUCTURAL_LAYOUTS.includes(params.get('layout')) ? params.get('layout') : null,
+    // The brushed range, as two fractions — `?brush=0.6,1` is "the last two fifths". Same
+    // reproducibility argument as ?mode= and ?layout=: a brushed picture is a different
+    // picture, and a link has to be able to carry it. Fractions rather than dates because
+    // that is what the state holds, and because a date outside the span would silently
+    // mean nothing.
+    brush: parseBrush(params.get('brush')),
+    // A focused object, and how far the highlight reaches. Same reproducibility argument
+    // as the rest: a focused picture is a different picture. ⚠️ `focusDegree`, not
+    // `degree` — that one is the *traversal* degree, which decides what is in the sub-log
+    // at all. Two notions of degree, named apart, as CLAUDE.md requires.
+    focus: params.get('focus') || null,
+    focusDegree: params.get('focusDegree') ? Number(params.get('focusDegree')) : null,
   };
 }
 
+/** `"0.2,0.8"` → `[0.2, 0.8]`, or null if it is not two numbers in range. */
+function parseBrush(value) {
+  if (!value) return null;
+  const parts = value.split(',').map(Number);
+  if (parts.length !== 2 || parts.some((n) => !Number.isFinite(n) || n < 0 || n > 1)) return null;
+  return [Math.min(...parts), Math.max(...parts)];
+}
+
 const initialQuery = queryFromUrl();
+
+// Before the first load, so the opening render is already in the asked-for mode rather
+// than drawing the timeline and then replacing it.
+if (initialQuery.mode) {
+  state.mode = initialQuery.mode;
+  markMode(initialQuery.mode);
+}
+if (initialQuery.layout) {
+  state.structuralLayout = initialQuery.layout;
+  markLayout(initialQuery.layout);
+}
+if (initialQuery.focus) {
+  state.focus = initialQuery.focus;
+  state.focusDegree = Math.min(
+    MAX_FOCUS_DEGREE,
+    Math.max(1, initialQuery.focusDegree || 1),
+  );
+}
+if (initialQuery.brush) {
+  state.timeBrush = initialQuery.brush;
+  el('timeBrushFrom').value = Math.round(initialQuery.brush[0] * 1000);
+  el('timeBrushTo').value = Math.round(initialQuery.brush[1] * 1000);
+  syncTimeBrush();
+}
 
 /**
  * Fixtures or the database, chosen by `?source=` and defaulting to fixtures.

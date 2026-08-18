@@ -59,9 +59,23 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip.pinned .tip-row:hover{background:color-mix(in srgb, var(--color-text) 8%, transparent)}
 .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:1px solid currentColor}
 #minimap{cursor:pointer;display:block;width:100%}
-#modeSeg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
-#modeSeg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
-#modeSeg .seg-opt{cursor:pointer}
+#modeSeg .seg-opt.on,#layoutSeg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
+#modeSeg .seg-opt:not(.on):hover,#layoutSeg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
+#modeSeg .seg-opt,#layoutSeg .seg-opt{cursor:pointer}
+/* One track, two thumbs. The inputs are stacked on the same rail and are transparent to
+   the pointer except at the thumbs, so a click on the rail cannot make one handle leap
+   across the other. */
+.brushTrack{position:relative;height:26px}
+.brushTrack .brushRail{position:absolute;left:0;right:0;top:11px;height:4px;border-radius:2px;background:var(--color-neutral-700)}
+.brushTrack .brushFill{position:absolute;top:11px;height:4px;border-radius:2px;background:var(--color-accent)}
+.brushTrack input[type=range]{position:absolute;left:0;top:0;width:100%;height:26px;margin:0;background:none;-webkit-appearance:none;appearance:none;pointer-events:none}
+.brushTrack input[type=range]:focus{outline:none}
+.brushTrack input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent)}
+.brushTrack input[type=range]::-webkit-slider-runnable-track{background:none;border:none}
+.brushTrack input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:14px;height:14px;border-radius:50%;background:var(--color-accent);border:2px solid var(--color-bg);cursor:grab;margin-top:0}
+.brushTrack input[type=range]::-webkit-slider-thumb:active{cursor:grabbing}
+.brushTrack input[type=range]::-moz-range-track{background:none;border:none}
+.brushTrack input[type=range]::-moz-range-thumb{pointer-events:auto;width:14px;height:14px;border-radius:50%;background:var(--color-accent);border:2px solid var(--color-bg);cursor:grab}
 </style>
 </head>
 <body>
@@ -195,16 +209,68 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div class="seg-opt on" data-mode="real"><span>Real</span></div>
 <div class="seg-opt" data-mode="highlights"><span>Highlights</span></div>
 <div class="seg-opt" data-mode="ordinal"><span>Ordinal</span></div>
+<!--
+  The fourth mode releases the time axis entirely and lets position encode relationship
+  structure instead. Time is demoted, not deleted: it moves to the fill ramp, the edge
+  arrowheads and the hovercard. Last in the row because it is the one that changes what
+  position means, and the three before it are variations on a shared idea.
+-->
+<div class="seg-opt" data-mode="off" title="Release the time axis — position encodes relationships instead"><span>Off</span></div>
+</div>
+<!--
+  How the off mode arranges things. Hidden in the three timeline modes, where it would be a
+  control that silently does nothing — the rule this project applies to the traversal
+  stepper and to the minimap alike.
+-->
+<div class="seg" id="layoutSeg" style="display:none">
+<div class="seg-opt on" data-layout="layered" title="Rows: issues, then pull requests, then commits"><span>Rows</span></div>
+<div class="seg-opt" data-layout="cluster" title="Clusters: each pull request a hub, its commits fanning around it"><span>Clusters</span></div>
 </div>
 <div style="display:flex;gap:2px;border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);padding:2px">
 <button aria-label="Zoom out" class="btn btn-icon" id="zout"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line></svg></button>
-<button aria-label="Reset zoom" class="btn btn-icon" id="zrst"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
+<button aria-label="Reset the view" title="Reset the view: zoom, dragged marks, and the time range" class="btn btn-icon" id="zrst"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
 <button aria-label="Zoom in" class="btn btn-icon" id="zin"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><line x1="12" x2="12" y1="5" y2="19"></line></svg></button>
 </div>
 </div>
 </div>
-<div style="flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 10px">
+<!--
+  Hidden in the off time mode: the minimap is a *time* overview, and that mode has no time
+  axis for it to describe. Its space is given back rather than blanked, so nothing reads
+  as a strip that failed to draw. See onRendered in main.js.
+-->
+<div id="minimapWrap" style="flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 10px">
 <svg id="minimap"></svg>
+</div>
+<!--
+  The time brush, in the slot the minimap vacates in off mode.
+
+  Deliberately the same piece of the screen: it is where a time overview already lives, so
+  a reader looking for "when" looks in one place whichever mode is on. Off mode releases
+  the time axis, and this is the control that gives time back — dimming what was not alive
+  in the chosen window rather than removing it, so the shape of the whole sub-log stays
+  visible behind the part being asked about.
+-->
+<div id="timeBrushWrap" style="display:none;flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 12px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px">
+<span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-500)">Alive during</span>
+<span class="mono" id="timeBrushLabel" style="font-size:10.5px;color:var(--color-neutral-400)"></span>
+</div>
+<!--
+  One track, two handles. Two separate sliders side by side read as two independent
+  settings rather than as the two ends of one range, which is what they are.
+
+  Built from two overlaid range inputs rather than from scratch, so the handles keep the
+  keyboard behaviour a range input already has — arrow keys, Home and End — which a
+  hand-rolled pair of draggable divs would have had to reimplement and probably would not
+  have. The inputs take no pointer events except on their thumbs, so clicking the track
+  does not make one of them jump over the other.
+-->
+<div class="brushTrack" id="timeBrushTrack">
+<div class="brushRail"></div>
+<div class="brushFill" id="timeBrushFill"></div>
+<input type="range" id="timeBrushFrom" min="0" max="1000" value="0" aria-label="Range start">
+<input type="range" id="timeBrushTo" min="0" max="1000" value="1000" aria-label="Range end">
+</div>
 </div>
 <div id="wrap" style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">
 <div id="scroll" style="flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-bg)">

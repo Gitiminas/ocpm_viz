@@ -15,8 +15,11 @@ object occupies. Only the code and the tests carry that layer.
 
 `npm start`, load F1, and drive the controls first.
 
-- Switch **Real → Highlights → Ordinal**. The three time modes are the core of RQ1 and they are
+- Switch **Real → Highlights → Ordinal**. The three timeline modes are the core of RQ1 and they are
   hand-written arithmetic in `layout/scales.js`. Watching them move is worth more than reading them.
+- Then switch to **Off**, and flip **Rows / Clusters**. Position stops meaning time and starts
+  meaning structure; drag a pull request and watch its commits follow. Load fixture **F10** for
+  the clusters at their best. `docs/OFF_MODE.md` is the field guide.
 - Open **Stats**, note the longest idle gap, then **hide comments**. It drops 184h → 112h — and
   *downwards*, which is counterintuitive, because F1's longest gap runs to a comment eight days
   after the merge, so hiding comments deletes the tail rather than merging two gaps. That single
@@ -30,7 +33,8 @@ object occupies. Only the code and the tests carry that layer.
 |---|---|---|---|
 | 1 | `README.md` | orientation, the selection model | in full |
 | 2 | **`docs/FRONTEND_DATA_NEEDS.md` §1** | the contract the code actually consumes | **§1 in full, then §4–6** |
-| 3 | `docs/ARCHITECTURE.md` | layers, module tree, where visibility is decided | in full — it is short |
+| 3 | `docs/ARCHITECTURE.md` | layers, module tree, the two layout engines, where visibility is decided | in full — it is short |
+| 3b | `docs/OFF_MODE.md` | the structural mode: how to see it, known weak points, traps | §1–3 now; §4–5 before touching `layout/cluster.js` or `layered.js` |
 | 4 | `docs/DECISIONS.md` §1 | the traps | rationale column only |
 | 5 | `docs/ADAPTER_AND_API.md` §3–4 | the evidence rule, the `ObjectGraph` shape | those two sections |
 | 6 | `docs/DATA_CONTRACT.md` | reference | skim §0 and the §1 headers; look things up later |
@@ -160,10 +164,16 @@ The live D3 surface in the entire codebase is **five call sites**:
 - `d3.scaleUtc()` — `render/axis.js:92`, and *only* to choose tick positions in Real mode
 - `d3.easeCubicOut` — `render/nodes.js:222`, one tween
 
-Everything else is hand-written: the three time modes (`layout/scales.js`), the path geometry, the
-gradients, the row packing. So "learning D3" for this codebase means learning the **selection
-API** — `select().append().attr()` — and nothing else. A general D3 tutorial would teach force
-layouts, data joins and transitions that do not appear here.
+Everything else in the timeline is hand-written: the three temporal modes (`layout/scales.js`),
+the path geometry, the gradients, the row packing. So "learning D3" for the timeline means learning
+the **selection API** — `select().append().attr()` — and nothing else.
+
+⚠️ **The off mode is the exception, and it is contained.** `layout/cluster.js` drives a
+**d3-force** simulation (`vendor/d3-force.js`, vendored — decision 104) for the clustered
+arrangement and for dragging: `forceLink`, `forceManyBody`, `forceCollide`, `forceX`/`forceY`,
+plus one custom force, `forceFootprint`. It is ticked by hand to convergence in the layout (never
+left running — the layout is a pure function) and run live only during a drag. A general d3-force
+tutorial IS useful for that one file; the traps peculiar to it are in `docs/OFF_MODE.md` §5.
 
 The one D3 subtlety that matters is recorded in `render/format.js:6–18`: `d3.scaleTime` *chooses*
 ticks on local midnights, which is why decision 32 exists and why the formatters are hand-written.

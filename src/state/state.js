@@ -36,8 +36,41 @@ export function createState() {
   return {
     /** Horizontal zoom multiplier. */
     k: 1,
-    /** Active time scale: real | highlights | ordinal. */
+    /** Active time scale: real | highlights | ordinal | off. */
     mode: 'real',
+    /**
+     * The brushed time range in the off mode, as two fractions of the sub-log's span.
+     *
+     * Fractions rather than instants, so the range keeps its meaning when the sub-log
+     * changes underneath it — "the last third" survives an expanded push or a hidden
+     * lane, where two absolute timestamps would quietly start describing a different
+     * portion of a different span. `[0, 1]` is no brush at all.
+     */
+    timeBrush: [0, 1],
+
+    /**
+     * Marks the reader has dragged, as an OFFSET from where the layout put them.
+     *
+     * ⚠️ An offset rather than a position, deliberately. Both structural layouts are pure
+     * functions of the sub-log, and storing absolute coordinates would mean a dragged
+     * mark stayed put while everything around it moved on a zoom, a resize or an expanded
+     * push — pinned to the canvas rather than to its neighbours. An offset survives all
+     * three: the mark keeps the displacement the reader gave it, relative to wherever its
+     * cluster now is.
+     *
+     * Deliberately NOT in a preset (decision 28): a preset captures what is shown, not
+     * where you were looking, and a hand-nudged node is the latter.
+     */
+    nodeNudges: new Map(),
+
+    /**
+     * How the off mode arranges a sub-log: `layered` (rows) or `radial` (rings).
+     *
+     * Only read when `mode === 'off'`. Two geometries for one question — rows read as a
+     * process direction and match the timeline's lane order, rings read as containment
+     * and suit a hub-shaped sub-log. Neither is right in general, so it is the reader's.
+     */
+    structuralLayout: 'layered',
     /** Focused object id, or null. Client-side highlighting only. */
     focus: null,
     /** BFS depth from the focused object. Capped at 2 by the graph model. */

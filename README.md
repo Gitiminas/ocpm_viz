@@ -56,9 +56,14 @@ about which fixtures had been built, not about the world.
 - **Three lanes** — issue, pull request, commit — each object keeping its own row.
   Two objects share a row when they run one after the other, and split into
   sub-lanes only when they overlap in time.
-- **Three time modes.** *Real* is linear. *Highlights* compresses idle stretches so
+- **Four time modes.** *Real* is linear. *Highlights* compresses idle stretches so
   activity stays legible. *Ordinal* spaces events evenly and annotates the long gaps
-  with their true duration.
+  with their true duration. *Off* releases the time axis altogether: position encodes
+  relationship structure instead — related objects sit near each other, and a hub, a
+  chain or a mesh is recognisable at a glance — while time survives on the arrowheads,
+  a time brush, and the hovercard. Off mode has two arrangements, **Rows** (issues, then
+  pull requests, then commits) and **Clusters** (each pull request a hub with its
+  commits fanned around it), and its marks can be dragged. See `docs/OFF_MODE.md`.
 - **Solid vs dashed links.** Solid means the platform itself asserts the link — a
   closing keyword GitHub acts on, or an exact SHA match. Dashed, with a `?`, means we
   parsed a convention nobody enforces. Most links in the example data are dashed.
@@ -79,7 +84,8 @@ All times are **UTC**, labelled.
 | `src/` | The application, as ES modules — see below |
 | `tests/` | `node --test` suites and `tests/fixtures/` |
 | `sql/` | **The PostgREST data layer** — `fe_layer.sql` builds schema `fe` (views) and `api.get_object_graph` |
-| `scripts/` | Fixture builders, the dev server, and the RPC tooling |
+| `scripts/` | Fixture builders, the dev server, the RPC tooling, and `shot.mjs` for headless screenshots |
+| `vendor/` | `d3-force` 3.0.0, vendored unmodified because there is no bundler to resolve a bare import (decision 104) |
 | `docs/` | Design record — start with `DECISIONS.md` |
 | `screenshots/` | Pre-change visual baseline. **Read-only** |
 | `ocel-data.json` | The original data blob. **Never edit**; fixture F1 is built from it |
@@ -94,6 +100,9 @@ All times are **UTC**, labelled.
    looks like.
 4. **`src/render/timeline.js`** — one render pass, top to bottom. The comment at the
    top explains why the order of operations is what it is.
+5. **`src/layout/engine.js`** — `createLayout()`, the one place that knows there are two
+   layout engines (the timeline and the structural off mode), and the seam that keeps the
+   drawing code from learning which is active.
 
 The code carries its reasoning in comments, deliberately: much of what matters here
 is *why* something is the way it is, and that does not survive in a diff.
@@ -243,7 +252,7 @@ psql -d ... -c "SELECT * FROM fe.diag_sanity" # 6 checks, every one must read 0
 
 `scripts/rpc-check.mjs` feeds a live payload through `loadObjectGraph()` and requires
 `findGraphProblems()` to return `[]` — the same gate the 13 fixtures pass — then runs the
-real layout pipeline in all three time modes.
+real layout pipeline in all four time modes, off mode in both of its arrangements.
 
 ⚠️ **After any upstream materialized-view refresh:**
 
@@ -295,7 +304,11 @@ What is **not** done:
   `ref_match` narrowing (decisions 80 and 62 — 80 replaced 61) makes every commit-link
   count a **floor**, and
   the per-repo spread is a fork-vs-branch contribution artifact, not a process difference.
-- **Interaction has no automated coverage** — tooltips, minimap drag, legend hover.
+- **Interaction has no automated coverage** — tooltips, minimap drag, legend hover, and
+  the off mode's drag, whose feel was tuned by hand and measured in Node (decision 106).
 - **Sizing has not been tuned** beyond 1920×1200.
+- **The mode-to-mode tween is deferred** (decision 108): switching between a timeline
+  and off mode cuts. Off mode's own known weak points — label collisions on a large hub
+  above all — are listed in `docs/OFF_MODE.md`.
 
 `docs/VERIFICATION.md` states exactly what was checked and what was not.
