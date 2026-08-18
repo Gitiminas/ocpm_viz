@@ -235,6 +235,10 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         // off them.
         edges: layout.edges,
         settling: layout.structuralLayout === 'cluster',
+        // Stop the idle drift for the duration of a gesture: a deliberate act should not
+        // have the picture breathing under it.
+        hold: () => motion.hold(),
+        release: () => motion.release(),
       });
 
       // Slide into place, then drift. Remembered *before* the animation runs, so the next

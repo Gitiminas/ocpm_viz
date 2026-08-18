@@ -188,6 +188,15 @@ export function createMotion({
   let frame = null;
   let scene = null;
   let startedAt = 0;
+  /*
+   * ⚠️ **The drift is frozen during a gesture**, and leaving it running was a real defect.
+   * `repaint()` paints at the current elapsed time, so every pointer event recomputed the
+   * idle wander — up to ±2.4px per mark, per event, on top of whatever the drag was
+   * moving. Reported as the picture being "weird and jittery" while dragging, and that is
+   * exactly what it was: two things writing positions at pointer rate, one of them for no
+   * reason. A gesture is a deliberate act; nothing should be breathing under it.
+   */
+  let heldAt = null;
 
   function paint(elapsed) {
     if (!scene) return;
@@ -197,7 +206,8 @@ export function createMotion({
     for (const mark of scene.marks) {
       const base = settlePosition(mark.from, mark, settling);
       // Drift fades in as settling finishes, so the two never fight over the same node.
-      const drift = reduced ? { dx: 0, dy: 0 } : driftOffset(mark.id, elapsed);
+      const drift =
+        reduced || heldAt !== null ? { dx: 0, dy: 0 } : driftOffset(mark.id, elapsed);
       const point = { x: base.x + drift.dx * settling, y: base.y + drift.dy * settling };
       at.set(mark.id, point);
       mark.apply(point);
@@ -230,7 +240,21 @@ export function createMotion({
      * something else happened.
      */
     repaint() {
-      if (scene) paint(Math.max(SETTLE_MS, now() - startedAt));
+      if (scene) paint(Math.max(SETTLE_MS, heldAt ?? now() - startedAt));
+    },
+
+    /**
+     * Hold the drift still for the duration of a gesture, and let it go afterwards.
+     *
+     * Held at the settled point rather than at the current elapsed time, so releasing does
+     * not jump the whole picture to wherever the wander had got to while you were busy.
+     */
+    hold() {
+      heldAt = SETTLE_MS;
+    },
+    release() {
+      heldAt = null;
+      startedAt = now();
     },
 
     /**

@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { neighbourhood } from '../src/render/structural.js';
 import {
   createMotion,
   driftOffset,
@@ -289,5 +290,100 @@ describe('dragging pushes what is in the way', () => {
       assert.equal(a.x, b.x, `${id} depends on input order`);
       assert.equal(a.y, b.y);
     }
+  });
+});
+
+describe('a gesture holds the drift still', () => {
+  test('held, a mark stays exactly where it is put across repaints', () => {
+    /*
+     * ⚠️ Reported as the picture being "weird and jittery" while dragging, and that is
+     * what it was: `repaint()` paints at the current elapsed time, so every pointer event
+     * recomputed the idle wander — up to ±2.4px per mark, per event, on top of whatever
+     * the drag was moving. Two things writing positions at pointer rate, one of them for
+     * no reason.
+     */
+    const clock = harness();
+    const motion = createMotion({ reduced: false, ...clock });
+    const s = scene(3);
+    motion.play(s);
+    clock.advance(SETTLE_MS * 2);
+
+    motion.hold();
+    motion.repaint();
+    const held = new Map([...s.painted].map(([id, at]) => [id, { ...at }]));
+
+    // Time passes, as it does during a drag.
+    clock.advance(900);
+    motion.repaint();
+    for (const [id, at] of s.painted) {
+      assert.deepEqual(at, held.get(id), `${id} moved while the gesture was held`);
+    }
+    motion.stop();
+  });
+
+  test('released, it breathes again — and does not jump to catch up', () => {
+    // Held at the settled point rather than at the current time, so letting go does not
+    // snap the whole picture to wherever the wander had got to while you were busy.
+    const clock = harness();
+    const motion = createMotion({ reduced: false, ...clock });
+    const s = scene(2);
+    motion.play(s);
+    clock.advance(SETTLE_MS * 2);
+
+    motion.hold();
+    motion.repaint();
+    const before = new Map([...s.painted].map(([id, at]) => [id, { ...at }]));
+
+    clock.advance(4000);
+    motion.release();
+    motion.repaint();
+    for (const [id, at] of s.painted) {
+      const was = before.get(id);
+      assert.ok(
+        Math.hypot(at.x - was.x, at.y - was.y) < 3,
+        `${id} jumped ${Math.hypot(at.x - was.x, at.y - was.y).toFixed(1)}px on release`,
+      );
+    }
+    motion.stop();
+  });
+});
+
+describe('a drag reaches only as far as its neighbourhood', () => {
+  const edges = [
+    { source: 'issue:1', target: 'pr:1' },
+    { source: 'issue:1', target: 'pr:2' },
+    { source: 'pr:1', target: 'commit:a' },
+    { source: 'pr:1', target: 'commit:b' },
+    { source: 'pr:2', target: 'commit:c' },
+    { source: 'commit:c', target: 'commit:d' },
+  ];
+
+  test('one hop brings a mark’s own children and nothing else', () => {
+    const near = neighbourhood('pr:1', edges, 1);
+    assert.deepEqual([...near].sort(), ['commit:a', 'commit:b', 'issue:1', 'pr:1']);
+  });
+
+  test('two hops reach a sibling, but not the whole graph', () => {
+    /*
+     * ⚠️ The reach is bounded on purpose. Dragging a pull request should bring its commits
+     * and the issue it resolves — the unit a reader is thinking about when they pull one
+     * out of a tangle. Unbounded, a single drag rearranges the whole sub-log, which is not
+     * a gesture anyone asked for.
+     */
+    const near = neighbourhood('pr:1', edges, 2);
+    assert.ok(near.has('pr:2'), 'a sibling two hops away should follow');
+    assert.ok(!near.has('commit:d'), 'three hops away must stay put');
+  });
+
+  test('the set is computed once and cannot grow as the drag travels', () => {
+    // Recomputing it mid-gesture would let the neighbourhood creep outward as marks moved,
+    // so a long drag would end up towing things it never picked up.
+    const first = neighbourhood('pr:1', edges, 2);
+    const second = neighbourhood('pr:1', edges, 2);
+    assert.deepEqual([...first].sort(), [...second].sort());
+  });
+
+  test('a mark with no edges brings only itself', () => {
+    assert.deepEqual([...neighbourhood('lonely', edges, 2)], ['lonely']);
   });
 });

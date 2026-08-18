@@ -349,6 +349,8 @@ export function renderStructuralNodes({
   brush = null,
   edges = [],
   settling = false,
+  hold = () => {},
+  release = () => {},
 }) {
   // What movement needs: where each mark belongs, where it was a moment ago, and how to
   // put it somewhere. The label rides along, so a name never parts company with its mark.
@@ -447,7 +449,15 @@ export function renderStructuralNodes({
     };
 
     const drag = onDragged
-      ? enableDrag(group, mark, node, { onDragged, repaint, marks: live, edges, settling })
+      ? enableDrag(group, mark, node, {
+          onDragged,
+          repaint,
+          marks: live,
+          edges,
+          settling,
+          hold,
+          release,
+        })
       : null;
 
     group.on('click', (event) => {
@@ -514,6 +524,40 @@ export function renderStructuralNodes({
 
 /** How far the pointer may travel before a press counts as a drag rather than a click. */
 const DRAG_SLOP_PX = 3;
+/**
+ * How many hops out from a dragged mark are allowed to follow it.
+ *
+ * Two: a pull request brings its commits and the issue it resolves, which is the unit a
+ * reader is thinking about when they pull one out of a tangle. Further and a single drag
+ * starts rearranging the whole sub-log, which is not a gesture anyone asked for.
+ */
+const DRAG_REACH = 2;
+
+/** Every mark within `hops` of a starting one, along the drawn edges. */
+export function neighbourhood(startId, edges, hops) {
+  const adjacent = new Map();
+  for (const edge of edges) {
+    if (!adjacent.has(edge.source)) adjacent.set(edge.source, []);
+    if (!adjacent.has(edge.target)) adjacent.set(edge.target, []);
+    adjacent.get(edge.source).push(edge.target);
+    adjacent.get(edge.target).push(edge.source);
+  }
+
+  const seen = new Set([startId]);
+  let edge = [startId];
+  for (let hop = 0; hop < hops; hop++) {
+    const next = [];
+    for (const id of edge) {
+      for (const other of adjacent.get(id) || []) {
+        if (seen.has(other)) continue;
+        seen.add(other);
+        next.push(other);
+      }
+    }
+    edge = next;
+  }
+  return seen;
+}
 
 /**
  * Let a mark be dragged.
@@ -527,7 +571,12 @@ const DRAG_SLOP_PX = 3;
  * Pointer capture rather than window listeners: the pointer keeps talking to this element
  * even when it leaves it, so a fast drag cannot slip off the mark and strand it mid-move.
  */
-function enableDrag(group, mark, node, { onDragged, repaint, marks, edges, settling }) {
+function enableDrag(
+  group,
+  mark,
+  node,
+  { onDragged, repaint, marks, edges, settling, hold = () => {}, release = () => {} },
+) {
   let from = null;
   let travelled = 0;
 
@@ -537,8 +586,17 @@ function enableDrag(group, mark, node, { onDragged, repaint, marks, edges, settl
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    from = { x: event.clientX, y: event.clientY, markX: mark.x, markY: mark.y };
+    from = {
+      x: event.clientX,
+      y: event.clientY,
+      markX: mark.x,
+      markY: mark.y,
+      // Which marks this gesture is allowed to move. Computed once, so the set cannot
+      // grow as the drag travels and quietly start dragging the whole graph.
+      neighbourhood: neighbourhood(mark.id, edges, DRAG_REACH),
+    };
     travelled = 0;
+    hold();
     group.style('cursor', 'grabbing');
     group.node().setPointerCapture?.(event.pointerId);
   });
@@ -565,12 +623,26 @@ function enableDrag(group, mark, node, { onDragged, repaint, marks, edges, settl
      * dragging only shoves what it collides with, as before.
      */
     if (settling) {
+      /*
+       * ⚠️ **Only the neighbourhood moves, and everything else is pinned.**
+       *
+       * The first version weakened the anchor everywhere so the springs could win, and
+       * unmoored the whole picture: measured on F10, dragging a pull request 250px carried
+       * its own commit 7px and shoved an *unrelated* pull request 210px, because with
+       * nothing held down repulsion from the dragged mark travelled further than the
+       * springs did. Exactly backwards.
+       *
+       * Pinning everything outside a couple of hops states the intent directly instead of
+       * hoping the forces express it: dragging a pull request brings its commits, and the
+       * rest of the drawing stays where the reader left it. It is also far less work per
+       * pointer event, since only a handful of marks are free to move.
+       */
       const settled = relax(
         marks.map((other) => ({
           id: other.id,
           radius: other.radius,
           charge: CHARGE[other.lane] ?? 1,
-          pinned: other.id === mark.id,
+          pinned: other.id === mark.id || !from.neighbourhood.has(other.id),
         })),
         edges,
         {
@@ -578,9 +650,12 @@ function enableDrag(group, mark, node, { onDragged, repaint, marks, edges, settl
           // Seeded from where things are *now*, so the gesture continues from the last
           // frame rather than restarting from the layout on every pointer event.
           seed: new Map(marks.map((other) => [other.id, { x: other.x, y: other.y }])),
-          // A handful of steps: enough to follow the pointer, few enough to stay ahead of
-          // it. A full settle per event would drop frames and lag behind the cursor.
-          iterations: 3,
+          // Light, not absent. Enough that a neighbourhood towed a long way still
+          // remembers roughly where it belongs; not enough to fight the drag.
+          anchor: 0.02,
+          // Enough steps for a tug to travel a hop or two per event, few enough to stay
+          // ahead of the pointer. A full settle per event would lag behind the cursor.
+          iterations: 8,
         },
       );
       for (const other of marks) {
@@ -601,6 +676,7 @@ function enableDrag(group, mark, node, { onDragged, repaint, marks, edges, settl
 
   const finish = (event) => {
     if (!from) return;
+    release();
     group.style('cursor', 'grab');
     group.node().releasePointerCapture?.(event.pointerId);
     from = null;
