@@ -62,6 +62,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 .seg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
 .seg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
 .seg .seg-opt{cursor:pointer}
+#helpStrip.isDefault{color:var(--color-neutral-500);font-style:italic}
 /* The FIRST level of the mode control is a switch, not a segment (decision 114): a pill
    whose active side is filled, with a radio dot as the literal indicator. It is drawn
    differently from the second-level segments on purpose — outlined alike, "Time |
@@ -100,8 +101,8 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div style="display:flex;height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);overflow:hidden">
 <aside style="width:300px;flex:0 0 auto;background:var(--color-surface);border-right:1px solid var(--color-neutral-800);display:flex;flex-direction:column;overflow-y:auto;padding:var(--space-6)">
 <div style="display:flex;gap:8px;padding-bottom:var(--space-6);margin-bottom:var(--space-6);border-bottom:1px solid var(--color-neutral-800)">
-<button class="pageTab on" data-page="timeline" style="box-sizing:border-box;border:1px solid var(--color-accent);background:color-mix(in srgb, var(--color-accent) 16%, transparent);cursor:pointer;font-size:13px;font-weight:500;color:var(--color-text);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>Timeline</button>
-<button class="pageTab" data-page="stats" style="box-sizing:border-box;border:1px solid transparent;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-neutral-400);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><line x1="4" x2="4" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="20" x2="20" y1="20" y2="14"></line></svg>Stats</button>
+<button class="pageTab on" data-page="timeline" data-tip="page.timeline" style="box-sizing:border-box;border:1px solid var(--color-accent);background:color-mix(in srgb, var(--color-accent) 16%, transparent);cursor:pointer;font-size:13px;font-weight:500;color:var(--color-text);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>Timeline</button>
+<button class="pageTab" data-page="stats" data-tip="page.stats" style="box-sizing:border-box;border:1px solid transparent;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-neutral-400);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><line x1="4" x2="4" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="20" x2="20" y1="20" y2="14"></line></svg>Stats</button>
 </div>
 <div style="margin-bottom:var(--space-8)">
 <!-- "OCEL case" in the mockup. There is no case in OCPM (decision 1). -->
@@ -126,14 +127,14 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div style="margin-bottom:10px">
 <div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Repo</div>
 <div style="position:relative">
-<input autocomplete="off" class="mono" id="repoInput" placeholder="Search repositories…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
+<input autocomplete="off" class="mono" id="repoInput" data-tip="query.repo" placeholder="Search repositories…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
 <div id="repoDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow:hidden"></div>
 </div>
 </div>
 <div>
 <div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Start from</div>
 <div style="position:relative">
-<input autocomplete="off" class="mono" id="objectInput" placeholder="Search issue / PR / commit…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
+<input autocomplete="off" class="mono" id="objectInput" data-tip="query.seed" placeholder="Search issue / PR / commit…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
 <div id="objectDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow-y:auto;max-height:220px"></div>
 </div>
 <!--
@@ -149,7 +150,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div id="traversalInfo" class="mono" style="font-size:10px;color:var(--color-neutral-500);margin-top:6px;line-height:1.5"></div>
 <!-- What the query returned: counts by type, links, events, span. Rendered by
      render/subLogCard.js from summarizeSubLog(); replaced the breadcrumb above the chart. -->
-<div id="subLogCard"></div>
+<div id="subLogCard" data-tip="card"></div>
 </div>
 </div>
 <div id="timelineSidebarSections" style="display:flex;flex-direction:column">
@@ -163,45 +164,45 @@ html,body{height:100%;margin:0;overflow:hidden}
   work they had just done further up the page.
 -->
 <div style="margin-bottom:var(--space-8)">
-<div class="collapseHeader" data-target="presets" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<div class="collapseHeader" data-target="presets" data-tip="section.views" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
 <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Views</span>
 <span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
 </div>
 <div id="presets" style="display:flex;flex-direction:column;gap:4px"></div>
 </div>
 <div style="margin-bottom:var(--space-8)">
-<div class="collapseHeader" data-target="lanes" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<div class="collapseHeader" data-target="lanes" data-tip="section.lanes" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
 <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Lanes</span>
 <span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
 </div>
 <div id="lanes" style="display:flex;flex-direction:column;gap:4px"></div>
 </div>
 <div style="margin-bottom:var(--space-8)">
-<div class="collapseHeader" data-target="relationships" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<div class="collapseHeader" data-target="relationships" data-tip="section.relationships" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
 <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Relationships</span>
 <span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
 </div>
 <div id="relationships" style="display:flex;flex-direction:column;gap:4px"></div>
 </div>
 <div style="margin-bottom:var(--space-8)">
-<div class="collapseHeader" data-target="bursts" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<div class="collapseHeader" data-target="bursts" data-tip="section.folding" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
 <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Folding</span>
 <span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
 </div>
 <div id="bursts" style="display:flex;flex-direction:column;gap:4px"></div>
 </div>
 <div style="margin-bottom:var(--space-8)">
-<div class="collapseHeader" data-target="actorsWrap" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<div class="collapseHeader" data-target="actorsWrap" data-tip="section.actors" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
 <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Actors</span>
 <span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
 </div>
 <div id="actorsWrap" style="display:flex;flex-direction:column">
-<input autocomplete="off" class="mono" id="actorSearch" placeholder="Search actors…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:12px;padding:6px 9px;margin-bottom:6px"/>
+<input autocomplete="off" class="mono" id="actorSearch" data-tip="actors.search" placeholder="Search actors…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:12px;padding:6px 9px;margin-bottom:6px"/>
 <div id="actors" style="display:flex;flex-direction:column;gap:4px"></div>
 </div>
 </div>
 <div>
-<div class="collapseHeader" data-target="legend" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<div class="collapseHeader" data-target="legend" data-tip="section.legend" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
 <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Legend</span>
 <span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
 </div>
@@ -217,9 +218,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 </aside>
 <div id="actorCard" style="display:none;position:fixed;z-index:200;width:290px;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow:hidden"></div>
 <div id="degreeStepper" style="display:none;position:fixed;align-items:center;gap:2px;background-color:var(--color-neutral-800);border:1px solid var(--color-neutral-700);border-radius:999px;box-shadow:var(--shadow-md);padding:3px 4px;z-index:9999">
-<span id="degMinus" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--color-neutral-300);font-size:14px;user-select:none">&minus;</span>
+<span id="degMinus" data-tip="focus.degree" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--color-neutral-300);font-size:14px;user-select:none">&minus;</span>
 <span class="mono" style="font-size:11px;color:var(--color-text);min-width:34px;text-align:center">Deg <span id="degVal">1</span></span>
-<span id="degPlus" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--color-neutral-300);font-size:14px;user-select:none">+</span>
+<span id="degPlus" data-tip="focus.degree" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--color-neutral-300);font-size:14px;user-select:none">+</span>
 </div>
 <main id="timelinePage" style="flex:1;min-width:0;display:flex;flex-direction:column;padding:var(--space-6) var(--space-8);gap:var(--space-4);overflow:hidden">
 <!-- The header row holds only the mode and zoom controls, pinned to the RIGHT whatever
@@ -227,9 +228,12 @@ html,body{height:100%;margin:0;overflow:hidden}
      so a narrow window shrinks the gap rather than dropping the controls to a second
      line on the left. No page title here — the tool's name heads the sidebar's Sub-log
      section, and the one-line description that used to sit here is the sub-log card. -->
-<div style="display:flex;align-items:center;justify-content:flex-end;gap:var(--space-6);flex:0 0 auto;flex-wrap:nowrap;min-width:0">
-<div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:nowrap;margin-left:auto;min-width:0">
-<div class="mono" id="focusInfo" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);flex:0 0 auto;flex-wrap:nowrap;min-width:0">
+<!-- The help strip: what the pointer is on, in a sentence or two (render/helpStrip.js,
+     texts in help/tips.js). Two lines tall whatever it says, so the header never jumps. -->
+<div id="helpStrip" class="isDefault" aria-live="polite" style="flex:1 1 auto;min-width:0;min-height:2.8em;font-size:12px;line-height:1.4;color:var(--color-neutral-300);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"></div>
+<div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:nowrap;margin-left:auto;min-width:0;flex:0 0 auto">
+<div class="mono" id="focusInfo" data-tip="focus.info" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
 <!--
   The mode control has two levels (decision 114). The FIRST chooses what position means:
   Time — the timeline, x is a time axis — or Relationships, which releases the time axis
@@ -243,21 +247,21 @@ html,body{height:100%;margin:0;overflow:hidden}
   markMode() in main.js is the one place that reads state.mode into these three segments.
 -->
 <div class="seg switch" id="facetSeg" role="radiogroup" aria-label="What position means">
-<div class="seg-opt on" data-facet="time" title="Position encodes time: a timeline with lanes and an axis"><span>Time</span></div>
-<div class="seg-opt" data-facet="relationships" title="Release the time axis — position encodes relationships instead"><span>Relationships</span></div>
+<div class="seg-opt on" data-facet="time" data-tip="mode.time"><span>Time</span></div>
+<div class="seg-opt" data-facet="relationships" data-tip="mode.relationships"><span>Relationships</span></div>
 </div>
 <div class="seg" id="timeSeg">
-<div class="seg-opt on" data-mode="absolute" title="Absolute: linear in real time"><span>Absolute</span></div>
-<div class="seg-opt" data-mode="discrete" title="Discrete: events evenly spaced by order; long gaps annotated"><span>Discrete</span></div>
+<div class="seg-opt on" data-mode="absolute" data-tip="mode.absolute"><span>Absolute</span></div>
+<div class="seg-opt" data-mode="discrete" data-tip="mode.discrete"><span>Discrete</span></div>
 </div>
 <div class="seg" id="layoutSeg" style="display:none">
-<div class="seg-opt on" data-layout="layered" title="Rows: issues, then pull requests, then commits"><span>Rows</span></div>
-<div class="seg-opt" data-layout="cluster" title="Clusters: each pull request a hub, its commits fanning around it"><span>Clusters</span></div>
+<div class="seg-opt on" data-layout="layered" data-tip="layout.rows"><span>Rows</span></div>
+<div class="seg-opt" data-layout="cluster" data-tip="layout.clusters"><span>Clusters</span></div>
 </div>
 <div style="display:flex;gap:2px;border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);padding:2px">
-<button aria-label="Zoom out" class="btn btn-icon" id="zout"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line></svg></button>
-<button aria-label="Reset the view" title="Reset the view: zoom, dragged marks, and the time range" class="btn btn-icon" id="zrst"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
-<button aria-label="Zoom in" class="btn btn-icon" id="zin"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><line x1="12" x2="12" y1="5" y2="19"></line></svg></button>
+<button aria-label="Zoom out" class="btn btn-icon" id="zout" data-tip="zoom.out"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line></svg></button>
+<button aria-label="Reset the view" class="btn btn-icon" id="zrst" data-tip="zoom.reset"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
+<button aria-label="Zoom in" class="btn btn-icon" id="zin" data-tip="zoom.in"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><line x1="12" x2="12" y1="5" y2="19"></line></svg></button>
 </div>
 </div>
 </div>
@@ -266,7 +270,7 @@ html,body{height:100%;margin:0;overflow:hidden}
   axis for it to describe. Its space is given back rather than blanked, so nothing reads
   as a strip that failed to draw. See onRendered in main.js.
 -->
-<div id="minimapWrap" style="flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 10px">
+<div id="minimapWrap" data-tip="minimap" style="flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 10px">
 <svg id="minimap"></svg>
 </div>
 <!--
@@ -278,7 +282,7 @@ html,body{height:100%;margin:0;overflow:hidden}
   in the chosen window rather than removing it, so the shape of the whole sub-log stays
   visible behind the part being asked about.
 -->
-<div id="timeBrushWrap" style="display:none;flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 12px">
+<div id="timeBrushWrap" data-tip="brush" style="display:none;flex:0 0 auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);padding:8px 12px">
 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px">
 <span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-500)">Alive during</span>
 <span class="mono" id="timeBrushLabel" style="font-size:10.5px;color:var(--color-neutral-400)"></span>
@@ -332,7 +336,7 @@ html,body{height:100%;margin:0;overflow:hidden}
   impossible to miss: an overlay would cover the last lane, and covering data to report
   hidden data is the wrong trade.
 -->
-<div id="hiddenBanner" style="display:none;flex:0 0 auto"></div>
+<div id="hiddenBanner" data-tip="hidden.banner" style="display:none;flex:0 0 auto"></div>
 </main>
 <main id="statsPage" style="flex:1;min-width:0;display:none;flex-direction:column;padding:var(--space-8);overflow:auto">
 <h1 style="font-size:20px;margin:0 0 var(--space-6)">Sub-log statistics</h1>

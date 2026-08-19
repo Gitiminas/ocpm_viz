@@ -40,6 +40,7 @@ import { createActorCard } from './render/actorCard.js';
 import { createTimeline, MARGIN, STRUCTURAL_MARGIN } from './render/timeline.js';
 import { renderSubLogCard } from './render/subLogCard.js';
 import { scrollToKeepAnchor } from './render/pan.js';
+import { bindHelpStrip } from './render/helpStrip.js';
 import { renderLegend, legendKeysPresentIn } from './render/legend.js';
 import { createMessageSurface, messageHtml, errorHtml } from './render/message.js';
 import { renderStats } from './render/stats.js';
@@ -91,6 +92,10 @@ const elements = {
 // The sub-log card is present from the first paint, titled and empty, so the sidebar has
 // its final shape before anything is loaded (`render/subLogCard.js`).
 renderSubLogCard({ container: elements.subLogCard, summary: null });
+
+// The help strip: one delegated listener on the body, texts from help/tips.js. Removing
+// this one call switches the feature off; the data-tip attributes are inert without it.
+bindHelpStrip({ root: document.body, stripEl: el('helpStrip') });
 
 /*
  * One message surface per page, each a sibling of the thing it stands in for.
@@ -978,6 +983,7 @@ function renderSourceToggle() {
     const button = document.createElement('button');
     button.className = 'mono';
     button.textContent = option.label;
+    button.dataset.tip = `source.${option.id}`;
     button.style.cssText =
       'flex:1;cursor:pointer;border:none;padding:6px 8px;font-size:11.5px;font-weight:600;' +
       (active
@@ -1150,7 +1156,7 @@ function updateTraversalInfo(graph) {
     ? `Traversal degree ${renderDegreeControl(degree)}`
     : degree == null
       ? ''
-      : `Traversal degree ${degree} · fixed by the query`;
+      : `<span data-tip="query.degree.fixed">Traversal degree ${degree} · fixed by the query</span>`;
 
   /*
    * ⚠️ **Say when a seed reaches nothing.** A sub-log of one object is a legitimate
@@ -1224,7 +1230,7 @@ function renderDegreeControl(degree) {
   )
     .map(
       (d) =>
-        `<button data-degree="${d}" class="mono" style="cursor:pointer;border:1px solid ` +
+        `<button data-degree="${d}" data-tip="query.degree" class="mono" style="cursor:pointer;border:1px solid ` +
         `var(--color-neutral-700);background:${d === current ? 'var(--color-accent-600,#5b5bd6)' : 'transparent'};` +
         `color:${d === current ? '#fff' : 'var(--color-neutral-400)'};font-size:10px;` +
         `padding:1px 5px;border-radius:3px;margin-right:2px">${d}</button>`,
