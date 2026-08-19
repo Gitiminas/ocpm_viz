@@ -573,8 +573,17 @@ function zoomAround(value, anchor = null) {
   scroll.scrollTop = next.scrollTop;
 }
 
-el('zin').onclick = () => setZoom(state.k * 1.3);
-el('zout').onclick = () => setZoom(state.k / 1.3);
+/**
+ * The zoom buttons. In relationships mode they zoom about the CENTRE of the visible
+ * surface (decision 120): the reader is looking at the middle of what is on screen, and a
+ * zoom that grew the drawing about the frame's origin sent it off to the right and down.
+ * In the timeline modes they keep their behaviour — the minimap owns horizontal position
+ * there, and the picture is a strip rather than a plane.
+ */
+const stepZoom = (factor) =>
+  isStructuralMode(state.mode) ? zoomAround(state.k * factor, null) : setZoom(state.k * factor);
+el('zin').onclick = () => stepZoom(1.3);
+el('zout').onclick = () => stepZoom(1 / 1.3);
 /*
  * One "put it back" control, not several.
  *
