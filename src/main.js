@@ -703,9 +703,23 @@ for (const option of document.querySelectorAll('#layoutSeg .seg-opt')) {
   });
 }
 
+/**
+ * The wheel over the drawing surface.
+ *
+ * In the timeline modes it scrolls, as a page does, and Ctrl+wheel zooms. In the
+ * relationships mode it does NOT scroll: the picture is a graph, not a page, and the
+ * surface is navigated by dragging it (decision 118) — a wheel that scrolled it
+ * vertically moved the picture out from under a reader who meant to zoom, and there is
+ * no sideways counterpart, so scrolling was half a control. The wheel's job there is
+ * zooming, which the next decision gives it.
+ */
 elements.scroll.addEventListener(
   'wheel',
   (event) => {
+    if (isStructuralMode(state.mode)) {
+      event.preventDefault();
+      return;
+    }
     if (!event.ctrlKey) return;
     event.preventDefault();
     setZoom(state.k * (event.deltaY < 0 ? 1.1 : 1 / 1.1));
