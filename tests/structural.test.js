@@ -543,3 +543,31 @@ describe('the time brush', () => {
     assert.ok(alive.length < nodes.length, 'and not everything is');
   });
 });
+
+describe('the relationships hovercard leads with a real timestamp, once', async () => {
+  const { nodeCard } = await import('../src/render/structural.js');
+  test('the first row is the first lifecycle event — no separate "Time" row repeating it', () => {
+    const t0 = new Date('2025-03-07T05:15:00Z');
+    const card = nodeCard({
+      lane: 'issue',
+      title: '#1',
+      t: t0,
+      lifecycle: [
+        { activity: 'IssueOpened', time: t0 },
+        { activity: 'IssueClosed', time: new Date('2025-03-19T14:08:00Z') },
+      ],
+      commentCount: 0,
+      actorIds: [],
+    });
+    assert.equal(card.rows[0][0], 'Open');
+    assert.match(card.rows[0][1], /Mar 7, 2025|Mar 07, 2025/);
+    assert.ok(!card.rows.some(([label]) => label === 'Time'), 'a "Time" row would repeat the first lifecycle row');
+    assert.equal(card.rows.filter(([, , kind]) => kind === 'time').length, 2);
+  });
+
+  test('a mark with no lifecycle to list still leads with a timestamp', () => {
+    const t0 = new Date('2025-03-07T05:15:00Z');
+    const card = nodeCard({ lane: 'commit', title: 'abc', t: t0, lifecycle: [], commentCount: 0, actorIds: [] });
+    assert.equal(card.rows[0][0], 'Time');
+  });
+});

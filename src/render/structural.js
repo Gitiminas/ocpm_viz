@@ -806,8 +806,12 @@ function enableDrag(
  * wrong about what they are counting. The pull request has not become an object; it
  * always was one. What changed is how much of it a single mark stands for.
  *
- * The first row is the real timestamp, exactly as in every other mode: time is demoted,
- * and the one place it is never approximate is here.
+ * The first row is a real timestamp, exactly as in every other mode: time is demoted,
+ * and the one place it is never approximate is here. It is the first LIFECYCLE row —
+ * "Open · Mar 07, 2025 …", "Commit observed · …" — not a separate "Time" row above it:
+ * the two always carried the same instant (a node's `t` IS its first lifecycle event),
+ * and a reader saw the same timestamp twice with two labels. Reported as redundant. Only
+ * a mark with no lifecycle to list (a folded push) keeps a plain "Time" row.
  */
 export function nodeCard(node, actorLogin = (id) => id) {
   if (node.isBurst) {
@@ -825,13 +829,15 @@ export function nodeCard(node, actorLogin = (id) => id) {
   }
 
   const type = TYPE[node.lane];
-  const rows = [['Time', formatInstant(node.t), 'time']];
-
-  // The lifecycle the mark collapsed, listed in order. This is the half of "one node per
+  // The lifecycle the mark collapsed, listed in order — the first of them is the real
+  // timestamp every mode's hovercard leads with. This is the half of "one node per
   // object" that keeps the mode honest: the events are not gone, they are here.
-  for (const entry of node.lifecycle) {
-    rows.push([activityLabel(entry.activity), formatInstant(entry.time), 'time']);
-  }
+  const rows = node.lifecycle.map((entry) => [
+    activityLabel(entry.activity),
+    formatInstant(entry.time),
+    'time',
+  ]);
+  if (!rows.length) rows.push(['Time', formatInstant(node.t), 'time']);
   if (node.commentCount) {
     rows.push(['Comments', String(node.commentCount)]);
   }
