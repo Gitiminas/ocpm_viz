@@ -173,15 +173,25 @@ export function renderAxis({
   // Discrete mode discards real durations, so silence becomes invisible. Annotate the
   // large gaps with their true length to keep the compression honest.
   if (mode === 'discrete') {
-    for (const gap of findLargeGaps(rankTimes)) {
-      const x0 = marginLeft + (gap.fromRank / rankMax) * plotWidth;
-      const x1 = marginLeft + (gap.toRank / rankMax) * plotWidth;
+    const gaps = findLargeGaps(rankTimes).map((gap) => ({
+      ...gap,
+      x0: marginLeft + (gap.fromRank / rankMax) * plotWidth,
+      x1: marginLeft + (gap.toRank / rankMax) * plotWidth,
+      label: formatApproxDuration(gap.duration),
+    }));
 
+    // Every gap keeps its band — the bands sit between consecutive ranks and cannot
+    // overlap each other. The LABELS can, and did: kubernetes #47532 zoomed out put
+    // "≈ 7 days" over "≈ 2 days" until neither read. Thinned by size, so the labels
+    // that survive are the gaps most worth naming; the band still marks the rest.
+    const labelled = new Set(thinGapLabels(gaps));
+
+    for (const gap of gaps) {
       gAxis
         .append('rect')
-        .attr('x', x0)
+        .attr('x', gap.x0)
         .attr('y', axisY - 6)
-        .attr('width', Math.max(1, x1 - x0))
+        .attr('width', Math.max(1, gap.x1 - gap.x0))
         .attr('height', 12)
         .attr('fill', 'var(--color-neutral-700)')
         .attr('fill-opacity', 0.35)
@@ -189,15 +199,47 @@ export function renderAxis({
         .attr('stroke-width', 1)
         .attr('stroke-dasharray', '2 2');
 
+      if (!labelled.has(gap)) continue;
       gAxis
         .append('text')
-        .attr('x', (x0 + x1) / 2)
+        .attr('x', (gap.x0 + gap.x1) / 2)
         .attr('y', axisY - 11)
         .attr('text-anchor', 'middle')
         .attr('font-size', 10)
         .attr('class', 'mono')
         .attr('fill', 'var(--color-neutral-400)')
-        .text(formatApproxDuration(gap.duration));
+        .text(gap.label);
     }
   }
+}
+
+/** Roughly what a 10px mono label covers, plus breathing room on both sides. */
+const GAP_LABEL_PX_PER_CHAR = 6.2;
+const GAP_LABEL_GAP_PX = 8;
+
+/**
+ * Which gap labels fit without touching, longest gap first.
+ *
+ * Greedy interval placement: gaps are taken in duration order, and a label is kept only
+ * if its extent (centred on its band, width estimated from its text) clears every label
+ * already kept. Duration order rather than left-to-right, so when there is not room for
+ * everything the biggest silences stay named — they are what the annotation exists for —
+ * and the small ones fall back to their bands alone.
+ *
+ * Pure and exported for the tests: takes `{x0, x1, label, duration}`, returns the subset
+ * to label.
+ */
+export function thinGapLabels(gaps) {
+  const placed = [];
+  const keep = [];
+  for (const gap of [...gaps].sort((a, b) => b.duration - a.duration)) {
+    const centre = (gap.x0 + gap.x1) / 2;
+    const half = (gap.label.length * GAP_LABEL_PX_PER_CHAR) / 2;
+    const lo = centre - half;
+    const hi = centre + half;
+    if (placed.some((p) => lo < p.hi + GAP_LABEL_GAP_PX && hi > p.lo - GAP_LABEL_GAP_PX)) continue;
+    placed.push({ lo, hi });
+    keep.push(gap);
+  }
+  return keep;
 }
