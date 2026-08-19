@@ -62,12 +62,15 @@ html,body{height:100%;margin:0;overflow:hidden}
 .seg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
 .seg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
 .seg .seg-opt{cursor:pointer}
-/* The help strip is a contained box, not loose text on the pane: the same border, radius
-   and surface as the minimap and the sub-log card, a tiny kicker naming it, and the text
-   beneath. Two text lines tall whatever it says, so the header never changes height. */
-#helpStrip{flex:1 1 auto;min-width:0;max-width:640px;box-sizing:border-box;padding:6px 10px 7px;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900);font-size:12px;line-height:1.4;color:var(--color-neutral-200)}
-#helpStrip::before{content:'About';display:block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500);margin-bottom:2px;font-style:normal}
-#helpStrip .helpText{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.8em}
+/* The help strip reads as a callout, not a panel: no fill, a small info glyph, and a thin
+   rule on its left that takes the accent colour while it is saying something and falls
+   back to a quiet grey on the hint. Two text lines tall whatever it says, so the header
+   never changes height; the text fades between sentences rather than snapping. */
+#helpStrip{flex:0 1 560px;min-width:0;display:flex;align-items:flex-start;gap:9px;padding:3px 10px 3px 0;border-left:2px solid var(--color-accent-600,#5b5bd6);margin-left:2px;font-size:12px;line-height:1.4;color:var(--color-neutral-200);transition:border-color .2s ease}
+#helpStrip::before{content:'';flex:0 0 auto;width:14px;height:14px;margin:1px 0 0 10px;border-radius:50%;border:1.5px solid currentColor;color:var(--color-accent-300);background:center / 60% no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b8b6f5' stroke-width='3' stroke-linecap='round'><line x1='12' y1='10.5' x2='12' y2='17'/><circle cx='12' cy='6.5' r='1.2' fill='%23b8b6f5' stroke='none'/></svg>");transition:color .2s ease}
+#helpStrip .helpText{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.8em;transition:opacity .15s ease}
+#helpStrip.isDefault{border-left-color:var(--color-neutral-700)}
+#helpStrip.isDefault::before{color:var(--color-neutral-600);background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b6b80' stroke-width='3' stroke-linecap='round'><line x1='12' y1='10.5' x2='12' y2='17'/><circle cx='12' cy='6.5' r='1.2' fill='%236b6b80' stroke='none'/></svg>")}
 #helpStrip.isDefault .helpText{color:var(--color-neutral-500);font-style:italic}
 /* The FIRST level of the mode control is a switch, not a segment (decision 114): a pill
    whose active side is filled, with a radio dot as the literal indicator. It is drawn
