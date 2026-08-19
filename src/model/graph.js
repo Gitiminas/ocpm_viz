@@ -95,8 +95,16 @@ export const DIM_OPACITY = 0.15;
  *
  * The steps are wide apart on purpose. Three brightnesses a few percent apart are not
  * three categories, they are one blur; these are far enough to be counted at a glance.
+ *
+ * ⚠️ And the LAST ring must sit well clear of `DIM_OPACITY`, because opacity is not read
+ * linearly on a dark surface: at `[1, 0.72, 0.4]` the second ring and the unrelated marks
+ * (0.15) both read as "faded" and the ring fell on the wrong side of the line — reported
+ * as degree 2 being too close to the unrelated ones. Raised rather than sinking the
+ * unrelated marks further: 0.15 is already near the floor, the brush dims to 0.13 and the
+ * two dims must not swap meaning, and anything under ~0.1 reads as absent — which is the
+ * brush's statement, not the focus's. The test keeps the last ring ≥ 3× the dim level.
  */
-export const FOCUS_FALLOFF = [1, 0.72, 0.4];
+export const FOCUS_FALLOFF = [1, 0.8, 0.55];
 
 /**
  * Opacity for an object under the current focus.

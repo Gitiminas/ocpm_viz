@@ -576,14 +576,18 @@ describe('focus fades with distance, where it is asked to', () => {
     assert.ok(at('commit:a') > DIM_OPACITY, 'but still brighter than being outside entirely');
   });
 
-  test('the steps are far enough apart to be told apart', () => {
+  test('the steps are far enough apart to be told apart, and the last ring clear of the dim', () => {
     // Three brightnesses a few percent apart are not three categories, they are one blur.
     for (let hop = 1; hop < FOCUS_FALLOFF.length; hop++) {
       assert.ok(
-        FOCUS_FALLOFF[hop - 1] - FOCUS_FALLOFF[hop] > 0.2,
+        FOCUS_FALLOFF[hop - 1] - FOCUS_FALLOFF[hop] >= 0.2 - 1e-9,
         `hops ${hop - 1} and ${hop} are ${FOCUS_FALLOFF[hop - 1]} and ${FOCUS_FALLOFF[hop]}`,
       );
     }
+    // Opacity is not read linearly on a dark surface: the outermost ring has to sit well
+    // above the unrelated marks or it reads as one of them (it did, at 0.4 against 0.15).
+    const last = FOCUS_FALLOFF[FOCUS_FALLOFF.length - 1];
+    assert.ok(last >= DIM_OPACITY * 3, `the last ring (${last}) is too close to the dim (${DIM_OPACITY})`);
   });
 
   test('a hop beyond the table falls back to dim rather than to undefined', () => {
