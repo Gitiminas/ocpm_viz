@@ -155,7 +155,7 @@ const timeline = createTimeline({
       if (node.isBurst) {
         timeline.captureTween();
         state.expandedBursts.add(node.burst.id);
-        timeline.render();
+        redraw();
         return;
       }
       if (node.isCommentBurst) {
@@ -195,7 +195,7 @@ const timeline = createTimeline({
     onCollapseBurst(burst) {
       timeline.captureTween();
       state.expandedBursts.delete(burst.id);
-      timeline.render();
+      redraw();
     },
 
     onRendered({ nodes, scales, plotWidth, basePlotWidth, kind, extent }) {
@@ -407,6 +407,14 @@ function renderSidebar() {
  * exists to prevent.
  */
 function redraw() {
+  // ⚠️ Anything that changes WHAT is drawn — a toggle, the mode, the arrangement, a
+  // push folding or unfolding — must come through here and not call `timeline.render()`
+  // directly, because the legend's presence, the hidden-state banner and the sub-log card
+  // are refreshed below and nowhere else. The mode switch used to call render directly,
+  // so the legend kept the timeline's rows lit in relationships mode — "comments" among
+  // them, which that mode never draws. Handlers that only move or dim marks (zoom, brush,
+  // focus, resize) may still render directly: they change no mark's presence.
+  //
   // Guarded for the same reason as refreshStats: every toggle, zoom and mode switch
   // reaches this from an event handler, where a throw would only reach the console and
   // leave whatever was last drawn on screen — a stale picture, which is worse than none.
@@ -673,7 +681,7 @@ function switchMode(mode) {
   markMode(mode);
   state.mode = mode;
   timeline.captureTween();
-  timeline.render();
+  redraw();
 }
 
 for (const option of document.querySelectorAll('#facetSeg .seg-opt')) {
@@ -691,7 +699,7 @@ for (const option of document.querySelectorAll('#layoutSeg .seg-opt')) {
     markLayout(option.dataset.layout);
     state.structuralLayout = option.dataset.layout;
     timeline.captureTween();
-    timeline.render();
+    redraw();
   });
 }
 

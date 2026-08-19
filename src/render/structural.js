@@ -362,9 +362,10 @@ export function renderFoldHandles({ gNode, bursts, expandedBursts, nodeByObject,
     const cx = members.reduce((sum, m) => sum + m.x, 0) / members.length;
     const top = Math.min(...members.map((m) => m.y - (m.radius ?? 6)));
 
+    // No `data-legend`: this is a control, not a mark, like the timeline's own handle —
+    // it must not light the "bulk push" legend row when no bulk-push node is drawn.
     const handle = gNode
       .append('g')
-      .attr('data-legend', 'burst')
       .attr('transform', `translate(${cx},${top - 16})`)
       .style('cursor', 'pointer')
       .on('click', (event) => {
