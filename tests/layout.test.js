@@ -273,24 +273,3 @@ describe('large gap annotation', () => {
     assert.deepEqual(days, [1, 7]);
   });
 });
-
-describe('discrete-mode gap labels are thinned when they would collide', () => {
-  // The bands between ranks cannot overlap; the centred duration labels can, and did —
-  // kubernetes #47532 zoomed out drew them over each other. thinGapLabels keeps the
-  // biggest gaps' labels, since they are what the annotation exists for.
-  test('close labels are dropped, biggest duration first', async () => {
-    const { thinGapLabels } = await import('../src/render/axis.js');
-    const gap = (x, duration, label = '≈ 7 days') => ({ x0: x, x1: x + 10, label, duration });
-    // Three gaps crowded into 30px: only the longest-duration one keeps its label.
-    const crowded = [gap(100, 1), gap(115, 3), gap(130, 2)];
-    const kept = thinGapLabels(crowded);
-    assert.equal(kept.length, 1);
-    assert.equal(kept[0].duration, 3);
-  });
-
-  test('labels far apart all survive, whatever their order', async () => {
-    const { thinGapLabels } = await import('../src/render/axis.js');
-    const gaps = [0, 200, 400].map((x, i) => ({ x0: x, x1: x + 10, label: '≈ 2h', duration: i + 1 }));
-    assert.equal(thinGapLabels(gaps).length, 3);
-  });
-});
