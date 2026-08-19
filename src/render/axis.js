@@ -173,31 +173,95 @@ export function renderAxis({
   // Discrete mode discards real durations, so silence becomes invisible. Annotate the
   // large gaps with their true length to keep the compression honest.
   if (mode === 'discrete') {
-    for (const gap of findLargeGaps(rankTimes)) {
-      const x0 = marginLeft + (gap.fromRank / rankMax) * plotWidth;
-      const x1 = marginLeft + (gap.toRank / rankMax) * plotWidth;
+    const gaps = findLargeGaps(rankTimes).map((gap) => ({
+      ...gap,
+      x0: marginLeft + (gap.fromRank / rankMax) * plotWidth,
+      x1: marginLeft + (gap.toRank / rankMax) * plotWidth,
+    }));
 
-      gAxis
-        .append('rect')
-        .attr('x', x0)
-        .attr('y', axisY - 6)
-        .attr('width', Math.max(1, x1 - x0))
-        .attr('height', 12)
-        .attr('fill', 'var(--color-neutral-700)')
-        .attr('fill-opacity', 0.35)
-        .attr('stroke', 'var(--color-neutral-500)')
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '2 2');
-
+    // Every gap keeps its band — bands sit between consecutive ranks and cannot overlap.
+    // The LABELS can: zoomed out on kubernetes #47532 they drew over each other until
+    // none read. Colliding labels merge into ONE that states the total and the count
+    // ("≈ 1 year · 4 gaps"), because the honest quantity for a crowded stretch is the
+    // sum of its silences — a first attempt kept only the biggest gap's label, and
+    // "≈ 5 months" over a region hiding nearly a year under-reported it. Zooming in
+    // spreads the bands and the groups fall apart into individual labels by themselves.
+    for (const group of mergeGapLabels(gaps)) {
+      for (const gap of group.gaps) {
+        gAxis
+          .append('rect')
+          .attr('x', gap.x0)
+          .attr('y', axisY - 6)
+          .attr('width', Math.max(1, gap.x1 - gap.x0))
+          .attr('height', 12)
+          .attr('fill', 'var(--color-neutral-700)')
+          .attr('fill-opacity', 0.35)
+          .attr('stroke', 'var(--color-neutral-500)')
+          .attr('stroke-width', 1)
+          .attr('stroke-dasharray', '2 2');
+      }
       gAxis
         .append('text')
-        .attr('x', (x0 + x1) / 2)
+        .attr('x', group.x)
         .attr('y', axisY - 11)
         .attr('text-anchor', 'middle')
         .attr('font-size', 10)
         .attr('class', 'mono')
         .attr('fill', 'var(--color-neutral-400)')
-        .text(formatApproxDuration(gap.duration));
+        .text(group.label);
     }
   }
+}
+
+/** Roughly what a 10px mono label covers, plus breathing room between neighbours. */
+const GAP_LABEL_PX_PER_CHAR = 6.2;
+const GAP_LABEL_GAP_PX = 8;
+
+/** A group's label: one gap speaks for itself; several state the sum and say so. */
+function gapGroupLabel(gaps) {
+  if (gaps.length === 1) return formatApproxDuration(gaps[0].duration);
+  const total = gaps.reduce((sum, gap) => sum + gap.duration, 0);
+  return `${formatApproxDuration(total)} · ${gaps.length} gaps`;
+}
+
+/** Where a group's label sits and how far it reaches, centred over the group's bands. */
+function labelExtent(gaps) {
+  const label = gapGroupLabel(gaps);
+  const x = (gaps[0].x0 + gaps[gaps.length - 1].x1) / 2;
+  const half = (label.length * GAP_LABEL_PX_PER_CHAR) / 2;
+  return { label, x, lo: x - half, hi: x + half };
+}
+
+/**
+ * Group the gap bands whose labels would collide, left to right, until every label fits.
+ *
+ * Each group is labelled with the SUM of its gaps' durations and their count. Summing is
+ * the honest aggregate — the label claims total silence across the stretch, not one long
+ * gap, and the count is what says so. Merging runs to a fixed point because a merged
+ * label is wider than either original and can collide with its own neighbour in turn.
+ *
+ * Pure and exported for the tests: takes `{x0, x1, duration}` in x order, returns
+ * `{gaps, label, x}` groups.
+ */
+export function mergeGapLabels(gaps) {
+  let groups = [...gaps]
+    .sort((a, b) => a.x0 - b.x0)
+    .map((gap) => ({ gaps: [gap], ...labelExtent([gap]) }));
+
+  for (let merged = true; merged; ) {
+    merged = false;
+    const next = [];
+    for (const group of groups) {
+      const last = next[next.length - 1];
+      if (last && group.lo < last.hi + GAP_LABEL_GAP_PX) {
+        const gaps = [...last.gaps, ...group.gaps];
+        next[next.length - 1] = { gaps, ...labelExtent(gaps) };
+        merged = true;
+      } else {
+        next.push(group);
+      }
+    }
+    groups = next;
+  }
+  return groups.map(({ gaps, label, x }) => ({ gaps, label, x }));
 }

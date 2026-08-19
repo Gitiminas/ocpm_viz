@@ -273,3 +273,53 @@ describe('large gap annotation', () => {
     assert.deepEqual(days, [1, 7]);
   });
 });
+
+describe('discrete-mode gap labels merge when they would collide', () => {
+  // The bands between ranks cannot overlap; the centred duration labels can. Colliding
+  // labels merge into one that states the SUM and the COUNT — "≈ 2 months · 3 gaps" —
+  // because a first attempt that kept only the biggest gap's label under-reported a
+  // crowded stretch (kubernetes #47532: "≈ 5 months" shown over nearly a year of gaps).
+  const DAY = 24 * 60 * 60 * 1000;
+  const gap = (x, days) => ({ x0: x, x1: x + 10, duration: days * DAY });
+
+  test('crowded gaps become one label carrying their total and their count', async () => {
+    const { mergeGapLabels } = await import('../src/render/axis.js');
+    const groups = mergeGapLabels([gap(100, 150), gap(115, 90), gap(130, 100)]);
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0].gaps.length, 3);
+    // 340 days ≈ 11 months, and the count says it is an aggregate, not one gap.
+    assert.equal(groups[0].label, '≈ 11 months · 3 gaps');
+    // Centred over the group's whole extent.
+    assert.equal(groups[0].x, (100 + 140) / 2);
+  });
+
+  test('gaps far apart keep their own labels, in x order', async () => {
+    const { mergeGapLabels } = await import('../src/render/axis.js');
+    const groups = mergeGapLabels([gap(400, 2), gap(0, 7)]);
+    assert.deepEqual(groups.map((g) => g.label), ['≈ 7 days', '≈ 2 days']);
+    assert.ok(groups.every((g) => g.gaps.length === 1));
+  });
+
+  test('merging cascades: a widened label that hits its neighbour merges again', async () => {
+    const { mergeGapLabels } = await import('../src/render/axis.js');
+    // Two tight pairs whose merged labels are wide enough to touch each other.
+    const groups = mergeGapLabels([gap(100, 30), gap(112, 30), gap(160, 30), gap(172, 30)]);
+    assert.equal(groups.length, 1, `expected one group, got ${groups.map((g) => g.label).join(' | ')}`);
+    assert.equal(groups[0].label, '≈ 4 months · 4 gaps');
+  });
+
+  test('no group label overlaps another, whatever the input', async () => {
+    const { mergeGapLabels } = await import('../src/render/axis.js');
+    const crowded = Array.from({ length: 20 }, (_, i) => gap(i * 25, 1 + (i % 5)));
+    const groups = mergeGapLabels(crowded);
+    for (let i = 1; i < groups.length; i++) {
+      const prev = groups[i - 1];
+      const half = (g) => (g.label.length * 6.2) / 2;
+      assert.ok(
+        groups[i].x - half(groups[i]) >= prev.x + half(prev),
+        `labels ${i - 1} and ${i} overlap`,
+      );
+    }
+    assert.equal(groups.flatMap((g) => g.gaps).length, 20, 'every band keeps a label group');
+  });
+});
