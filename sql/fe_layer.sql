@@ -8,7 +8,7 @@
 --
 -- Layout:
 --   §0  schema, indexes, measurements
---   §1  activity vocabulary + the remap          (9 activities, decision 40)
+--   §1  activity vocabulary + the remap          (10 activities: decision 40 + 123)
 --   §2  objects        fe.object_{issue,pull_request,commit,actor}
 --   §3  intervals      fe.interval_{issue,pull_request}
 --   §4  events         fe.event
@@ -138,7 +138,8 @@ ANALYZE mv_commit_message_issue_links_all;
 -- every relation, so the above really ran — but verify rather than trust:
 --     SELECT relname, reltuples FROM pg_class WHERE reltuples = -1;
 -- Two views sat at -1 on 2026-08-04: mv_issue_pr_links_closed_via_commit (it is empty)
--- and mv_pr_offplatform_merges (not consumed, decision 48).
+-- and mv_pr_offplatform_merges (not consumed directly; its activity reaches us through
+-- mv_pull_request_and_comment_activities_full — decision 123).
 
 -- -------------------------------------------------------------------------------------
 -- §0.1 — Measurements
@@ -188,30 +189,35 @@ SELECT * FROM (VALUES
   ('IssueCommented',       'issue',        false, true ),
   ('PullRequestOpened',    'pull_request', false, false),
   ('PullRequestMerged',    'pull_request', true,  false),
+  -- Restored by decision 123 (decision 48's removal was a miscommunication). A landmark
+  -- by ruling; the frontend rings it as a heuristic. Not remapped any more — see below.
+  ('PullRequestMergedOffPlatform', 'pull_request', true, false),
   ('PullRequestClosed',    'pull_request', false, false),
   ('PullRequestReopened',  'pull_request', false, false),
   ('CommitObserved',       'commit',       false, false)
 ) AS t(activity, object_type, landmark, is_comment);
 
 COMMENT ON VIEW fe.activity_vocabulary IS
-  'The 9 activities of decision 40. Landmarks are IssueClosed and PullRequestMerged '
-  '(decision 48 removed the third). CommitObserved is synthetic — no upstream MV emits it.';
+  'The 9 activities of decision 40 plus PullRequestMergedOffPlatform (decision 123). Landmarks '
+  'are IssueClosed, PullRequestMerged and PullRequestMergedOffPlatform. CommitObserved is '
+  'synthetic — no upstream MV emits it.';
 
--- The two remaps of decision 40/48. Applied BEFORE the whitelist join, so a remapped row
--- survives it. Verified against the live vocabularies (2026-08-04):
+-- The one remap of decision 40. Applied BEFORE the whitelist join, so a remapped row
+-- survives it. ⚠️ There used to be a second: decision 48 folded PullRequestMergedOffPlatform
+-- into PullRequestClosed; decision 123 restored the activity, so those 31 rows now pass
+-- through unchanged and the vocabulary view admits them. Verified against the live
+-- vocabularies (2026-08-04):
 --   mv_issue_and_issuecomment_activities_full   IssueCommented 953,293 · IssueOpened 176,362
 --                                               IssueClosed 175,370 · IssueReopened 10,626
 --                                               + IssueComment_ (1) and IssueLabeled (1), dropped
 --   mv_pull_request_and_comment_activities_full PullRequestCommented 1,343,232 · Opened 90,262
 --                                               Merged 67,216 · Closed 26,366 · Reopened 4,325
---                                               PullRequestMergedOffPlatform 31, remapped
+--                                               PullRequestMergedOffPlatform 31
 CREATE OR REPLACE FUNCTION fe.remap_activity(raw text) RETURNS text
 LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
   SELECT CASE raw
     -- GitHub models PR comments as issue comments; so does this tool (decision 40)
     WHEN 'PullRequestCommented'         THEN 'IssueCommented'
-    -- the underlying GitHub fact is: closed, not merged (decision 48)
-    WHEN 'PullRequestMergedOffPlatform' THEN 'PullRequestClosed'
     ELSE raw
   END;
 $$;
@@ -546,10 +552,10 @@ LEFT JOIN closes c
 DROP VIEW IF EXISTS fe.interval_pull_request CASCADE;
 CREATE VIEW fe.interval_pull_request AS
 WITH lifecycle AS (
-  -- PullRequestMergedOffPlatform is in the CLOSING set, not excluded: decision 48 removed
-  -- the activity, and the GitHub fact underneath it — the PR was closed — is preserved
-  -- exactly. Only the overlay went. Comment rows are not in this filter, so G9's bad
-  -- pull_request_id never reaches here.
+  -- PullRequestMergedOffPlatform is in the CLOSING set: whatever the frontend draws it as
+  -- (decision 123: a landmark, a merge of a different kind), the GitHub fact underneath
+  -- is that the PR was closed, so the interval ends there. Comment rows are not in this
+  -- filter, so G9's bad pull_request_id never reaches here.
   SELECT repo_id, pull_request_id, event_id,
          activity_timestamp AT TIME ZONE 'UTC' AS t,
          CASE WHEN activity_type IN ('PullRequestMerged',
@@ -701,7 +707,8 @@ JOIN fe.activity_vocabulary v ON v.activity = r.activity;
 -- §5 — Links
 --
 -- FOUR qualifiers (decision 43): resolves, contains_commit, merge_commit, references_issue.
--- No `delivered_by` and no off-platform branch (decision 48). No actor links — attribution
+-- No `delivered_by` and no off-platform link branch (decision 48, kept by 123: the activity
+-- returned, the link method and qualifier did not). No actor links — attribution
 -- is single-sourced on event.actor_id (decision 41) and BOTH endpoints of a link are
 -- object ids (decision 49).
 --
@@ -1424,9 +1431,10 @@ COMMENT ON FUNCTION api.get_object_graph(text, text, integer) IS
 --   IssueComment_         1   The G13 fallback firing on an empty action. Genuinely dropped.
 --   IssueLabeled          1   Out of scope (decision 40). Genuinely dropped.
 --
--- Note what is NOT here: PullRequestCommented (1,343,232) and
--- PullRequestMergedOffPlatform (31), because the remap ran first and both survived it.
--- Their absence from this list is the evidence that the ordering is right.
+-- Note what is NOT here: PullRequestCommented (1,343,232), because the remap ran first
+-- and it survived it, and PullRequestMergedOffPlatform (31), because since decision 123
+-- it is in the vocabulary. Their absence from this list is the evidence that the
+-- ordering, and the vocabulary, are right.
 CREATE OR REPLACE VIEW fe.diag_dropped_activities AS
 SELECT fe.remap_activity(activity_type) AS activity_after_remap, count(*) AS dropped
 FROM (
@@ -1560,8 +1568,8 @@ SELECT 'link endpoints that are not objects',
          WHERE NOT EXISTS (SELECT 1 FROM all_objects o WHERE o.id = l.source)
             OR NOT EXISTS (SELECT 1 FROM all_objects o WHERE o.id = l.target)), 0
 UNION ALL
-SELECT 'distinct activities (must be exactly 9)',
-       (SELECT count(DISTINCT activity) FROM fe.event), 9;
+SELECT 'distinct activities (must be exactly 10)',
+       (SELECT count(DISTINCT activity) FROM fe.event), 10;
 
 
 -- =====================================================================================
