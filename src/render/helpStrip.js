@@ -60,11 +60,19 @@ export function resolveTip(target, tipFor = defaultTipFor) {
 export function bindHelpStrip({ root, stripEl, tipFor = defaultTipFor, defaultText = DEFAULT_TIP }) {
   let shown = null;
 
+  // The box's kicker ("About") is drawn by CSS; the sentence goes into its own element so
+  // it can be clamped to two lines on its own. Created once; the binding owns it.
+  const textEl = stripEl.ownerDocument ? stripEl.ownerDocument.createElement('div') : null;
+  if (textEl) {
+    textEl.className = 'helpText';
+    stripEl.appendChild(textEl);
+  }
+
   function show(text) {
     const next = text ?? defaultText;
     if (next === shown) return;
     shown = next;
-    stripEl.textContent = next;
+    (textEl ?? stripEl).textContent = next;
     stripEl.classList.toggle('isDefault', text == null);
   }
 
