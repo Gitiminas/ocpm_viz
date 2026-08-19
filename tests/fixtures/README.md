@@ -15,6 +15,7 @@ through `loadObjectGraph()` exactly as a real sub-log would be.
 | F8 | A PR with no linked issue | nothing may assume an issue exists | built |
 | F9 | An issue opened, closed, reopened, closed | two bars on one row | built |
 | F13 | Two concurrent PRs, several commits each, one commit shared | many links into one lane stay individually readable | built |
+| F14 | One PR merged on GitHub beside one merged off-platform (closed, then its commits pushed) | two kinds of landmark ring; a PR outcome of its own (decision 123) | built |
 | F10 | 1 issue, 3 PRs, 300 commits in pushes of varying size | density behaviour at a scale F1 cannot reach | built |
 | F11 | Four PRs, one per issue↔PR detection method | each per-method toggle is independently observable | built |
 | F12 | A 3-method link, both evidence classes on one pair, and the corpus's only `merge_commit` | multi-method agreement (`n_methods > 1`); the fourth qualifier | built |
@@ -24,13 +25,13 @@ through `loadObjectGraph()` exactly as a real sub-log would be.
 fixture whose PRs do not actually overlap passes every layout test while verifying nothing, and
 that failure mode is completely invisible.
 
-### F2–F13 are synthetic — never cite them
+### F2–F14 are synthetic — never cite them
 
 ```
-npm run build:fixtures      # regenerate F1 and F2–F13
+npm run build:fixtures      # regenerate F1 and F2–F14
 ```
 
-**F1 is the only fixture built from real GitHub data.** Everything else — F2 through F13, which is
+**F1 is the only fixture built from real GitHub data.** Everything else — F2 through F14, which is
 every other row in the table above — is synthesized. The heading previously read "F2–F9", which
 left F10, F11, F12 and F13 outside the warning even though they sit in the same table and are built
 by the same script. F10 in particular carries a "300 commits" figure and F11 "one PR per detection

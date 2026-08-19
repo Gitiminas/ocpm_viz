@@ -229,6 +229,9 @@ export function prOutcome(object, events) {
     events.filter((event) => event.object_id === object.id).map((event) => event.activity),
   );
   if (activities.has('PullRequestMerged')) return 'merged';
+  // Decision 123: a merge of a different kind, counted on its own so the distribution
+  // never folds a heuristic into the platform's merges.
+  if (activities.has('PullRequestMergedOffPlatform')) return 'merged off-platform';
   if (activities.has('PullRequestClosed')) return 'closed unmerged';
   return 'open';
 }

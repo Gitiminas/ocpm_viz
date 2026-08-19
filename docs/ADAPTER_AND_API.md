@@ -253,15 +253,17 @@ already-loaded sub-log. Do not conflate the names.
 Closed and complete. Fail visibly on anything unmapped rather than rendering a raw enum.
 
 Present in the current data: `IssueOpened`, `IssueCommented`, `IssueClosed`, `PullRequestOpened`,
-`PullRequestMerged`, `PullRequestClosed`, `CommitObserved`.
+`PullRequestMerged`, `PullRequestMergedOffPlatform` (31 events: react 16, vscode 10, kubernetes 5),
+`PullRequestClosed`, `CommitObserved`.
 Mapped in code, absent from data: `IssueReopened`, `PullRequestReopened`.
 
-**Nothing is to be added.** `PullRequestMergedOffPlatform` was once listed here as a must-add from
-`mv_pr_offplatform_merges`; decision 48 removed it. The vocabulary is the nine activities above and
-`mv_pr_offplatform_merges` is not consumed. Note the consequence for the adapter: the pre-built
-timeline `mv_pull_request_and_comment_activities_full` **depends on** that view
-(`DATA_CONTRACT.md` §3), so whichever `activity_type` it emits for an off-platform merge maps to
-`PullRequestClosed` — the GitHub fact, which is that the PR was closed unmerged. Anything else
-throws, which is the intended behaviour.
+**Ten activities, closed.** `PullRequestMergedOffPlatform` was removed by decision 48 and restored by
+decision 123 (2026-08-19; 48's ruling was a miscommunication). It reaches the adapter through the
+in-scope timeline `mv_pull_request_and_comment_activities_full`, which **depends on**
+`mv_pr_offplatform_merges` (`DATA_CONTRACT.md` §3); the latter is still not read directly. The
+remap that folded it into `PullRequestClosed` is gone; `fe.activity_vocabulary` admits it as a
+landmark. For 29 of the 31 PRs it is the only closing event; two carry a `PullRequestClosed` as
+well and both events are emitted as they are. Anything outside the ten throws, which is the
+intended behaviour.
 
 **Landmark activities** (rendered with emphasis): `IssueClosed`, `PullRequestMerged`.

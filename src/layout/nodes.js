@@ -24,6 +24,7 @@ import {
   activityShortLabel,
   isLandmark,
   isUnmergedClose,
+  isHeuristicLandmark,
 } from '../model/activities.js';
 
 /**
@@ -95,6 +96,9 @@ export function buildNodes({
           short: activityShortLabel(event.activity),
           isComment: !!event.comment,
           landmark: isLandmark(event.activity),
+          // The off-platform merge: emphasised like a landmark, ringed like a heuristic
+          // (decision 123). Read by the renderer beside `landmark`.
+          heuristicLandmark: isHeuristicLandmark(event.activity),
           // A pull request that ended without merging. Carried here rather than derived
           // in the renderer so "which glyph gets the abandoned mark" stays checkable
           // without a DOM, like `landmark` beside it.

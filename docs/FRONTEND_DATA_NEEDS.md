@@ -293,9 +293,10 @@ are copied from each entry's own fields.
 | `PullRequestReopened` | `['pull_request']` | `false` | `activities.js:77` |
 | `CommitObserved` | `['commit']` | `false` | `activities.js:83` |
 
-`LANDMARK_ACTIVITIES` is derived, not written down — `activities.js:101` filters the table above,
-yielding exactly `IssueClosed` and `PullRequestMerged`. It yielded a third,
-`PullRequestMergedOffPlatform`, until decision 48 removed that activity from the vocabulary.
+`LANDMARK_ACTIVITIES` is derived, not written down — `activities.js` filters the table above,
+yielding `IssueClosed`, `PullRequestMerged` and `PullRequestMergedOffPlatform`. The third was
+removed by decision 48 and restored by decision 123 as a heuristic landmark
+(`isHeuristicLandmark`), drawn with its own ring.
 
 `IssueCommented` is the only activity valid on two object types, and the only one whose name does not
 match its second type. `activities.js:26–32` states this is intentional: GitHub models PR comments as

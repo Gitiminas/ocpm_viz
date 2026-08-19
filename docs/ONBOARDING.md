@@ -85,7 +85,7 @@ By hand it is:
 psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql
 psql -d gharchive_ocpm_viz_wsl -f sql/postgrest_setup.sql           # ⚠️ ALWAYS, see below
 psql -d gharchive_ocpm_viz_wsl -c "SELECT fe.refresh_links()"      # link_mat goes stale silently
-psql -d gharchive_ocpm_viz_wsl -c "SELECT * FROM fe.diag_sanity"   # all 0, and 9 activities
+psql -d gharchive_ocpm_viz_wsl -c "SELECT * FROM fe.diag_sanity"   # all 0, and 10 activities
 node scripts/rpc-check.mjs                                          # the acceptance gate
 ```
 

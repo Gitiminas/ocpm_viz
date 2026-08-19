@@ -202,8 +202,9 @@ One row per commit inside every PushEvent.
 ⚠️ `created_at` is **push time, not real commit time** — preserve this caveat in the UI.
 
 > `mv_pr_offplatform_merges` was the sixth entry in this section. Decision 48 stopped consuming it,
-> so it now sits in §3 with the rest of what is deliberately unused — but **read that entry**, because
-> unlike the other exclusions it is a dependency of a view in scope.
+> so it sits in §3 with the rest of what is not read directly — but **read that entry**, because
+> unlike the other exclusions it is a dependency of a view in scope, and since decision 123 its
+> activity is consumed again through that view.
 
 ---
 
@@ -546,15 +547,19 @@ PRs closed without being merged on GitHub whose commits later appear in a push.
 `closer_actor_id`, `delivering_commit_sha`, `push_id`, `pushed_at`, `pusher_actor_id`,
 `delta_seconds`, `link_convention`, `link_kind`, `link_method`
 
-**Not consumed (decision 48).** It once supplied a `PullRequestMergedOffPlatform` activity and a
-distinct PR outcome; both are gone. The view is a `delta_seconds` timing heuristic, and drawing its
-output with the weight of a real merge presented an inference as ground truth. The GitHub facts it
-builds on — the PR was closed, unmerged — are already carried by `mv_pull_request_events_full`.
+**Not read directly — but its activity is consumed again (decision 123, 2026-08-19).** Decision 48
+had dropped the `PullRequestMergedOffPlatform` activity and the distinct PR outcome on a supervisor
+ruling that turned out to be a miscommunication; both are back. The objection 48 recorded still
+shapes how: the view is a `delta_seconds` timing heuristic (−831 s … +326 s over its 31 rows), so
+the frontend draws the activity as a landmark with its own dotted ring in the extracted colour and
+counts it as a separate outcome, never as the platform's merge. The `offplatform_commit_message`
+method and `delivered_by` qualifier stay out.
 
 ⚠️ **It is a dependency of `mv_pull_request_and_comment_activities_full`, which *is* in scope.** So
-the reference is unavoidable: that timeline JOINs this view and emits an off-platform-merge
-`activity_type`. Those rows map to **`PullRequestClosed`** — the GitHub fact. Anything else throws
-against the closed vocabulary, which is the intended behaviour.
+the reference is unavoidable: that timeline JOINs this view and emits the off-platform-merge
+`activity_type`, and that is the path the activity takes into `fe.event` — the remap that folded
+it into `PullRequestClosed` is gone. For 29 of the 31 PRs it is the only closing event; two carry
+a `PullRequestClosed` as well, and both events pass through as they are.
 
 ---
 
