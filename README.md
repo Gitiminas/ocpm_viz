@@ -70,6 +70,10 @@ about which fixtures had been built, not about the world.
   closing keyword GitHub acts on, or an exact SHA match. Dashed, with a `?`, means we
   parsed a convention nobody enforces. Most links in the example data are dashed.
   That is the honest result, not a defect.
+- **A help strip.** The left of the header says, in a sentence, what the pointer is on:
+  a control, a sidebar row, a legend row, or a mark on the chart. The texts live in one
+  table, `src/help/tips.js`; every control carries a `data-tip` key, and a test checks the
+  two agree in both directions.
 - **A hidden-state banner.** Anything you filter out is named at the top of the
   screen with one-click restore, because a sparse timeline otherwise reads as "few
   links" when the truth is "links switched off".

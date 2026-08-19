@@ -174,6 +174,10 @@ does not work — browsers block both ES modules and `fetch` on `file://` origin
 - Extend the existing `st` state object and the derived toggle vocabulary from
   `deriveRelGroups()` (`src/state/state.js`) rather than inventing parallel mechanisms. Do not
   reintroduce a hardcoded relationship-group enumeration — `deriveRelGroups` replaced one.
+- **Every control, row and mark gets a help text.** Controls carry `data-tip="<key>"`
+  (marks already carry `data-legend`, which maps to `legend.<key>`); the texts are the
+  table in `src/help/tips.js`, written plainly, and `tests/tips.test.js` fails when a key
+  has no text or a text has no key. No browser `title=` tooltips beside a tip (decision 122).
 - Two distinct notions of degree — keep them named apart: **traversal degree** (server-side, what is
   *in* the sub-log) vs **focus degree** (client-side BFS, what is *highlighted*).
 

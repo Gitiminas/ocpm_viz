@@ -75,6 +75,7 @@ src/
     subLogCard.js      ✚ the sidebar's sub-log card: counts, links, events, span (decision 115)
     motion.js          ✚ settle + idle drift for relationships mode — presentation only (102)
     pan.js             ✚ drag the background to pan a zoomed-in relationships picture (118)
+    helpStrip.js       ✚ the header's help strip: one delegated listener over data-tip (122)
     theme.js           ✚ colours, shapes, glyphs shared by every renderer
     format.js          ✚ the one place a timestamp becomes text
     message.js         ✚ a page's message surface: why it cannot draw (decision 87)
@@ -82,6 +83,8 @@ src/
     controls.js        ✚ preset panel and the always-visible hidden-state banner
     actorCard.js       ✚ the actor profile card
     stats.js           ✚ presentation for the statistics page
+  help/
+    tips.js            ✚ the help strip's texts, as data: key → sentence (decision 122)
   state/
     state.js           the st object and the derived relationship toggles
     labels.js          ✚ type labels, so state derivation stays DOM-free
