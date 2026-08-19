@@ -349,7 +349,7 @@ export function insertDummies(rows, edges) {
  * toward its neighbours; a few rounds settle into an arrangement that satisfies both,
  * where one pass of each satisfies only the later one.
  */
-export function positionLayers(rows, edges, { width, height, padding = 60, radiusOf }) {
+export function positionLayers(rows, edges, { width, height, padding = 60, radiusOf, zoom = 1 }) {
   const radius = radiusOf || ((node) => node.radius ?? 8);
   const { above, below } = neighbourIndex(rows, edges);
 
@@ -399,7 +399,7 @@ export function positionLayers(rows, edges, { width, height, padding = 60, radiu
     }
   }
 
-  centreAndFill(rows, x, radius, { width, padding });
+  centreAndFill(rows, x, radius, { width, padding, zoom });
 
   const positions = new Map();
   rows.forEach((row, r) => {
@@ -409,7 +409,11 @@ export function positionLayers(rows, edges, { width, height, padding = 60, radiu
   return positions;
 }
 
-/** How far a small drawing may be stretched to fill the box. */
+/**
+ * How far a small drawing may be stretched to fill the box, AT BASE ZOOM. The cap is
+ * multiplied by the zoom factor (`zoom` option), so zooming in always enlarges the
+ * drawing — see `layoutLayered`.
+ */
 const MAX_FILL_SCALE = 2.2;
 
 /**
@@ -429,7 +433,7 @@ const MAX_FILL_SCALE = 2.2;
  * pretending it is a big one; past it, the drawing stays compact and simply sits in the
  * middle. Scaling only ever *increases* gaps, so it cannot reintroduce an overlap.
  */
-function centreAndFill(rows, x, radius, { width, padding }) {
+function centreAndFill(rows, x, radius, { width, padding, zoom = 1 }) {
   let minX = Infinity;
   let maxX = -Infinity;
   for (const row of rows) {
@@ -445,7 +449,7 @@ function centreAndFill(rows, x, radius, { width, padding }) {
   // ⚠️ Never below 1. Scaling *down* would compress a row that is already at its minimum
   // spacing and push marks back into one another — the separation pass has the last word
   // on how tight a row may be, and this must not overrule it.
-  const scale = span > 0 ? Math.max(1, Math.min(MAX_FILL_SCALE, available / span)) : 1;
+  const scale = span > 0 ? Math.max(1, Math.min(MAX_FILL_SCALE * zoom, available / span)) : 1;
 
   // Scaled span, then the offset that centres it in the box.
   const scaledSpan = span * scale;
@@ -559,7 +563,16 @@ function separateRow(row, x, radius, { width, padding }) {
  *
  * @returns {{positions: Map, rows: Array<Array>, crossings: number}}
  */
-export function layoutLayered(nodes, edges, { width, height, padding = 60, radiusOf } = {}) {
+/**
+ * @param {object} options
+ * @param {number} [options.zoom=1]  the zoom factor the box has already been multiplied
+ *   by. ⚠️ Needed because the fill cap is a statement about the BASE picture — a compact
+ *   graph must not be spread until proximity means nothing — and zooming is a statement
+ *   about the reader's magnification. Without it, a drawing already at the cap did not
+ *   grow when the box did, and zooming in on a small sub-log changed nothing but the
+ *   empty space around it (measured: F1's width stayed 756px from zoom 1 to 3).
+ */
+export function layoutLayered(nodes, edges, { width, height, padding = 60, radiusOf, zoom = 1 } = {}) {
   if (!nodes.length) {
     return { positions: new Map(), rows: [], crossings: 0, waypoints: new Map() };
   }
@@ -571,7 +584,7 @@ export function layoutLayered(nodes, edges, { width, height, padding = 60, radiu
   const { rows: withDummies, segments, routeOf } = insertDummies(assigned, unique);
 
   const { rows, crossings } = orderLayers(withDummies, segments);
-  const positions = positionLayers(rows, segments, { width, height, padding, radiusOf });
+  const positions = positionLayers(rows, segments, { width, height, padding, radiusOf, zoom });
 
   // Where a long edge should bend. Keyed the same way `bundleEdges` keys a bundle, so the
   // renderer can ask for a route without knowing anything about dummies.

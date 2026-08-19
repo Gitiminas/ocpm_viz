@@ -258,6 +258,25 @@ describe('children gather in their parent’s wedge', () => {
   });
 });
 
+describe('zooming enlarges the drawing, not just the box', () => {
+  test('a compact graph at the fill cap still doubles when the zoom does', async () => {
+    // ⚠️ The bug this pins: the fill cap is a statement about the BASE picture, but it
+    // used to cap the zoomed one too, so a small sub-log at the cap did not grow when the
+    // box did — F1 stayed 326px wide from zoom 1 to 3 and zooming changed only the empty
+    // space around it. The cap now scales with `zoom`.
+    const { nodes, edges } = await clusterFor('F1');
+    const span = (zoom) => {
+      const { positions } = layoutCluster(nodes, edges, { ...BOX, width: BOX.width * zoom, height: BOX.height * zoom, zoom });
+      const xs = [...positions.values()].map((p) => p.x);
+      return Math.max(...xs) - Math.min(...xs);
+    };
+    const base = span(1);
+    assert.ok(base > 0);
+    assert.ok(Math.abs(span(2) / base - 2) < 0.05, `zoom 2 gave ${span(2) / base}× instead of ~2×`);
+    assert.ok(Math.abs(span(3) / base - 3) < 0.05, `zoom 3 gave ${span(3) / base}× instead of ~3×`);
+  });
+});
+
 describe('the drawing is usable', () => {
   test('marks on a ring do not overlap', async () => {
     for (const fixture of ['F1', 'F10', 'F13']) {

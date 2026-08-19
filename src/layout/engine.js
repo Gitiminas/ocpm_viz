@@ -245,6 +245,7 @@ function layoutStructural({
   margin,
   plotWidth,
   plotHeight = STRUCTURAL_PLOT_HEIGHT,
+  zoom = 1,
 }) {
   const allNodes = buildStructuralNodes({ index, bursts, expandedBursts, laneTypes });
   const nodes = filterNodes(allNodes, isVisible);
@@ -254,7 +255,8 @@ function layoutStructural({
   // the link gone, those two objects are no longer near each other *because of it*.
   const edges = buildStructuralEdges(graph.links.filter(isLinkVisible), nodes);
 
-  const box = { width: plotWidth, height: plotHeight, padding: STRUCTURAL_PADDING };
+  // `zoom` travels with the box so the arrangements can tell magnification from room.
+  const box = { width: plotWidth, height: plotHeight, padding: STRUCTURAL_PADDING, zoom };
   const arrange = structuralLayout === 'cluster' ? layoutCluster : layoutLayered;
   // `rings` and `rows` are the same thing under two names; `crossings` is a property only
   // the layered arrangement can meaningfully report, since a crossing count between two

@@ -148,7 +148,7 @@ const FILL = 0.94;
  * minimap (`markMode` in `main.js`) and framed by the timeline's margins
  * (`STRUCTURAL_MARGIN` in `render/timeline.js`). Neither was this number.
  */
-const MAX_FILL_SCALE = 2.6;
+const MAX_FILL_SCALE = 2.6; // at base zoom; multiplied by the `zoom` option
 
 /**
  * The circular mean of a list of angles, in radians.
@@ -547,7 +547,11 @@ export function createDragSimulation(
  *   pixels as `positions` (post-fit), so a drag can hand it straight to the simulation;
  *   `anchorId` is the one root the relaxation pinned, so a drag can keep it pinned
  */
-export function layoutCluster(nodes, edges, { width, height, padding = 60, radiusOf } = {}) {
+/**
+ * @param {number} [options.zoom=1]  the zoom factor the box has already been multiplied
+ *   by; the fill cap scales with it, for the reason `layoutLayered` gives.
+ */
+export function layoutCluster(nodes, edges, { width, height, padding = 60, radiusOf, zoom = 1 } = {}) {
   const radius = radiusOf || ((node) => node.radius ?? 8);
   if (!nodes.length) return { positions: new Map(), levels: [], waypoints: new Map() };
 
@@ -751,7 +755,7 @@ export function layoutCluster(nodes, edges, { width, height, padding = 60, radiu
   for (const node of simNodes) positions.set(node.id, { x: node.x, y: node.y });
 
   const waypoints = routeSkips(edges, levelOf, positions);
-  const scale = centreInBox(nodes, positions, waypoints, { width, height, padding, radius });
+  const scale = centreInBox(nodes, positions, waypoints, { width, height, padding, radius, zoom });
 
   /*
    * ⚠️ Separated **again**, after the fit, and the first pass is not enough on its own.
@@ -882,7 +886,7 @@ function routeSkips(edges, levelOf, positions) {
  * @returns {number} the factor positions were multiplied by, so a caller can put any other
  *   pre-fit length — a footprint, a rest length — into the same pixels
  */
-function centreInBox(nodes, positions, waypoints, { width, height, padding, radius }) {
+function centreInBox(nodes, positions, waypoints, { width, height, padding, radius, zoom = 1 }) {
   const radiusById = new Map(nodes.map((node) => [node.id, radius(node)]));
 
   /*
@@ -916,7 +920,7 @@ function centreInBox(nodes, positions, waypoints, { width, height, padding, radi
     spanX > 0 ? roomX / spanX : Infinity,
     spanY > 0 ? roomY / spanY : Infinity,
   );
-  const scale = Number.isFinite(fit) ? Math.min(MAX_FILL_SCALE, fit * FILL) : 1;
+  const scale = Number.isFinite(fit) ? Math.min(MAX_FILL_SCALE * zoom, fit * FILL) : 1;
 
   const centreX = (minX + maxX) / 2;
   const centreY = (minY + maxY) / 2;

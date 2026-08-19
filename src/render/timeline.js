@@ -152,6 +152,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
         margin: STRUCTURAL_MARGIN,
         plotWidth: structuralPlotWidth(),
         plotHeight: structuralPlotHeight(),
+        zoom: state.k,
       };
     }
     return { margin: MARGIN, plotWidth: plotWidth() };

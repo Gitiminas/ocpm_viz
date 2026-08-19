@@ -127,6 +127,21 @@ describe('the layout is a pure function of the graph', () => {
   });
 });
 
+describe('zooming enlarges the drawing, not just the box', () => {
+  test('a row at the fill cap still doubles in width when the zoom does', async () => {
+    // Same bug as the clustered arrangement's: F1's widest row stayed 756px from zoom 1
+    // to 3 because the width cap ignored the zoom. The cap now scales with `zoom`.
+    const { nodes, edges } = await layeredFor('F1');
+    const width = (zoom) => {
+      const { positions } = layoutLayered(nodes, edges, { ...BOX, width: BOX.width * zoom, height: BOX.height * zoom, zoom });
+      const xs = [...positions.values()].map((p) => p.x);
+      return Math.max(...xs) - Math.min(...xs);
+    };
+    const base = width(1);
+    assert.ok(Math.abs(width(2) / base - 2) < 0.05, `zoom 2 gave ${width(2) / base}×`);
+  });
+});
+
 describe('marks do not overlap and stay inside the box', () => {
   test('nothing in a row touches its neighbour', async () => {
     for (const fixture of ['F1', 'F10', 'F13']) {
