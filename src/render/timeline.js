@@ -25,6 +25,7 @@ import { deriveCommitGroups } from '../model/commitGroups.js';
 import { createLayout, isStructuralMode } from '../layout/engine.js';
 import { edgeDirection, brushRange } from '../layout/structural.js';
 import { renderStructuralEdges, renderStructuralNodes, renderFoldHandles } from './structural.js';
+import { enableCanvasPan } from './pan.js';
 import { createMotion } from './motion.js';
 import { renderAxis } from './axis.js';
 import { renderLinks } from './links.js';
@@ -73,7 +74,17 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     axis: svg.append('g'),
   };
 
-  svg.on('click', () => handlers.onBackgroundClick());
+  // Drag the background to pan, in relationships mode (`render/pan.js`). A pan swallows
+  // the click that ends it, so letting go after a drag does not also clear the focus.
+  const pan = enableCanvasPan({
+    svgEl: svg.node(),
+    scrollEl: elements.scroll,
+    isActive: () => isStructuralMode(state.mode),
+  });
+  svg.on('click', () => {
+    if (pan.consumedClick()) return;
+    handlers.onBackgroundClick();
+  });
 
   let basePlotWidth = 1100;
   let context = null; // set by setGraph
@@ -242,6 +253,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
     svg.attr('width', width).attr('height', height);
     for (const layer of Object.values(layers)) layer.selectAll('*').remove();
+    pan.syncCursor();
 
     const focus = focusSet(adjacency, state.focus, state.focusDegree);
 

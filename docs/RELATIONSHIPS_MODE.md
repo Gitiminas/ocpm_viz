@@ -55,6 +55,7 @@ the capacity limit of both arrangements).
 | `src/layout/cluster.js` | Clusters. Balloon seed, then d3-force. Owns the shared force config (`withForces`), `forceFootprint`, `createDragSimulation` |
 | `src/render/structural.js` | Drawing, hovercards, dragging |
 | `src/render/motion.js` | Settle + idle drift, `pushApart` |
+| `src/render/pan.js` | Drag the background to pan, once zoomed in (decision 118) |
 | `vendor/d3-force.js` | 15.7 KB, d3-force 3.0.0, ISC, unmodified. See `vendor/README.md` |
 
 `layout/` stays DOM-free and is exercised in bare Node. That is the project's own test of

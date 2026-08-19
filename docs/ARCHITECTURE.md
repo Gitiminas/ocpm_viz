@@ -74,6 +74,7 @@ src/
     structural.js      ✚ drawing relationships mode: edges, marks, hovercards, dragging (103)
     subLogCard.js      ✚ the sidebar's sub-log card: counts, links, events, span (decision 115)
     motion.js          ✚ settle + idle drift for relationships mode — presentation only (102)
+    pan.js             ✚ drag the background to pan a zoomed-in relationships picture (118)
     theme.js           ✚ colours, shapes, glyphs shared by every renderer
     format.js          ✚ the one place a timestamp becomes text
     message.js         ✚ a page's message surface: why it cannot draw (decision 87)
