@@ -289,7 +289,21 @@ export function renderNodes({
 
     const nodeColor = objectColors.get(node.objectId) || typeColor(node.lane);
 
-    if (node.landmark) {
+    if (node.landmark && node.heuristicLandmark) {
+      // The off-platform merge (decision 123): a landmark by ruling, a heuristic by
+      // nature. Same ring, same slot — but dotted and in the extracted colour, the
+      // tool's one consistent cue for "parsed, not asserted" (decision 7), so the
+      // emphasis claims no more than the data does.
+      group
+        .append('circle')
+        .attr('data-legend', 'landmark-heuristic')
+        .attr('r', (node.isComment ? 6 : 8) + 6)
+        .attr('fill', 'none')
+        .attr('stroke', COLORS.extracted)
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '1.5 3')
+        .attr('stroke-opacity', 0.9);
+    } else if (node.landmark) {
       group
         .append('circle')
         .attr('data-legend', 'landmark')

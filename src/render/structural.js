@@ -461,7 +461,18 @@ export function renderStructuralNodes({
       .attr('opacity', opacity)
       .style('cursor', 'pointer');
 
-    if (node.landmark) {
+    if (node.landmark && node.heuristicLandmark) {
+      // The off-platform merge's own ring — see `render/nodes.js` (decision 123).
+      group
+        .append('circle')
+        .attr('data-legend', 'landmark-heuristic')
+        .attr('r', node.radius + 6)
+        .attr('fill', 'none')
+        .attr('stroke', COLORS.extracted)
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '1.5 3')
+        .attr('stroke-opacity', 0.9);
+    } else if (node.landmark) {
       group
         .append('circle')
         .attr('data-legend', 'landmark')

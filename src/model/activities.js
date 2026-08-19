@@ -44,9 +44,10 @@ export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
  * treating it as the event-log semantics change that it is.
  */
 /*
- * ⚠️ **The keys are the closed vocabulary of decision 40 and do not change here.** They
- * are what the SQL emits, what the fixtures carry and what `isKnownActivity` throws on.
- * Only `label` and `short` moved, and only because they are what a reader sees.
+ * ⚠️ **The keys are the closed vocabulary of decision 40, plus the one decision 123
+ * restored, and do not change here.** They are what the SQL emits, what the fixtures
+ * carry and what `isKnownActivity` throws on. Only `label` and `short` moved, and only
+ * because they are what a reader sees.
  *
  * They are now **GitHub's own action words** — the verbs on its buttons: Open, Close,
  * Merge, Reopen, Comment. The tool previously used past participles ("Issue opened",
@@ -99,6 +100,24 @@ export const ACTIVITIES = {
     objectTypes: ['pull_request'],
     landmark: true,
   },
+  /*
+   * A merge GitHub did not perform: the PR was closed unmerged and its commits turned up
+   * in a push within minutes (upstream's `mv_pr_offplatform_merges`, a ±15-minute
+   * `delta_seconds` heuristic). Removed by decision 48 on a supervisor ruling that
+   * turned out to be a miscommunication, and restored by decision 123 with three rulings
+   * that the objection in 48 still shapes: it IS a landmark (the process reached its
+   * end), it is NOT an unmerged close (it delivered), and it is drawn with its OWN ring
+   * — dotted, in the extracted colour — so it is emphasised like a merge and visibly not
+   * one. The label says so in words as well.
+   */
+  PullRequestMergedOffPlatform: {
+    label: 'Merge (off-platform)',
+    short: 'merged off-platform',
+    objectTypes: ['pull_request'],
+    landmark: true,
+    /** The only activity whose ring says "emphasised, but a heuristic" (decision 123). */
+    heuristic: true,
+  },
   PullRequestClosed: {
     label: 'Close',
     short: 'close',
@@ -133,6 +152,16 @@ export const LANDMARK_ACTIVITIES = Object.keys(ACTIVITIES).filter((a) => ACTIVIT
 
 export function isKnownActivity(activity) {
   return Object.prototype.hasOwnProperty.call(ACTIVITIES, activity);
+}
+
+/**
+ * A landmark that is a heuristic rather than a platform fact — today only the
+ * off-platform merge (decision 123). Drawn with its own ring so the emphasis does not
+ * claim more than the data does; see `render/nodes.js` and `render/structural.js`.
+ */
+export function isHeuristicLandmark(activity) {
+  const entry = ACTIVITIES[activity];
+  return Boolean(entry && entry.landmark && entry.heuristic);
 }
 
 function lookup(activity) {
@@ -170,6 +199,11 @@ export function isLandmark(activity) {
  * see them (`PullRequestMerged` 67,216 · `PullRequestClosed` 26,366), so a
  * `PullRequestClosed` is never a merge and the two never coincide — measured across all
  * three repositories, **no** pull request carries both at the same instant.
+ *
+ * `PullRequestMergedOffPlatform` is deliberately NOT an unmerged close (decision 123,
+ * ruling 3): on GitHub the PR was closed unmerged, but the commits were delivered, and
+ * the tool treats that as a merge of a different kind. The two PRs in the database that
+ * carry both a `PullRequestClosed` and an off-platform merge draw both, as they are.
  *
  * It matters because the outcome is the question an issue-to-merge study asks, and
  * 22,341 of 87,647 closed pull requests here were abandoned rather than merged. Before

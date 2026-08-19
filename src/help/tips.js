@@ -120,6 +120,7 @@ export const TIPS = Object.freeze({
   'legend.comments': 'A comment on an issue or pull request. Small, and hidden with the comments toggle.',
   'legend.comment-burst': 'Several comments close together in time, drawn as one hollow mark with a count.',
   'legend.landmark': 'A solid ring marks the end of a lifecycle: a pull request merged or an issue closed.',
+  'legend.landmark-heuristic': 'A dotted orange ring marks a merge done off GitHub: the PR was closed and its commits pushed within minutes. A heuristic, not a platform fact.',
   'legend.closed-unmerged': 'A dashed ring marks a pull request that was closed without being merged.',
   'legend.repeat-observation': 'The same commit seen in another push. A hollow square, joined to the first sighting by a hairline.',
   'legend.burst': 'A push of several commits folded into one mark. The number is how many. Click to unfold.',

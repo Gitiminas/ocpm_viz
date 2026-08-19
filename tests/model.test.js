@@ -19,6 +19,9 @@ import {
   activityShortLabel,
   isKnownActivity,
   isLandmark,
+  isHeuristicLandmark,
+  isUnmergedClose,
+  ACTIVITIES,
   LANDMARK_ACTIVITIES,
   LANE_TYPES,
   OBJECT_TYPES,
@@ -383,13 +386,25 @@ describe('activity vocabulary is closed', () => {
   // real merge. Removed from the vocabulary means it hits the closed-vocabulary throw
   // like any other unmapped string — if a transport ever emits one again, it fails
   // loudly here rather than being rendered.
-  test('the retired off-platform activity is no longer in the vocabulary', () => {
-    assert.equal(isKnownActivity('PullRequestMergedOffPlatform'), false);
-    assert.throws(() => activityLabel('PullRequestMergedOffPlatform'), /vocabulary is closed/);
+  test('the off-platform merge is back in the vocabulary, as a heuristic landmark', () => {
+    // Removed by decision 48 on a ruling that was a miscommunication; restored by 123.
+    // The rulings that came with it: a landmark, labelled as a merge of a different
+    // kind, NOT an unmerged close, and ringed as a heuristic.
+    assert.equal(isKnownActivity('PullRequestMergedOffPlatform'), true);
+    assert.equal(activityLabel('PullRequestMergedOffPlatform'), 'Merge (off-platform)');
+    assert.equal(isLandmark('PullRequestMergedOffPlatform'), true);
+    assert.equal(isHeuristicLandmark('PullRequestMergedOffPlatform'), true);
+    assert.equal(isHeuristicLandmark('PullRequestMerged'), false, 'a real merge is no heuristic');
+    assert.equal(isUnmergedClose('PullRequestMergedOffPlatform'), false);
+    assert.deepEqual(ACTIVITIES.PullRequestMergedOffPlatform.objectTypes, ['pull_request']);
   });
 
-  test('landmarks are exactly the two emphasised outcomes', () => {
-    assert.deepEqual(LANDMARK_ACTIVITIES.sort(), ['IssueClosed', 'PullRequestMerged']);
+  test('landmarks are exactly the three emphasised outcomes', () => {
+    assert.deepEqual(LANDMARK_ACTIVITIES.sort(), [
+      'IssueClosed',
+      'PullRequestMerged',
+      'PullRequestMergedOffPlatform',
+    ]);
     assert.equal(isLandmark('IssueOpened'), false);
   });
 

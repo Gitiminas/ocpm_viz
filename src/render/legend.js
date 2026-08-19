@@ -63,10 +63,10 @@ export function highlightLegendGroup(key, on, color) {
  * highlights every element carrying it. A row without a key is explanatory only.
  * ---------------------------------------------------------------------------------- */
 
-const ring = (dash) =>
+const ring = (dash, { stroke: colour = 'var(--color-neutral-500)', dasharray = '3 3' } = {}) =>
   '<svg width="18" height="18" viewBox="-9 -9 18 18">' +
-  `<circle cx="0" cy="0" r="7" fill="none" stroke="var(--color-neutral-500)" ` +
-  `stroke-width="1.5"${dash ? ' stroke-dasharray="3 3"' : ''}/></svg>`;
+  `<circle cx="0" cy="0" r="7" fill="none" stroke="${colour}" ` +
+  `stroke-width="1.5"${dash ? ` stroke-dasharray="${dasharray}"` : ''}/></svg>`;
 
 const stroke = (attrs) =>
   `<svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" ` +
@@ -111,6 +111,14 @@ export const LEGEND_SECTIONS = [
           'font-family="monospace" fill="var(--color-neutral-400)">N</text></svg>',
       },
       { key: 'landmark', label: 'merged · issue closed', swatch: ring(false) },
+      // The off-platform merge (decision 123): a landmark, but a heuristic — emphasised
+      // with a ring like a merge, dotted and in the extracted colour so it is visibly
+      // not the platform's own fact.
+      {
+        key: 'landmark-heuristic',
+        label: 'merged off-platform · heuristic',
+        swatch: ring(true, { stroke: COLORS.extracted, dasharray: '1.5 3' }),
+      },
       { key: 'closed-unmerged', label: 'closed, not merged', swatch: ring(true) },
       {
         key: 'repeat-observation',

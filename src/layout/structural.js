@@ -30,7 +30,7 @@
  * timeline uses, so this module never learns what a lane toggle is.
  */
 
-import { isLandmark, isUnmergedClose } from '../model/activities.js';
+import { isLandmark, isUnmergedClose, isHeuristicLandmark } from '../model/activities.js';
 
 /**
  * Drawn radius by object type — issue > pull request > commit.
@@ -96,6 +96,7 @@ export function buildStructuralNodes({
           time: event.time,
           actorId: event.actor_id ?? null,
           landmark: isLandmark(event.activity),
+          heuristicLandmark: isHeuristicLandmark(event.activity),
           unmergedClose: isUnmergedClose(event.activity),
         }));
 
@@ -116,6 +117,11 @@ export function buildStructuralNodes({
         // not silently delete an entire issue from the picture.
         isComment: false,
         landmark: lifecycle.some((entry) => entry.landmark),
+        // One mark per object, so one ring: the heuristic ring only when no platform
+        // landmark (a real merge) is there to outrank it.
+        heuristicLandmark:
+          lifecycle.some((entry) => entry.heuristicLandmark) &&
+          !lifecycle.some((entry) => entry.landmark && !entry.heuristicLandmark),
         unmergedClose: lifecycle.some((entry) => entry.unmergedClose),
         lifecycle,
         commentCount: events.length - lifecycle.length,
