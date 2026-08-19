@@ -59,6 +59,25 @@ describe('dragging the background pans the surface', () => {
     assert.equal(timeline.svgEl.style.cursor ?? '', '');
   });
 
+  test('the pointer is captured only once the press has become a pan', () => {
+    // ⚠️ Capturing on pointerdown retargeted the following click to the svg, so the fold
+    // pill above an unfolded push never received its click and pushes could not be folded
+    // back in relationships mode. A press that stays within the slop must leave the
+    // pointer — and its click — to whatever was pressed.
+    const { svgEl, fire } = harness();
+    const captured = [];
+    svgEl.setPointerCapture = (id) => captured.push(id);
+    svgEl.releasePointerCapture = () => {};
+    fire('pointerdown', { clientX: 10, clientY: 10 });
+    fire('pointermove', { clientX: 11, clientY: 11 });
+    fire('pointerup', { clientX: 11, clientY: 11 });
+    assert.deepEqual(captured, [], 'a click-sized press must not capture');
+
+    fire('pointerdown', { clientX: 10, clientY: 10 });
+    fire('pointermove', { clientX: 40, clientY: 10 });
+    assert.deepEqual(captured, [1], 'a real pan captures, once it is one');
+  });
+
   test('dispose removes every listener', () => {
     const { scrollEl, fire, pan } = harness();
     pan.dispose();

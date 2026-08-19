@@ -24,6 +24,12 @@
  *     untouched.
  *
  * Pointer capture keeps the gesture alive when the pointer leaves the svg mid-drag.
+ * ⚠️ **Taken only once the press has become a pan, never on the press itself.** A capture
+ * on pointerdown retargets every later event — the `click` included — to the svg, so a
+ * click on anything that lets the press bubble (the fold pill above an unfolded push,
+ * which is a control rather than a draggable mark) never reached its own handler: the
+ * pill unfolded pushes that could not be folded back. Capturing past the slop costs
+ * nothing a reader can see and leaves every click on the surface to whoever it was for.
  */
 
 /** How far the pointer may travel before a press counts as a pan rather than a click. */
@@ -43,11 +49,9 @@ export function enableCanvasPan({ svgEl, scrollEl, isActive = () => true }) {
 
   const onDown = (event) => {
     if (event.button !== 0 || !isActive()) return;
-    from = { x: event.clientX, y: event.clientY, left: scrollEl.scrollLeft, top: scrollEl.scrollTop };
+    from = { x: event.clientX, y: event.clientY, left: scrollEl.scrollLeft, top: scrollEl.scrollTop, pointerId: event.pointerId };
     travelled = 0;
     wasPan = false;
-    svgEl.setPointerCapture?.(event.pointerId);
-    svgEl.style.cursor = 'grabbing';
   };
   const onMove = (event) => {
     if (!from) return;
@@ -55,6 +59,11 @@ export function enableCanvasPan({ svgEl, scrollEl, isActive = () => true }) {
     const dy = event.clientY - from.y;
     travelled = Math.max(travelled, Math.hypot(dx, dy));
     if (travelled <= PAN_SLOP_PX) return;
+    if (!wasPan) {
+      // The press is a pan from here on: now take the pointer and show it.
+      svgEl.setPointerCapture?.(from.pointerId);
+      svgEl.style.cursor = 'grabbing';
+    }
     wasPan = true;
     // The picture follows the hand: dragging right shows what was off to the left.
     scrollEl.scrollLeft = from.left - dx;
@@ -63,7 +72,7 @@ export function enableCanvasPan({ svgEl, scrollEl, isActive = () => true }) {
   };
   const onUp = (event) => {
     if (!from) return;
-    svgEl.releasePointerCapture?.(event.pointerId);
+    if (wasPan) svgEl.releasePointerCapture?.(event.pointerId);
     svgEl.style.cursor = isActive() ? 'grab' : '';
     from = null;
   };
