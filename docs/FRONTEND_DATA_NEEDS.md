@@ -82,9 +82,9 @@ every link in a payload is now an object→object traceability edge that every c
 
 | Field | Consumed by |
 |---|---|
-| `repo` | breadcrumb, repo selector, preset URL — `loadObjectGraph.js:61`, `main.js:228,289` |
-| `seed[].id`, `seed[].type` | breadcrumb label, seed selector, preset URL — `loadObjectGraph.js:55`, `main.js:228` |
-| `traversal_degree` | breadcrumb + the read-only traversal note — `main.js:594` |
+| `repo` | the stats page's one-line description, repo selector, preset URL — `loadObjectGraph.js` (`summarizeSubLog`), `main.js` |
+| `seed[].id`, `seed[].type` | the description's seed label, seed selector, preset URL — `loadObjectGraph.js` (`summarizeSubLog`), `main.js` |
+| `traversal_degree` | the sidebar's traversal-degree line and stepper, and the sub-log card — `main.js` (`updateTraversalInfo`), `render/subLogCard.js` |
 | `query` | written by the loader itself (`loadObjectGraph.js:36`), not supplied |
 
 ---

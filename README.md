@@ -36,9 +36,10 @@ Two fields, in this order:
    thousands of objects, and nothing about what a seed *yields* can be shown before loading
    it — that would mean running the traversal for every candidate.
 
-The sub-log on screen is what a traversal outwards from that seed returns, and the breadcrumb
-states the query that produced it — `microsoft/vscode · from issue #242864 · degree 2 · …`.
-There is deliberately no "case": the same event may belong to many sub-logs.
+The sub-log on screen is what a traversal outwards from that seed returns. The sidebar
+states the query — repository, seed, traversal degree — and, in a small card beneath the
+degree, what it returned: counts by object type, links, events and the span of time they
+cover. There is deliberately no "case": the same event may belong to many sub-logs.
 
 `?repo=&seed=` reproduces a selection by link; add `?preset=` to carry the filters too.
 

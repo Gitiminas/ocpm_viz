@@ -2,7 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph, describeSubLog } from '../src/data/loadObjectGraph.js';
+import { loadObjectGraph, describeSubLog, summarizeSubLog } from '../src/data/loadObjectGraph.js';
 import { indexObjectGraph, findGraphProblems, collectInstants } from '../src/model/objectGraph.js';
 import { deriveBursts, indexBurstsByCommit, MIN_BURST } from '../src/model/bursts.js';
 import {
@@ -107,6 +107,35 @@ describe('F1 loads and validates', () => {
     assert.match(description, /from issue #242864/);
     assert.match(description, /degree 2/);
     assert.doesNotMatch(description, /case/i);
+  });
+
+  test('the sub-log summary states what the query returned, and the one-liner agrees', async () => {
+    // What the sidebar card shows (render/subLogCard.js): counts of the PAYLOAD by type,
+    // links, events, and the span from first event to last — derived, never stored.
+    const graph = await loadF1();
+    const summary = summarizeSubLog(graph);
+    assert.equal(summary.repo, 'microsoft/vscode');
+    assert.deepEqual(summary.seedLabels, ['issue #242864']);
+    assert.equal(summary.degree, 2);
+    assert.equal(summary.counts.get('issue'), 1);
+    assert.equal(summary.counts.get('pull_request'), 1);
+    assert.equal(summary.counts.get('commit'), 32);
+    assert.equal(summary.counts.get('actor'), graph.objects.filter((o) => o.type === 'actor').length);
+    assert.equal(summary.links, graph.links.length);
+    assert.equal(summary.events, graph.events.length);
+    assert.ok(summary.span.ms > 0 && summary.span.first < summary.span.last);
+    assert.ok(graph.events.every((e) => +e.time >= +summary.span.first && +e.time <= +summary.span.last));
+    // The one-line description reads the same numbers rather than counting twice.
+    for (const [type, n] of summary.counts) {
+      assert.match(describeSubLog(graph), new RegExp(`${n} ${type}s?`));
+    }
+  });
+
+  test('a sub-log with no events has no span, rather than a NaN one', () => {
+    const summary = summarizeSubLog({ meta: {}, objects: [], events: [], links: [] });
+    assert.equal(summary.span, null);
+    assert.equal(summary.events, 0);
+    assert.deepEqual(summary.seedLabels, []);
   });
 });
 

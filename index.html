@@ -144,6 +144,9 @@ html,body{height:100%;margin:0;overflow:hidden}
   Corrected 2026-08-16: this comment said the degree was read-only, full stop.
 -->
 <div id="traversalInfo" class="mono" style="font-size:10px;color:var(--color-neutral-500);margin-top:6px;line-height:1.5"></div>
+<!-- What the query returned: counts by type, links, events, span. Rendered by
+     render/subLogCard.js from summarizeSubLog(); replaced the breadcrumb above the chart. -->
+<div id="subLogCard"></div>
 </div>
 </div>
 <div id="timelineSidebarSections" style="display:flex;flex-direction:column">
@@ -218,8 +221,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 <main id="timelinePage" style="flex:1;min-width:0;display:flex;flex-direction:column;padding:var(--space-6) var(--space-8);gap:var(--space-4);overflow:hidden">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-6);flex:0 0 auto;flex-wrap:wrap">
 <div style="flex:1 1 auto;min-width:0">
-<h1 style="font-size:20px;margin:0 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Issue-to-merge OCEL timeline</h1>
-<div class="mono" id="breadcrumb" style="font-size:12px;color:var(--color-neutral-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">…</div>
+<h1 style="font-size:20px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Issue-to-merge OCEL timeline</h1>
+<!-- The one-line sub-log description that used to sit here moved into the sidebar as a
+     card (#subLogCard), beside the traversal degree it belongs with. -->
 </div>
 <div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
 <div class="mono" id="focusInfo" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>

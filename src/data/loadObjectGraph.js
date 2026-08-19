@@ -48,32 +48,64 @@ export async function loadObjectGraph(query = {}, { transport = fixtureTransport
  * they legitimately can.
  */
 export function describeSubLog(graph) {
-  const meta = graph.meta || {};
-  const seeds = meta.seed || [];
-  const byId = new Map(graph.objects.map((o) => [o.id, o]));
+  const summary = summarizeSubLog(graph);
+  const parts = [];
+  if (summary.repo) parts.push(summary.repo);
+  parts.push(summary.seedLabels.length ? `from ${summary.seedLabels.join(', ')}` : 'no seed recorded');
+  if (summary.degree != null) parts.push(`degree ${summary.degree}`);
+  parts.push(
+    [...summary.counts.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([type, n]) => `${n} ${type}${n === 1 ? '' : 's'}`)
+      .join(', '),
+  );
+  return parts.join(' · ');
+}
 
-  const seedLabels = seeds.map((seed) => {
+/**
+ * The facts about a loaded sub-log that the sidebar's info card states.
+ *
+ * Derived from the graph, never stored on it: the counts are of what the payload carries
+ * (every object, whatever the toggles), the span is first event to last, and the labels
+ * are the objects' own. DOM-free, so the card's contents are testable without a browser
+ * and `describeSubLog` — the one-line form the stats page and `rpc-check.mjs` print —
+ * reads the same numbers rather than counting twice.
+ *
+ * @returns {{repo: string|null, seedLabels: string[], degree: number|null,
+ *   counts: Map<string, number>, links: number, events: number,
+ *   span: {first: Date, last: Date, ms: number}|null}}
+ */
+export function summarizeSubLog(graph) {
+  const meta = graph.meta || {};
+  const byId = new Map(graph.objects.map((o) => [o.id, o]));
+  const seedLabels = (meta.seed || []).map((seed) => {
     const object = byId.get(seed.id);
     return object ? `${seed.type.replace('_', ' ')} ${object.label}` : seed.id;
   });
-
-  const parts = [];
-  if (meta.repo) parts.push(meta.repo);
-  parts.push(seedLabels.length ? `from ${seedLabels.join(', ')}` : 'no seed recorded');
-  if (meta.traversal_degree != null) parts.push(`degree ${meta.traversal_degree}`);
 
   const counts = new Map();
   for (const object of graph.objects) {
     counts.set(object.type, (counts.get(object.type) || 0) + 1);
   }
-  parts.push(
-    [...counts.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([type, n]) => `${n} ${type}${n === 1 ? '' : 's'}`)
-      .join(', '),
-  );
 
-  return parts.join(' · ');
+  let first = null;
+  let last = null;
+  for (const event of graph.events) {
+    const t = +event.time;
+    if (!Number.isFinite(t)) continue;
+    if (first == null || t < first) first = t;
+    if (last == null || t > last) last = t;
+  }
+
+  return {
+    repo: meta.repo ?? null,
+    seedLabels,
+    degree: meta.traversal_degree ?? null,
+    counts,
+    links: graph.links.length,
+    events: graph.events.length,
+    span: first == null ? null : { first: new Date(first), last: new Date(last), ms: last - first },
+  };
 }
 
 /**

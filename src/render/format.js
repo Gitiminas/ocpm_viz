@@ -47,6 +47,12 @@ export function formatInstant(date) {
   return `${month} ${day}, ${year} · ${hour}:${minute}:${second} UTC`;
 }
 
+/** A date with its year — for a span whose two ends may sit in different years. */
+export function formatDateYear(date) {
+  const { month, day, year } = utcParts(date);
+  return `${month} ${day}, ${year}`;
+}
+
 /** Axis tick labels, coarsest first. The axis carries a single "UTC" of its own. */
 export function formatDate(date) {
   const { month, day } = utcParts(date);

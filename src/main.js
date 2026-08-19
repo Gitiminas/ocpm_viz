@@ -8,7 +8,7 @@
 
 /* global d3 */
 
-import { describeSubLog, seedObjects } from './data/loadObjectGraph.js';
+import { describeSubLog, summarizeSubLog, seedObjects } from './data/loadObjectGraph.js';
 import { createSource, resolveQuery } from './data/source.js';
 import { TRAVERSAL_DEGREE } from './data/api.js';
 import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
@@ -37,6 +37,7 @@ import { createTooltip } from './render/tooltip.js';
 import { createMinimap } from './render/minimap.js';
 import { createActorCard } from './render/actorCard.js';
 import { createTimeline, MARGIN } from './render/timeline.js';
+import { renderSubLogCard } from './render/subLogCard.js';
 import { renderLegend, legendKeysPresentIn } from './render/legend.js';
 import { createMessageSurface, messageHtml, errorHtml } from './render/message.js';
 import { renderStats } from './render/stats.js';
@@ -65,7 +66,7 @@ const elements = {
   minimap: el('minimap'),
   actorCard: el('actorCard'),
   degreeStepper: el('degreeStepper'),
-  breadcrumb: el('breadcrumb'),
+  subLogCard: el('subLogCard'),
   focusInfo: el('focusInfo'),
   lanes: el('lanes'),
   relationships: el('relationships'),
@@ -293,8 +294,6 @@ async function load(query) {
     groupsByCommit,
   };
 
-  elements.breadcrumb.textContent = description;
-  elements.breadcrumb.title = description;
   updateFocusLabel();
   updateTraversalInfo(graph);
 
@@ -1043,18 +1042,18 @@ const escapeForHtml = (value) => String(value).replace(/[&<>]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 
 /**
- * State the traversal degree, and say plainly what can and cannot be seeded.
+ * The traversal degree line, and the sub-log info card beneath it.
  *
- * Read-only by design (decision 35): the degree is fixed when a sub-log is built, so a
- * stepper here would be a control that silently does nothing.
+ * The degree is a stepper against the database and text on fixtures (decision 72): the
+ * control is real where it can be honoured and text where it cannot. The card
+ * (`render/subLogCard.js`) states what the query returned — counts by type, links,
+ * events, span — and replaced the breadcrumb that used to run above the chart. Repository
+ * and seed are not repeated: they are the two boxes directly above.
  *
- * ⚠️ **What it says depends on the source, because what is true depends on the source.**
- * On fixtures, only pre-built seeds can be served and the count is a real limit worth
- * stating. Against the database the traversal runs for real, so "N seeds servable here —
- * seeding from any object needs the RPC" is false twice over: the count is meaningless
- * (there is no list, by decision 34) and the RPC is what you are already talking to.
- * Leaving that text up would be exactly the kind of stale, confidently-wrong caption
- * this project keeps finding in its own documents.
+ * ⚠️ What used to be said here about the SOURCE — "N seeds servable here", "live from the
+ * database, N searchable" — is gone on purpose. The source toggle's own note already says
+ * which source is on and what it can seed, and a second sentence saying it again under
+ * the degree was the kind of caption that goes stale without anyone noticing.
  */
 function updateTraversalInfo(graph) {
   const degree = graph.meta?.traversal_degree;
@@ -1075,10 +1074,10 @@ function updateTraversalInfo(graph) {
    * a busy seed and conclude the tool had hung.
    */
   const degreeNote = source.traversalEditable
-    ? `Traversal degree ${renderDegreeControl(degree)} · server-side expansion<br>`
+    ? `Traversal degree ${renderDegreeControl(degree)}`
     : degree == null
       ? ''
-      : `Traversal degree ${degree} · fixed by the query<br>`;
+      : `Traversal degree ${degree} · fixed by the query`;
 
   /*
    * ⚠️ **Say when a seed reaches nothing.** A sub-log of one object is a legitimate
@@ -1091,30 +1090,17 @@ function updateTraversalInfo(graph) {
    * *subtracted*; this declares what the data never had, which is the other way a sparse
    * picture misleads.
    */
-  const isolated = graph.links.length === 0;
-  const isolatedNote = isolated
-    ? `<br>No links from this seed — nothing upstream connects it, so there is nothing ` +
-      `to traverse to. The object itself is shown.`
-    : '';
-
-  if (source.name === 'database') {
-    const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
-    elements.traversalInfo.innerHTML =
-      degreeNote +
-      `Live from the database — seed from any issue, pull request or commit` +
-      (repo?.seeds_total ? ` (${repo.seeds_total.toLocaleString()} searchable)` : '') +
-      isolatedNote;
-    bindDegreeControl(graph);
-    return;
+  const notes = [];
+  if (graph.links.length === 0) {
+    notes.push(
+      'No links from this seed — nothing upstream connects it, so there is nothing to ' +
+        'traverse to. The object itself is shown.',
+    );
   }
 
-  const servable = repo_seed_count(graph);
-  elements.traversalInfo.innerHTML =
-    degreeNote +
-    `${servable} seed${servable === 1 ? '' : 's'} servable here — seeding from any ` +
-    `object needs the database source (?source=database)` +
-    isolatedNote;
+  elements.traversalInfo.innerHTML = degreeNote;
   bindDegreeControl(graph);
+  renderSubLogCard({ container: elements.subLogCard, summary: summarizeSubLog(graph), notes });
 }
 
 /** Reload at a new degree, keeping the rest of the query. */
@@ -1155,11 +1141,6 @@ function renderDegreeControl(degree) {
   return `<span id="degreeControl">${options}</span>`;
 }
 
-/** How many seeds the fixture catalogue can actually serve for this sub-log's repo. */
-function repo_seed_count(graph) {
-  const repo = catalogue?.repos.find((entry) => entry.name === graph.meta?.repo);
-  return repo?.seeds?.length ?? 0;
-}
 
 // ---------------------------------------------------------------------------
 // startup

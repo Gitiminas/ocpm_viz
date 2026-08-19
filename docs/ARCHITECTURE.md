@@ -72,6 +72,7 @@ src/
   render/
     timeline.js  nodes.js  links.js  axis.js  minimap.js  tooltip.js  legend.js
     structural.js      ✚ drawing relationships mode: edges, marks, hovercards, dragging (103)
+    subLogCard.js      ✚ the sidebar's sub-log card: counts, links, events, span (decision 115)
     motion.js          ✚ settle + idle drift for relationships mode — presentation only (102)
     theme.js           ✚ colours, shapes, glyphs shared by every renderer
     format.js          ✚ the one place a timestamp becomes text
