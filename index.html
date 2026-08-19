@@ -62,6 +62,18 @@ html,body{height:100%;margin:0;overflow:hidden}
 .seg .seg-opt.on{color:var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent)}
 .seg .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
 .seg .seg-opt{cursor:pointer}
+/* The FIRST level of the mode control is a switch, not a segment (decision 114): a pill
+   whose active side is filled, with a radio dot as the literal indicator. It is drawn
+   differently from the second-level segments on purpose — outlined alike, "Time |
+   Relationships" and "Absolute | Discrete" read as equals, and they are not: the first
+   decides what position means, the second refines it. Same fill language as the
+   Fixtures | Database toggle in the sidebar, which is the other two-state switch here. */
+.switch{border-radius:999px;background:var(--color-neutral-900);border-color:var(--color-neutral-700);padding:3px;gap:2px}
+.switch .seg-opt{border-radius:999px;padding:5px 12px 5px 10px;color:var(--color-neutral-400);border-left:none;transition:background .15s ease,color .15s ease}
+.switch .seg-opt::before{content:'';width:8px;height:8px;border-radius:50%;box-sizing:border-box;border:1.5px solid currentColor;opacity:.7}
+.switch .seg-opt.on{background:var(--color-accent-600,#5b5bd6);color:#fff;box-shadow:none}
+.switch .seg-opt.on::before{background:#fff;border-color:#fff;opacity:1}
+.switch .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 9%, transparent);color:var(--color-text)}
 /* One track, two thumbs. The inputs are stacked on the same rail and are transparent to
    the pointer except at the thumbs, so a click on the rail cannot make one handle leap
    across the other. */
@@ -217,7 +229,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 
   markMode() in main.js is the one place that reads state.mode into these three segments.
 -->
-<div class="seg" id="facetSeg">
+<div class="seg switch" id="facetSeg" role="radiogroup" aria-label="What position means">
 <div class="seg-opt on" data-facet="time" title="Position encodes time: a timeline with lanes and an axis"><span>Time</span></div>
 <div class="seg-opt" data-facet="relationships" title="Release the time axis — position encodes relationships instead"><span>Relationships</span></div>
 </div>
