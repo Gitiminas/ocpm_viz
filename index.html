@@ -317,7 +317,12 @@ html,body{height:100%;margin:0;overflow:hidden}
 </div>
 </div>
 <div id="wrap" style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">
-<div id="scroll" style="flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-bg)">
+<!-- scrollbar-gutter:stable keeps the surface's width the SAME whether or not the vertical
+     scrollbar is showing. Without it, measure() read the width before the chart rendered
+     taller than the viewport; the scrollbar then appeared and took ~15px, the svg overflowed
+     sideways by that much, and the minimap's window read <100% at default zoom — reported as
+     the minimap "starting slightly zoomed out", on load and on reset alike. -->
+<div id="scroll" style="flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-bg)">
 <!--
   Placeholder text — "choose a seed", "could not render" — goes HERE, never into #chart.
   #chart holds the one <svg> the timeline creates at startup and holds a closure
