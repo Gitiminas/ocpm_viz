@@ -222,12 +222,13 @@ html,body{height:100%;margin:0;overflow:hidden}
 <span id="degPlus" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--color-neutral-300);font-size:14px;user-select:none">+</span>
 </div>
 <main id="timelinePage" style="flex:1;min-width:0;display:flex;flex-direction:column;padding:var(--space-6) var(--space-8);gap:var(--space-4);overflow:hidden">
-<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-6);flex:0 0 auto;flex-wrap:wrap">
-<!-- No page title: the tool's name heads the sidebar's Sub-log section, and the one-line
-     description that used to sit here is the sub-log card (#subLogCard). This spacer keeps
-     the mode and zoom controls on the right. -->
-<div style="flex:1 1 auto;min-width:0"></div>
-<div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
+<!-- The header row holds only the mode and zoom controls, pinned to the RIGHT whatever
+     the width: the row does not wrap and the group is pushed over with margin-left:auto,
+     so a narrow window shrinks the gap rather than dropping the controls to a second
+     line on the left. No page title here — the tool's name heads the sidebar's Sub-log
+     section, and the one-line description that used to sit here is the sub-log card. -->
+<div style="display:flex;align-items:center;justify-content:flex-end;gap:var(--space-6);flex:0 0 auto;flex-wrap:nowrap;min-width:0">
+<div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:nowrap;margin-left:auto;min-width:0">
 <div class="mono" id="focusInfo" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
 <!--
   The mode control has two levels (decision 114). The FIRST chooses what position means:
