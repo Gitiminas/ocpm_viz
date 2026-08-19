@@ -431,6 +431,57 @@ FIXTURES.F13 = () => {
 };
 
 /**
+ * F14 — an off-platform merge beside a real one (decision 123).
+ *
+ * PR #90 is merged on GitHub. PR #91 is closed on GitHub and its commits turn up in a
+ * push minutes later: upstream emits `PullRequestMergedOffPlatform` for it — and, for a
+ * handful of PRs, a `PullRequestClosed` as well, which is what #91 carries here so the
+ * "both events, drawn as they are" ruling is exercised. What the picture has to show: two
+ * landmark rings of different kinds (solid for #90, dotted extracted-orange for #91), the
+ * stats outcome "merged off-platform" counted on its own, and #91 NOT wearing the dashed
+ * "closed, not merged" ring.
+ */
+FIXTURES.F14 = () => {
+  eventSeq = 0;
+  const objects = [
+    issue(14, { from: t(1), to: t(16) }),
+    pr(90, { from: t(2), to: t(8) }),
+    pr(91, { from: t(3), to: t(12) }),
+    commit('offplat0000000001', { at: t(12), pushId: 9101 }),
+    commit('onplat00000000001', { at: t(7), pushId: 9001 }),
+    actor('alice'),
+  ];
+  const events = [
+    event('IssueOpened', t(1), 'issue:14'),
+    event('PullRequestOpened', t(2), 'pr:90'),
+    event('PullRequestOpened', t(3), 'pr:91'),
+    event('CommitObserved', t(7), 'commit:onplat00000000001'),
+    event('PullRequestMerged', t(8), 'pr:90'),
+    // Closed on GitHub, then the commits land in a push — the heuristic's signature.
+    event('PullRequestClosed', t(12), 'pr:91'),
+    event('CommitObserved', t(12), 'commit:offplat0000000001'),
+    event('PullRequestMergedOffPlatform', t(12), 'pr:91'),
+    event('IssueClosed', t(16), 'issue:14'),
+  ];
+  const links = [
+    link('pr:90', 'issue:14', 'resolves', 'pr_body'),
+    link('pr:91', 'issue:14', 'resolves', 'commit_message'),
+    link('pr:90', 'commit:onplat00000000001', 'contains_commit', 'head_sha'),
+    link('pr:91', 'commit:offplat0000000001', 'contains_commit', 'ref_match'),
+  ];
+  return graph({
+    id: 'F14',
+    property:
+      'One PR merged on GitHub beside one merged off-platform (closed, then its commits ' +
+      'pushed): two kinds of landmark ring, and a PR outcome of its own.',
+    seed: [{ id: 'issue:14', type: 'issue' }],
+    objects,
+    events,
+    links,
+  });
+};
+
+/**
  * F10 — a deliberately large sub-log: 3 PRs and 300 commits across many pushes.
  *
  * Not a performance benchmark. It exists so that "sub-logs are small, do not

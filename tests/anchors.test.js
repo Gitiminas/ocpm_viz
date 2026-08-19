@@ -36,7 +36,7 @@ const MARGIN = { top: 32, bottom: 150 };
 const MARGIN_LEFT = 180;
 const PLOT_WIDTH = 1100;
 const LANES = ['issue', 'pull_request', 'commit'];
-const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13'];
+const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13', 'F14'];
 
 /**
  * The renderer's own pipeline, up to the point where anchors are created —

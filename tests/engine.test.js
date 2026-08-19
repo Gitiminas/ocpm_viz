@@ -33,7 +33,7 @@ const fileTransport = async (query) =>
     await readFile(new URL(`./fixtures/${query.fixture || 'F1'}.json`, import.meta.url), 'utf8'),
   );
 
-const FIXTURES = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13'];
+const FIXTURES = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13', 'F14'];
 const TEMPORAL_MODES = ['absolute', 'discrete'];
 
 const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };

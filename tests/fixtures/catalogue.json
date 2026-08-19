@@ -81,6 +81,13 @@
           "fixture": "F13"
         },
         {
+          "id": "issue:14",
+          "type": "issue",
+          "label": "#14",
+          "title": "Synthetic issue 14",
+          "fixture": "F14"
+        },
+        {
           "id": "issue:2",
           "type": "issue",
           "label": "#2",
