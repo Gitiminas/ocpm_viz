@@ -92,3 +92,31 @@ export function enableCanvasPan({ svgEl, scrollEl, isActive = () => true }) {
     },
   };
 }
+
+/**
+ * Where the surface must scroll to after a zoom so the point under the anchor stays put.
+ *
+ * The drawing scales about the frame's origin — the structural layout places every mark
+ * at `margin + (box coordinate)`, and the box and everything in it scale with the zoom
+ * (`layoutCluster` / `layoutLayered`, `zoom` option) — so a content point `c` moves to
+ * `origin + (c − origin) × factor`. Keeping the anchor's content point under the anchor's
+ * surface offset is then one subtraction per axis. Pure, so the arithmetic is tested
+ * without a browser; the caller reads and writes the DOM.
+ *
+ * @param {object} options
+ * @param {number} options.scrollLeft  before the zoom
+ * @param {number} options.scrollTop
+ * @param {number} options.offsetX     the anchor, relative to the surface's top-left
+ * @param {number} options.offsetY
+ * @param {number} options.factor      newZoom / oldZoom
+ * @param {{x:number, y:number}} options.origin  the frame origin in content pixels
+ * @returns {{scrollLeft:number, scrollTop:number}}
+ */
+export function scrollToKeepAnchor({ scrollLeft, scrollTop, offsetX, offsetY, factor, origin }) {
+  const contentX = scrollLeft + offsetX;
+  const contentY = scrollTop + offsetY;
+  return {
+    scrollLeft: Math.max(0, origin.x + (contentX - origin.x) * factor - offsetX),
+    scrollTop: Math.max(0, origin.y + (contentY - origin.y) * factor - offsetY),
+  };
+}

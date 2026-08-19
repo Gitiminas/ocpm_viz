@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { enableCanvasPan } from '../src/render/pan.js';
+import { enableCanvasPan, scrollToKeepAnchor } from '../src/render/pan.js';
 
 /**
  * Dragging the canvas to pan it (relationships mode). The module touches the DOM only
@@ -65,5 +65,31 @@ describe('dragging the background pans the surface', () => {
     fire('pointerdown', { clientX: 0, clientY: 0 });
     fire('pointermove', { clientX: 80, clientY: 80 });
     assert.equal(scrollEl.scrollLeft, 100);
+  });
+});
+
+describe('zooming about an anchor keeps the point under it still', () => {
+  const origin = { x: 16, y: 16 };
+
+  test('the content point under the pointer is the same point after the zoom', () => {
+    // Surface scrolled to (100, 50); the pointer is 300,200 into the visible surface, so it
+    // points at content (400, 250). After a 2× zoom that content point sits at
+    // origin + (c − origin)×2 = (784, 484); scrolling so it is again 300,200 from the
+    // surface's top-left means scrollLeft 484, scrollTop 284.
+    const next = scrollToKeepAnchor({ scrollLeft: 100, scrollTop: 50, offsetX: 300, offsetY: 200, factor: 2, origin });
+    assert.deepEqual(next, { scrollLeft: 484, scrollTop: 284 });
+    // And zooming back out returns exactly to where it was.
+    const back = scrollToKeepAnchor({ ...next, offsetX: 300, offsetY: 200, factor: 0.5, origin });
+    assert.deepEqual(back, { scrollLeft: 100, scrollTop: 50 });
+  });
+
+  test('a factor of 1 changes nothing, and the result never scrolls negative', () => {
+    assert.deepEqual(
+      scrollToKeepAnchor({ scrollLeft: 30, scrollTop: 40, offsetX: 10, offsetY: 10, factor: 1, origin }),
+      { scrollLeft: 30, scrollTop: 40 },
+    );
+    // Zooming out near the top-left would ask for a negative scroll; clamp at 0.
+    const out = scrollToKeepAnchor({ scrollLeft: 0, scrollTop: 0, offsetX: 500, offsetY: 300, factor: 0.5, origin });
+    assert.deepEqual(out, { scrollLeft: 0, scrollTop: 0 });
   });
 });

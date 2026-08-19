@@ -37,8 +37,9 @@ import { actorColor } from './render/theme.js';
 import { createTooltip } from './render/tooltip.js';
 import { createMinimap } from './render/minimap.js';
 import { createActorCard } from './render/actorCard.js';
-import { createTimeline, MARGIN } from './render/timeline.js';
+import { createTimeline, MARGIN, STRUCTURAL_MARGIN } from './render/timeline.js';
 import { renderSubLogCard } from './render/subLogCard.js';
+import { scrollToKeepAnchor } from './render/pan.js';
 import { renderLegend, legendKeysPresentIn } from './render/legend.js';
 import { createMessageSurface, messageHtml, errorHtml } from './render/message.js';
 import { renderStats } from './render/stats.js';
@@ -540,6 +541,38 @@ function setZoom(value) {
   timeline.render();
 }
 
+/**
+ * Zoom the relationships picture about a point on the surface.
+ *
+ * `setZoom` alone re-renders with the surface still scrolled to where it was, so the
+ * drawing — which grows about the frame's origin — ran off to the right and down and the
+ * reader had to chase it. This keeps one content point fixed under one surface point:
+ * the pointer for the wheel (decision 119), the surface's centre for the buttons (120).
+ * The arithmetic is `scrollToKeepAnchor` (`render/pan.js`), pure and tested; this
+ * function only reads and writes the DOM around it.
+ *
+ * @param {number} value   the zoom to set (clamped by `setZoom`)
+ * @param {{clientX:number, clientY:number}|null} anchor  a pointer position, or null for
+ *   the centre of the visible surface
+ */
+function zoomAround(value, anchor = null) {
+  const scroll = elements.scroll;
+  const rect = scroll.getBoundingClientRect();
+  const offsetX = anchor ? anchor.clientX - rect.left : scroll.clientWidth / 2;
+  const offsetY = anchor ? anchor.clientY - rect.top : scroll.clientHeight / 2;
+  const before = { scrollLeft: scroll.scrollLeft, scrollTop: scroll.scrollTop, k: state.k };
+  setZoom(value);
+  const next = scrollToKeepAnchor({
+    ...before,
+    offsetX,
+    offsetY,
+    factor: state.k / before.k,
+    origin: { x: STRUCTURAL_MARGIN.left, y: STRUCTURAL_MARGIN.top },
+  });
+  scroll.scrollLeft = next.scrollLeft;
+  scroll.scrollTop = next.scrollTop;
+}
+
 el('zin').onclick = () => setZoom(state.k * 1.3);
 el('zout').onclick = () => setZoom(state.k / 1.3);
 /*
@@ -717,7 +750,13 @@ elements.scroll.addEventListener(
   'wheel',
   (event) => {
     if (isStructuralMode(state.mode)) {
+      // The wheel zooms, about the pointer, with no modifier — and only over the surface,
+      // since this listener is the surface's (decision 119). Fine steps: a notch is ~10%.
       event.preventDefault();
+      zoomAround(state.k * (event.deltaY < 0 ? 1.1 : 1 / 1.1), {
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
       return;
     }
     if (!event.ctrlKey) return;
