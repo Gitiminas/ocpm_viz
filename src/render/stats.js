@@ -38,8 +38,6 @@ export function renderStats({
   index,
   gridEl,
   landmarksEl,
-  breadcrumbEl,
-  description,
   hiddenSummary,
   onRerender,
   /*
@@ -53,7 +51,6 @@ export function renderStats({
    */
   objectColors = new Map(),
 }) {
-  breadcrumbEl.textContent = description;
   gridEl.innerHTML = '';
   gridEl.style.cssText = 'display:flex;flex-direction:column;gap:var(--space-4)';
 

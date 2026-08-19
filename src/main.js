@@ -8,7 +8,7 @@
 
 /* global d3 */
 
-import { describeSubLog, summarizeSubLog, seedObjects } from './data/loadObjectGraph.js';
+import { summarizeSubLog, seedObjects } from './data/loadObjectGraph.js';
 import { createSource, resolveQuery } from './data/source.js';
 import { TRAVERSAL_DEGREE } from './data/api.js';
 import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
@@ -79,7 +79,6 @@ const elements = {
   toast: el('toast'),
   statsGrid: el('statsGrid'),
   statsLandmarks: el('statsLandmarks'),
-  statsBreadcrumb: el('statsBreadcrumb'),
   repoInput: el('repoInput'),
   repoDropdown: el('repoDropdown'),
   objectInput: el('objectInput'),
@@ -108,7 +107,7 @@ const state = createState();
 const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.wrap });
 const actorCard = createActorCard({ element: elements.actorCard });
 
-let current = null; // { graph, index, actorColors, description }
+let current = null; // { graph, index, actorColors, … }
 /** So a `?brush=` in the opening URL survives the first load's reset. */
 let firstLoad = true;
 let relSync = () => {};
@@ -242,7 +241,6 @@ async function load(query) {
   const actorColors = new Map(actors.map((actor, i) => [actor.id, actorColor(i)]));
   for (const actor of actors) actor.eventCount = index.eventCountByActor.get(actor.id) || 0;
 
-  const description = describeSubLog(graph);
 
   // The toggle vocabulary is derived from what this sub-log actually contains,
   // never enumerated — a different sub-log gets different controls.
@@ -286,7 +284,6 @@ async function load(query) {
     graph,
     index,
     actorColors,
-    description,
     query,
     toggleContext,
     objectColors,
@@ -452,7 +449,7 @@ function showToast(message) {
  */
 function refreshStats() {
   if (!current) return;
-  const { graph, index, groupsByCommit, toggleContext, description, objectColors } = current;
+  const { graph, index, groupsByCommit, toggleContext, objectColors } = current;
   // ⚠️ Guarded, because this is reached from a click handler as well as from `load()`.
   // Unguarded, a throw here left an empty dashboard and a console line — and from the
   // startup path the explanation went to the *timeline's* surface, invisible from here.
@@ -465,8 +462,6 @@ function refreshStats() {
       objectColors,
       gridEl: elements.statsGrid,
       landmarksEl: elements.statsLandmarks,
-      breadcrumbEl: elements.statsBreadcrumb,
-      description,
       hiddenSummary: summarizeHidden(state, toggleContext),
       onRerender: refreshStats,
     });

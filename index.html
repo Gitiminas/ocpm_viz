@@ -332,8 +332,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div id="hiddenBanner" style="display:none;flex:0 0 auto"></div>
 </main>
 <main id="statsPage" style="flex:1;min-width:0;display:none;flex-direction:column;padding:var(--space-8);overflow:auto">
-<h1 style="font-size:20px;margin:0 0 6px">Sub-log statistics</h1>
-<div class="mono" style="font-size:12px;color:var(--color-neutral-400);margin-bottom:var(--space-6)" id="statsBreadcrumb">…</div>
+<h1 style="font-size:20px;margin:0 0 var(--space-6)">Sub-log statistics</h1>
+<!-- No one-line description here either: the sub-log card in the shared sidebar states
+     what the query returned, on this page as on the timeline (decision 115). -->
 <!--
   This page's message surface, and a sibling of the dashboards for the same reason
   #chartMessage is a sibling of #chart: the renderer owns what is inside, and a message
