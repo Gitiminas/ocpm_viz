@@ -24,7 +24,7 @@ import { buildAdjacency, focusSet } from '../model/graph.js';
 import { deriveCommitGroups } from '../model/commitGroups.js';
 import { createLayout, isStructuralMode } from '../layout/engine.js';
 import { edgeDirection, brushRange } from '../layout/structural.js';
-import { renderStructuralEdges, renderStructuralNodes } from './structural.js';
+import { renderStructuralEdges, renderStructuralNodes, renderFoldHandles } from './structural.js';
 import { createMotion } from './motion.js';
 import { renderAxis } from './axis.js';
 import { renderLinks } from './links.js';
@@ -293,6 +293,17 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       // render starts from where the layout put things rather than from wherever the
       // drift had wandered to at that instant — otherwise a re-render would inherit a
       // fraction of the wobble and the picture would creep.
+      // Fold handles for the pushes that are open — after the marks, so a handle is
+      // never drawn under one; redrawn with everything else on the next render.
+      renderFoldHandles({
+        gNode: layers.node,
+        bursts,
+        expandedBursts: state.expandedBursts,
+        nodeByObject: layout.nodeByObject,
+        tooltip,
+        onCollapse: (burst) => handlers.onCollapseBurst(burst),
+      });
+
       lastStructuralAt = new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
       lastGestures = liveMarks;
       motion.play({ marks: liveMarks, edges: liveEdges });

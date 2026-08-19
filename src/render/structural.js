@@ -329,6 +329,80 @@ function edgeCard(group, source, target, heading) {
 }
 
 /**
+ * The fold handle for every expanded push: a "−" pill above the push's commits.
+ *
+ * The timeline's handle (`render/nodes.js` `renderBurstHandles`) sits on the time axis at
+ * the push's instant, which this mode does not have — its anchors refuse `xOfTime` on
+ * purpose. So an expanded push could be unfolded here and never folded back: the only
+ * way was to leave the mode. The handle here hangs above the centroid of the push's
+ * commit marks instead, with the same tooltip and the same `onCollapseBurst` behind it,
+ * so folding works the same way in every mode.
+ *
+ * ⚠️ Drawn at the LAYOUT positions. The marks themselves settle and drift a few pixels
+ * (`render/motion.js`) and can be dragged; the handle stays where the layout put the
+ * centroid, which is the right place within a few pixels and is redrawn — like every
+ * mark — by the render that follows a drag's end.
+ *
+ * @param {object} options
+ * @param {d3.Selection} options.gNode
+ * @param {Array}  options.bursts           every push (`deriveBursts`)
+ * @param {Set}    options.expandedBursts   the ones currently unfolded
+ * @param {Map}    options.nodeByObject     from the layout — where each commit mark is
+ * @param {object} options.tooltip
+ * @param {Function} options.onCollapse     `(burst) => void`
+ */
+export function renderFoldHandles({ gNode, bursts, expandedBursts, nodeByObject, tooltip, onCollapse }) {
+  const color = COLORS.commit;
+  for (const burst of bursts) {
+    if (!expandedBursts.has(burst.id)) continue;
+    // `commitIds` is a Set (`model/bursts.js`).
+    const members = [...burst.commitIds].map((id) => nodeByObject.get(id)).filter(Boolean);
+    if (!members.length) continue;
+
+    const cx = members.reduce((sum, m) => sum + m.x, 0) / members.length;
+    const top = Math.min(...members.map((m) => m.y - (m.radius ?? 6)));
+
+    const handle = gNode
+      .append('g')
+      .attr('data-legend', 'burst')
+      .attr('transform', `translate(${cx},${top - 16})`)
+      .style('cursor', 'pointer')
+      .on('click', (event) => {
+        event.stopPropagation();
+        onCollapse(burst);
+      });
+    if (tooltip) {
+      tooltip.bind(handle, () => ({
+        accent: 'var(--color-accent)',
+        shape: 'square',
+        kicker: 'Commit · bulk push',
+        title: `Collapse ${burst.size} commits`,
+        rows: [['Push', escapeHtml(burst.pushId), 'mono']],
+        note: 'Click to fold these commits back into one bulk-push node.',
+      }));
+    }
+    handle
+      .append('rect')
+      .attr('x', -13)
+      .attr('y', -10)
+      .attr('width', 26)
+      .attr('height', 20)
+      .attr('rx', 6)
+      .attr('fill', 'var(--color-neutral-900)')
+      .attr('stroke', color)
+      .attr('stroke-width', 1.8);
+    handle
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('font-size', 15)
+      .attr('font-weight', 700)
+      .attr('fill', color)
+      .text('−');
+  }
+}
+
+/**
  * Draw the nodes.
  *
  * One mark per object, in the object's own colour — the same shade the timeline and the
