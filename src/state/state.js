@@ -60,6 +60,12 @@ export function createState() {
      *
      * Deliberately NOT in a preset (decision 28): a preset captures what is shown, not
      * where you were looking, and a hand-nudged node is the latter.
+     *
+     * ⚠️ Keyed by ARRANGEMENT first: `Map<structuralLayout, Map<nodeId, {dx, dy}>>`,
+     * read through `nudgesFor()`. An offset is relative to where *one* arrangement put
+     * the node; re-applied to the other it moved marks by amounts that meant something
+     * somewhere else — a drag in Rows sent clusters off screen. Each arrangement keeps
+     * its own nudges and shows its own computed layout when switched to (decision 117).
      */
     nodeNudges: new Map(),
 
@@ -120,6 +126,20 @@ export function createState() {
 }
 
 /** Stable key for a link's toggle: evidence class plus its sorted type pair. */
+/**
+ * The drag offsets for one arrangement — by default the one currently on — created on
+ * first use. Clearing `state.nodeNudges` itself drops every arrangement's offsets at
+ * once, which is what the reset pill and a new sub-log want.
+ */
+export function nudgesFor(state, layout = state.structuralLayout) {
+  let map = state.nodeNudges.get(layout);
+  if (!map) {
+    map = new Map();
+    state.nodeNudges.set(layout, map);
+  }
+  return map;
+}
+
 export function linkPairKey(link, byId) {
   const source = byId.get(link.source);
   const target = byId.get(link.target);

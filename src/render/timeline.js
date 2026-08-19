@@ -37,7 +37,7 @@ import {
   renderCommentBurstHandles,
 } from './nodes.js';
 import { TYPE, drawSymbol, typeColor, objectShade } from './theme.js';
-import { isNodeVisible, isObjectVisible, isLinkVisible, actorPreview } from '../state/state.js';
+import { isNodeVisible, isObjectVisible, isLinkVisible, actorPreview, nudgesFor } from '../state/state.js';
 
 /**
  * The timeline's frame: room on the left for lane labels, at the bottom for the time axis
@@ -232,7 +232,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       isVisible: (node) => isNodeVisible(node, state, groupsByCommit),
       isLinkVisible: (link) => isLinkVisible(link, index.byId, state, groupsByCommit),
       structuralLayout: state.structuralLayout,
-      nodeNudges: state.nodeNudges,
+      nodeNudges: nudgesFor(state),
       ...frame(),
     });
 

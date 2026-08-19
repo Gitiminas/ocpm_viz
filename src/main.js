@@ -24,6 +24,7 @@ import {
   resetToggles,
   summarizeHidden,
   selectVisible,
+  nudgesFor,
   MIN_ZOOM,
   MAX_ZOOM,
 } from './state/state.js';
@@ -181,7 +182,8 @@ const timeline = createTimeline({
      * declared and it is undoable.
      */
     onNodeDragged(nudges) {
-      for (const { id, dx, dy } of nudges) state.nodeNudges.set(id, { dx, dy });
+      // Into the arrangement that is on: an offset means nothing in the other one.
+      for (const { id, dx, dy } of nudges) nudgesFor(state).set(id, { dx, dy });
     },
 
     onCollapseCommentBurst(burst) {

@@ -17,6 +17,7 @@ import {
   summarizeHidden,
   restoreAll,
   selectVisible,
+  nudgesFor,
 } from '../src/state/state.js';
 import { summarizeSubLog } from '../src/data/loadObjectGraph.js';
 import {
@@ -477,5 +478,32 @@ describe('the sub-log card follows the toggles', () => {
     assert.ok(after.links < total.links, `extracted links should be gone: ${after.links} of ${total.links}`);
     assert.deepEqual([...after.counts], [...total.counts], 'objects are not a link toggle’s business');
     assert.equal(after.events, total.events);
+  });
+});
+
+describe('drag offsets belong to one arrangement', () => {
+  // A nudge is relative to where ONE arrangement put the node. Re-applied to the other it
+  // moved marks by amounts that meant something somewhere else — a drag in Rows sent
+  // clusters off screen. Decision 117: keyed by arrangement, read through nudgesFor().
+  test('a nudge made in rows is not seen by clusters, and each arrangement keeps its own', () => {
+    const state = createState();
+    state.structuralLayout = 'layered';
+    nudgesFor(state).set('n_pr:1', { dx: 40, dy: -10 });
+    assert.deepEqual(nudgesFor(state, 'layered').get('n_pr:1'), { dx: 40, dy: -10 });
+    assert.equal(nudgesFor(state, 'cluster').size, 0, 'clusters must start from its own layout');
+
+    state.structuralLayout = 'cluster';
+    assert.equal(nudgesFor(state).size, 0);
+    nudgesFor(state).set('n_pr:1', { dx: -5, dy: 5 });
+    assert.deepEqual(nudgesFor(state, 'layered').get('n_pr:1'), { dx: 40, dy: -10 }, 'rows keeps its nudge');
+  });
+
+  test('resetting the view clears every arrangement at once', () => {
+    const state = createState();
+    nudgesFor(state, 'layered').set('a', { dx: 1, dy: 1 });
+    nudgesFor(state, 'cluster').set('a', { dx: 2, dy: 2 });
+    state.nodeNudges.clear(); // what the reset pill and a new sub-log do
+    assert.equal(nudgesFor(state, 'layered').size, 0);
+    assert.equal(nudgesFor(state, 'cluster').size, 0);
   });
 });
