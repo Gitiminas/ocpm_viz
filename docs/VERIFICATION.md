@@ -165,7 +165,7 @@ database (`gharchive_ocpm_viz_wsl`, MVs last refreshed 2026-08-02 19:32–19:45 
 | Every actor named by an event has an actor object | `fe.diag_sanity` | 0 |
 | No pair linked twice by the same qualifier | `fe.diag_sanity` | 0 |
 | Both link endpoints are objects (decision 49) | `fe.diag_sanity` | 0 |
-| Exactly 9 distinct activities (decision 40) | `fe.diag_sanity` | 9 |
+| Exactly 10 distinct activities (decision 40 + 123) | `fe.diag_sanity` | 10 (was 9 until 2026-08-19) |
 | `fe.link_mat` matches its live definition | `fe.diag_link_staleness` | drift 0 |
 | Payload satisfies the frontend contract | `scripts/rpc-check.mjs` → `findGraphProblems()` | `[]` |
 | Contract facts the validator has no opinion on | `rpc-check.mjs`: `contract_version`, parseable timestamps, the 4 qualifiers, `link_methods` an array containing `method`, no `repo` type, no `is_bot`, no `CommitsPushed` | pass |
@@ -229,9 +229,10 @@ Stated plainly rather than left to inference.
   repo-typed object is *rejected*. Closed by deletion, like
   `PullRequestMergedOffPlatform` above.
 - ~~**`PullRequestMergedOffPlatform`** is in the vocabulary and mapped, but no fixture
-  produces one.~~ **No longer a gap:** decision 48 removed the activity outright, so there
-  is nothing left to exercise. `tests/model.test.js` now asserts that the name hits the
-  closed-vocabulary throw. The gap was closed by deletion, not by coverage.
+  produces one.~~ **Closed twice over:** decision 48 removed the activity; decision 123
+  (2026-08-19) restored it AND added F14, a fixture that produces one beside a real merge,
+  with `tests/offplatform.test.js` over it. (Under 48, `tests/model.test.js` asserted the
+  name hit the closed-vocabulary throw; it now asserts the opposite.)
 - **Rendering performance** is covered only by a 3-second tripwire on F10's layout,
   not by measurement. Sub-logs are small; if a real one is slow, report it.
 - **No screen size other than 1920×1200** has been checked, deliberately: sizing is
