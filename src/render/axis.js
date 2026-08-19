@@ -182,7 +182,7 @@ export function renderAxis({
     // Every gap keeps its band — bands sit between consecutive ranks and cannot overlap.
     // The LABELS can: zoomed out on kubernetes #47532 they drew over each other until
     // none read. Colliding labels merge into ONE that states the total and the count
-    // ("≈ 1 year · 4 gaps"), because the honest quantity for a crowded stretch is the
+    // ("≈ 1 year (4 gaps)"), because the honest quantity for a crowded stretch is the
     // sum of its silences — a first attempt kept only the biggest gap's label, and
     // "≈ 5 months" over a region hiding nearly a year under-reported it. Zooming in
     // spreads the bands and the groups fall apart into individual labels by themselves.
@@ -221,7 +221,7 @@ const GAP_LABEL_GAP_PX = 8;
 function gapGroupLabel(gaps) {
   if (gaps.length === 1) return formatApproxDuration(gaps[0].duration);
   const total = gaps.reduce((sum, gap) => sum + gap.duration, 0);
-  return `${formatApproxDuration(total)} · ${gaps.length} gaps`;
+  return `${formatApproxDuration(total)} (${gaps.length} gaps)`;
 }
 
 /** Where a group's label sits and how far it reaches, centred over the group's bands. */

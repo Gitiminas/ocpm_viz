@@ -276,7 +276,7 @@ describe('large gap annotation', () => {
 
 describe('discrete-mode gap labels merge when they would collide', () => {
   // The bands between ranks cannot overlap; the centred duration labels can. Colliding
-  // labels merge into one that states the SUM and the COUNT — "≈ 2 months · 3 gaps" —
+  // labels merge into one that states the SUM and the COUNT — "≈ 2 months (3 gaps)" —
   // because a first attempt that kept only the biggest gap's label under-reported a
   // crowded stretch (kubernetes #47532: "≈ 5 months" shown over nearly a year of gaps).
   const DAY = 24 * 60 * 60 * 1000;
@@ -288,7 +288,7 @@ describe('discrete-mode gap labels merge when they would collide', () => {
     assert.equal(groups.length, 1);
     assert.equal(groups[0].gaps.length, 3);
     // 340 days ≈ 11 months, and the count says it is an aggregate, not one gap.
-    assert.equal(groups[0].label, '≈ 11 months · 3 gaps');
+    assert.equal(groups[0].label, '≈ 11 months (3 gaps)');
     // Centred over the group's whole extent.
     assert.equal(groups[0].x, (100 + 140) / 2);
   });
@@ -305,7 +305,7 @@ describe('discrete-mode gap labels merge when they would collide', () => {
     // Two tight pairs whose merged labels are wide enough to touch each other.
     const groups = mergeGapLabels([gap(100, 30), gap(112, 30), gap(160, 30), gap(172, 30)]);
     assert.equal(groups.length, 1, `expected one group, got ${groups.map((g) => g.label).join(' | ')}`);
-    assert.equal(groups[0].label, '≈ 4 months · 4 gaps');
+    assert.equal(groups[0].label, '≈ 4 months (4 gaps)');
   });
 
   test('no group label overlaps another, whatever the input', async () => {
