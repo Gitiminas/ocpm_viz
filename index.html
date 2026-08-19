@@ -74,6 +74,12 @@ html,body{height:100%;margin:0;overflow:hidden}
 .switch .seg-opt.on{background:var(--color-accent-600,#5b5bd6);color:#fff;box-shadow:none}
 .switch .seg-opt.on::before{background:#fff;border-color:#fff;opacity:1}
 .switch .seg-opt:not(.on):hover{background:color-mix(in srgb, var(--color-text) 9%, transparent);color:var(--color-text)}
+/* ⚠️ The design system's own hover rule is `.seg-opt:not(:has(input:checked)):hover`.
+   These options carry no <input>, so it matches the SELECTED one too and painted the
+   filled switch grey on hover — reported as the selection "losing its colour". Stated
+   explicitly for the selected side of both controls: hovering brightens, never unfills. */
+.switch .seg-opt.on:hover{background:color-mix(in srgb, var(--color-accent-600,#5b5bd6) 85%, #fff);color:#fff}
+.seg:not(.switch) .seg-opt.on:hover{background:color-mix(in srgb, var(--color-accent) 12%, transparent);color:var(--color-accent)}
 /* One track, two thumbs. The inputs are stacked on the same rail and are transparent to
    the pointer except at the thumbs, so a click on the rail cannot make one handle leap
    across the other. */
