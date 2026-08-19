@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Issue-to-merge OCEL timeline</title>
+<title>GitHub issue-to-merge sub-log (OCEL)</title>
 <link rel="stylesheet" href="_ds/nocturne-90dff482-d3ab-493c-9c6f-cf149f916d6f/styles.css">
 <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
@@ -105,7 +105,10 @@ html,body{height:100%;margin:0;overflow:hidden}
 </div>
 <div style="margin-bottom:var(--space-8)">
 <!-- "OCEL case" in the mockup. There is no case in OCPM (decision 1). -->
-<div class="mono" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-300);margin-bottom:6px">Sub-log</div>
+<!-- The tool's name lives here, at the head of the query it is always about, rather
+     than as a page title above the chart: the chart's header row is for the mode and zoom
+     controls, and a title there repeated what the sidebar already says. -->
+<div class="mono" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-300);margin-bottom:6px">GitHub issue-to-merge sub-log (OCEL)</div>
 <!--
   Which data source is live, always visible and always switchable.
 
@@ -220,11 +223,10 @@ html,body{height:100%;margin:0;overflow:hidden}
 </div>
 <main id="timelinePage" style="flex:1;min-width:0;display:flex;flex-direction:column;padding:var(--space-6) var(--space-8);gap:var(--space-4);overflow:hidden">
 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-6);flex:0 0 auto;flex-wrap:wrap">
-<div style="flex:1 1 auto;min-width:0">
-<h1 style="font-size:20px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Issue-to-merge OCEL timeline</h1>
-<!-- The one-line sub-log description that used to sit here moved into the sidebar as a
-     card (#subLogCard), beside the traversal degree it belongs with. -->
-</div>
+<!-- No page title: the tool's name heads the sidebar's Sub-log section, and the one-line
+     description that used to sit here is the sub-log card (#subLogCard). This spacer keeps
+     the mode and zoom controls on the right. -->
+<div style="flex:1 1 auto;min-width:0"></div>
 <div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap">
 <div class="mono" id="focusInfo" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
 <!--
