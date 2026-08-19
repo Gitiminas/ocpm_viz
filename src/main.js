@@ -86,6 +86,10 @@ const elements = {
   traversalInfo: el('traversalInfo'),
 };
 
+// The sub-log card is present from the first paint, titled and empty, so the sidebar has
+// its final shape before anything is loaded (`render/subLogCard.js`).
+renderSubLogCard({ container: elements.subLogCard, summary: null });
+
 /*
  * One message surface per page, each a sibling of the thing it stands in for.
  *
@@ -1023,6 +1027,7 @@ async function reload(query) {
  */
 function showSeedPrompt(repoName) {
   wireSelectors(repoName, null, null);
+  renderSubLogCard({ container: elements.subLogCard, summary: null });
   const html = messageHtml(
     `Choose something to start from${repoName ? ` in ${escapeForHtml(repoName)}` : ''}`,
     'A sub-log is a repository <em>and</em> an object to traverse out from, so there is ' +

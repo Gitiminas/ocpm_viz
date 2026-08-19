@@ -45,15 +45,23 @@ const LABEL =
   'font-size:9.5px;color:var(--color-neutral-500);line-height:1.25;white-space:nowrap;' +
   'overflow:hidden;text-overflow:ellipsis';
 const NOTE = 'font-size:10px;color:var(--color-neutral-300);line-height:1.4';
+/*
+ * The card's name is its own line, ruled off from the tiles, so it reads as a title and
+ * not as a caption of the first row. "Currently displayed" is what every number below
+ * means; the right-hand hint appears only when that differs from the payload.
+ */
 const KICKER =
   'font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500);' +
-  'display:flex;justify-content:space-between;gap:8px';
+  'display:flex;justify-content:space-between;gap:8px;padding-bottom:6px;' +
+  'border-bottom:1px solid var(--color-neutral-800);margin:0 -2px';
+const EMPTY = 'font-size:10.5px;color:var(--color-neutral-500);line-height:1.4;font-style:italic';
 const OF_TOTAL = 'font-size:10px;font-weight:400;color:var(--color-neutral-500);margin-left:3px';
 
 /**
  * @param {object} options
  * @param {HTMLElement} options.container  emptied and refilled
- * @param {object} options.summary         `summarizeSubLog` over what is VISIBLE
+ * @param {object|null} options.summary    `summarizeSubLog` over what is VISIBLE, or null
+ *   when no sub-log is loaded — the card stays, titled, and says so
  * @param {object} [options.total]         `summarizeSubLog` over the whole payload; where
  *   a count differs from the visible one, the tile shows both ("6 / 8")
  * @param {string[]} [options.notes]       plain sentences worth stating with the numbers —
@@ -62,6 +70,20 @@ const OF_TOTAL = 'font-size:10px;font-weight:400;color:var(--color-neutral-500);
 export function renderSubLogCard({ container, summary, total = summary, notes = [] }) {
   container.innerHTML = '';
   container.style.cssText = CARD;
+
+  // The empty state keeps the card in place with its title, so the sidebar does not
+  // rearrange itself when a sub-log arrives and a reader learns where the numbers will be.
+  if (!summary) {
+    const kicker = document.createElement('div');
+    kicker.style.cssText = KICKER;
+    kicker.textContent = 'Currently displayed';
+    container.appendChild(kicker);
+    const empty = document.createElement('div');
+    empty.style.cssText = EMPTY;
+    empty.textContent = 'No sub-log loaded yet.';
+    container.appendChild(empty);
+    return;
+  }
 
   const anyHidden =
     COUNTED_TYPES.some((type) => (total.counts.get(type) ?? 0) !== (summary.counts.get(type) ?? 0)) ||
