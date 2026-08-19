@@ -35,7 +35,7 @@ const plural = (word, n) => (n === 1 ? word : `${word}s`);
 
 export const TIPS = Object.freeze({
   // ---- pages ----------------------------------------------------------------------
-  'page.timeline': 'The timeline page: the sub-log drawn over time, or as a graph of relationships.',
+  'page.trace': 'The trace page: the sub-log drawn over time, or as a graph of relationships.',
   'page.stats': 'The statistics page: durations, counts and gaps for each object, computed from what is currently shown.',
 
   // ---- the query ------------------------------------------------------------------
