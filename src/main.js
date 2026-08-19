@@ -848,6 +848,8 @@ for (const dashboard of [
 ]) {
   const row = document.createElement('label');
   row.className = 'sideRow on';
+  row.dataset.tip = 'stats.dashboard';
+  row.dataset.tipArg = dashboard[1].toLowerCase();
   row.style.cssText =
     'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);cursor:pointer';
   row.innerHTML =
@@ -973,8 +975,8 @@ const source = createSource();
  */
 function renderSourceToggle() {
   const OPTIONS = [
-    { id: 'fixtures', label: 'Fixtures', note: 'Pre-built test sub-logs. No database.' },
-    { id: 'database', label: 'Database', note: 'Live via PostgREST. Seed from any object.' },
+    { id: 'fixtures', label: 'Fixtures', tip: 'source.fixtures', note: 'Pre-built test sub-logs. No database.' },
+    { id: 'database', label: 'Database', tip: 'source.database', note: 'Live via PostgREST. Seed from any object.' },
   ];
 
   elements.sourceToggle.innerHTML = '';
@@ -983,7 +985,7 @@ function renderSourceToggle() {
     const button = document.createElement('button');
     button.className = 'mono';
     button.textContent = option.label;
-    button.dataset.tip = `source.${option.id}`;
+    button.dataset.tip = option.tip;
     button.style.cssText =
       'flex:1;cursor:pointer;border:none;padding:6px 8px;font-size:11.5px;font-weight:600;' +
       (active

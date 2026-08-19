@@ -28,9 +28,17 @@ const SUB_WRAP =
   'flex-direction:column;gap:2px;padding:4px 8px 6px 30px;border-left:1px solid var(--color-neutral-800);margin-left:14px';
 
 /** A nested checkbox row: label, optional colour swatch, optional count badge. */
-function subRow({ label, checked, swatch, count, onChange }) {
+/** Stamp a row with the help strip's label (`help/tips.js`): `tip = { key, arg }`. */
+function stampTip(element, tip) {
+  if (!tip) return;
+  element.dataset.tip = tip.key;
+  if (tip.arg != null) element.dataset.tipArg = String(tip.arg);
+}
+
+function subRow({ label, checked, swatch, count, onChange, tip = null }) {
   const row = document.createElement('label');
   row.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;padding:1px 0';
+  stampTip(row, tip);
   row.innerHTML =
     `<input type="checkbox" style="${SUB_CHECKBOX}">` +
     (swatch
@@ -49,11 +57,12 @@ function subRow({ label, checked, swatch, count, onChange }) {
 }
 
 /** A section with a master checkbox, a chevron and a list of children. */
-function masterSection({ label, open, children, onMasterChange, onToggleOpen }) {
+function masterSection({ label, open, children, onMasterChange, onToggleOpen, tip = null }) {
   const wrapper = document.createElement('div');
   const row = document.createElement('div');
   row.className = 'sideRow on';
   row.style.cssText = ROW;
+  stampTip(row, tip);
 
   const chev = chevron(open);
   const labelEl = document.createElement('label');
@@ -121,6 +130,7 @@ export function renderLaneRows({
     if (hasComments) {
       const { row } = subRow({
         label: 'Comments',
+        tip: { key: 'lane.comments', arg: laneType },
         checked: state.showComments[laneType] !== false,
         onChange: (checked) => {
           state.showComments[laneType] = checked;
@@ -138,6 +148,7 @@ export function renderLaneRows({
         for (const group of commitGroups) {
           const { row, checkbox } = subRow({
             label: `${group.label} · ${group.commitIds.size}`,
+            tip: { key: 'lane.group' },
             checked: !state.hiddenCommitGroups.has(group.key),
             swatch: group.prId ? objectColors.get(group.prId) : 'var(--color-neutral-600)',
             onChange: (checked) => {
@@ -155,6 +166,7 @@ export function renderLaneRows({
       for (const object of objects) {
         const { row, checkbox } = subRow({
           label: object.label || object.id,
+          tip: { key: 'lane.object' },
           checked: !state.hiddenObjects.has(object.id),
           swatch: objectColors.get(object.id) || typeColor(laneType),
           onChange: (checked) => {
@@ -170,6 +182,7 @@ export function renderLaneRows({
 
     const section = masterSection({
       label: spec.label,
+      tip: { key: 'lane', arg: laneType },
       open: state.laneOpen[laneType],
       children,
       onMasterChange: (checked) => {
@@ -224,6 +237,7 @@ export function renderRelationshipRows({
     const children = group.pairs.map((pair) => {
       const { row, checkbox } = subRow({
         label: pair.label,
+        tip: { key: 'rel.pair', arg: pair.label },
         checked: state.relPairs[pair.key] !== false,
         onChange: (checked) => {
           state.relPairs[pair.key] = checked;
@@ -237,6 +251,8 @@ export function renderRelationshipRows({
 
     const section = masterSection({
       label: group.label,
+      // The two evidence classes have their own texts (`rel.validated`, `rel.extracted`).
+      tip: { key: group.key === 'validated' ? 'rel.validated' : 'rel.extracted' },
       open: state.relOpen[group.key],
       children,
       onMasterChange: (checked) => {
@@ -282,6 +298,7 @@ export function renderRelationshipRows({
     const children = entries.map((entry) => {
       const { row, checkbox } = subRow({
         label: entry.label,
+        tip: { key: key === 'qualifiers' ? 'rel.qualifier' : 'rel.method', arg: entry.label },
         checked: bag[entry.key] !== false,
         count: entry.count,
         onChange: (checked) => {
@@ -296,6 +313,7 @@ export function renderRelationshipRows({
 
     const section = masterSection({
       label,
+      tip: { key: key === 'qualifiers' ? 'rel.qualifiers' : 'rel.methods' },
       open: state.relOpen[key],
       children,
       onMasterChange: (checked) => {
@@ -354,6 +372,7 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
    */
   const pushes = document.createElement('div');
   pushes.className = 'mono';
+  pushes.dataset.tip = 'folding.pushes';
   pushes.style.cssText = 'font-size:11px;color:var(--color-neutral-400);line-height:1.5';
   pushes.innerHTML =
     `Pushes fold by <span style="color:var(--color-text)">push id</span>` +
@@ -371,6 +390,7 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
    */
   const commentLabel = document.createElement('div');
   commentLabel.className = 'mono';
+  commentLabel.dataset.tip = 'folding.commentWindow';
   commentLabel.style.cssText =
     'font-size:11px;color:var(--color-neutral-400);display:flex;justify-content:space-between;margin-top:12px';
   const commentValue = () =>
@@ -383,6 +403,7 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
   commentSlider.type = 'range';
   commentSlider.min = '0';
   commentSlider.max = '30';
+  commentSlider.dataset.tip = 'folding.commentWindow';
   commentSlider.value = String(state.commentWindowDays);
   commentSlider.style.cssText = 'width:100%;accent-color:var(--color-accent);cursor:pointer';
   commentSlider.addEventListener('input', () => {
@@ -413,6 +434,7 @@ export function renderActorRows({
   for (const actor of actors) {
     const row = document.createElement('div');
     row.className = 'sideRow';
+    row.dataset.tip = 'actors.row';
     row.dataset.login = String(actor.vmap?.login || actor.label || '').toLowerCase();
     row.style.cssText =
       'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius-sm)';
@@ -425,7 +447,7 @@ export function renderActorRows({
       `<span class="mono" style="font-size:10px;color:var(--color-neutral-500);background:var(--color-neutral-900);` +
       `padding:2px 6px;border-radius:999px">${actor.eventCount}</span>` +
       `<span class="actorProfileBtn" style="display:inline-flex;flex:0 0 auto;color:var(--color-neutral-500);` +
-      `cursor:pointer;padding:2px" title="View profile">` +
+      `cursor:pointer;padding:2px" data-tip="actors.profile">` +
       `<svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" ` +
       `stroke-width="2" viewbox="0 0 24 24" width="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2">` +
       `</path><circle cx="12" cy="7" r="4"></circle></svg></span>`;

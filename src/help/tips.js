@@ -110,6 +110,7 @@ export const TIPS = Object.freeze({
   'hidden.chip': 'Something that is hidden. Click to show it again.',
   'hidden.restoreAll': 'Show everything again.',
   'stats.dashboard': (name) => `Show or hide the ${name || 'dashboard'} below.`,
+  'stats.group': 'One object type, summarised. Click the row to show or hide its individual objects.',
   'fold.handle': 'Fold these commits back into one push mark.',
 
   // ---- marks and legend rows (legend.<key>, shared by the rows and the marks) -----

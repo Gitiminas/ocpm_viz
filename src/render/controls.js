@@ -58,7 +58,7 @@ export function renderHiddenBanner({ container, summary, state, onRestore }) {
   for (const item of summary.items) {
     const chip = document.createElement('button');
     chip.className = 'mono';
-    chip.title = 'Click to restore';
+    chip.dataset.tip = 'hidden.chip';
     chip.style.cssText =
       'font-size:11px;color:var(--color-text);background:var(--color-neutral-900);cursor:pointer;' +
       'border:1px solid var(--color-neutral-700);border-radius:999px;padding:2px 9px;display:flex;' +
@@ -77,6 +77,7 @@ export function renderHiddenBanner({ container, summary, state, onRestore }) {
     'margin-left:auto;font-size:11px;color:var(--color-accent-300);background:none;cursor:pointer;' +
     'border:1px solid var(--color-accent);border-radius:var(--radius-sm);padding:3px 10px';
   restoreAll.textContent = 'Show everything';
+  restoreAll.dataset.tip = 'hidden.restoreAll';
   restoreAll.addEventListener('click', () => {
     for (const item of summary.items) item.restore(state);
     onRestore();
@@ -128,7 +129,10 @@ export function renderPresetPanel({
     row.className = 'sideRow';
     row.style.cssText =
       'display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--radius-sm)';
-    if (description) row.title = description;
+    // The help strip explains a view by its own description (`views.preset` takes it as
+    // its argument); a saved view without one gets the generic sentence.
+    row.dataset.tip = 'views.preset';
+    if (description) row.dataset.tipArg = description;
 
     const label = document.createElement('span');
     label.className = 'mono';
@@ -142,7 +146,7 @@ export function renderPresetPanel({
     for (const action of actions) {
       const el = document.createElement('span');
       el.className = 'mono';
-      el.title = action.title;
+      el.dataset.tip = action.tip;
       el.textContent = action.glyph;
       el.style.cssText =
         'font-size:11px;color:var(--color-neutral-500);cursor:pointer;padding:0 3px;flex:0 0 auto';
@@ -190,7 +194,7 @@ export function renderPresetPanel({
         actions: [
           {
             glyph: '✎',
-            title: 'Rename',
+            tip: 'views.rename',
             run: () => {
               const next = window.prompt('Rename view', name);
               if (next && renamePreset(name, next)) onToast('Renamed');
@@ -199,7 +203,7 @@ export function renderPresetPanel({
           },
           {
             glyph: '×',
-            title: 'Delete',
+            tip: 'views.delete',
             run: () => {
               if (window.confirm(`Delete the saved view "${name}"?`)) {
                 deletePreset(name);
@@ -218,6 +222,7 @@ export function renderPresetPanel({
   actions.style.cssText = 'display:flex;gap:6px;padding-top:8px;flex-wrap:wrap';
 
   const saveButton = button('Save current view', { primary: true });
+  saveButton.dataset.tip = 'views.save';
   saveButton.addEventListener('click', () => {
     const name = window.prompt('Name this view');
     if (!name) return;
@@ -227,8 +232,7 @@ export function renderPresetPanel({
   });
 
   const shareButton = button('Copy link');
-  shareButton.title =
-    'A URL carrying both the query and the filters — the reproducibility mechanism for the evaluation';
+  shareButton.dataset.tip = 'views.copyLink';
   shareButton.addEventListener('click', async () => {
     const url = presetUrl(window.location.href, query, serializeState(state), view());
     try {

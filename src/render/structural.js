@@ -366,6 +366,7 @@ export function renderFoldHandles({ gNode, bursts, expandedBursts, nodeByObject,
     // it must not light the "bulk push" legend row when no bulk-push node is drawn.
     const handle = gNode
       .append('g')
+      .attr('data-tip', 'fold.handle')
       .attr('transform', `translate(${cx},${top - 16})`)
       .style('cursor', 'pointer')
       .on('click', (event) => {

@@ -249,6 +249,10 @@ export function renderLegend(container, present = null) {
 
     for (const row of section.rows) {
       const element = document.createElement('div');
+      // The help strip's label. `data-tip`, not `data-legend`: `highlightLegendGroup`
+      // styles every `[data-legend]` in the document, and a row that carried one would
+      // restyle itself when hovered.
+      if (row.key) element.dataset.tip = `legend.${row.key}`;
       element.style.cssText =
         'display:flex;align-items:center;gap:8px;font-size:11px;color:var(--color-neutral-400);' +
         'padding:5px 8px;border-radius:var(--radius-sm);cursor:default;' +

@@ -93,7 +93,7 @@ export function renderSubLogCard({ container, summary, total = summary, notes = 
   kicker.style.cssText = KICKER;
   kicker.innerHTML =
     '<span>Currently displayed</span>' +
-    (anyHidden ? '<span title="Some of the sub-log is hidden by the current view; the hidden-state banner below the chart says what">of the sub-log</span>' : '');
+    (anyHidden ? '<span>of the sub-log</span>' : '');
   container.appendChild(kicker);
 
   // Row 1 — what the sub-log is made of. The glyph is the same drawing the lanes and the
@@ -110,7 +110,7 @@ export function renderSubLogCard({ container, summary, total = summary, notes = 
         of: all,
         label,
         glyph: glyph(TYPE[type]?.shape ?? 'circle', TYPE[type]?.color ?? 'var(--color-neutral-400)'),
-        title: all === n ? `${n} ${label} in the sub-log` : `${n} of ${all} ${label} shown; ${all - n} hidden by the current view`,
+        tip: { key: 'card.type', arg: type },
       }),
     );
   }
@@ -128,10 +128,7 @@ export function renderSubLogCard({ container, summary, total = summary, notes = 
       value: String(summary.links),
       of: total.links,
       label: plural('Link', total.links),
-      title:
-        total.links === summary.links
-          ? 'Links between objects, every evidence class'
-          : `${summary.links} of ${total.links} links shown; the rest are switched off or join hidden objects`,
+      tip: { key: 'card.links' },
     }),
   );
   joins.appendChild(
@@ -139,10 +136,7 @@ export function renderSubLogCard({ container, summary, total = summary, notes = 
       value: String(summary.events),
       of: total.events,
       label: plural('Event', total.events),
-      title:
-        total.events === summary.events
-          ? 'Events across every object'
-          : `${summary.events} of ${total.events} events shown; the rest belong to hidden objects or are hidden comments`,
+      tip: { key: 'card.events' },
     }),
   );
   const span = summary.span
@@ -153,7 +147,7 @@ export function renderSubLogCard({ container, summary, total = summary, notes = 
         }
       : { value: 'one instant', label: `${formatDateYear(summary.span.first)} UTC` }
     : { value: '—', label: 'no events' };
-  const spanTile = tile({ ...span, title: `First event to last, UTC: ${span.label}` });
+  const spanTile = tile({ ...span, tip: { key: 'card.span' } });
   spanTile.style.gridColumn = 'span 2';
   // Two dates and the zone are the one label allowed to wrap: truncating would drop the
   // zone, and every time in this tool is labelled UTC (CLAUDE.md).
@@ -172,12 +166,16 @@ export function renderSubLogCard({ container, summary, total = summary, notes = 
 /**
  * One stat tile: optional glyph + value on the first line, label on the second. When a
  * total is given and differs from the value, the value reads "n / total" with the total
- * muted — the visible number stays the loud one, the payload's the reference.
+ * muted — the visible number stays the loud one, the payload's the reference. The tile
+ * carries its help-strip label (`tip`) instead of a browser tooltip.
  */
-function tile({ value, of = null, label, glyph: glyphMarkup = '', title = '' }) {
+function tile({ value, of = null, label, glyph: glyphMarkup = '', tip = null }) {
   const el = document.createElement('div');
   el.style.cssText = TILE;
-  if (title) el.title = title;
+  if (tip) {
+    el.dataset.tip = tip.key;
+    if (tip.arg != null) el.dataset.tipArg = String(tip.arg);
+  }
   const ofTotal =
     of != null && String(of) !== value ? `<span style="${OF_TOTAL}">/ ${escapeHtml(String(of))}</span>` : '';
   el.innerHTML =

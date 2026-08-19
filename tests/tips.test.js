@@ -87,6 +87,24 @@ describe('labels and texts agree', () => {
     assert.deepEqual(missing, [], `data-tip keys with no text: ${missing.join(', ')}`);
   });
 
+  test('every text is shown by something — a quoted key in the markup or a renderer', async () => {
+    // The reverse direction (S3). A `legend.<key>` text is reached through a mark's
+    // `data-legend` or a legend row's `data-tip`, so those count as referenced when the
+    // key is a legend key; everything else must appear as a quoted literal somewhere
+    // outside tips.js — as a data-tip attribute, a dataset.tip assignment, or a tip key.
+    const corpus = [];
+    for (const file of await sourceFiles()) {
+      if (file.endsWith('help/tips.js')) continue;
+      corpus.push(await readFile(file, 'utf8'));
+    }
+    const text = corpus.join('\n');
+    const unreferenced = Object.keys(TIPS).filter((key) => {
+      if (key.startsWith('legend.')) return !LEGEND_KEYS.includes(key.slice('legend.'.length));
+      return !text.includes(`'${key}'`) && !text.includes(`"${key}"`) && !text.includes(`\`${key}\``);
+    });
+    assert.deepEqual(unreferenced, [], `texts nothing shows: ${unreferenced.join(', ')}`);
+  });
+
   test('every legend key has a legend.<key> text — marks and legend rows share it', () => {
     const missing = LEGEND_KEYS.filter((key) => !(`legend.${key}` in TIPS));
     assert.deepEqual(missing, []);

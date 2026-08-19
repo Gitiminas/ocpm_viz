@@ -533,6 +533,7 @@ export function renderBurstHandles({ gNode, bursts, state, geometry, anchors, to
 
     const handle = gNode
       .append('g')
+      .attr('data-tip', 'fold.handle')
       .attr('transform', `translate(${x},${y})`)
       .style('cursor', 'pointer')
       .on('click', (event) => {

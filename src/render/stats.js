@@ -122,7 +122,7 @@ function buildTable(groups, onRerender, objectColors = new Map()) {
     // "aggregable on demand" of decision 8, rather than a fixed level of detail.
     const groupRow = document.createElement('tr');
     groupRow.style.cssText = 'cursor:pointer;background:var(--color-neutral-900)';
-    groupRow.title = collapsed ? 'Show individual objects' : 'Collapse to the aggregate';
+    groupRow.dataset.tip = 'stats.group';
     groupRow.addEventListener('click', () => {
       if (collapsed) collapsedTypes.delete(group.type);
       else collapsedTypes.add(group.type);
