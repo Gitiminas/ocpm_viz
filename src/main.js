@@ -418,6 +418,7 @@ function redraw() {
   // with them rather than stacking (the failure decision 75 records).
   renderLegend(elements.legend, legendKeysPresentIn(elements.chart));
   if (!current) return;
+  updateSubLogCard();
   renderHiddenBanner({
     container: elements.hiddenBanner,
     summary: summarizeHidden(state, current.toggleContext),
@@ -1085,6 +1086,23 @@ function updateTraversalInfo(graph) {
    * *subtracted*; this declares what the data never had, which is the other way a sparse
    * picture misleads.
    */
+  elements.traversalInfo.innerHTML = degreeNote;
+  bindDegreeControl(graph);
+  // The card itself is drawn by `updateSubLogCard`, from `redraw()`, because its numbers
+  // follow the toggles; `load()` ends in a `redraw()`, so it is drawn on load too.
+}
+
+/**
+ * The sub-log card: what is CURRENTLY DISPLAYED, against the payload.
+ *
+ * Summarised over `selectVisible(...)` — the same selection the statistics page computes
+ * from (decision 12) — so hiding a lane, a relationship class or the comments changes
+ * the numbers, and each tile shows "n / total" where they differ. Called from `redraw()`
+ * beside the hidden-state banner, which is the other place that says what is hidden.
+ */
+function updateSubLogCard() {
+  if (!current) return;
+  const { graph, groupsByCommit } = current;
   const notes = [];
   if (graph.links.length === 0) {
     notes.push(
@@ -1092,10 +1110,12 @@ function updateTraversalInfo(graph) {
         'traverse to. The object itself is shown.',
     );
   }
-
-  elements.traversalInfo.innerHTML = degreeNote;
-  bindDegreeControl(graph);
-  renderSubLogCard({ container: elements.subLogCard, summary: summarizeSubLog(graph), notes });
+  renderSubLogCard({
+    container: elements.subLogCard,
+    summary: summarizeSubLog(selectVisible(graph, state, groupsByCommit)),
+    total: summarizeSubLog(graph),
+    notes,
+  });
 }
 
 /** Reload at a new degree, keeping the rest of the query. */

@@ -16,7 +16,9 @@ import {
   isLinkVisible,
   summarizeHidden,
   restoreAll,
+  selectVisible,
 } from '../src/state/state.js';
+import { summarizeSubLog } from '../src/data/loadObjectGraph.js';
 import {
   serializeState,
   applyState,
@@ -443,5 +445,37 @@ describe('presets', () => {
     const preset = BUILT_IN_PRESETS.find((p) => p.name === 'Everything');
     applyState(c.state, preset.build(c.ctx));
     assert.equal(summarizeHidden(c.state, c.ctx).anyHidden, false);
+  });
+});
+
+describe('the sub-log card follows the toggles', () => {
+  // The card summarises `selectVisible(...)` — the same selection the statistics page
+  // computes from (decision 12) — against the payload's totals, so it can never say
+  // "this sub-log has N" when the truth is "you are looking at N of M" (decision 116).
+  test('hiding the pull-request lane drops the PR count and the links that reach them', async () => {
+    const c = await context('F10');
+    const total = summarizeSubLog(c.graph);
+    const before = summarizeSubLog(selectVisible(c.graph, c.state, c.groupsByCommit));
+    assert.deepEqual([...before.counts], [...total.counts], 'nothing hidden: visible equals payload');
+    assert.equal(before.links, total.links);
+
+    c.state.lanes.pull_request = false;
+    const after = summarizeSubLog(selectVisible(c.graph, c.state, c.groupsByCommit));
+    assert.equal(after.counts.get('pull_request') ?? 0, 0);
+    assert.equal(after.counts.get('issue'), total.counts.get('issue'), 'the issue lane is untouched');
+    assert.ok(after.links < total.links, 'links into the hidden lane are no longer displayed');
+    assert.ok(after.events < total.events, 'the pull requests’ events are no longer displayed');
+  });
+
+  test('switching off an evidence class drops links and nothing else', async () => {
+    const c = await context('F1');
+    const total = summarizeSubLog(c.graph);
+    for (const key of Object.keys(c.state.relPairs)) {
+      if (key.startsWith('extracted')) c.state.relPairs[key] = false;
+    }
+    const after = summarizeSubLog(selectVisible(c.graph, c.state, c.groupsByCommit));
+    assert.ok(after.links < total.links, `extracted links should be gone: ${after.links} of ${total.links}`);
+    assert.deepEqual([...after.counts], [...total.counts], 'objects are not a link toggle’s business');
+    assert.equal(after.events, total.events);
   });
 });

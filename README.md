@@ -38,8 +38,9 @@ Two fields, in this order:
 
 The sub-log on screen is what a traversal outwards from that seed returns. The sidebar
 states the query — repository, seed, traversal degree — and, in a small card beneath the
-degree, what it returned: counts by object type, links, events and the span of time they
-cover. There is deliberately no "case": the same event may belong to many sub-logs.
+degree, what is currently displayed: counts by object type, links, events and the span of
+time they cover — against the payload's totals wherever a toggle has hidden something.
+There is deliberately no "case": the same event may belong to many sub-logs.
 
 `?repo=&seed=` reproduces a selection by link; add `?preset=` to carry the filters too.
 
