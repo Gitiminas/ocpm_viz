@@ -306,6 +306,11 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       // render starts from where the layout put things rather than from wherever the
       // drift had wandered to at that instant — otherwise a re-render would inherit a
       // fraction of the wobble and the picture would creep.
+      // Pinned actor trails — the same drawing the timeline uses, into the halo layer,
+      // which sits ABOVE the links: a trail under the thick validated lines was nearly
+      // invisible. Hover previews draw the same way via previewActor, one layer up.
+      renderActorTrails({ gHalo: layers.halo, nodes, state, actorColors: context.actorColors });
+
       // Fold handles for the pushes that are open — after the marks, so a handle is
       // never drawn under one; redrawn with everything else on the next render.
       renderFoldHandles({

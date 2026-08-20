@@ -153,7 +153,11 @@ export function buildStructuralNodes({
       lifecycle: [],
       commentCount: 0,
       eventCount: burst.size,
-      actorIds: [],
+      // The push's recorded pushers — what lets the actor trail pass through the fold
+      // (a set: a re-pushed commit's first-seen pusher can be a different account).
+      actorIds: [
+        ...new Set([...burst.commitIds].map((id) => index.pusherByCommit.get(id)).filter(Boolean)),
+      ],
       isBurst: true,
       burst,
       radius: burstRadius(burst.size),

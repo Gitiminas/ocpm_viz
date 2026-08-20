@@ -173,25 +173,34 @@ export function actorPoints(nodes, actorId) {
       });
       continue;
     }
-    if (node.actorId === actorId) {
-      points.push({ x: node.x, y: node.y, t: node.t, ring: node.isComment ? 10 : 14 });
+    /*
+     * A mark standing for SEVERAL events — a folded push, a run of comments, or a
+     * relationships-mode object, which collapses its whole lifecycle into one mark —
+     * has no single actorId, and the trail used to skip it: an actor's path visibly
+     * broke wherever their work was folded, and only unfolding brought it back. Such
+     * marks carry every member's actor; the trail passes through when the actor is in
+     * there, and `mixed` says whether the mark is theirs alone (solid ring) or shared
+     * (dashed). Checked BEFORE the single-actor field, which on a collapsed mark names
+     * only the first event's actor and would claim sole authorship of a shared one.
+     *
+     * The ring hugs the mark: its own radius where it has one (relationships mode sizes
+     * marks individually), else the timeline's fixed glyph sizes.
+     */
+    const ringFor = (fallback) => (node.radius != null ? node.radius + 5 : fallback);
+    if (node.actorIds?.length) {
+      if (node.actorIds.includes(actorId)) {
+        points.push({
+          x: node.x,
+          y: node.y,
+          t: node.t,
+          ring: ringFor(node.isBurst ? 18 : 12),
+          mixed: node.actorIds.length > 1,
+        });
+      }
       continue;
     }
-    /*
-     * A FOLDED mark — a push, or a run of comments — has no single actorId, and the
-     * trail used to skip it: an actor's path visibly broke wherever their work was
-     * folded, and only unfolding brought it back. The fold carries every member's
-     * actor, so the trail passes through it, and `mixed` says whether the fold is
-     * this actor alone (solid ring) or shared with others (dashed ring).
-     */
-    if (node.actorIds?.includes(actorId)) {
-      points.push({
-        x: node.x,
-        y: node.y,
-        t: node.t,
-        ring: node.isBurst ? 18 : 12,
-        mixed: node.actorIds.length > 1,
-      });
+    if (node.actorId === actorId) {
+      points.push({ x: node.x, y: node.y, t: node.t, ring: ringFor(node.isComment ? 10 : 14) });
     }
   }
   return points.sort((a, b) => +a.t - +b.t);

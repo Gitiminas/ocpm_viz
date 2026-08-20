@@ -571,3 +571,40 @@ describe('the relationships hovercard leads with a real timestamp, once', async 
     assert.equal(card.rows[0][0], 'Time');
   });
 });
+
+describe('relationships-mode marks carry their actors for the trail', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { loadObjectGraph } = await import('../src/data/loadObjectGraph.js');
+  const { indexObjectGraph } = await import('../src/model/objectGraph.js');
+  const { deriveBursts } = await import('../src/model/bursts.js');
+  const { LANE_TYPES } = await import('../src/model/activities.js');
+  const { buildStructuralNodes } = await import('../src/layout/structural.js');
+  const { actorPoints } = await import('../src/render/nodes.js');
+
+  const graph = await loadObjectGraph(
+    { fixture: 'F10' },
+    { transport: async () => JSON.parse(await readFile(new URL('./fixtures/F10.json', import.meta.url), 'utf8')) },
+  );
+  const index = indexObjectGraph(graph);
+  const nodes = buildStructuralNodes({
+    index,
+    bursts: deriveBursts(index.objectsOfType('commit')),
+    expandedBursts: new Set(),
+    laneTypes: LANE_TYPES,
+  });
+
+  test('a folded push names its pushers, so the trail can pass through it', () => {
+    const burst = nodes.find((node) => node.isBurst);
+    assert.ok(burst.actorIds.length > 0, 'a folded push with no actors breaks the trail');
+    assert.ok(burst.actorIds.every((id) => id.startsWith('actor:')));
+  });
+
+  test('the trail ring hugs each mark: its own radius plus the margin', () => {
+    const anyActor = nodes.find((node) => node.actorIds?.length)?.actorIds[0];
+    const points = actorPoints(nodes.map((n) => ({ ...n, x: 0, y: 0 })), anyActor);
+    assert.ok(points.length > 0);
+    for (const point of points) {
+      assert.ok(point.ring >= 11, `a ring of ${point.ring} would sit inside a structural mark`);
+    }
+  });
+});
