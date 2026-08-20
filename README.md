@@ -310,8 +310,11 @@ What is **not** done:
   `ref_match` narrowing (decisions 80 and 62 — 80 replaced 61) makes every commit-link
   count a **floor**, and
   the per-repo spread is a fork-vs-branch contribution artifact, not a process difference.
-- **Interaction has no automated coverage** — tooltips, minimap drag, legend hover, and
-  the relationships mode's drag, whose feel was tuned by hand and measured in Node (decision 106).
+- **Interaction has no automated coverage** — tooltips, minimap drag, legend hover, the
+  help strip, the actor card's hover-to-ring, and the relationships mode's drag, whose
+  feel was tuned by hand and measured in Node (decision 106). The pure halves (tip
+  resolution, `markForEvent`, `actorPoints`, pan arithmetic) are tested; the pointer
+  paths themselves are checked by eye.
 - **Sizing has not been tuned** beyond 1920×1200.
 - **The mode-to-mode tween is deferred** (decision 108): switching between a timeline
   and relationships mode cuts. Relationships mode's own known weak points — label collisions on a large hub

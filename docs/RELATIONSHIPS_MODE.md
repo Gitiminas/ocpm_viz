@@ -56,6 +56,7 @@ the capacity limit of both arrangements).
 | `src/render/structural.js` | Drawing, hovercards, dragging |
 | `src/render/motion.js` | Settle + idle drift, `pushApart` |
 | `src/render/pan.js` | Drag the background to pan, once zoomed in (decision 118) |
+| — actor trails | Motion handles beside the marks and links, so drag and drift carry them (decision 126); folds ring solid when one actor's, dashed when shared |
 | `vendor/d3-force.js` | 15.7 KB, d3-force 3.0.0, ISC, unmodified. See `vendor/README.md` |
 
 `layout/` stays DOM-free and is exercised in bare Node. That is the project's own test of
