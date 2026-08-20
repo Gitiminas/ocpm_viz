@@ -34,8 +34,9 @@ html,body{height:100%;margin:0;overflow:hidden}
    surface saying "there is more", expanding while the pointer is on it. Hoverable only
    when the card is pinned, which is what the pin is for. max-height rather than
    line-clamp because a clamp cannot transition, and the grow is the affordance. */
-#tip .tip-excerpt{font-size:11.5px;line-height:1.5;color:var(--color-neutral-300);white-space:pre-wrap;word-break:break-word}
-#tip .tip-excerpt-text{position:relative}
+#tip .tip-excerpt{font-size:11.5px;line-height:1.5;color:var(--color-neutral-300)}
+#tip .tip-excerpt-body{padding:7px 10px;cursor:pointer}
+#tip .tip-excerpt-text{position:relative;white-space:pre-wrap;word-break:break-word}
 #tip .tip-excerpt.clamp .tip-excerpt-text{max-height:6em;overflow:hidden;transition:max-height .25s ease}
 #tip .tip-excerpt.clamp:hover .tip-excerpt-text{max-height:34em}
 #tip .tip-excerpt.clamp .tip-excerpt-text::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2.6em;background:linear-gradient(transparent, var(--color-surface));pointer-events:none;transition:opacity .2s ease}
@@ -44,7 +45,11 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip .tip-excerpt-more{display:block;text-align:right;margin-top:3px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent-300);transition:opacity .2s ease}
 #tip .tip-excerpt:not(.clamp) .tip-excerpt-more{display:none}
 #tip .tip-excerpt.clamp:hover .tip-excerpt-more{opacity:0}
-#tip .tip-excerpt-cut{font-size:10px;font-style:italic;color:var(--color-neutral-500);margin-top:4px}
+/* The shortened note appears with the full excerpt: while clamped, the fade is the one
+   more-indicator, and the note would claim a cut the reader cannot see yet. */
+#tip .tip-excerpt-cut{display:none;font-size:10px;font-style:italic;color:var(--color-neutral-500);margin-top:4px}
+#tip .tip-excerpt.clamp:hover .tip-excerpt-cut{display:block}
+#tip .tip-excerpt:not(.clamp) .tip-excerpt-cut{display:block}
 #tip .tip-row:last-child{border-bottom:none}
 #tip .tip-row .k{font-size:10px;font-weight:500;color:var(--color-neutral-500);text-transform:uppercase;letter-spacing:.05em}
 #tip .tip-row .v{font-size:12px;color:var(--color-text);text-align:right;word-break:break-word}

@@ -30,7 +30,13 @@ describe('the excerpt block', () => {
     assert.ok(!excerptHtml({ excerptText: long }).includes('tip-excerpt-cut'));
     const cut = excerptHtml({ excerptText: 'x'.repeat(500), truncated: true });
     assert.ok(cut.includes('clamp'));
-    assert.ok(cut.includes('shortened'));
+    assert.ok(cut.includes('shortened (full text on GitHub)'));
+  });
+
+  test('the block is a headed section, so prose is not fighting the k/v layout', () => {
+    const html = excerptHtml({ excerptText: 'Some words.' });
+    assert.ok(html.includes('tip-group'), 'the group box is the section treatment');
+    assert.ok(html.includes('Comment text'), 'headed by the field, like the observation list');
   });
 });
 
