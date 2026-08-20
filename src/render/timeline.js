@@ -39,6 +39,7 @@ import {
   renderLifecycleBars,
   renderSequenceLines,
   renderActorTrails,
+  markForEvent,
   renderBurstHandles,
   renderCommentBurstHandles,
 } from './nodes.js';
@@ -214,6 +215,27 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       ordered.forEach((object, i) => colors.set(object.id, objectShade(laneType, i)));
     }
     return colors;
+  }
+
+  /**
+   * Ring one event's mark, or clear the ring. Drawn into the preview layer, like the
+   * actor hover trail, so it cannot outlive a redraw; resolving the event to a mark —
+   * through whatever fold carries it — is `markForEvent`.
+   */
+  function highlightEvent(event) {
+    layers.preview.selectAll('*').remove();
+    if (!event) return;
+    const node = markForEvent(lastNodes, event);
+    if (!node) return;
+    layers.preview
+      .append('circle')
+      .attr('cx', node.x)
+      .attr('cy', node.y)
+      .attr('r', (node.radius ?? (node.isComment ? 6 : 8)) + 7)
+      .attr('fill', 'none')
+      .attr('stroke', 'var(--color-accent)')
+      .attr('stroke-width', 2.5)
+      .attr('opacity', 0.95);
   }
 
   /** Capture current positions so the next render animates from them. */
@@ -572,6 +594,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     measure,
     render,
     previewActor,
+    highlightEvent,
     setGraph,
     captureTween,
     syncStickyLabels,

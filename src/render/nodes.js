@@ -860,6 +860,27 @@ function shortRef(ref) {
   return String(ref).replace(/^refs\/(heads|tags)\//, '');
 }
 
+/**
+ * The drawn mark that stands for one EVENT, whatever is folded.
+ *
+ * The actor card's rows are events; highlighting one means finding the mark that carries
+ * it right now: the event's own node when it is drawn unfolded, the comment run it was
+ * folded into, the push its commit was folded into, or — in relationships mode, where an
+ * object is one mark for its whole lifecycle — the object's mark. Returns null when the
+ * event's mark is filtered out entirely, which is an honest answer: there is nothing on
+ * screen to point at.
+ */
+export function markForEvent(nodes, event) {
+  if (!event) return null;
+  return (
+    nodes.find((node) => node.event?.id === event.id) ??
+    nodes.find((node) => node.isCommentBurst && node.commentBurst?.eventIds?.includes(event.id)) ??
+    nodes.find((node) => node.isBurst && node.burst?.commitIds?.has(event.object_id)) ??
+    nodes.find((node) => node.objectId === event.object_id) ??
+    null
+  );
+}
+
 export function trailCurve(a, b) {
   const midX = (a.x + b.x) / 2;
   return `M${a.x},${a.y} C ${midX},${a.y} ${midX},${b.y} ${b.x},${b.y}`;

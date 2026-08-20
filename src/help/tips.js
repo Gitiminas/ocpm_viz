@@ -94,6 +94,7 @@ export const TIPS = Object.freeze({
   'actors.search': 'Filter the list of actors by login.',
   'actors.row': 'One actor. Hover to preview everything they touched, click to keep it shown.',
   'actors.profile': 'Open a card with everything this actor did in the sub-log.',
+  'actors.entry': 'One thing this actor did. Hovering rings it in the picture, clicking copies it.',
 
   // ---- mode and view controls ---------------------------------------------------
   'mode.time': 'Position means time. Each object has a lane, and marks sit where their events happened.',

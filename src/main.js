@@ -116,7 +116,12 @@ const statsSurface = createMessageSurface({
 
 const state = createState();
 const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.wrap });
-const actorCard = createActorCard({ element: elements.actorCard });
+const actorCard = createActorCard({
+  element: elements.actorCard,
+  // Hovering an activity row rings exactly that event's mark in the chart — through
+  // whatever fold currently carries it (`markForEvent`).
+  onHoverItem: (event) => timeline.highlightEvent(event),
+});
 
 let current = null; // { graph, index, actorColors, … }
 /** So a `?brush=` in the opening URL survives the first load's reset. */

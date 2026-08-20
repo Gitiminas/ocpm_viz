@@ -7,7 +7,7 @@ import { indexObjectGraph, normalizeGraph } from '../src/model/objectGraph.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { deriveCommentBursts } from '../src/model/commentBursts.js';
 import { isUnmergedClose } from '../src/model/activities.js';
-import { actorPoints, expandedCommentRuns } from '../src/render/nodes.js';
+import { actorPoints, expandedCommentRuns, markForEvent } from '../src/render/nodes.js';
 import { buildNodes, assignRanks, filterNodes } from '../src/layout/nodes.js';
 import { packRows } from '../src/layout/packing.js';
 import {
@@ -670,5 +670,29 @@ describe('the actor trail passes through folded marks', () => {
       assert.ok(burst.actorIds.length > 0, `${burst.id} names no actors`);
       assert.ok(burst.actorIds.every((id) => id.startsWith('actor:')));
     }
+  });
+});
+
+describe('an actor-card row finds its mark, through whatever fold carries it', () => {
+  const nodes = [
+    { id: 'n_e1', event: { id: 'e1' }, objectId: 'issue:1' },
+    { id: 'n_cb', isCommentBurst: true, commentBurst: { eventIds: ['e2', 'e3'] }, objectId: 'issue:1' },
+    { id: 'n_burst', isBurst: true, burst: { commitIds: new Set(['commit:a', 'commit:b']) } },
+    { id: 'n_obj', objectId: 'pr:9' },
+  ];
+
+  test('unfolded event → its own node; folded comment → the run; folded commit → the push', () => {
+    assert.equal(markForEvent(nodes, { id: 'e1', object_id: 'issue:1' }).id, 'n_e1');
+    assert.equal(markForEvent(nodes, { id: 'e3', object_id: 'issue:1' }).id, 'n_cb');
+    assert.equal(markForEvent(nodes, { id: 'e9', object_id: 'commit:b' }).id, 'n_burst');
+  });
+
+  test('relationships mode: the object mark stands for every one of its events', () => {
+    assert.equal(markForEvent(nodes, { id: 'e7', object_id: 'pr:9' }).id, 'n_obj');
+  });
+
+  test('an event whose mark is filtered out resolves to nothing, not to a wrong mark', () => {
+    assert.equal(markForEvent(nodes, { id: 'e8', object_id: 'commit:zz' }), null);
+    assert.equal(markForEvent(nodes, null), null);
   });
 });
