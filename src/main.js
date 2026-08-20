@@ -1081,7 +1081,11 @@ function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
   });
 }
 
-const seedLabel = (seed) => `${seed.type.replace('_', ' ')} ${seed.label}`;
+// "pull request #116416", not "pull request PR #116416": a PR's own label starts with
+// "PR", which the spelled-out type already says. Display only — matching parses the
+// TYPED text ("pr 116416") against seed.type and the digits, never against this string.
+const seedLabel = (seed) =>
+  `${seed.type.replace('_', ' ')} ${seed.type === 'pull_request' ? String(seed.label).replace(/^PR\s+/, '') : seed.label}`;
 
 async function reload(query) {
   try {
