@@ -693,7 +693,7 @@ export function renderCommentBurstHandles({
   }
 }
 
-function nodeTooltipSpec(node, actorLogin) {
+export function nodeTooltipSpec(node, actorLogin) {
   if (node.isCommentBurst) {
     const burst = node.commentBurst;
     return {
@@ -800,6 +800,15 @@ function nodeTooltipSpec(node, actorLogin) {
   ];
   if (node.event?.attrs?.auto_closed) {
     rows.push(['Auto-close', escapeHtml(String(node.event.attrs.auto_closed).replace(/^via /, ''))]);
+  }
+  // The comment's own words (decision 124): the payload ships the first 500 characters
+  // on the event's attrs, the card shows the opening lines and expands under the pointer.
+  // Raw text here — `excerptHtml` in render/tooltip.js is the one place it is escaped.
+  if (node.isComment && node.event?.attrs?.comment_excerpt) {
+    rows.push({
+      excerptText: node.event.attrs.comment_excerpt,
+      truncated: Boolean(node.event.attrs.comment_truncated),
+    });
   }
   return {
     accent: type.color,

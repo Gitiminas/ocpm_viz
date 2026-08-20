@@ -15,6 +15,32 @@ import { escapeHtml } from './format.js';
 import { glyph } from './theme.js';
 
 /**
+ * A comment's text in the card: the opening lines, expanding under the pointer.
+ *
+ * The row arrives as `{excerptText, truncated}` — RAW text, escaped HERE, because
+ * comment bodies are arbitrary user-written GitHub content and this is the one place
+ * they become markup (decision 124; the XSS test pins it). Collapsed, the block clamps
+ * to a few lines with a fade to the card's surface at the bottom and a "hover to read
+ * more" hint — the fade is what says there is more, the hint says how to get it. Hovering
+ * the block (the card must be pinned to be hoverable at all) raises the clamp; the
+ * payload's excerpt is capped at 500 characters server-side, and when even that was cut
+ * the expanded block ends by saying so rather than trailing off silently.
+ */
+export function excerptHtml({ excerptText, truncated = false }) {
+  const text = escapeHtml(String(excerptText));
+  const cutNote = truncated
+    ? '<div class="tip-excerpt-cut">shortened — full text on GitHub</div>'
+    : '';
+  // Clamp only when there is something to hide: short comments show whole, no fade.
+  const clamp = truncated || String(excerptText).length > 200 ? ' clamp' : '';
+  return (
+    `<div class="tip-excerpt${clamp}">` +
+    `<div class="tip-excerpt-text">${text}</div>` +
+    `${cutNote}<div class="tip-excerpt-more">hover to read more</div></div>`
+  );
+}
+
+/**
  * @param {{tipEl: HTMLElement, wrapEl: HTMLElement}} elements
  */
 export function createTooltip({ tipEl, wrapEl }) {
@@ -104,7 +130,8 @@ export function createTooltip({ tipEl, wrapEl }) {
     }
   }
 
-  /**
+  
+/**
    * A boxed group of related entries.
    *
    * A repeated list — a commit's push observations, say — rendered as plain rows reads
@@ -151,6 +178,7 @@ export function createTooltip({ tipEl, wrapEl }) {
     const rows = spec.rows
       .filter(Boolean)
       .map((row) => {
+        if (!Array.isArray(row) && row.excerptText != null) return excerptHtml(row);
         if (!Array.isArray(row)) return groupHtml(row);
         const [label, value, className] = row;
         return (

@@ -27,6 +27,19 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip .tip-title{font-size:14px;font-weight:500;color:var(--color-text);line-height:1.4;word-break:break-word;font-family:var(--font-heading)}
 #tip .tip-body{padding:10px 14px;display:flex;flex-direction:column;gap:6px}
 #tip .tip-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:3px 0;border-bottom:1px dashed var(--color-neutral-800)}
+/* The comment excerpt (decision 124): collapsed to a few lines with a fade to the card's
+   surface saying "there is more", expanding while the pointer is on it. Hoverable only
+   when the card is pinned, which is what the pin is for. max-height rather than
+   line-clamp because a clamp cannot transition, and the grow is the affordance. */
+#tip .tip-excerpt{position:relative;font-size:11.5px;line-height:1.5;color:var(--color-neutral-300);white-space:pre-wrap;word-break:break-word}
+#tip .tip-excerpt.clamp{max-height:6em;overflow:hidden;transition:max-height .25s ease}
+#tip .tip-excerpt.clamp:hover{max-height:34em}
+#tip .tip-excerpt.clamp::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2.6em;background:linear-gradient(transparent, var(--color-surface));pointer-events:none;transition:opacity .2s ease}
+#tip .tip-excerpt.clamp:hover::after{opacity:0}
+#tip .tip-excerpt-more{position:absolute;bottom:1px;right:0;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-neutral-500);background:var(--color-surface);padding:0 0 0 6px;transition:opacity .2s ease}
+#tip .tip-excerpt:not(.clamp) .tip-excerpt-more{display:none}
+#tip .tip-excerpt.clamp:hover .tip-excerpt-more{opacity:0}
+#tip .tip-excerpt-cut{font-size:10px;font-style:italic;color:var(--color-neutral-500);margin-top:4px}
 #tip .tip-row:last-child{border-bottom:none}
 #tip .tip-row .k{font-size:10px;font-weight:500;color:var(--color-neutral-500);text-transform:uppercase;letter-spacing:.05em}
 #tip .tip-row .v{font-size:12px;color:var(--color-text);text-align:right;word-break:break-word}
