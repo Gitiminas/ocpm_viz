@@ -33,10 +33,12 @@ export function excerptHtml({ excerptText, truncated = false }) {
     : '';
   // Clamp only when there is something to hide: short comments show whole, no fade.
   const clamp = truncated || String(excerptText).length > 200 ? ' clamp' : '';
+  // The hint sits BELOW the clamped text on its own solid line, never inside the fade —
+  // over faded words it was barely readable, which defeated a hint.
   return (
     `<div class="tip-excerpt${clamp}">` +
     `<div class="tip-excerpt-text">${text}</div>` +
-    `${cutNote}<div class="tip-excerpt-more">hover to read more</div></div>`
+    `${cutNote}<div class="tip-excerpt-more">hover text to read more</div></div>`
   );
 }
 
@@ -44,6 +46,24 @@ export function excerptHtml({ excerptText, truncated = false }) {
  * @param {{tipEl: HTMLElement, wrapEl: HTMLElement}} elements
  */
 export function createTooltip({ tipEl, wrapEl }) {
+  /*
+   * A pinned card that GROWS — the comment excerpt expanding under the pointer — can run
+   * past the bottom of the surface, since it was positioned when it was smaller. Watch
+   * its size and slide it up just enough to stay inside; guarded because ResizeObserver
+   * does not exist in the Node test runner, where nothing renders anyway.
+   */
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => {
+      if (tipEl.style.display === 'none') return;
+      const bounds = wrapEl.getBoundingClientRect();
+      const rect = tipEl.getBoundingClientRect();
+      const overflow = rect.bottom - bounds.bottom;
+      if (overflow > 0) {
+        const top = Math.max(4, rect.top - bounds.top - overflow - 4);
+        tipEl.style.top = `${top}px`;
+      }
+    }).observe(tipEl);
+  }
   let hideTimer = null;
   let pinned = false;
 
@@ -200,7 +220,8 @@ export function createTooltip({ tipEl, wrapEl }) {
         : '') +
       '<div class="pin-hint">Click a row to copy · Esc to close</div>';
 
-    tipEl.style.display = 'block';
+    // Flex, so the body can scroll under the fixed header when the viewport cap bites.
+    tipEl.style.display = 'flex';
     void tipEl.offsetWidth; // force a reflow so the fade-in transition runs
     tipEl.classList.add('show');
     attachCopyHandlers();
