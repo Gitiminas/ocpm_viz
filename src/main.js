@@ -1056,8 +1056,12 @@ function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
     initialLabel: activeSeed ? seedLabel(activeSeed) : '',
     // Async in both sources; `setupSearchCombo` debounces and guards against a stale
     // response overwriting a fresher one.
+    // The full ranked superset in ONE query (limit 200 is the RPC's own cap, and costs
+    // the same as 20 — measured 585 vs 661 ms); the dropdown reveals it 15 at a time.
+    // Ranking is client-side (decision 64), so server-side paging would page an
+    // UNRANKED superset and shuffle the order between batches.
     search: async (text) =>
-      (await source.searchSeeds(activeRepo?.name, text)).map((seed) => ({
+      (await source.searchSeeds(activeRepo?.name, text, { limit: 200 })).map((seed) => ({
         label: seedLabel(seed),
         note: seed.title || null,
         // What the help strip shows in full while the row is hovered: the type, and the

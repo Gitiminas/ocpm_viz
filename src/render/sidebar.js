@@ -535,6 +535,9 @@ function claimCombo(input) {
  * matters as much as the results: "no match" must say *what* was looked for and
  * why it might not be available.
  */
+/** How many result rows appear per reveal; the rest wait for the scroll. */
+const SEARCH_PAGE_SIZE = 15;
+
 export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyMessage, onSelect }) {
   const bind = claimCombo(input);
   input.value = initialLabel;
@@ -580,7 +583,42 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
       return;
     }
 
-    for (const option of results) {
+    /*
+     * The list reveals itself in pages as the reader scrolls (15 at a time), but the
+     * DATA arrived whole: one ranked query, because ranking is client-side (decision 64)
+     * and paging the server would page an unranked superset. So there is no spinner —
+     * a spinner over results already in memory would be theatre — the next page simply
+     * fades in the moment the bottom comes into view. When even the 200-row superset
+     * was full, the tail says so and how to get the rest, rather than pretending the
+     * list ended.
+     */
+    let shown = 0;
+    const revealNext = () => {
+      const page = results.slice(shown, shown + SEARCH_PAGE_SIZE);
+      shown += page.length;
+      for (const option of page) appendRow(option);
+      if (shown >= results.length) {
+        sentinel.remove();
+        if (results.length >= 200) {
+          const cap = document.createElement('div');
+          cap.style.cssText =
+            'padding:8px 12px;font-size:10.5px;color:var(--color-neutral-500);font-style:italic';
+          cap.textContent = '200 shown — narrow the search to see the rest.';
+          dropdown.appendChild(cap);
+        }
+      } else {
+        dropdown.appendChild(sentinel); // keep it below the freshly revealed rows
+      }
+    };
+
+    // The sentinel row: reaching it reveals the next page. Kept visually quiet — three
+    // dots, not a spinner, since nothing is loading.
+    const sentinel = document.createElement('div');
+    sentinel.style.cssText =
+      'padding:6px 12px;font-size:11px;color:var(--color-neutral-600);text-align:center';
+    sentinel.textContent = '···';
+
+    const appendRow = (option) => {
       const row = document.createElement('div');
       row.className = 'mono';
       // The row truncates the title; the help strip does not. Hovering a result shows
@@ -615,8 +653,21 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
         dropdown.style.display = 'none';
         onSelect?.(option);
       });
+      row.classList.add('searchRowIn'); // a brief fade, so a revealed page blends in
       dropdown.appendChild(row);
-    }
+    };
+
+    revealNext();
+
+    // Reaching the bottom reveals the next page. The dropdown is the scroll container;
+    // rebound on every render because the listener closes over THIS render's state, and
+    // a stale one would append rows from a superseded search.
+    dropdown.onscroll = () => {
+      if (shown >= results.length) return;
+      if (dropdown.scrollTop + dropdown.clientHeight >= dropdown.scrollHeight - 24) {
+        revealNext();
+      }
+    };
   }
 
   input.addEventListener('focus', () => {

@@ -95,6 +95,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 #helpStrip.isDefault{border-left-color:var(--color-neutral-700)}
 #helpStrip.isDefault::before{color:var(--color-neutral-600)}
 #helpStrip.isDefault .helpText{color:var(--color-neutral-500);font-style:italic}
+/* A search page revealed on scroll blends in rather than popping (setupSearchCombo). */
+@keyframes searchRowIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.searchRowIn{animation:searchRowIn .18s ease}
 /* The FIRST level of the mode control is a switch, not a segment (decision 114): a pill
    whose active side is filled, with a radio dot as the literal indicator. It is drawn
    differently from the second-level segments on purpose — outlined alike, "Time |
