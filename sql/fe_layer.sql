@@ -108,6 +108,13 @@ CREATE INDEX IF NOT EXISTS ix_issues_full_repo_actor
   ON mv_issues_full (repo_id, actor_id);
 CREATE INDEX IF NOT EXISTS ix_icomments_repo_actor
   ON mv_issue_comments_full (repo_id, actor_id);
+-- The comment-excerpt joins in fe.event (decision 124) are by event_id, verified exact:
+-- every comment activity row has exactly one body row. Without these, each comment event
+-- in a sub-log costs a scan of a 2.3M/1.3M-row matview.
+CREATE INDEX IF NOT EXISTS ix_icomments_event
+  ON mv_issue_comments_full (event_id);
+CREATE INDEX IF NOT EXISTS ix_prcomments_event
+  ON mv_pull_request_comments_full (event_id);
 CREATE INDEX IF NOT EXISTS ix_issident_repo_issue
   ON issues_identity (repo_id, issue_id);
 CREATE INDEX IF NOT EXISTS ix_prident_repo_prid
@@ -624,7 +631,24 @@ raw AS (
          'actor:' || a.actor_id::text              AS actor_id,
          a.actor_id                                AS actor_num,
          a.repo_id,
-         '{}'::jsonb                               AS attrs
+         -- The comment's opening, riding on attrs like a push's facts do (decision 44's
+         -- pattern; decision 124). Truncated HERE, not in the client: p95 is ~3k chars
+         -- and the outliers are 260k-char bot logs nobody reads in a card. The flag says
+         -- an excerpt is an excerpt, so the card can show an ellipsis honestly.
+         --
+         -- ⚠️ A correlated subquery, NOT a join. A LEFT JOIN here made the planner hash
+         -- the whole 2.3M-row comment MV before the RPC's object filter could bite —
+         -- measured: the kubernetes #47532 payload went from ~1s to 6.1s. The scalar
+         -- subquery runs once per SURVIVING row, through ix_icomments_event, and the
+         -- payload came back to ~1s. Same trap as the seed lookup (decision 51's 300×).
+         CASE WHEN a.activity_type = 'IssueCommented' THEN
+           COALESCE((SELECT jsonb_build_object(
+                       'comment_excerpt', left(ic.comment_body, 500),
+                       'comment_truncated', length(ic.comment_body) > 500)
+                     FROM mv_issue_comments_full ic
+                     WHERE ic.event_id = a.event_id AND ic.comment_body IS NOT NULL
+                     LIMIT 1), '{}'::jsonb)
+         ELSE '{}'::jsonb END                      AS attrs
   FROM mv_issue_and_issuecomment_activities_full a
   WHERE a.issue_id IS NOT NULL
 
@@ -654,7 +678,17 @@ raw AS (
          'actor:' || a.actor_id::text,
          a.actor_id,
          a.repo_id,
-         '{}'::jsonb
+         -- Same excerpt rule — and the same correlated-subquery shape, for the same
+         -- planner reason — as the issue stream above (decision 124). The event_id
+         -- lookup is exact; G9 touches only the object join below, never this one.
+         CASE WHEN a.activity_type = 'PullRequestCommented' THEN
+           COALESCE((SELECT jsonb_build_object(
+                       'comment_excerpt', left(pc.comment_body, 500),
+                       'comment_truncated', length(pc.comment_body) > 500)
+                     FROM mv_pull_request_comments_full pc
+                     WHERE pc.event_id = a.event_id AND pc.comment_body IS NOT NULL
+                     LIMIT 1), '{}'::jsonb)
+         ELSE '{}'::jsonb END
   FROM mv_pull_request_and_comment_activities_full a
   JOIN fe.object_pull_request o
     ON o.repo_id = a.repo_id AND o.pr_number = a.pr_number
