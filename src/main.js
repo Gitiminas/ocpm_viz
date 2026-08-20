@@ -119,8 +119,8 @@ const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.wrap });
 const actorCard = createActorCard({
   element: elements.actorCard,
   // Hovering an activity row rings exactly that event's mark in the chart — through
-  // whatever fold currently carries it (`markForEvent`).
-  onHoverItem: (event) => timeline.highlightEvent(event),
+  // whatever fold currently carries it (`markForEvent`) — in the actor's own colour.
+  onHoverItem: (event, options) => timeline.highlightEvent(event, options),
 });
 
 let current = null; // { graph, index, actorColors, … }

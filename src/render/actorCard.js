@@ -22,9 +22,10 @@ import { activityLabel } from '../model/activities.js';
 /**
  * @param {object} options
  * @param {HTMLElement} options.element
- * @param {(event: object|null) => void} [options.onHoverItem]  called with the activity
- *   row's EVENT while the pointer is on it, null when it leaves or the card closes —
- *   what lets the chart ring exactly that mark
+ * @param {(event: object|null, options?: {color?: string}) => void} [options.onHoverItem]
+ *   called with the activity row's EVENT and the actor's colour while the pointer is on
+ *   it, null when it leaves or the card closes — what lets the chart ring exactly that
+ *   mark, in the colour the actor wears everywhere else
  */
 export function createActorCard({ element, onHoverItem = () => {} }) {
   const hide = () => {
@@ -118,7 +119,7 @@ export function createActorCard({ element, onHoverItem = () => {} }) {
         `<span class="mono" style="color:var(--color-neutral-500);font-size:10.5px">${formatInstant(item.time)}</span>`;
       row.addEventListener('mouseenter', () => {
         row.style.background = 'color-mix(in srgb, var(--color-text) 6%, transparent)';
-        onHoverItem(item.event);
+        onHoverItem(item.event, { color });
       });
       row.addEventListener('mouseleave', () => {
         row.style.background = '';

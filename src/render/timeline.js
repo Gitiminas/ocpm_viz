@@ -222,7 +222,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
    * actor hover trail, so it cannot outlive a redraw; resolving the event to a mark —
    * through whatever fold carries it — is `markForEvent`.
    */
-  function highlightEvent(event) {
+  function highlightEvent(event, { color } = {}) {
     layers.preview.selectAll('*').remove();
     if (!event) return;
     const node = markForEvent(lastNodes, event);
@@ -233,7 +233,9 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       .attr('cy', node.y)
       .attr('r', (node.radius ?? (node.isComment ? 6 : 8)) + 7)
       .attr('fill', 'none')
-      .attr('stroke', 'var(--color-accent)')
+      // The ACTOR'S colour, when the ring answers "where did this actor act" — the same
+      // colour their sidebar dot and trail wear, so ring and trail read as one voice.
+      .attr('stroke', color || 'var(--color-accent)')
       .attr('stroke-width', 2.5)
       .attr('opacity', 0.95);
   }
