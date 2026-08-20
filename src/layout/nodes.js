@@ -75,6 +75,7 @@ export function buildNodes({
             object,
             t: folded.time,
             actorId: null,
+            actorIds: folded.actorIds ?? [],
             title: `${folded.size} comments`,
             short: `${folded.size} comments`,
             isComment: true,
@@ -159,6 +160,11 @@ function buildCommitNodes({ index, bursts, expandedBursts }) {
       object: { id: burst.id, type: 'commit', label: `${burst.size} commits`, vmap: { push_id: burst.pushId } },
       t: burst.time,
       actorId: null,
+      // One push has one pusher, but a commit's recorded pusher is its FIRST observation,
+      // which for a re-pushed commit may be a different account — so this is a set.
+      actorIds: [
+        ...new Set(burst.commits.map((commit) => index.pusherByCommit.get(commit.id)).filter(Boolean)),
+      ],
       title: `${burst.size} commits`,
       isComment: false,
       landmark: false,

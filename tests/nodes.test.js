@@ -631,3 +631,44 @@ describe('an unfolded comment run can be folded back', () => {
     assert.deepEqual(runs, []);
   });
 });
+
+describe('the actor trail passes through folded marks', () => {
+  // Folds have no single actorId, and the trail used to skip them: an actor's path
+  // visibly broke wherever their work was folded, and only unfolding restored it.
+  const nodes = [
+    { id: 'a', x: 0, y: 0, t: new Date(1), actorId: 'actor:1', isComment: false },
+    // A push with one pusher: on the trail, solid.
+    { id: 'b', x: 10, y: 0, t: new Date(2), actorId: null, isBurst: true, actorIds: ['actor:1'] },
+    // A comment run shared between two actors: on the trail, dashed.
+    { id: 'c', x: 20, y: 0, t: new Date(3), actorId: null, isCommentBurst: true, isComment: true, actorIds: ['actor:1', 'actor:2'] },
+    // A fold with none of this actor's work: not on the trail at all.
+    { id: 'd', x: 30, y: 0, t: new Date(4), actorId: null, isBurst: true, actorIds: ['actor:2'] },
+  ];
+
+  test('folds containing the actor join the trail, flagged solid or mixed', () => {
+    const points = actorPoints(nodes, 'actor:1');
+    assert.equal(points.length, 3);
+    assert.equal(points[1].mixed, false, 'a fold that is all this actor rings solid');
+    assert.equal(points[2].mixed, true, 'a fold shared with others rings dashed');
+    assert.deepEqual(actorPoints(nodes, 'actor:2').map((point) => point.x), [20, 30]);
+  });
+
+  test('a folded run of comments knows who wrote it', async () => {
+    // Derived, not stored: the run's events carry the actors. Window wide enough that
+    // F1's comments certainly fold.
+    const { loadObjectGraph } = await import('../src/data/loadObjectGraph.js');
+    const { indexObjectGraph } = await import('../src/model/objectGraph.js');
+    const { deriveCommentBursts } = await import('../src/model/commentBursts.js');
+    const { readFile } = await import('node:fs/promises');
+    const graph = await loadObjectGraph(
+      { fixture: 'F1' },
+      { transport: async () => JSON.parse(await readFile(new URL('./fixtures/F1.json', import.meta.url), 'utf8')) },
+    );
+    const bursts = deriveCommentBursts(indexObjectGraph(graph), ['issue', 'pull_request'], { windowDays: 365 });
+    assert.ok(bursts.length > 0, 'F1 must fold at least one run at a year-wide window');
+    for (const burst of bursts) {
+      assert.ok(burst.actorIds.length > 0, `${burst.id} names no actors`);
+      assert.ok(burst.actorIds.every((id) => id.startsWith('actor:')));
+    }
+  });
+});

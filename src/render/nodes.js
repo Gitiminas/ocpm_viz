@@ -175,6 +175,23 @@ export function actorPoints(nodes, actorId) {
     }
     if (node.actorId === actorId) {
       points.push({ x: node.x, y: node.y, t: node.t, ring: node.isComment ? 10 : 14 });
+      continue;
+    }
+    /*
+     * A FOLDED mark — a push, or a run of comments — has no single actorId, and the
+     * trail used to skip it: an actor's path visibly broke wherever their work was
+     * folded, and only unfolding brought it back. The fold carries every member's
+     * actor, so the trail passes through it, and `mixed` says whether the fold is
+     * this actor alone (solid ring) or shared with others (dashed ring).
+     */
+    if (node.actorIds?.includes(actorId)) {
+      points.push({
+        x: node.x,
+        y: node.y,
+        t: node.t,
+        ring: node.isBurst ? 18 : 12,
+        mixed: node.actorIds.length > 1,
+      });
     }
   }
   return points.sort((a, b) => +a.t - +b.t);
@@ -197,7 +214,7 @@ export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
         .attr('opacity', 0.8);
     }
     for (const point of mine) {
-      gHalo
+      const ring = gHalo
         .append('circle')
         .attr('data-legend', 'actor-trail')
         .attr('cx', point.x)
@@ -207,6 +224,8 @@ export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
         .attr('stroke', color)
         .attr('stroke-width', 2.5)
         .attr('opacity', 1);
+      // A dashed ring on a folded mark: the actor is in there, and so are others.
+      if (point.mixed) ring.attr('stroke-dasharray', '5 4');
     }
   }
 }

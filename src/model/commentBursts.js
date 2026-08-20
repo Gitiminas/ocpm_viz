@@ -27,7 +27,7 @@ export const MIN_COMMENT_BURST = 2;
  * @param {object}   index       from `indexObjectGraph`
  * @param {string[]} laneTypes   lane-bearing types whose comments can fold (never commit)
  * @param {{windowDays?: number}} options
- * @returns {Array} bursts, each `{id, objectId, lane, eventIds, time, end, size}`
+ * @returns {Array} bursts, each `{id, objectId, lane, eventIds, actorIds, time, end, size}`
  */
 export function deriveCommentBursts(index, laneTypes = ['issue', 'pull_request'], options = {}) {
   const windowDays = options.windowDays ?? DEFAULT_COMMENT_WINDOW_DAYS;
@@ -51,6 +51,9 @@ export function deriveCommentBursts(index, laneTypes = ['issue', 'pull_request']
             objectId: object.id,
             lane: laneType,
             eventIds: run.map((event) => event.id),
+            // Who wrote them — what the actor trail needs to pass through a fold it
+            // would otherwise skip, and to say whether the fold is one voice or several.
+            actorIds: [...new Set(run.map((event) => event.actor_id).filter(Boolean))],
             time: run[0].time,
             end: run[run.length - 1].time,
             size: run.length,

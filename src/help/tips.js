@@ -132,7 +132,7 @@ export const TIPS = Object.freeze({
   'legend.link-crowded': 'More links meet here than can be drawn apart. The number says how many.',
   'legend.precedence-arrow': 'The arrowhead points at the end that came later in time.',
   'legend.sequence': 'The line that joins one object’s own events in order.',
-  'legend.actor-trail': 'The path of the selected actor through everything they touched.',
+  'legend.actor-trail': 'The path of the selected actor through everything they touched. A dashed ring marks a folded mark they share with other actors.',
 });
 
 /**
