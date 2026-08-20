@@ -1060,6 +1060,9 @@ function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
       (await source.searchSeeds(activeRepo?.name, text)).map((seed) => ({
         label: seedLabel(seed),
         note: seed.title || null,
+        // What the help strip shows in full while the row is hovered: the type, and the
+        // whole title (or commit message) the row itself has to truncate.
+        tipText: seed.title ? `${seedLabel(seed)} — ${seed.title}` : null,
         seed: seed.id,
         active: seed.id === activeSeedId,
       })),

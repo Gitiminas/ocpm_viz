@@ -583,6 +583,13 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
     for (const option of results) {
       const row = document.createElement('div');
       row.className = 'mono';
+      // The row truncates the title; the help strip does not. Hovering a result shows
+      // "issue #47532 — the whole title" there, which is where a reader can actually
+      // read it (decision 122's mechanism; `seed.result` takes the text as its argument).
+      if (option.tipText) {
+        row.dataset.tip = 'seed.result';
+        row.dataset.tipArg = option.tipText;
+      }
       row.style.cssText =
         'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;' +
         'font-size:12.5px;cursor:pointer;color:var(--color-text)';

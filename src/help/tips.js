@@ -45,6 +45,9 @@ export const TIPS = Object.freeze({
   'query.seed': 'The object to start from: an issue or PR number, a commit SHA, or some words from a title. The sub-log is everything reached from it.',
   'query.degree': 'How many hops to follow from the starting object. 0 is the object alone, 1 adds what it touches directly, 2 adds what those touch.',
   'query.degree.fixed': 'Pre-built sub-logs were built at a fixed number of hops. Use the database source to change it.',
+  // The one entry whose argument IS the text: a search result's row truncates its title,
+  // so the strip shows the whole thing — "issue #47532 — the full title".
+  'seed.result': (text) => text || 'A search result. Click to load its sub-log.',
 
   // ---- the sub-log card -----------------------------------------------------------
   card: 'What is currently shown, counted. When something is hidden by a toggle, the total follows after a slash.',

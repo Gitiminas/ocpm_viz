@@ -46,8 +46,8 @@ function everyText() {
     const arg =
       key === 'card.type' || key === 'lane' || key === 'lane.comments'
         ? 'pull_request'
-        : key === 'views.preset'
-          ? '' // the entry falls back to its own text when a view has no description
+        : key === 'views.preset' || key === 'seed.result'
+          ? '' // these fall back to their own text when no argument arrives
           : 'something';
     return [key, typeof entry === 'function' ? entry(arg) : entry];
   });
