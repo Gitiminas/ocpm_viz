@@ -121,7 +121,7 @@ export function renderSequenceLines({ gSeq, nodes, laneTypes, focus, objectColor
         gSeq
           .append('path')
           .attr('data-legend', isComment ? 'comments' : 'sequence')
-          .attr('d', curve(a, b))
+          .attr('d', trailCurve(a, b))
           .attr('fill', 'none')
           .attr('stroke', objectColors.get(a.objectId) || typeColor(laneType))
           .attr('stroke-width', 2)
@@ -190,6 +190,7 @@ export function actorPoints(nodes, actorId) {
     if (node.actorIds?.length) {
       if (node.actorIds.includes(actorId)) {
         points.push({
+          id: node.id,
           x: node.x,
           y: node.y,
           t: node.t,
@@ -200,7 +201,7 @@ export function actorPoints(nodes, actorId) {
       continue;
     }
     if (node.actorId === actorId) {
-      points.push({ x: node.x, y: node.y, t: node.t, ring: ringFor(node.isComment ? 10 : 14) });
+      points.push({ id: node.id, x: node.x, y: node.y, t: node.t, ring: ringFor(node.isComment ? 10 : 14) });
     }
   }
   return points.sort((a, b) => +a.t - +b.t);
@@ -215,7 +216,7 @@ export function renderActorTrails({ gHalo, nodes, state, actorColors }) {
       gHalo
         .append('path')
         .attr('data-legend', 'actor-trail')
-        .attr('d', curve(mine[i - 1], mine[i]))
+        .attr('d', trailCurve(mine[i - 1], mine[i]))
         .attr('fill', 'none')
         .attr('stroke', color)
         .attr('stroke-width', 2)
@@ -859,7 +860,7 @@ function shortRef(ref) {
   return String(ref).replace(/^refs\/(heads|tags)\//, '');
 }
 
-function curve(a, b) {
+export function trailCurve(a, b) {
   const midX = (a.x + b.x) / 2;
   return `M${a.x},${a.y} C ${midX},${a.y} ${midX},${b.y} ${b.x},${b.y}`;
 }

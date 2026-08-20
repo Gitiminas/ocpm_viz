@@ -24,7 +24,12 @@ import { buildAdjacency, focusSet } from '../model/graph.js';
 import { deriveCommitGroups } from '../model/commitGroups.js';
 import { createLayout, isStructuralMode } from '../layout/engine.js';
 import { edgeDirection, brushRange } from '../layout/structural.js';
-import { renderStructuralEdges, renderStructuralNodes, renderFoldHandles } from './structural.js';
+import {
+  renderStructuralEdges,
+  renderStructuralNodes,
+  renderFoldHandles,
+  renderStructuralTrails,
+} from './structural.js';
 import { enableCanvasPan } from './pan.js';
 import { createMotion } from './motion.js';
 import { renderAxis } from './axis.js';
@@ -306,10 +311,15 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       // render starts from where the layout put things rather than from wherever the
       // drift had wandered to at that instant — otherwise a re-render would inherit a
       // fraction of the wobble and the picture would creep.
-      // Pinned actor trails — the same drawing the timeline uses, into the halo layer,
-      // which sits ABOVE the links: a trail under the thick validated lines was nearly
-      // invisible. Hover previews draw the same way via previewActor, one layer up.
-      renderActorTrails({ gHalo: layers.halo, nodes, state, actorColors: context.actorColors });
+      // Pinned actor trails, into the halo layer — ABOVE the links, where a trail under
+      // the thick validated lines was nearly invisible — and returned as motion handles
+      // so they follow settling, drift and dragging like the edges do.
+      const trailHandles = renderStructuralTrails({
+        gHalo: layers.halo,
+        nodes,
+        state,
+        actorColors: context.actorColors,
+      });
 
       // Fold handles for the pushes that are open — after the marks, so a handle is
       // never drawn under one; redrawn with everything else on the next render.
@@ -324,7 +334,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
 
       lastStructuralAt = new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
       lastGestures = liveMarks;
-      motion.play({ marks: liveMarks, edges: liveEdges });
+      motion.play({ marks: liveMarks, edges: [...liveEdges, ...trailHandles] });
       handlers.onRendered({
         nodes,
         scales: null,

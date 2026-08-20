@@ -29,7 +29,7 @@ import { TYPE, drawSymbol, typeColor, evidenceStyle, COLORS } from './theme.js';
 import { objectOpacity } from '../model/graph.js';
 import { formatInstant, escapeHtml } from './format.js';
 import { activityLabel } from '../model/activities.js';
-import { legendKeyFor } from './nodes.js';
+import { legendKeyFor, actorPoints, trailCurve } from './nodes.js';
 import { bundleEdges, overlapsBrush } from '../layout/structural.js';
 import { pushApart } from './motion.js';
 import { createDragSimulation } from '../layout/cluster.js';
@@ -326,6 +326,66 @@ function edgeCard(group, source, target, heading) {
         : 'Parsed from a convention nobody enforces — the arrow shows which came first, ' +
           'not which caused which.',
   };
+}
+
+/**
+ * Pinned actor trails that FOLLOW the marks.
+ *
+ * The timeline's `renderActorTrails` draws from positions frozen at render time, which
+ * is right there — nothing moves a timeline mark. Here marks settle, drift and get
+ * dragged, and a static trail stayed behind, visibly detached from the marks it claimed
+ * to join. So the trail is drawn once and then DRIVEN like the edges are: every segment
+ * and ring is returned in the motion contract's edge shape — `{source, target,
+ * apply(from, to)}`, keyed by mark id, a ring being a segment from a mark to itself —
+ * and `motion.paint` re-applies them from the same per-frame positions as everything
+ * else. One system moving everything is what keeps a trail glued to a dragged fold.
+ *
+ * (The hover PREVIEW trail stays static: it lives a pointer-length at a time, and
+ * dragging while hovering the actor list takes a second mouse.)
+ *
+ * @returns {Array} motion edge handles to concatenate with the link edges
+ */
+export function renderStructuralTrails({ gHalo, nodes, state, actorColors }) {
+  const handles = [];
+  for (const actorId of state.actors) {
+    const color = actorColors.get(actorId);
+    const points = actorPoints(nodes, actorId);
+
+    for (let i = 1; i < points.length; i++) {
+      const path = gHalo
+        .append('path')
+        .attr('data-legend', 'actor-trail')
+        .attr('d', trailCurve(points[i - 1], points[i]))
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '4 6')
+        .attr('opacity', 0.8);
+      handles.push({
+        source: points[i - 1].id,
+        target: points[i].id,
+        apply: (from, to) => path.attr('d', trailCurve(from, to)),
+      });
+    }
+    for (const point of points) {
+      const ring = gHalo
+        .append('circle')
+        .attr('data-legend', 'actor-trail')
+        .attr('cx', point.x)
+        .attr('cy', point.y)
+        .attr('r', point.ring)
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', 2.5);
+      if (point.mixed) ring.attr('stroke-dasharray', '5 4');
+      handles.push({
+        source: point.id,
+        target: point.id,
+        apply: (from) => ring.attr('cx', from.x).attr('cy', from.y),
+      });
+    }
+  }
+  return handles;
 }
 
 /**
