@@ -49,7 +49,13 @@ describe('the catalogue describes what can be asked for', () => {
     for (const repo of cat.repos.filter((entry) => entry.available)) {
       for (const seed of repo.seeds) {
         const graph = await readFixture(seed.fixture);
-        assert.equal(graph.meta.repo, repo.name, `${seed.fixture} is not in ${repo.name}`);
+        // The bucket is a picker label, not provenance (decision 125): the payload's own
+        // meta.repo is the truth, and the catalogue's synthetic flag must agree with it.
+        assert.equal(
+          seed.synthetic,
+          Boolean(graph.meta.data_honesty?.synthetic),
+          `${seed.fixture}'s synthetic flag disagrees with its payload`,
+        );
         assert.ok(
           graph.meta.seed.some((entry) => entry.id === seed.id),
           `${seed.fixture} does not declare ${seed.id} as a seed`,
@@ -62,25 +68,31 @@ describe('the catalogue describes what can be asked for', () => {
     }
   });
 
-  test('repositories in scope but without data are listed, not omitted', async () => {
-    const cat = await catalogue();
-    const unavailable = cat.repos.filter((repo) => !repo.available).map((repo) => repo.name);
-    // Their absence is itself the RQ2 finding; a picker that never mentioned them
-    // would hide the limitation.
-    assert.ok(unavailable.includes('facebook/react'));
-    assert.ok(unavailable.includes('kubernetes/kubernetes'));
-    for (const repo of cat.repos.filter((entry) => !entry.available)) {
-      assert.ok(repo.reason, `${repo.name} must say why it is unavailable`);
-      assert.deepEqual(repo.seeds, []);
-    }
+  test('one bucket, nothing unavailable, and the real sub-logs lead it (decision 125)', () => {
+    // The picker lists exactly what this source can serve; the source toggle's note is
+    // the pointer to the database. Amends decision 34's shown-disabled rule.
+    return catalogue().then((cat) => {
+      assert.equal(cat.repos.length, 1);
+      assert.equal(cat.repos[0].name, 'synthetic/fixture');
+      assert.ok(cat.repos.every((repo) => repo.available));
+      // F1 and the LIVE samples are REAL data; the bucket name must not erase that —
+      // each seed carries its own flag, and the real ones sort first (F1 is the app's
+      // opening picture).
+      const seeds = cat.repos[0].seeds;
+      assert.equal(seeds[0].fixture, 'F1');
+      assert.equal(seeds[0].synthetic, false);
+      const firstSynthetic = seeds.findIndex((seed) => seed.synthetic);
+      assert.ok(seeds.slice(0, firstSynthetic).every((seed) => !seed.synthetic));
+    });
   });
 
-  test('synthetic repositories are flagged so nothing is mistaken for real data', async () => {
+  test('every seed is flagged so nothing is mistaken for real data', async () => {
+    // Per SEED since decision 125 put everything in one bucket: F1 and the LIVE samples
+    // are real (their payloads say so), the built fixtures are synthetic.
     const cat = await catalogue();
-    const vscode = cat.repos.find((repo) => repo.name === 'microsoft/vscode');
-    const synthetic = cat.repos.find((repo) => repo.name === 'synthetic/fixture');
-    assert.equal(vscode.synthetic, false);
-    assert.equal(synthetic.synthetic, true);
+    const seeds = cat.repos[0].seeds;
+    assert.equal(seeds.find((seed) => seed.fixture === 'F1').synthetic, false);
+    assert.equal(seeds.find((seed) => seed.fixture === 'F10').synthetic, true);
   });
 
   test('a seed carries only what a search could cheaply return', async () => {
@@ -102,7 +114,7 @@ describe('the catalogue describes what can be asked for', () => {
 describe('a query resolves to the sub-log it names', () => {
   test('repo plus seed loads that seed’s sub-log', async () => {
     const graph = await loadObjectGraph(
-      { repo: 'microsoft/vscode', seed: 'issue:242864' },
+      { repo: 'synthetic/fixture', seed: 'issue:242864' },
       { transport },
     );
     assert.equal(graph.meta.repo, 'microsoft/vscode');
@@ -134,13 +146,13 @@ describe('a query resolves to the sub-log it names', () => {
   });
 
   test('omitting the seed falls back to the repository’s first servable one', async () => {
-    const graph = await loadObjectGraph({ repo: 'microsoft/vscode' }, { transport });
+    const graph = await loadObjectGraph({ repo: 'synthetic/fixture' }, { transport });
     assert.equal(seedObjects(graph)[0].id, 'issue:242864');
   });
 
   test('the breadcrumb states the query: repo, seed, degree, and what came back', async () => {
     const graph = await loadObjectGraph(
-      { repo: 'microsoft/vscode', seed: 'issue:242864' },
+      { repo: 'synthetic/fixture', seed: 'issue:242864' },
       { transport },
     );
     const description = describeSubLog(graph);
@@ -156,7 +168,7 @@ describe('a query that cannot be honoured fails loudly', () => {
     const cat = await catalogue();
     assert.throws(
       () => resolveSeed(cat, { repo: 'nope/nope' }),
-      /No sub-log available for repository "nope\/nope".*microsoft\/vscode/s,
+      /No sub-log available for repository "nope\/nope".*synthetic\/fixture/s,
     );
   });
 
@@ -165,12 +177,12 @@ describe('a query that cannot be honoured fails loudly', () => {
     // The honest failure: without the RPC there is no traversal, so an arbitrary
     // object cannot be seeded from. Returning some other sub-log would be worse.
     assert.throws(
-      () => resolveSeed(cat, { repo: 'microsoft/vscode', seed: 'commit:deadbeef' }),
+      () => resolveSeed(cat, { repo: 'synthetic/fixture', seed: 'commit:deadbeef' }),
       /No sub-log has been built from seed .*get_object_graph RPC/s,
     );
   });
 
-  test('a repository listed as unavailable cannot be selected', async () => {
+  test('a repository this source does not serve cannot be selected', async () => {
     const cat = await catalogue();
     assert.throws(() => resolveSeed(cat, { repo: 'kubernetes/kubernetes' }), /No sub-log available/);
   });
@@ -219,15 +231,15 @@ describe('the seed box is a search, because there is no list to enumerate', () =
     const cat = await catalogue();
     // Nothing auto-loads: results appear in a list and the user picks one, so a
     // surplus candidate costs a glance while a missing one costs the search.
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', '242')[0].id, 'issue:242864');
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', '2428')[0].id, 'issue:242864');
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', '2864')[0].id, 'issue:242864');
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', '242864')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'synthetic/fixture', '242')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'synthetic/fixture', '2428')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'synthetic/fixture', '2864')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'synthetic/fixture', '242864')[0].id, 'issue:242864');
   });
 
   test('a number that appears nowhere still finds nothing', async () => {
     const cat = await catalogue();
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', '999999').length, 0);
+    assert.equal(searchSeeds(cat, 'synthetic/fixture', '999999').length, 0);
   });
 
   test('an exact match outranks a prefix, which outranks a substring', () => {
@@ -254,15 +266,15 @@ describe('the seed box is a search, because there is no list to enumerate', () =
 
   test('searching finds a seed by number, by type, and by title', async () => {
     const cat = await catalogue();
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', '#242864')[0].id, 'issue:242864');
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', 'issue 242864')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'synthetic/fixture', '#242864')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'synthetic/fixture', 'issue 242864')[0].id, 'issue:242864');
     // The title is cheap for a search to return, so it is searchable.
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', 'MCP')[0].id, 'issue:242864');
+    assert.equal(searchSeeds(cat, 'synthetic/fixture', 'MCP')[0].id, 'issue:242864');
   });
 
   test('a stated type excludes objects of other types', async () => {
     const cat = await catalogue();
-    assert.equal(searchSeeds(cat, 'microsoft/vscode', 'commit 242864').length, 0);
+    assert.equal(searchSeeds(cat, 'synthetic/fixture', 'commit 242864').length, 0);
   });
 
   test('a commit is findable by SHA prefix', async () => {
@@ -282,7 +294,7 @@ describe('the seed box is a search, because there is no list to enumerate', () =
     assert.ok(searchSeeds(cat, 'synthetic/fixture', '', { limit: 2 }).length <= 2);
   });
 
-  test('an unavailable repository yields no results at all', async () => {
+  test('a repository this source does not serve yields no results at all', async () => {
     const cat = await catalogue();
     assert.deepEqual(searchSeeds(cat, 'kubernetes/kubernetes', '123'), []);
   });

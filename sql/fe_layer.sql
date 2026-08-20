@@ -1844,7 +1844,15 @@ COMMENT ON FUNCTION api.search_seeds(text, text, text, text, text, integer) IS
 CREATE OR REPLACE FUNCTION api.list_repos()
 RETURNS TABLE (name text, repo_id bigint, available boolean, reason text, seeds bigint)
 LANGUAGE sql STABLE AS $$
-  SELECT r.name,
+  -- ONE row per name: the row with the most seeds, id as the tie-break — the same rule
+  -- get_object_graph resolves an ambiguous name by (decision 51), so the picker offers
+  -- exactly what the RPC would pick. The duplicate `kubernetes/kubernetes` stub (a
+  -- recreated repo, 1 event, no seeds) used to be listed last as a "no data" row to
+  -- demonstrate why name resolution is deterministic; decision 125 hides it — a picker
+  -- row that cannot be chosen demonstrated nothing to a reader, and the ambiguity is
+  -- still reported where it matters, on the payload (meta.repo_ambiguous).
+  SELECT DISTINCT ON (r.name)
+         r.name,
          r.id,
          count(s.id) > 0,
          CASE WHEN count(s.id) > 0 THEN NULL
@@ -1853,10 +1861,7 @@ LANGUAGE sql STABLE AS $$
   FROM repo r
   LEFT JOIN fe.seed_lookup s ON s.repo_id = r.id
   GROUP BY r.name, r.id
-  -- Repositories with data first, then by name, so the selector opens on something
-  -- usable. The duplicate `kubernetes/kubernetes` stub (1 event, no seeds) sorts last
-  -- rather than being hidden — its existence is why name resolution is deterministic.
-  ORDER BY count(s.id) > 0 DESC, r.name, r.id;
+  ORDER BY r.name, count(s.id) DESC, r.id;
 $$;
 
 COMMENT ON FUNCTION api.list_repos() IS

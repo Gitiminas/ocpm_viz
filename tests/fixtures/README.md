@@ -25,6 +25,13 @@ through `loadObjectGraph()` exactly as a real sub-log would be.
 fixture whose PRs do not actually overlap passes every layout test while verifying nothing, and
 that failure mode is completely invisible.
 
+### The picker shows one bucket; the payloads keep the provenance
+
+Since decision 125 the fixture source lists everything under a single `synthetic/fixture`
+entry — the label names the source, not the data. F1 and the LIVE samples are still real
+microsoft/vscode data: each payload's `meta.repo` says so, each catalogue seed carries a
+`synthetic` flag, and the tests assert the flag agrees with the payload.
+
 ### F2–F14 are synthetic — never cite them
 
 ```

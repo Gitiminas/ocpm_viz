@@ -4,146 +4,140 @@
   "note": "Seeds listed here are the ones the FIXTURE source can serve: a sub-log exists only where one was pre-built, so an arbitrary object cannot be seeded from. The database source traverses for real — switch Data source to Database, or use ?source=database.",
   "repos": [
     {
-      "name": "microsoft/vscode",
-      "repo_id": 41881900,
+      "name": "synthetic/fixture",
+      "repo_id": null,
       "available": true,
-      "synthetic": false,
+      "synthetic": true,
       "seeds": [
         {
           "id": "issue:242864",
           "type": "issue",
           "label": "#242864",
           "title": "Discover and run MCP servers",
-          "fixture": "F1"
+          "fixture": "F1",
+          "synthetic": false
         },
         {
           "id": "pr:448781946",
           "type": "pull_request",
           "label": "PR #102479",
           "title": "fixes #102358",
-          "fixture": "LIVE1"
+          "fixture": "LIVE1",
+          "synthetic": false
         },
         {
           "id": "pr:571599565",
           "type": "pull_request",
           "label": "PR #116416",
           "title": "Execution API notes",
-          "fixture": "LIVE2"
-        }
-      ]
-    },
-    {
-      "name": "synthetic/fixture",
-      "repo_id": 1,
-      "available": true,
-      "synthetic": true,
-      "seeds": [
+          "fixture": "LIVE2",
+          "synthetic": false
+        },
         {
           "id": "commit:aaaa111bbbb222ccc",
           "type": "commit",
           "label": "aaaa111",
           "title": null,
-          "fixture": "F5"
+          "fixture": "F5",
+          "synthetic": true
         },
         {
           "id": "issue:1",
           "type": "issue",
           "label": "#1",
           "title": "Synthetic issue 1",
-          "fixture": "F2"
+          "fixture": "F2",
+          "synthetic": true
         },
         {
           "id": "issue:100",
           "type": "issue",
           "label": "#100",
           "title": "Synthetic issue 100",
-          "fixture": "F10"
+          "fixture": "F10",
+          "synthetic": true
         },
         {
           "id": "issue:110",
           "type": "issue",
           "label": "#110",
           "title": "Synthetic issue 110",
-          "fixture": "F11"
+          "fixture": "F11",
+          "synthetic": true
         },
         {
           "id": "issue:120",
           "type": "issue",
           "label": "#120",
           "title": "Synthetic issue 120",
-          "fixture": "F12"
+          "fixture": "F12",
+          "synthetic": true
         },
         {
           "id": "issue:13",
           "type": "issue",
           "label": "#13",
           "title": "Synthetic issue 13",
-          "fixture": "F13"
+          "fixture": "F13",
+          "synthetic": true
         },
         {
           "id": "issue:14",
           "type": "issue",
           "label": "#14",
           "title": "Synthetic issue 14",
-          "fixture": "F14"
+          "fixture": "F14",
+          "synthetic": true
         },
         {
           "id": "issue:2",
           "type": "issue",
           "label": "#2",
           "title": "Synthetic issue 2",
-          "fixture": "F3"
+          "fixture": "F3",
+          "synthetic": true
         },
         {
           "id": "issue:5",
           "type": "issue",
           "label": "#5",
           "title": "Synthetic issue 5",
-          "fixture": "F6"
+          "fixture": "F6",
+          "synthetic": true
         },
         {
           "id": "issue:9",
           "type": "issue",
           "label": "#9",
           "title": "Synthetic issue 9",
-          "fixture": "F9"
+          "fixture": "F9",
+          "synthetic": true
         },
         {
           "id": "pr:30",
           "type": "pull_request",
           "label": "PR #30",
           "title": "Synthetic PR 30",
-          "fixture": "F4"
+          "fixture": "F4",
+          "synthetic": true
         },
         {
           "id": "pr:60",
           "type": "pull_request",
           "label": "PR #60",
           "title": "Synthetic PR 60",
-          "fixture": "F7"
+          "fixture": "F7",
+          "synthetic": true
         },
         {
           "id": "pr:70",
           "type": "pull_request",
           "label": "PR #70",
           "title": "Synthetic PR 70",
-          "fixture": "F8"
+          "fixture": "F8",
+          "synthetic": true
         }
       ]
-    },
-    {
-      "name": "facebook/react",
-      "reason": "No fixture built for this repository. Switch Data source to Database.",
-      "available": false,
-      "synthetic": false,
-      "seeds": []
-    },
-    {
-      "name": "kubernetes/kubernetes",
-      "reason": "No fixture built for this repository. Switch Data source to Database.",
-      "available": false,
-      "synthetic": false,
-      "seeds": []
     }
   ]
 }

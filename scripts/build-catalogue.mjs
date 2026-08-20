@@ -38,35 +38,22 @@ const TARGET = resolve(FIXTURE_DIR, 'catalogue.json');
 const GENERATED_AT = '2026-07-31T00:00:00Z';
 
 /**
- * Repositories with no **fixture**, listed rather than omitted so the picker says why.
+ * Every fixture is listed under ONE picker entry (decision 125, amending 34).
  *
- * ⚠️ **Unavailable *to the fixture source only*, and that distinction is now the point.**
+ * The picker used to mirror the fixtures' own repositories — microsoft/vscode for F1 and
+ * the LIVE samples, synthetic/fixture for the rest — plus react and kubernetes shown
+ * disabled with a "switch to Database" reason. Three entries that could not be chosen or
+ * differed only in provenance made the fixture picker read like the database one without
+ * being one. It now lists exactly what this source can serve, in one bucket; the source
+ * toggle's own note is the pointer to the database.
  *
- * The previous version of this comment said their absence was itself the RQ2 finding
- * about detection coverage. That is no longer true and should not be repeated: both
- * repositories have data, and the database source serves them. What was a statement
- * about the world turned out to be a statement about which fixtures had been built.
- *
- * These two were listed because no sub-log had been pre-built for them, and the reason
- * used to read "needs the get_object_graph RPC". That RPC exists, and the database
- * source serves both repositories — `api.list_repos` reports react with 38,966 seeds
- * and kubernetes with 206,391, computed from the data rather than declared here.
- *
- * So this list is not wrong, it is *scoped*: it describes what the fixture catalogue can
- * serve, which is still nothing for these two. Decision 34 requires an unavailable
- * repository to be shown with its reason rather than omitted, so the entry stays and the
- * reason is corrected to say which limitation it is.
+ * ⚠️ **The bucket's name does not change what the data is.** F1 and the LIVE samples are
+ * REAL microsoft/vscode data (the one rule of `tests/fixtures/README.md`); each payload's
+ * `meta.repo` still says so and everything downstream reads meta, never this label. The
+ * label names the SOURCE ("the bundled fixtures"), not the provenance.
  */
-const UNAVAILABLE_REPOS = [
-  {
-    name: 'facebook/react',
-    reason: 'No fixture built for this repository. Switch Data source to Database.',
-  },
-  {
-    name: 'kubernetes/kubernetes',
-    reason: 'No fixture built for this repository. Switch Data source to Database.',
-  },
-];
+const FIXTURE_BUCKET = 'synthetic/fixture';
+
 
 function build() {
   /*
@@ -92,22 +79,20 @@ function build() {
   for (const file of files) {
     const id = file.replace('.json', '');
     const graph = JSON.parse(readFileSync(resolve(FIXTURE_DIR, file), 'utf8'));
-    const repoName = graph.meta.repo;
+    // One bucket for everything the source serves (decision 125); the payload's own
+    // meta.repo is untouched and stays the provenance.
     const byId = new Map(graph.objects.map((object) => [object.id, object]));
 
-    if (!byRepo.has(repoName)) {
-      byRepo.set(repoName, {
-        name: repoName,
-        repo_id: graph.meta.repo_id ?? null,
+    if (!byRepo.has(FIXTURE_BUCKET)) {
+      byRepo.set(FIXTURE_BUCKET, {
+        name: FIXTURE_BUCKET,
+        repo_id: null,
         available: true,
-        synthetic: Boolean(graph.meta.data_honesty?.synthetic),
+        synthetic: true,
         seeds: [],
       });
     }
-    const repo = byRepo.get(repoName);
-    // A repository is only "real" if every sub-log under it is; one synthetic
-    // fixture sharing a real repo name would make the label a lie.
-    repo.synthetic = repo.synthetic || Boolean(graph.meta.data_honesty?.synthetic);
+    const repo = byRepo.get(FIXTURE_BUCKET);
 
     for (const seed of graph.meta.seed || []) {
       const object = byId.get(seed.id);
@@ -119,18 +104,24 @@ function build() {
         // about the sub-log it would produce.
         title: object?.vmap?.title ?? null,
         fixture: id,
+        // Whether the sub-log behind this seed is real data. F1 and the LIVE samples
+        // are; the picker's bucket name must not erase that (fixtures/README.md).
+        synthetic: Boolean(graph.meta.data_honesty?.synthetic),
       });
     }
   }
 
-  const repos = [...byRepo.values()].sort((a, b) => {
-    // Real data first, then synthetic, each alphabetically.
-    if (a.synthetic !== b.synthetic) return a.synthetic ? 1 : -1;
-    return a.name.localeCompare(b.name);
-  });
+  const repos = [...byRepo.values()];
 
   for (const repo of repos) {
-    repo.seeds.sort((a, b) => a.type.localeCompare(b.type) || a.label.localeCompare(b.label));
+    // Real sub-logs first — F1 is the app's opening picture and the only fixture that
+    // may be cited — then by type and label.
+    repo.seeds.sort(
+      (a, b) =>
+        Number(a.synthetic) - Number(b.synthetic) ||
+        a.type.localeCompare(b.type) ||
+        a.label.localeCompare(b.label),
+    );
   }
 
   return {
@@ -140,10 +131,10 @@ function build() {
       'Seeds listed here are the ones the FIXTURE source can serve: a sub-log exists only ' +
       'where one was pre-built, so an arbitrary object cannot be seeded from. The database ' +
       'source traverses for real — switch Data source to Database, or use ?source=database.',
-    repos: [
-      ...repos,
-      ...UNAVAILABLE_REPOS.map((repo) => ({ ...repo, available: false, synthetic: false, seeds: [] })),
-    ],
+    // Nothing unavailable is listed any more (decision 125, amending 34): the source
+    // toggle's note is the pointer to the database, and a picker of dead rows was the
+    // database picker's ghost.
+    repos,
   };
 }
 
@@ -174,6 +165,6 @@ if (process.argv.includes('--check')) {
   const seeds = servable.reduce((sum, repo) => sum + repo.seeds.length, 0);
   console.log(
     `Wrote tests/fixtures/catalogue.json — ${servable.length} repositories with data, ` +
-      `${seeds} seeds, ${UNAVAILABLE_REPOS.length} listed as unavailable.`,
+      `${seeds} seeds in one bucket.`,
   );
 }
