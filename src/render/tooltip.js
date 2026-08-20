@@ -15,9 +15,61 @@ import { escapeHtml } from './format.js';
 import { glyph } from './theme.js';
 
 /**
+ * A comment's text in the card: the opening lines, expanding under the pointer.
+ *
+ * The row arrives as `{excerptText, truncated}` — RAW text, escaped HERE, because
+ * comment bodies are arbitrary user-written GitHub content and this is the one place
+ * they become markup (decision 124; the XSS test pins it). Collapsed, the block clamps
+ * to a few lines with a fade to the card's surface at the bottom and a "hover to read
+ * more" hint — the fade is what says there is more, the hint says how to get it. Hovering
+ * the block (the card must be pinned to be hoverable at all) raises the clamp; the
+ * payload's excerpt is capped at 500 characters server-side, and when even that was cut
+ * the expanded block ends by saying so rather than trailing off silently.
+ */
+export function excerptHtml({ excerptText, truncated = false }) {
+  const text = escapeHtml(String(excerptText));
+  // Visible only once expanded (CSS): while the block is clamped the fade already says
+  // "there is more here", and two more-indicators at once said less than one.
+  const cutNote = truncated
+    ? '<div class="tip-excerpt-cut">shortened (full text on GitHub)</div>'
+    : '';
+  // Clamp only when there is something to hide: short comments show whole, no fade.
+  const clamp = truncated || String(excerptText).length > 200 ? ' clamp' : '';
+  // A boxed section like the commit card's observation list, headed by the field's own
+  // name: prose cannot sit right-aligned against a label the way the k/v rows do, so it
+  // gets the group treatment — label on the box's head, text as the body. The hint sits
+  // BELOW the clamped text on its own solid line, never inside the fade, where it was
+  // barely readable over half-faded words.
+  return (
+    `<div class="tip-group tip-excerpt${clamp}">` +
+    '<div class="tip-group-head"><div class="k">Comment text</div></div>' +
+    `<div class="tip-excerpt-body"><div class="tip-excerpt-text">${text}</div>` +
+    `${cutNote}<div class="tip-excerpt-more">hover text to read more</div></div></div>`
+  );
+}
+
+/**
  * @param {{tipEl: HTMLElement, wrapEl: HTMLElement}} elements
  */
 export function createTooltip({ tipEl, wrapEl }) {
+  /*
+   * A pinned card that GROWS — the comment excerpt expanding under the pointer — can run
+   * past the bottom of the surface, since it was positioned when it was smaller. Watch
+   * its size and slide it up just enough to stay inside; guarded because ResizeObserver
+   * does not exist in the Node test runner, where nothing renders anyway.
+   */
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => {
+      if (tipEl.style.display === 'none') return;
+      const bounds = wrapEl.getBoundingClientRect();
+      const rect = tipEl.getBoundingClientRect();
+      const overflow = rect.bottom - bounds.bottom;
+      if (overflow > 0) {
+        const top = Math.max(4, rect.top - bounds.top - overflow - 4);
+        tipEl.style.top = `${top}px`;
+      }
+    }).observe(tipEl);
+  }
   let hideTimer = null;
   let pinned = false;
 
@@ -91,6 +143,22 @@ export function createTooltip({ tipEl, wrapEl }) {
       });
     }
 
+    /*
+     * The comment text is copyable once EXPANDED — while clamped, a click would copy
+     * words the reader has not seen, and the expanded state is the one where "I want
+     * this text" happens. Expansion is the CSS hover state, so being inside the handler
+     * at all means the pointer is on the text and the block is open (or short enough to
+     * need no expanding). Copies the raw excerpt, not the shortened-note or the hint.
+     */
+    for (const block of tipEl.querySelectorAll('.tip-excerpt')) {
+      block.addEventListener('click', (event) => {
+        if (!pinned) return;
+        event.stopPropagation();
+        const textEl = block.querySelector('.tip-excerpt-text');
+        if (textEl?.textContent) copyToClipboard(textEl.textContent.trim(), textEl);
+      });
+    }
+
     // Grouped entries are copyable too, or the pin-to-copy affordance would work on
     // every row of the card except the ones carrying the detail worth copying.
     for (const item of tipEl.querySelectorAll('.tip-item')) {
@@ -104,7 +172,8 @@ export function createTooltip({ tipEl, wrapEl }) {
     }
   }
 
-  /**
+  
+/**
    * A boxed group of related entries.
    *
    * A repeated list — a commit's push observations, say — rendered as plain rows reads
@@ -151,6 +220,7 @@ export function createTooltip({ tipEl, wrapEl }) {
     const rows = spec.rows
       .filter(Boolean)
       .map((row) => {
+        if (!Array.isArray(row) && row.excerptText != null) return excerptHtml(row);
         if (!Array.isArray(row)) return groupHtml(row);
         const [label, value, className] = row;
         return (
@@ -172,7 +242,8 @@ export function createTooltip({ tipEl, wrapEl }) {
         : '') +
       '<div class="pin-hint">Click a row to copy · Esc to close</div>';
 
-    tipEl.style.display = 'block';
+    // Flex, so the body can scroll under the fixed header when the viewport cap bites.
+    tipEl.style.display = 'flex';
     void tipEl.offsetWidth; // force a reflow so the fade-in transition runs
     tipEl.classList.add('show');
     attachCopyHandlers();

@@ -190,6 +190,9 @@ ObjectGraph = {
              activity_scope, data_honesty:{…}, source },
   objects: [ { id, type, label, repo, intervals:[{start,end}], time_semantics, vmap:{…} } ],
   events:  [ { id, activity, time, object_id, actor_id, repo, comment, attrs:{…} } ],
+             // attrs by activity: CommitObserved carries ref, push_id, commit_count,
+             // distinct_commit_count, truncated (decision 44); a comment carries
+             // comment_excerpt (first 500 chars) and comment_truncated (decision 124).
   links:   [ { source, target, qualifier, evidence, method, link_methods:[…], n_methods } ]
 }
 ```

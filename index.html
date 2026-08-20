@@ -19,7 +19,10 @@ html,body{height:100%;margin:0;overflow:hidden}
 .sideRow{cursor:pointer;transition:background .15s ease,border-color .15s ease;border:1px solid transparent}
 .sideRow:hover{background:color-mix(in srgb, var(--color-text) 6%, transparent)}
 .sideRow.on{background:color-mix(in srgb, var(--color-accent) 14%, transparent);border-color:var(--color-accent)}
-#tip{position:absolute;display:none;pointer-events:none;z-index:100;width:300px;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow:hidden;transform:translateY(4px);opacity:0;transition:opacity .15s ease,transform .15s ease}
+#tip{position:absolute;display:none;pointer-events:none;z-index:100;width:300px;max-height:calc(100% - 8px);flex-direction:column;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow:hidden;transform:translateY(4px);opacity:0;transition:opacity .15s ease,transform .15s ease}
+/* Backstop for a card taller than the surface even at the top: the header stays, the
+   body scrolls. The ResizeObserver in tooltip.js slides a growing pinned card up first. */
+#tip .tip-body{overflow-y:auto}
 #tip.show{transform:translateY(0);opacity:1}
 #tip .tip-accent{height:3px;width:100%}
 #tip .tip-header{padding:12px 14px 10px;border-bottom:1px solid var(--color-neutral-800)}
@@ -27,6 +30,26 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip .tip-title{font-size:14px;font-weight:500;color:var(--color-text);line-height:1.4;word-break:break-word;font-family:var(--font-heading)}
 #tip .tip-body{padding:10px 14px;display:flex;flex-direction:column;gap:6px}
 #tip .tip-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:3px 0;border-bottom:1px dashed var(--color-neutral-800)}
+/* The comment excerpt (decision 124): collapsed to a few lines with a fade to the card's
+   surface saying "there is more", expanding while the pointer is on it. Hoverable only
+   when the card is pinned, which is what the pin is for. max-height rather than
+   line-clamp because a clamp cannot transition, and the grow is the affordance. */
+#tip .tip-excerpt{font-size:11.5px;line-height:1.5;color:var(--color-neutral-300)}
+#tip .tip-excerpt-body{padding:7px 10px;cursor:pointer}
+#tip .tip-excerpt-text{position:relative;white-space:pre-wrap;word-break:break-word}
+#tip .tip-excerpt.clamp .tip-excerpt-text{max-height:6em;overflow:hidden;transition:max-height .25s ease}
+#tip .tip-excerpt.clamp:hover .tip-excerpt-text{max-height:34em}
+#tip .tip-excerpt.clamp .tip-excerpt-text::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2.6em;background:linear-gradient(transparent, var(--color-surface));pointer-events:none;transition:opacity .2s ease}
+#tip .tip-excerpt.clamp:hover .tip-excerpt-text::after{opacity:0}
+/* On its own solid line under the fade, so it never competes with half-faded words. */
+#tip .tip-excerpt-more{display:block;text-align:right;margin-top:3px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent-300);transition:opacity .2s ease}
+#tip .tip-excerpt:not(.clamp) .tip-excerpt-more{display:none}
+#tip .tip-excerpt.clamp:hover .tip-excerpt-more{opacity:0}
+/* The shortened note appears with the full excerpt: while clamped, the fade is the one
+   more-indicator, and the note would claim a cut the reader cannot see yet. */
+#tip .tip-excerpt-cut{display:none;font-size:10px;font-style:italic;color:var(--color-neutral-500);margin-top:4px}
+#tip .tip-excerpt.clamp:hover .tip-excerpt-cut{display:block}
+#tip .tip-excerpt:not(.clamp) .tip-excerpt-cut{display:block}
 #tip .tip-row:last-child{border-bottom:none}
 #tip .tip-row .k{font-size:10px;font-weight:500;color:var(--color-neutral-500);text-transform:uppercase;letter-spacing:.05em}
 #tip .tip-row .v{font-size:12px;color:var(--color-text);text-align:right;word-break:break-word}
