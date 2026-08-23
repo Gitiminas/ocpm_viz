@@ -1,17 +1,16 @@
 /**
  * Named saved views.
  *
- * A preset is the whole toggle state under a name. In Green's terms this is an
- * *abstraction manager* — and his rule applies: "if the user is allowed to modify
- * abstractions, the system always requires a redefinition sub-device", which is why
- * save / rename / delete all exist rather than just save.
+ * A preset is the whole toggle state under a name. Anything the user can define, the
+ * user must also be able to redefine, which is why save / rename / delete all exist
+ * rather than just save.
  *
- * Presets cut repetition viscosity, raise provisionality and support progressive
- * evaluation. Their cost is **hidden dependencies**: a saved view silently conceals
- * what it filtered, so a sparse timeline reads as "few links" when it is really
- * "links hidden". That cost is mitigated by `summarizeHidden` in `state.js`, whose
- * output the UI must always display. Presets without that summary would be a net
- * loss in comprehensibility.
+ * Presets save re-doing the same toggles by hand: a view is cheap to try, its effect
+ * shows at once, and it is cheap to throw away. Their cost is state the user cannot
+ * see on screen: a saved view silently conceals what it filtered, so a sparse timeline
+ * reads as "few links" when it is really "links hidden". That cost is mitigated by
+ * `summarizeHidden` in `state.js`, whose output the UI must always display. Presets
+ * without that summary would be a net loss in comprehensibility.
  *
  * Encoding a preset into a URL is how a configuration is reproduced: "load this link"
  * is the cheapest possible guarantee that two people on two machines are looking at the

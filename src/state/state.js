@@ -362,7 +362,7 @@ export function selectVisible(graph, state, groupsByCommit = new Map()) {
 /**
  * Everything currently filtered out, as structured facts the UI must always show.
  *
- * This is not a nicety. Filtering and saved views introduce **hidden dependencies**:
+ * This is not a nicety. Filtering and saved views leave state the user cannot see:
  * a sparse timeline reads as "this project had few links" when the truth is "you
  * switched the links off". The user cannot distinguish those two states from the
  * picture alone, and a misreading of that kind would go straight into a reported

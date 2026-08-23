@@ -1,9 +1,9 @@
 /**
  * The preset panel and the hidden-state banner.
  *
- * These two belong together because they are two halves of one bargain. Presets buy
- * a large reduction in repetition viscosity; the price is hidden dependencies — a
- * saved view conceals what it filtered, so a sparse timeline reads as "few links"
+ * These two belong together because they are two halves of one bargain. Presets save
+ * re-doing the same toggles by hand; the price is state the user cannot see on screen.
+ * A saved view conceals what it filtered, so a sparse timeline reads as "few links"
  * when the truth is "links switched off". The banner is what makes that price
  * payable, and it is deliberately **not dismissible** while anything is hidden.
  */
