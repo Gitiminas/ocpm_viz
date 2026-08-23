@@ -1,6 +1,6 @@
 # Fixtures
 
-Every fixture is a complete `ObjectGraph` (`docs/ADAPTER_AND_API.md` §4) that can be loaded
+Every fixture is a complete `ObjectGraph` (`docs/DATA_LAYER.md`) that can be loaded
 through `loadObjectGraph()` exactly as a real sub-log would be.
 
 | ID | Sub-log | Property it exists to exhibit | Status |
@@ -75,7 +75,7 @@ changes only, never value changes**, with three mandated exceptions noted below.
 |---|---|
 | `t_start` / `t_end` per object | `intervals: [{start, end}]` (decision 4); `[]` where there is no lifecycle |
 | `evidence: "inferred"` | `"extracted"` (decision 7) |
-| `evidence` values | recomputed from the detection method by the rule in `ADAPTER_AND_API.md` §3 |
+| `evidence` values | recomputed from the detection method by the rule in `docs/DATA_LAYER.md` |
 | `method` free-text prose | the `LINK_METHOD` enum, plus `link_methods` and `n_methods` |
 | `meta.case`, `meta.title`, `meta.orientation` | removed — decision 1 forbids a case notion, and the breadcrumb is derived from the query instead |
 | `meta.burst` | removed — bursts derive from `push_id` |
