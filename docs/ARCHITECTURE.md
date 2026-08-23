@@ -2,8 +2,8 @@
 
 The tool draws one sub-log — an `objectGraph` of issues, pull requests, commits and actors pulled
 around a seed — as a timeline or as a relationship picture. This file covers the frontend: the
-folders, the seams between them, how data moves, and the traps the layout code already paid for.
-Everything server-side is in `DATA_LAYER.md`.
+folders, the seams between them, how data moves, and the traps in the layout code. Everything
+server-side is in `DATA_LAYER.md`.
 
 ## Stack and data path
 
@@ -79,7 +79,7 @@ this table is the responsibility map.
 
 `render/` has no lane module for `actor`: an actor is an object without a lane, so it is drawn
 by the sidebar, the actor card and its trail, never by `layout/lanes.js`. It is the only such
-type — `repo` was the other until it stopped being an object at all.
+type: `repo` is not an object at all (decision 39).
 
 ## Data flow
 
@@ -159,10 +159,10 @@ collision-only at 24 px, plus one extra row when a commit is observed more than 
 
 `anchors.js` decides where a link lands: commit links attach to the drawn commit node, issue and
 PR links to the object's band row at `xAt(object, time)` — the exact node x if a node sits at
-that instant, otherwise the scale — clamped to the lifecycle. It is its own file because it once
-lived inside `render/timeline.js`, was therefore only ever checked by looking at a picture, and
-came to disagree with the lifecycle bar about which row an object occupies. Gaps over 24 hours
-are annotated on the discrete axis (`findLargeGaps`), adjacent labels merged as `≈ N (k gaps)`.
+that instant, otherwise the scale — clamped to the lifecycle. It is its own file so that the
+formula is asserted in tests rather than checked by eye: the anchor and the lifecycle bar must
+agree on which row an object occupies. Gaps over 24 hours are annotated on the discrete axis
+(`findLargeGaps`), adjacent labels merged as `≈ N (k gaps)`.
 
 ### The structural mode
 
@@ -200,17 +200,17 @@ shape still reads.
 Read these before touching `layout/cluster.js` or `layout/layered.js`.
 
 1. **The fit scales positions but not radii.** Anything measured after `centreInBox` is in
-   post-scale pixels. This produced three separate bugs: overlaps reappearing after the fit in
-   both arrangements, and a wrong diagnosis that "the springs are losing" when observed link
-   lengths ran past their rest lengths. Divide by the fit scale before comparing to a configured
-   distance. `layoutCluster` scales cluster footprints by the same factor for this reason.
+   post-scale pixels. Compared straight against a configured distance it reports overlaps that the
+   fit reintroduced and link lengths that appear to run past their rest lengths. Divide by the fit
+   scale first. `layoutCluster` scales cluster footprints by the same factor for this reason.
 2. **`forceLink` mutates the link array**, replacing ids with node references. Sharing one array
-   across two simulations silently binds the second to the first's nodes. Both callers —
-   `layoutCluster` and `createDragSimulation`'s caller in `render/structural.js` — build links
-   fresh. A test did not, and a neighbour travelled 18 px instead of 370.
+   across two simulations silently binds the second to the first's nodes, and the second then
+   moves its neighbours a fraction of the right distance (18 px instead of 370, measured). Both
+   callers — `layoutCluster` and `createDragSimulation`'s caller in `render/structural.js` — build
+   links fresh.
 3. **d3-force charges are negative** (`CHARGE` is −400 / −400 / −35). A hand-written repulsion
-   multiplying `charge_i × charge_j` turns two negatives into a large positive: that produced a
-   14,000× force and flung neighbours off screen.
+   multiplying `charge_i × charge_j` turns two negatives into a large positive: a 14,000× force
+   that flings neighbours off screen.
 4. **Barycentre ordering is not monotonic.** `orderLayers` keeps the best arrangement *seen*,
    not the last one swept.
 5. **Angles wrap.** `circularMean` sums unit vectors, and returns `null` when they cancel rather
@@ -219,18 +219,17 @@ Read these before touching `layout/cluster.js` or `layout/layered.js`.
    computes its constrained pairs once there, from the links and lanes. Per tick it would be
    O(n²) for nothing; outside, the caller would need to know which nodes the simulation resolved.
 7. **A forward chain only closes gaps that are too small.** `separateRow` in `layered.js` pushes
-   right, which cannot narrow a gap alignment left too wide, so a row could be 1400 px in a
-   980 px box with every gap legal — and relationships mode does not scroll sideways, so the
-   right-hand third was silently lost. Guarded now by a right-to-left compression pass from the
-   box edge, plus a mean-drift correction undoing the chain's rightward bias. The trigger is
+   right, which cannot narrow a gap alignment left too wide, so a row can measure 1400 px in a
+   980 px box with every gap legal, and relationships mode does not scroll sideways, so the
+   overflow is lost without a trace. A right-to-left compression pass from the box edge guards it,
+   plus a mean-drift correction undoing the chain's rightward bias. The trigger is
    order-versus-alignment conflict: a test case needs a commit shared between the *second* and
    the last pull request, not the first and the last.
-8. **The surface is measured when the layout runs, so the chrome must already be final.** The
-   minimap used to be hidden from `onRendered`, after the layout had fitted the drawing into a
-   column the minimap was still shortening. Nothing errors; the picture is simply half the size
-   it has room for, and every Node-side measurement says it is fine. `markMode` runs first now —
-   keep it that way. Anything else that changes the column's height (banner, brush) has the same
-   power.
+8. **The surface is measured when the layout runs, so the chrome must already be final.** Hide or
+   show anything in the chart column after the layout has run — the minimap from `onRendered`, say
+   — and nothing errors: the picture is simply half the size it has room for, and every Node-side
+   measurement says it is fine. `markMode` runs first for that reason; keep it that way. The
+   banner and the brush change the column's height too.
 9. **Headless Edge lays out in a viewport ~90 px shorter than `--window-size`, then captures at
    the full size.** A real browser fires `resize` and re-renders; a screenshot does not, so a
    fitted drawing is ~10% smaller in a shot. Compare fill between shots, never against the box.
@@ -258,28 +257,28 @@ stay distinguishable.
 
 **Link fanning.** When two links would be drawn on top of each other, `computeLinkOffsets` in
 `src/render/links.js` bundles them (shared endpoint at either end, the other end within 2 px) and spreads them
-5 px apart. It exists because of a real failure in fixture F5: one commit belonging to two
-overlapping pull requests draws the nearer link as a strict sub-segment of the further one, so
-the buried link — the **extracted** one, dashed with its `?` badge — vanished under a solid
-stroke, and a viewer saw one confident connection where there were two. The offset then grew
-linearly with bundle size and nothing capped it, so a vscode PR with 35 commits pushed in an
-hour smeared its shared endpoint across 425 px and the picture implied 85 pull requests where
-the caption said one. `MAX_FANNED_LINKS = 6` caps it: a larger bundle draws as one coincident
-line carrying a `×N` badge (`data-legend="link-crowded"`). Nothing visible was lost — at 85 you
-could not pick out a line anyway, and every commit is drawn in the commit lane regardless.
+5 px apart. Without it, one commit belonging to two overlapping pull requests draws the nearer
+link as a strict sub-segment of the further one, and the buried link — the **extracted** one,
+dashed with its `?` badge — disappears under a solid stroke, so a viewer sees one confident
+connection where there are two. Fixture F5 holds that shape. The offset grows linearly with
+bundle size, so it also needs a cap: unbounded, a vscode PR with 35 commits pushed in an hour
+smears its shared endpoint across 425 px and the picture implies 85 pull requests where the
+caption says one. `MAX_FANNED_LINKS = 6` is the cap, and a larger bundle draws as one coincident
+line carrying a `×N` badge (`data-legend="link-crowded"`). Nothing visible is lost: at 85 no
+single line is distinguishable anyway, and every commit is drawn in the commit lane regardless.
 Declaring the count follows the standing rule that anything hidden is declared. **O12(b) is
 still open:** event glyphs stack without bound, and a kubernetes issue with 288 comments in a
-short window allocates 52 bands and a 5,654 px SVG. That is crowding, not deception, which is
-why it was left; the likely fix is the burst-collapse treatment commits already have.
+short window allocates 52 bands and a 5,654 px SVG. That is crowding rather than deception; the
+likely fix is the burst-collapse treatment commits already have.
 
 ## Statistics
 
 Every metric is computed in JS over `selectVisible(graph, state, groupsByCommit)` — decision 12
 — so hiding comments changes the gap figures, and hiding a lane changes the counts.
 `stats/metrics.js` is pure functions over an `ObjectGraph`; `render/stats.js` only presents them.
-SQL is reserved for figures spanning data that is *not* loaded, such as per-repo link coverage
-for RQ2. Precomputing sub-log metrics server-side would answer "comments hidden → gaps unchanged"
-silently, which is the failure the rule exists to prevent.
+SQL is reserved for figures spanning data that is *not* loaded, such as link coverage per
+repository. Precomputing sub-log metrics server-side would answer "comments hidden → gaps
+unchanged" silently, which is the failure the rule exists to prevent.
 
 ## Extending
 
@@ -291,7 +290,7 @@ collision-only rows. Object types are closed at four, so read the decision befor
 
 **An activity.** Add a key to `ACTIVITIES` in `model/activities.js` with `label`, `short`,
 `objectTypes` and `landmark`. Landmarks also need a ring style and a legend key. Activity
-vocabulary is a research decision, not an implementation detail: ask first.
+vocabulary is a modelling decision, not an implementation detail: ask first.
 
 **A link method.** Add it to `LINK_METHOD` in `model/evidence.js` and classify it in
 `classifyMethod` as `validated` or `extracted`. `deriveMethods` picks it up from the payload
@@ -311,10 +310,10 @@ second `if (mode === …)` to a renderer is how the seam gets lost.
 
 ## Out of scope
 
-Other people's theses: bot and human classification, the real OCEL 2.0 tables, labels, forks,
+Bot and human classification, the `ocel_*` views, the real OCEL 2.0 tables, labels, forks,
 reviews, review comments, branch and ref lifecycle. Modifying or extending the shared upstream
-views (indexes on them are ours; see DATA_LAYER.md). Auth, rate limiting and XSS hardening; render optimisation,
-virtualisation and canvas; a bundler, framework or TypeScript; generalizing beyond the four
-object types; restyling away from the Nocturne tokens.
+views (indexes on them belong to this project; see `DATA_LAYER.md`). Auth, rate limiting and XSS
+hardening; render optimisation, virtualisation and canvas; a bundler, framework or TypeScript;
+generalizing beyond the four object types; restyling away from the Nocturne tokens.
 
 Sub-logs are small. If a real one breaks the renderer, report it rather than pre-optimising.

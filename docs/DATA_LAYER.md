@@ -124,7 +124,7 @@ Of the loosely-typed bags, the client reads little:
 |---|---|
 | `vmap.commit_sha`, `.commit_message`, `.commit_author_name`, `.ref`, `.push_id` | commit tooltip, burst derivation, unique-author count |
 | `vmap.login` | actor card, sidebar, actor trails |
-| `vmap.in_burst` | nothing, deliberately (`bursts.js`) — trusting it reintroduced a wrong count once |
+| `vmap.in_burst` | not read; `bursts.js` derives bursts from `push_id` |
 | `attrs.ref`, `attrs.push_id` | `layout/nodes.js`, for a repeatedly observed commit |
 | `attrs.comment_excerpt`, `attrs.comment_truncated` | the comment card |
 | `attrs.auto_closed` | one tooltip row; carried by F1, not emitted by the RPC |
@@ -190,11 +190,11 @@ Qualifiers emitted: `resolves`, `contains_commit`, `merge_commit`, `references_i
 throws.
 
 **The evidence rule.** A link is `validated` when the platform's own data asserts it: documented
-GitHub syntax that GitHub acts on, or an exact identity match. It is `extracted` when we parsed a
-convention nobody enforces. `inferred` is retired vocabulary. The rule is applied per link, not
-per method: a link is validated if **any** of its methods validates it, which is what
-`classifyLink` does in JS and what branches A and B reproduce in SQL. Testing the primary method
-alone drew well-evidenced links dashed.
+GitHub syntax that GitHub acts on, or an exact identity match. It is `extracted` when it comes
+from parsing a convention nobody enforces. `inferred` is retired vocabulary. The rule is applied
+per link, not per method: a link is validated if **any** of its methods validates it, which is
+what `classifyLink` does in JS and what branches A and B reproduce in SQL. Testing the primary
+method alone draws well-evidenced links dashed.
 
 `n_methods` and `link_methods` carry multi-method agreement to the tooltip. `link_methods` is a
 real array in the payload; upstream stores it semicolon-joined.
@@ -203,24 +203,25 @@ Branch D deduplicates: `mv_commit_message_issue_links_all` holds one row per (co
 push), so a rebased commit produces several. Branch B aggregates rather than emitting one row per
 upstream method row, for the same reason and because aggregating recovers the real `n_methods`.
 
-### Two admission rules that are ours
+### Two admission rules of this layer
 
 Everything else in this layer inherits upstream's rules. These two do not, and both narrow.
 
-**Commit → PR (decision 80, replacing 61).** GitHub never states which commits belong to a pull
-request; GH Archive's PR payload does not list them. The best available evidence is `ref_match`:
-this commit was pushed to the PR's branch while the PR was open. That is noisy, because merging
-anything into a long-lived branch re-enumerates every incoming commit and attributes all of them
-to the PR. `fe.commit_pr_link` therefore admits an `mv_commit_pr_links` row only when the method
+**Commit → PR (decision 80).** GitHub never states which commits belong to a pull request; GH
+Archive's PR payload does not list them. The best available evidence is `ref_match`: this commit
+was pushed to the PR's branch while the PR was open. That is noisy, because merging anything into
+a long-lived branch re-enumerates every incoming commit and attributes all of them to the PR.
+`fe.commit_pr_link` therefore admits an `mv_commit_pr_links` row only when the method
 is `head_sha` or `merge_commit_sha` (identity matches, untouched) **or** the commit was flagged
 new by GitHub on that PR's own head branch — `fe.commit_born_ref` tested against
-`fe.pr_head_ref`. On vscode PR #116416: 217 `ref_match` commits upstream, 87 under the previous
-rule, 36 under this one, and the 52 it removes were born on other people's branches.
+`fe.pr_head_ref`. On vscode PR #116416 it admits 36 of the 217 `ref_match` commits upstream; the
+rest were born on other branches.
 
 **Issue ↔ PR (decision 62).** `mv_issue_pr_links_commit_message` is itself derived from commit→PR
-attribution, so it inherited the wide rule. Branch A re-tests each `commit_message` method against
-`fe.commit_pr_link` and strips it where no still-admitted commit for that PR carries the mention;
-the primary method is recomputed from what survives, and a pair left with no method disappears.
+attribution, so it carries the wide attribution into the issue↔PR links. Branch A re-tests each
+`commit_message` method against `fe.commit_pr_link` and strips it where no still-admitted commit
+for that PR carries the mention; the primary method is recomputed from what survives, and a pair
+left with no method disappears.
 The test is deliberately conservative and removes only what it can positively disprove: the two
 upstream views parse commit messages differently, so a `cm_mention` guard keeps a link the support
 table cannot adjudicate rather than dropping it over a parser difference.
@@ -230,13 +231,13 @@ branch can still fail the test after a force-push, a rebase, or GH Archive's 20-
 of `PushEvent.commits`. Raw `ref_match` is the ceiling. Quote a range, and never compare raw link
 counts between repositories: the removal rate differs sharply by branching practice, and
 kubernetes pays the cost while gaining almost nothing because its contributors work from forks.
-For vscode the three numbers are 71,470 upstream, 32,262 under the old rule, 20,846 under this
-one; the measured cost is 1,620 real links for vscode, 272 for react, 56 for kubernetes.
+For vscode, 71,470 upstream pairs narrow to 20,846. The measured cost (2026-08-07) is 1,620 real
+links for vscode, 272 for react, 56 for kubernetes.
 
 `SELECT * FROM fe.diag_ref_match_narrowing` prints, per repository, the upstream pair count, what
 was kept, what was dropped as born elsewhere, what was dropped though born here (the floor's
-size), and what is kept only by `ref_match`. Run it rather than quoting the benefit figures from
-memory: `sql/fe_layer.sql` and `DECISIONS.md` disagree about them.
+size), and what is kept only by `ref_match`. Run it rather than quoting the figures from memory:
+`sql/fe_layer.sql` and `DECISIONS.md` do not agree on them.
 
 ## The RPCs
 
@@ -260,9 +261,9 @@ connects to thousands of objects at a single hop; links are `fe.link_mat` rows w
 endpoints in the sub-log, or the payload would carry a dangling reference. There is no row cap.
 
 The seed's existence is checked before the traversal, against the natural key rather than the
-derived id. It has to be: the traversal seeds itself with the literal string, so a nonexistent
-seed produced a structurally valid, completely empty payload that rendered as "this repository has
-no process".
+derived id. It has to be: the traversal seeds itself with the literal string, so without the check
+a nonexistent seed returns a structurally valid, completely empty payload that renders as "this
+repository has no process".
 
 **Repository resolution is by name**, and `repo.name` is not unique in this database:
 `kubernetes/kubernetes` resolves to both 20580498 (2.4M events) and 40511817 (1 event). The tie

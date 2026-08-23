@@ -1,11 +1,11 @@
 # Visualizing issue-to-merge processes using object-centric event logs
 
-A master's thesis prototype. It draws a GitHub repository's issue → pull request → commit
-history as an **object-centric sub-log**: issues, pull requests, commits and actors keep their
-own identity instead of being flattened into one case per issue, and the links between them are
-graded by whether the platform asserted the link (`validated`) or we parsed a convention nobody
-enforces (`extracted`). The stack is PostgreSQL → PostgREST → D3, with no dependencies at all —
-no bundler, no framework, no TypeScript, no test library. D3 7.8.5 comes from a CDN;
+Draws a GitHub repository's issue → pull request → commit history as an **object-centric
+sub-log**: issues, pull requests, commits and actors keep their own identity instead of being
+flattened into one case per issue, and every link carries the evidence behind it. A link is
+`validated` when the platform asserted it, `extracted` when it comes from parsing a convention
+nobody enforces. The stack is PostgreSQL → PostgREST → D3, with no dependencies at all: no
+bundler, no framework, no TypeScript, no test library. D3 7.8.5 comes from a CDN;
 `vendor/d3-force.js` is the only vendored code. Node 20+ is the whole toolchain.
 
 ## Running it
@@ -38,8 +38,10 @@ Then start both servers, and apply the data layer once:
 ../ocpm.sh status   # what is running, and is it healthy
 ```
 
-Prefer `ocpm.sh db` to running the SQL by hand; it applies both files and refreshes `fe.link_mat`, so run `fe.refresh_all()` yourself after an upstream refresh. The order is `sql/fe_layer.sql`, then
-`sql/postgrest_setup.sql`, then `SELECT fe.refresh_all()`, and it is not negotiable:
+Prefer `ocpm.sh db` to running the SQL by hand; it applies both files and refreshes
+`fe.link_mat`, so run `fe.refresh_all()` yourself after an upstream refresh. The order is
+`sql/fe_layer.sql`, then `sql/postgrest_setup.sql`, then `SELECT fe.refresh_all()`, and it is not
+negotiable:
 `fe_layer.sql` issues `CREATE OR REPLACE` on every `api` function, which silently resets it to
 `SECURITY INVOKER`, and the app then fails with *"permission denied for schema fe"* while every
 local check still passes. `fe.link_mat` and `fe.seed_lookup` also go stale silently after any
@@ -103,7 +105,7 @@ times are UTC, labelled.
 Commits pushed together fold into one bulk-push mark, and runs of comments inside the folding
 window fold into one comment burst; click either to expand, and the `−` handle to fold it back.
 Where more than six links land on the same point they stop fanning apart and declare a `×N`
-badge instead, because at 35 commits the fan drew one pull request as a cascade of diamonds.
+badge instead, because at 35 commits the fan draws one pull request as a cascade of diamonds.
 
 **Nothing disappears quietly.** Anything a toggle hides is named in a banner across the top of the
 chart, one chip per hidden item, each restoring on click. The header's help strip says in a
@@ -188,7 +190,7 @@ window size it captures at, so compare fill between shots and never against the 
 |---|---|
 | `CLAUDE.md` | Project rules: vocabulary, hard constraints, what is out of scope |
 | `docs/DECISIONS.md` | Every settled decision, numbered, plus the open questions. **Binding** |
-| `docs/ARCHITECTURE.md` | The frontend: folders, seams, data flow, layout, and the traps the layout code paid for |
+| `docs/ARCHITECTURE.md` | The frontend: folders, seams, data flow, layout, and the traps in the layout code |
 | `docs/DATA_LAYER.md` | Everything server-side: schemas, the payload, links, the RPCs, roles, diagnostics |
 | `docs/DATA_CONTRACT.md` | What exists upstream. A record of a read-only database that is itself the truth |
 | `docs/VERIFICATION.md` | What was checked, how, and what was not. §5 is the not-verified list; read it before quoting a figure |
@@ -202,14 +204,13 @@ and SQL contain, compiled from the tree. Use it when you need a name, a constant
 - **Event glyphs stack without bound** (open question O12(b)). A kubernetes issue with 288
   comments in a short window allocates 52 bands and an SVG 5,654 px tall. Crowding rather than
   deception, but it is worst on the busiest issues.
-- **How to draw a dense sub-log's links is unresolved** (O13). Bundling links that share an
-  endpoint was built and reverted; two measurements from that attempt are recorded in
-  `DECISIONS.md` §2 and constrain whatever replaces it.
+- **How to draw a dense sub-log's links is unresolved** (O13). Two measurements in
+  `DECISIONS.md` §2 constrain any fix.
 - **Events carry one object id, not many** (O10). OCEL 2.0's event-to-object relation is
   many-valued; convergence here is expressed through links between objects instead.
-- **Every link figure is a floor, never a point estimate.** Two admission rules narrow
-  `ref_match` and are ours rather than upstream's, so commit-link and issue↔PR counts undercount
-  by an unmeasured amount. Say so wherever one is quoted.
+- **Every link figure is a floor, never a point estimate.** Two admission rules added by this
+  project narrow `ref_match`, so commit-link and issue↔PR counts undercount by an unmeasured
+  amount. Say so wherever one is quoted.
 - **Clusters overprint on a large sub-log.** Labels collide where pull requests sit close, and a
   34-pull-request hub is unreadable by label in either arrangement, though the shape still reads.
 - **Fixtures key actors by `actor:<login>`**, because `ocel-data.json` carries no numeric actor

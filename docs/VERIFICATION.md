@@ -7,7 +7,7 @@ that runs in `npm test`, by a check that ran against the database, or by a rende
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
 **724 tests in 29 files, 0 failures, ~1 s — run 2026-08-23.** None needs a browser, a network or a
-database. The count moves every session: 377 on 2026-08-04, 401 on 2026-08-08, 478 at Task 6.
+database.
 
 ---
 
@@ -56,11 +56,11 @@ sidebar occupies ~367 px; the verification renders come from headless Edge at 1:
 300 px, so everything is displaced horizontally for reasons unrelated to correctness. What was
 compared instead is what *is* comparable: tick labels, tick count, node labels, lane composition,
 glyph placement relative to the axis. Byte-identical comparison is used only between two renders
-from the same browser, which is how Task 2 was shown not to disturb F1.
+from the same browser.
 
-Differences 1–6 were compared at Task 6 and accounted for; nothing else differed then. Differences
-7–12 arrived afterwards and were never re-compared, the baseline being read-only. Anyone re-running
-the comparison must expect all twelve.
+Differences 1–6 were compared against the baseline and accounted for. Differences 7–12 postdate
+that comparison and were never re-compared, the baseline being read-only. Anyone re-running the
+comparison must expect all twelve.
 
 | # | Difference | Mandated by |
 |---|---|---|
@@ -69,7 +69,7 @@ the comparison must expect all twelve.
 | 3 | Burst badge `21` → `20` | the count is derived from `push_id` |
 | 4 | `OCEL CASE` → `Sub-log`; `Case statistics` → `Per-object statistics` | decision 1 |
 | 5 | Links coloured by the object they reach | decision 24 |
-| 6 | Highlights tick `22:47:51` → `21:47:49` | closed 2026-08-19: decision 112 removed the mode and its ticks |
+| 6 | Highlights tick `22:47:51` → `21:47:49` | decision 112 removed the mode and its ticks |
 | 7 | Activity labels are verbs: `opened/closed/merged` → `open/close/merge` | decision 89 |
 | 8 | Commit↔PR links reversed to PR → commit, so their gradients run the other way | decision 92 |
 | 9 | A pull request closed without merging carries a dashed ring | decision 81 |
@@ -140,9 +140,9 @@ be 0, the sixth exactly 10 distinct activities), `fe.diag_link_staleness`,
 `gharchive_ocpm_viz_wsl`, MVs last refreshed 2026-08-02 19:32–19:45 UTC. All six `fe.diag_sanity`
 checks passed: no dangling event objects, no issue or PR object without events, every actor named by
 an event has an actor object, no pair linked twice by one qualifier, both link endpoints objects,
-distinct activities exactly 10 (9 until decision 123). `fe.diag_link_staleness` reported drift 0.
-The gate passed on ten real sub-logs across all three repositories and all three seed types, at
-degrees 0–3 (3 was still allowed; capped at 2 since decision 110), from 5 to 404 objects. The
+distinct activities exactly 10. `fe.diag_link_staleness` reported drift 0. The gate passed on ten
+real sub-logs across all three repositories and all three seed types, at degrees 0–3 (the cap is 2
+since decision 110), from 5 to 404 objects. The
 34-pull-request hub kubernetes #68026 reported 30 soft footprint shortfalls and no failure. Latency
 1.7–3.4 s per sub-log end to end, from 19.4 s before indexing and tuning (`sql/fe_layer.sql` §0.1);
 `fe.refresh_links()` is ~6 s.
@@ -211,33 +211,31 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   `ref_match`), and that spread is real branching practice rather than a filter artifact. It is why
   raw link counts must never be compared across repositories as though they measured the same thing.
 
-Gaps closed since this list was written, one line each: a real sub-log is rendered and the
-PostgREST → `fetch()` → browser path works (2026-08-05); `rpc-check.mjs` probes the `web_anon` path
-after a permissions regression it could not see, though it probes one function only (2026-08-07);
-the `repo` type needs no fixture because decision 39 removed it; `PullRequestMergedOffPlatform` has
-F14 and `tests/offplatform.test.js` (123); the fixture corpus was rebuilt onto decision 43's four
-qualifiers, which found a live defect in the link fan (2026-08-09); the traversal runs and was
-exercised at degrees 0–3 (2026-08-04); the Stats page owns an error surface (87, 2026-08-08).
+Checked since, one line each: a real sub-log renders and the PostgREST → `fetch()` → browser path
+works (2026-08-05); `rpc-check.mjs` probes the `web_anon` path, for one function only (2026-08-07);
+the `repo` type needs no fixture, decision 39 having removed it; `PullRequestMergedOffPlatform` has
+F14 and `tests/offplatform.test.js` (123); the fixture corpus sits on decision 43's four
+qualifiers, and rebuilding it onto them found a live defect in the link fan (2026-08-09); the
+traversal was exercised at degrees 0–3 (2026-08-04); the Stats page owns an error surface
+(87, 2026-08-08).
 
 ---
 
-## 6. RQ2: per-repo link coverage — measurable, not published here
+## 6. Per-repo link coverage: measurable, not measured here
 
-RQ2 needs per-repo issue↔PR link counts broken down by detection method. If detection is
-systematically weaker on kubernetes and react than on vscode, apparent cross-repository process
-differences may be artifacts of coverage rather than real behaviour.
+Comparing repositories needs per-repo issue↔PR link counts broken down by detection method. If
+detection is systematically weaker on kubernetes and react than on vscode, apparent
+cross-repository process differences may be artifacts of coverage rather than real behaviour.
 
-**The threat narrowed on 2026-08-04 and did not close.** It was stated as "the available methods key
-on GitHub's standard conventions, while `gh-N`, `bug #N` and `For #N` are common in kubernetes and
-react". `mv_issue_pr_links_extended_conventions` detects exactly those forms. But *detection exists*
-and *coverage is comparable across repositories* are different claims, only the second bears on RQ2,
-and neither is measured. See `DATA_CONTRACT.md` §4.
+The non-standard forms are detected: `gh-N`, `bug #N` and `For #N` are common in kubernetes and
+react, and `mv_issue_pr_links_extended_conventions` detects exactly those. But *detection exists*
+and *coverage is comparable across repositories* are different claims, and the second is not
+measured. See `DATA_CONTRACT.md` §4.
 
 **The figure is measurable.** `fe.diag_link_methods` in `sql/fe_layer.sql` returns
 `(repo_id, method, qualifier, evidence, links)` over `fe.link` — per repository, per method, grouped
 by qualifier as decision 50 requires, with `proximity` a row of its own so its share can be reported
 separately. It is not run here and no number from it is published in this document.
 
-Until it is run and quoted, the thesis must state the limitation qualitatively and say the number is
-not yet measured. **Do not estimate it.** An invented coverage figure would undermine the very
-limitation it documents.
+Until it is run, state the limitation qualitatively and say the number is not measured. **Do not
+estimate it.** An invented coverage figure would undermine the very limitation it documents.

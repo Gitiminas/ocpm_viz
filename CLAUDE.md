@@ -1,24 +1,16 @@
 # Project instructions
 
-Master's thesis prototype: **"Visualizing Issue-to-Merge Processes using Object-Centric Event
-Logs."** Design Science Research.
+The tool draws a GitHub repository's issue → pull request → commit history as an object-centric
+sub-log: issues, pull requests, commits and actors keep their own identity, and every link carries
+the evidence behind it.
 
-- **RQ1** How can OCPM data from GitHub issue-to-merge workflows be visualized to improve
-  traceability of related issues, pull requests, and commits?
-- **RQ2** What workflow patterns and differences appear across selected repositories?
+It is a general, configurable tool, not one tuned to a fixed question list. Every lane, object
+type, link type and relationship class toggles independently; configurations are nameable and
+saveable. **The stack is fixed:** PostgreSQL → PostgREST → D3.
 
-Evaluated by Cognitive Dimensions of Notations plus a task-based comparison against PM4Py and
-OC-PM, using the WP1 catalogue (Q1–Q10) and shortcomings (S1–S11) — a check on the tool, not a spec.
-
-**Design philosophy:** a general, configurable tool, not one tuned to a fixed question list. Every
-lane, object type, link type and relationship class toggles independently; configurations are
-nameable and saveable. **The stack is fixed:** PostgreSQL → PostgREST → D3.
-
-**Software engineering quality is graded, and others maintain the tool after this thesis.**
-Modularity, clear seams, tests and readable structure are deliverables, not polish.
-
-**I am not experienced with D3 or API work.** Explain non-obvious choices briefly. I will not catch
-a subtle rendering bug by reading a diff, so verification matters more than usual.
+Others maintain this code. Modularity, clear seams, tests and readable structure are requirements,
+not polish. Explain non-obvious choices briefly; a subtle rendering bug is not caught by reading a
+diff, so verification matters more than usual.
 
 ## Documents
 
@@ -74,17 +66,17 @@ a subtle rendering bug by reading a diff, so verification matters more than usua
   22 in-scope views are this project's own (O9, closed), and `sql/fe_layer.sql` §0 creates 19 with
   measurements. Announce an index rather than adding it quietly, and check `pg_class.reltuples` is
   not `-1`: a non-owner `ANALYZE` reports success while skipping.
-- **Do not build other people's theses.** The `ocel_*` views belong to the parallel PhD work; bot
-  classification, OCEL 2.0 tables, labels, forks, reviews and branch/ref lifecycle are out of scope.
+- **Out of scope, do not wire them in.** The `ocel_*` views, bot classification, OCEL 2.0 tables,
+  labels, forks, reviews, review comments, and branch and ref lifecycle.
 - **Never fabricate data.** No placeholder rows, no `Math.random()`, no mock UI. Fixtures live in
   `tests/fixtures/` and are labelled. If data is missing, say so and stop.
 - **Never change event-log semantics without asking**: object types, activity vocabulary,
-  qualifiers, evidence classification are research decisions, not implementation details.
+  qualifiers and evidence classification are modelling decisions, not implementation details.
 - **The word is `extracted`, never `inferred`.** Two evidence classes: `validated`, `extracted`.
 - **The word is `landmark`, never `milestone`** (decision 38). Three landmarks: `IssueClosed`,
-  `PullRequestMerged`, and `PullRequestMergedOffPlatform`, restored by decision 123 as a *heuristic*
-  landmark: labelled "Merge (off-platform)", its own PR outcome rather than an unmerged close, with
-  a dotted ring in the extracted colour. `milestone` survives only when quoting an upstream column.
+  `PullRequestMerged`, and `PullRequestMergedOffPlatform`, which is *heuristic* (decision 123):
+  labelled "Merge (off-platform)", its own PR outcome rather than an unmerged close, with a dotted
+  ring in the extracted colour. `milestone` survives only when quoting an upstream column.
 - **All times UTC**, parsed, rendered and labelled as such.
 - **Object types are closed at four:** `issue`, `pull_request`, `commit`, `actor` (decision 39).
   `repo` is **not** an object — a partition key upstream, carried once as `meta.repo`/`meta.repo_id`.
@@ -92,15 +84,16 @@ a subtle rendering bug by reading a diff, so verification matters more than usua
 ## Conventions
 
 - **Metrics are computed in JS over `selectVisible(...)`** (decision 12) so they follow the toggles.
-  SQL is only for figures spanning data that is not loaded, such as per-repo link coverage for RQ2.
+  SQL is only for figures spanning data that is not loaded, such as link coverage per repository.
   Precomputing them there would silently answer "comments hidden → gaps unchanged".
-- Derived relations live in **our own schemas**, never the shared namespace: `fe` for the views,
-  `api` for the RPCs. Plain `VIEW` by default (decision 10); two materializations, each with its
+- Derived relations live in **this project's own schemas**, never the shared namespace: `fe` for
+  the views, `api` for the RPCs. Plain `VIEW` by default (decision 10); two materializations, each with its
   measurement beside it — `fe.link_mat`, because the traversal needs a whole repository's adjacency,
   and `fe.seed_lookup` behind the seed box. **Both go stale silently: run `SELECT fe.refresh_all()`
   after any upstream refresh**, and read `fe.diag_staleness` for last-written times.
-- **Two admission rules are ours, not upstream's** (decisions 62 and 80); both narrow `ref_match`.
-  Every commit-link and issue↔PR figure is therefore a **floor**, never a point estimate — say so.
+- **Two admission rules belong to this project, not upstream** (decisions 62 and 80); both narrow
+  `ref_match`. Every commit-link and issue↔PR figure is therefore a **floor**, never a point
+  estimate. Say so.
 - Identity is by numeric id, never `login` or repo `name` — both are renameable. Object ids are
   **type-prefixed** (decision 51): `issue:<issue_id>`, `pr:<pull_request_id>`, `commit:<sha>`,
   `actor:<actor_id>`; the bare numbers collide across types. Two exceptions remain. A repo is
@@ -125,8 +118,8 @@ a subtle rendering bug by reading a diff, so verification matters more than usua
 
 ## Working style
 
-- New work comes from `DECISIONS.md` §2 and from what I ask for.
+- New work comes from `DECISIONS.md` §2 and from what is asked for.
 - If something is ambiguous and the settled decisions do not cover it, **ask instead of guessing.**
-  A wrong guess baked into layout is expensive to unwind and hard for me to detect.
+  A wrong guess baked into layout is expensive to unwind and hard to detect by reading a diff.
 - **Flag every place you guessed** rather than silently choosing.
-- Record any new design choice in `docs/DECISIONS.md`. It is thesis material, not bookkeeping.
+- Record any new design choice in `docs/DECISIONS.md`.
