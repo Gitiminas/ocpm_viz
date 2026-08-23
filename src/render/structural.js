@@ -19,10 +19,10 @@
  * colour could carry time, as the design brief proposed. It was wrong in practice and was
  * removed: a lone issue came out pale lilac instead of the accent blurple it is in every
  * other mode, pull requests lost their orange, and a reader carrying the colour mapping
- * across from the timeline or the statistics page was simply misled — the objection
- * decision 86 raises about two views disagreeing over what a colour means. Time is better
- * served by dimming what falls outside a brushed range, which subtracts rather than
- * recolours, and by the arrowheads that were always going to carry precedence.
+ * across from the timeline or the statistics page was simply misled — two views must not
+ * disagree over what a colour means. Time is better served by dimming what falls outside
+ * a brushed range, which subtracts rather than recolours, and by the arrowheads that were
+ * always going to carry precedence.
  */
 
 import { TYPE, drawSymbol, typeColor, evidenceStyle, COLORS } from './theme.js';
@@ -44,14 +44,14 @@ const ARROW_SIZE = 7;
 /**
  * Draw the edges.
  *
- * ⚠️ **Edges are neutral here, where the timeline colours them by what they reach
- * (decision 24).** That decision exists because a link crossing a full-width chart
- * converges with a dozen others in the destination lane, and colour was the only thing
- * left that could say *which* pull request it arrived at. In this mode an edge is short
- * and lands on a visibly distinct node whose own colour already answers that, so the
- * problem decision 24 solves does not arise here and a coloured edge would only add a
- * third hue to a picture that already has one per object. The evidence cue is untouched,
- * because that is a statement about how much the link is worth and it holds in every mode.
+ * ⚠️ **Edges are neutral here, where the timeline colours them by what they reach.**
+ * That rule exists because a link crossing a full-width chart converges with a dozen
+ * others in the destination lane, and colour was the only thing left that could say
+ * *which* pull request it arrived at. In this mode an edge is short and lands on a
+ * visibly distinct node whose own colour already answers that, so the problem does not
+ * arise here and a coloured edge would only add a third hue to a picture that already
+ * has one per object. The evidence cue is untouched, because that is a statement about
+ * how much the link is worth and it holds in every mode.
  */
 export function renderStructuralEdges({
   gLink,
@@ -80,11 +80,11 @@ export function renderStructuralEdges({
      * exactly superimposed lines and the reader sees one. Measured on kubernetes #47532:
      * 77 links over 43 pairs, one pair carrying six — and two bundles mixing the classes,
      * which means a dashed *extracted* link was sitting invisibly underneath a solid
-     * *validated* one. That is decision 25's buried link again, in a mode with no fan to
-     * separate them, and it hides exactly the uncertainty cue (S8) this tool exists to
-     * show. Splitting by class and offsetting the two apart is the smallest thing that
-     * cannot hide one under the other; links that agree on their class are genuinely one
-     * mark and carry a count instead.
+     * *validated* one. That is the buried link again, in a mode with no fan to separate
+     * them, and it hides exactly the uncertainty cue (S8) this tool exists to show.
+     * Splitting by class and offsetting the two apart is the smallest thing that cannot
+     * hide one under the other; links that agree on their class are genuinely one mark
+     * and carry a count instead.
      */
     const byEvidence = new Map();
     for (const edge of bundle.edges) {
@@ -496,17 +496,17 @@ export function renderStructuralNodes({
   const gestures = [];
 
   for (const node of nodes) {
-    // The object's own shade, exactly as every other mode draws it (decision 24, and the
-    // same map the statistics page uses under decision 86). Fill means "which object"
-    // here as it does there; time is carried by the arrowheads, the brush and the
-    // hovercard instead. See the note on `renderStructuralNodes` for what this replaced.
+    // The object's own shade, exactly as every other mode draws it, and the same map the
+    // statistics page uses. Fill means "which object" here as it does there; time is
+    // carried by the arrowheads, the brush and the hovercard instead. See the note on
+    // `renderStructuralNodes` for what this replaced.
     const shade = objectColors.get(node.objectId) || typeColor(node.lane);
     /*
      * ⚠️ **Dimmed, never removed.** A mark outside the brushed range is still part of the
      * sub-log, and taking it away would leave the reader unable to tell "nothing happened
-     * then" from "you narrowed the range" — the distinction decision 83 protects in the
-     * legend and decision 27 in the banner. Dimming says both at once: the shape of the
-     * whole graph stays visible behind what was asked for.
+     * then" from "you narrowed the range" — the same distinction the legend's dimming and
+     * the banner protect. Dimming says both at once: the shape of the whole graph stays
+     * visible behind what was asked for.
      */
     const opacity =
       objectOpacity(node.objectId, focus, { graded: true }) *
@@ -522,7 +522,7 @@ export function renderStructuralNodes({
       .style('cursor', 'pointer');
 
     if (node.landmark && node.heuristicLandmark) {
-      // The off-platform merge's own ring — see `render/nodes.js` (decision 123).
+      // The off-platform merge's own ring — see `render/nodes.js`.
       group
         .append('circle')
         .attr('data-legend', 'landmark-heuristic')
@@ -555,7 +555,7 @@ export function renderStructuralNodes({
     }
 
     // Shape from the type, size from the type, fill from time, stroke from the object.
-    // The stroke is what keeps decision 24's promise: the shade still says *which*.
+    // The stroke keeps the shade's promise: it still says *which* object.
     drawSymbol(
       group.append('g'),
       TYPE[node.lane].shape,

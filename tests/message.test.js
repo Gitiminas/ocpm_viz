@@ -19,8 +19,8 @@ describe('a page message surface', () => {
     assert.equal(messageEl.innerHTML, '<p>why</p>');
     assert.equal(messageEl.style.display, 'block');
     assert.equal(contentEl.style.display, 'none');
-    // Emptying it would destroy what the renderer holds a reference to (decision 74),
-    // and showing the last sub-log under "could not draw" would contradict the message.
+    // Emptying it would destroy what the renderer holds a reference to, and showing the
+    // last sub-log under "could not draw" would contradict the message.
     assert.equal(contentEl.innerHTML, 'stale', 'the content must not be cleared');
   });
 

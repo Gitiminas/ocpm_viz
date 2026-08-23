@@ -24,7 +24,7 @@
  * how much of it one mark stands for.
  *
  * The commit lane is the exception that needs no rule: it already drew one node per commit
- * *object* (decision 19), so a commit is the same thing in both modes.
+ * *object*, so a commit is the same thing in both modes.
  *
  * Pure and DOM-free. Visibility is applied by the caller through the same predicates the
  * timeline uses, so this module never learns what a lane toggle is.
@@ -84,7 +84,7 @@ export function buildStructuralNodes({
     for (const object of index.objectsOfType(laneType)) {
       // A commit inside a collapsed burst is represented by the burst, not by itself.
       // Without this a 20-commit push contributes 20 nodes and swamps the layout — the
-      // same density argument decision 6 makes for the timeline, with more force here
+      // same density argument as the timeline's push folding, with more force here
       // because the force simulation gives every node a share of the space.
       if (foldedCommitIds.has(object.id)) continue;
 
@@ -222,7 +222,7 @@ export function buildStructuralEdges(links, nodes) {
     if (!source || !target || source === target) return;
     edges.push({
       // Indexed rather than keyed on the endpoints: one pair can carry several links,
-      // and two of them differing only in evidence is exactly the case decision 25's fan
+      // and two of them differing only in evidence is exactly the case the link fan
       // exists for. Collapsing them here would bury the extracted one before anything
       // downstream got the chance to keep it visible.
       id: `e_${i}_${source}__${target}`,
@@ -282,7 +282,7 @@ export function edgeDirection(edge, nodesById) {
  *
  * Read off the structural nodes rather than off the graph, so it describes what is
  * actually on screen: hiding a lane narrows the ramp to what remains, exactly as the
- * statistics recompute over the visible sub-log (decision 12). Returns `null` when
+ * statistics recompute over the visible sub-log. Returns `null` when
  * nothing has a timestamp, which a one-object sub-log with no intervals can produce.
  */
 export function timeExtent(nodes) {

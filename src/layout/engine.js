@@ -176,7 +176,7 @@ function layoutTemporal({
   }
 
   // Which drawn node stands for which object — commits carry their packed row, so a link
-  // into the commit lane must meet the node, not the lane's top (decisions 19 and 37).
+  // into the commit lane must meet the node, not the lane's top.
   const nodeByObject = new Map();
   for (const node of nodes) {
     if (node.objectId) nodeByObject.set(node.objectId, node);

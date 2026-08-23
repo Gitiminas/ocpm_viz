@@ -7,7 +7,7 @@ disagree, the database wins and this document gets fixed. What the project build
 `DATA_LAYER.md`, not here.
 
 Scope is **issue → PR → commit, plus comments and actors**. Labels, forks, reviews, review
-comments, commit comments, branch/ref lifecycle and bot classification are out (decisions 40, 47).
+comments, commit comments, branch/ref lifecycle and bot classification are out.
 
 The relations below are the whole set `sql/fe_layer.sql` reads: base tables `event`, `actor`,
 `repo`, the two identity views, and twelve `mv_*` views. Everything else in the database is listed
@@ -38,7 +38,7 @@ a shape, and check it rather than assuming it.
 
 ⚠️ **`repo.name` is not unique.** `kubernetes/kubernetes` resolves to two ids, `20580498` and
 `40511817`, the second a one-event stub. Addressing a repository by name is ambiguous in this
-database, not merely in principle. Any name→id resolution must be deterministic; decision 51.
+database, not merely in principle. Any name→id resolution must be deterministic.
 
 ⚠️ **The data window is not what the upstream SQL assumes.** `event.created_at` runs
 2013-05-29 → **2025-04-09**, but `mv_commit_pr_links` hard-codes a window end of
@@ -47,7 +47,7 @@ real bound. Do not quote it as the data window.
 
 **MV refresh timestamps** (`pg_stat_file(pg_relation_filepath(...))`): every one of the 23 was last
 written **2026-08-02, 19:32–19:45 UTC**. Quote this beside any figure that rests on an upstream
-view — decision 52 requires it for the commit→PR link counts specifically.
+view, the commit→PR link counts above all.
 
 ---
 
@@ -65,7 +65,7 @@ on every query.
 > **Actor objects, and the repository's own name, come from these tables — not from any view.**
 > The asymmetry downstream: `actor` supplies *objects*, `repo` supplies the **frame** the sub-log
 > sits in (`meta.repo` / `meta.repo_id`). `repo_id` is a partition key in every view below and never
-> a participant, which is why decision 39 does not model it as an object type.
+> a participant, which is why it is not modelled as an object type.
 
 **Pattern to use:** `event` for the backbone, MVs for the payload-derived detail. The MVs refine
 `event.type` into a specific activity via the payload's `action` field, and supply the object ids,
@@ -168,8 +168,8 @@ Unified per-PR activity timeline merging PR events, PR comments and off-platform
 read directly, but this timeline JOINs it and emits the off-platform-merge `activity_type`, which is
 the path that activity takes into `fe.event`. It is a `delta_seconds` timing heuristic
 (−831 s … +326 s over its 31 rows), so the frontend draws it as a landmark with its own dotted ring
-in the extracted colour and counts it as a separate PR outcome, never as the platform's merge
-(decision 123). For 29 of the 31 PRs it is the only closing event; two carry a `PullRequestClosed`
+in the extracted colour and counts it as a separate PR outcome, never as the platform's merge.
+For 29 of the 31 PRs it is the only closing event; two carry a `PullRequestClosed`
 as well, and both pass through as they are. The `offplatform_commit_message` method and
 `delivered_by` qualifier stay out.
 
@@ -184,7 +184,7 @@ PushEvents reshaped into generic activity records.
 ### Link detection (4)
 
 ⚠️ **`validation_status` is not our evidence class.** Upstream it is the *temporal sanity* of a
-link, whether the dates line up; our `validated` means *the platform asserts the link* (decision 7).
+link, whether the dates line up; our `validated` means *the platform asserts the link*.
 Two different questions with the same word, and `mv_issue_to_pr_validated_all` puts that word in a
 view name. Mapping either onto `link.evidence` would break the solid-vs-dashed uncertainty cue.
 Nothing upstream pre-classifies a link by evidence; the single mapping lives in `DATA_LAYER.md`.
@@ -201,8 +201,8 @@ It `UNION ALL`s the seven method views with a `priority` per view (`pr_body` 1, 
 aggregates `count(DISTINCT link_method)` → `n_methods` and `string_agg(DISTINCT link_method, ';')`
 → `link_methods`, then keeps `DISTINCT ON (repo_id, issue_number, pull_request_id)` ordered by
 `priority`. All seven method views are keyed on `issue_id` + `pull_request_id`, and every one is an
-issue↔PR relation — none carries a `commit_sha` column, so none can name a commit endpoint
-(decision 53). The derivation is done; consume it rather than rebuilding it.
+issue↔PR relation — none carries a `commit_sha` column, so none can name a commit endpoint.
+The derivation is done; consume it rather than rebuilding it.
 
 Things to know before consuming it:
 
@@ -215,11 +215,11 @@ Things to know before consuming it:
   figure must say so rather than listing a method that produced no rows.
 - **The `commit_message` member is derived from commit→PR attribution.** Its definition joins
   `mv_commit_pr_links … AND cpr.admitted`, so those links inherit whatever that rule admits.
-  Decision 61 narrows the rule for commit links and decision 62 propagates the narrowing here;
+  This project narrows the rule for commit links and propagates the narrowing here;
   consuming the union unfiltered re-imports the wide rule through the back door. Measured
   2026-08-04 on vscode PR #116416: 23 issues mentioned under the wide attribution, **0** surviving
   the narrow one. `commit_message` is also the `link_method` value used by
-  `mv_commit_message_issue_links_all`, which is a *commit*↔issue relation — hence decision 50's rule
+  `mv_commit_message_issue_links_all`, which is a *commit*↔issue relation — hence the rule
   that every per-method figure groups by `(method, qualifier)`.
 - **`proximity` asserts nothing and parses nothing**; two timestamps are merely near each other
   (1,457 rows in the member view). Report its share separately from any link count, because a
@@ -233,7 +233,7 @@ template, "Fixed tickets" rows — split by whether they were found in the title
 **Columns (11), captured 2026-08-04:** `repo_id`, `issue_id`, `issue_number`, `pull_request_id`,
 `pr_number`, `validation_status`, `link_method`, `issue_created_at_utc`, `pr_created_at_utc`,
 `pr_merged_at_utc`, `issue_closed_at_utc`.
-**Why:** supplies the six extended methods of decision 42 (`pr_title_gh`, `pr_title_symfony`,
+**Why:** supplies the six extended methods (`pr_title_gh`, `pr_title_symfony`,
 `pr_title_for`, `pr_body_gh`, `pr_body_fixed_tickets`, `pr_body_refs`).
 
 ⚠️ **Only 205 rows, and only four of the six methods occur:** `pr_title_for` 101, `pr_body_refs` 93,
@@ -255,7 +255,7 @@ Commit↔PR attribution.
 `link_method` takes exactly three values, all already in the `LINK_METHOD` enum:
 `merge_commit_sha`, `head_sha`, `ref_match`.
 
-The `admitted` rule is **inherited, not reimplemented** (decision 52). Admitted / not admitted, by
+The `admitted` rule is **inherited, not reimplemented**. Admitted / not admitted, by
 repo and method, 2026-08-04:
 
 | `repo_id` | `merge_commit_sha` | `head_sha` | `ref_match` | admitted % |
@@ -271,14 +271,14 @@ request at all, and the same-repo share is **0.8% for kubernetes, 62.9% for vsco
 react**. Kubernetes barely uses the method because its contributors work from forks, not because its
 links are cleaner.
 
-⚠️ **This project does not consume `admitted` unchanged.** Decision 61 narrows the `ref_match`
-branch and decision 62 propagates that narrowing to the issue↔PR links derived from it — the two
+⚠️ **This project does not consume `admitted` unchanged.** `fe.link` narrows the `ref_match`
+branch and propagates that narrowing to the issue↔PR links derived from it — the two
 divergences from upstream in this layer. The view itself is untouched: the predicate lives in
 `fe.link`, and `fe.diag_ref_match_narrowing` reports what it removes. **Our commit→PR link counts
 are therefore deliberately lower than this view yields**, by an amount that differs per repository —
-`ref_match` pairs go vscode 71,470 → 32,262, kubernetes 2,895 → 2,037, react 3,934 → 2,152 (figures
-corrected by decision 65). Cite decision 61 beside any such number and report it as a range, with
-raw `ref_match` as the ceiling.
+`ref_match` pairs go vscode 71,470 → 32,262, kubernetes 2,895 → 2,037, react 3,934 → 2,152.
+Cite the narrowing beside any such number and report it as a range, with raw `ref_match` as the
+ceiling.
 
 The view can change beneath us, so quote its refresh timestamp (§1: 2026-08-02 19:39 UTC) beside any
 figure resting on it.
@@ -291,7 +291,7 @@ Issue references parsed out of commit messages by regex, tagged by convention
 `push_created_at`, `actor_id`
 **Why:** the commit↔issue link source — the `referenced_issue` qualifier. `ref_scope` and
 `link_convention` are the sub-grading inputs; cross-repo refs are weaker than same-repo `fixes #N`,
-and decision 54 drops them because the view carries no target repo id. The evidence class itself is
+and they are dropped because the view carries no target repo id. The evidence class itself is
 assigned in `DATA_LAYER.md`.
 
 ---
@@ -300,9 +300,9 @@ assigned in `DATA_LAYER.md`.
 
 `mv_commit_pr_links` and `mv_issue_to_pr_validated_all` are two derivations this project would
 otherwise have built. Both are consumed as they stand, so there is exactly one commit→PR admission
-rule in the project — the inherited one, decision 52. Lifecycle intervals are ours, built as
+rule in the project — the inherited one. Lifecycle intervals are ours, built as
 `fe.interval_issue` / `fe.interval_pull_request` in `sql/fe_layer.sql`. Process gaps are computed in
-JS over the loaded sub-log (decision 12) so they follow the toggles; no upstream gap view is
+JS over the loaded sub-log so they follow the toggles; no upstream gap view is
 consumed. The derived layer is described in `DATA_LAYER.md`.
 
 **Indexes** are the first performance lever, ahead of any materialization: `repo_id`, `issue_id`,
@@ -338,4 +338,4 @@ Base table `org`. Views `mv_issue_id_to_number`, `mv_issue_pr_links_pr_body`,
 The `ocel_*` views are not read by this tool either; do not wire them in. None were present in this
 database on 2026-08-04.
 
-Bot / human actor classification is out of scope (decision 47); `actor` is used as-is.
+Bot / human actor classification is out of scope; `actor` is used as-is.

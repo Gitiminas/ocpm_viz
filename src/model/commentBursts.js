@@ -1,7 +1,7 @@
 /**
  * Comment bursts: runs of comments on one object that sit close together in time.
  *
- * The same bargain as commit bursts (decision 6), for a different reason. A push has a
+ * The same bargain as commit bursts, for a different reason. A push has a
  * `push_id`, so a commit burst is a fact the data hands us. **Comments have no such key**,
  * so the grouping here is invented and the window that defines it is therefore a control
  * rather than a constant — the reader sets what "close together" means and can see the

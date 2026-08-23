@@ -5,7 +5,7 @@
  * unit tested — does not have to import the rendering module.
  */
 
-/** One entry per member of `OBJECT_TYPES`. `repo` had a label until decision 39. */
+/** One entry per member of `OBJECT_TYPES`. The object types are closed at four. */
 export const TYPE_LABELS = {
   issue: 'Issue',
   pull_request: 'PR',

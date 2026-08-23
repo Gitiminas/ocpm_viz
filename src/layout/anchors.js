@@ -13,7 +13,7 @@
  *                    and PR lanes draw one node per *event*. So an object may be
  *                    resolved to a drawn node only in the commit lane — consulting
  *                    `nodeByObject` for a PR yields whichever of its events was
- *                    written last (decision 19).
+ *                    written last.
  *   row vs lane      An issue or PR meets its link at the row its band was packed
  *                    into, not at the top of its lane. With one object per lane the
  *                    two coincide, which is why the difference stayed invisible

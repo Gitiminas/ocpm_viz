@@ -140,7 +140,7 @@ describe('nothing collapses except by push_id', () => {
   /**
    * ⚠️ **The relationships mode introduces no folding rule of its own, and this pins that.**
    *
-   * `push_id` is a fact in the data and decision 94 folds on it, always. Anything further
+   * `push_id` is a fact in the data and folding goes by it, always. Anything further
    * — clustering by PR, by time, by density — would be a *new* research decision about
    * what a mark means, not a rendering choice, and it would be invisible in a diff. The
    * arithmetic below is the whole of it, so a future "just group these too" has to break
@@ -267,7 +267,7 @@ describe('bursts fold, and folding moves the links with them', () => {
 
     // Every edge must land on something that is actually drawn — that is what folding a
     // link means. A link resolving to nothing would silently never appear, which is the
-    // wrong-picture-no-error failure decision 49 exists to catch one layer up.
+    // wrong-picture-no-error failure the validator catches one layer up.
     const nodeIds = new Set(nodes.map((node) => node.id));
     for (const edge of edges) {
       assert.ok(nodeIds.has(edge.source), `${edge.id} starts at a node that is not drawn`);
@@ -336,7 +336,7 @@ describe('edges keep what the other modes encode', () => {
   });
 
   test('two links on one pair stay two edges', async () => {
-    // Decision 25's case: the same pair carrying both evidence classes. Collapsing them
+    // The same pair carrying both evidence classes. Collapsing them
     // here would bury the extracted one before the renderer could keep it visible.
     const nodes = [
       { id: 'n_pr:1', objectId: 'pr:1' },
@@ -402,7 +402,7 @@ describe('the time span the ramp and the brush read', () => {
   });
 
   test('it describes what is on screen, not the whole bundle', async () => {
-    // Decision 12's rule applied to the ramp: hide a lane and the span narrows to what
+    // The metrics rule applied to the ramp: hide a lane and the span narrows to what
     // is left, exactly as the statistics recompute over the visible sub-log.
     const { nodes } = await structuralFor('F1');
     const withoutCommits = nodes.filter((node) => node.lane !== 'commit');

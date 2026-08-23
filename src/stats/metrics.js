@@ -1,7 +1,7 @@
 /**
  * Metrics over a loaded sub-log.
  *
- * Computed in JS, over the graph in memory, not precomputed in SQL (decision 12).
+ * Computed in JS, over the graph in memory, not precomputed in SQL.
  * That is deliberate: metrics must respond to toggles. Hiding comments has to
  * recompute gaps, and a server-side precomputation would silently answer "no".
  *
@@ -9,7 +9,7 @@
  * checked directly against fixtures.
  *
  * ⚠️ Task 4 replaces the presentation of these with a per-object table that
- * aggregates on demand (decision 8). What is here is the generalization of the
+ * aggregates on demand. What is here is the generalization of the
  * mockup's nine cards: they assumed exactly one issue and one PR, and would read the
  * wrong object or divide by nothing as soon as there were two.
  */
@@ -19,16 +19,15 @@ import { isLandmark, activityLabel, LANE_TYPES } from '../model/activities.js';
 /**
  * Objects with a lane, i.e. with a lifecycle worth tabulating.
  *
- * Three sites below used to spell this as "not `actor` and not `repo`". Decision 39
- * removed `repo` as an object type, which would have left three copies of "not
- * `actor`" — a list that happens to be right rather than a statement of what is
- * meant. Asking `LANE_TYPES` instead means the next laneless type is handled by
- * adding it to one array, and it says the thing: an object without a lane has no
- * duration, no gaps and no row in the per-object table.
+ * Asked as `LANE_TYPES`, not as "not `actor`". A negative list happens to be right
+ * rather than saying what is meant, and it has to be repeated at every site that
+ * needs it. This way the next laneless type is handled by adding it to one array,
+ * and it says the thing: an object without a lane has no duration, no gaps and no
+ * row in the per-object table.
  */
 const hasLane = (object) => LANE_TYPES.includes(object.type);
 
-/** Total time an object was open, summed across its intervals (decision 4). */
+/** Total time an object was open, summed across its intervals. */
 export function objectLifetime(object) {
   let total = 0;
   let complete = true;
@@ -77,7 +76,7 @@ export function commitStats(graph) {
   const commits = graph.objects.filter((object) => object.type === 'commit');
   const authors = new Set();
   for (const commit of commits) {
-    // Git author strings, a different identity space from `actor` (decision 5).
+    // Git author strings, a different identity space from `actor`.
     if (commit.vmap?.commit_author_name) authors.add(commit.vmap.commit_author_name);
   }
   const times = commits
@@ -111,12 +110,10 @@ export function commentCounts(graph) {
 /**
  * Link totals by evidence class.
  *
- * Every link counted here is a traceability link between two objects. Until decision
- * 41 the bundle also carried event→actor attribution links, which had to be
- * subtracted first: they were all `validated`, and on F1 there were 42 of them
- * against 34 real links, so counting them would have reported a 45/31 split where
- * the traceability story is 3/31. Attribution now lives on `event.actor_id` alone
- * and cannot inflate a figure the thesis reports.
+ * Every link counted here is a traceability link between two objects. Attribution
+ * lives on `event.actor_id` alone, never as a link, so it cannot inflate the split.
+ * That matters: F1 carries 34 real links, and the 42 attribution links it would have
+ * carried were all `validated` — enough to report 45/31 where the answer is 3/31.
  */
 export function linkCounts(graph) {
   return {
@@ -153,7 +150,7 @@ export function leadTimeToFirstCommit(graph) {
  * "Issue closed" alone no longer identifies anything.
  *
  * Not "milestones": that word is taken by a GitHub feature of its own, whose columns
- * sit on `mv_issues_full` upstream (decision 38).
+ * sit on `mv_issues_full` upstream.
  */
 export function landmarks(graph) {
   const byId = new Map(graph.objects.map((object) => [object.id, object]));
@@ -219,7 +216,7 @@ export function perObjectGaps(events, objectId) {
 }
 
 // ---------------------------------------------------------------------------
-// the per-object table (decision 8)
+// the per-object table
 // ---------------------------------------------------------------------------
 
 /** How a PR ended. `null` for anything that is not a PR. */
@@ -229,7 +226,7 @@ export function prOutcome(object, events) {
     events.filter((event) => event.object_id === object.id).map((event) => event.activity),
   );
   if (activities.has('PullRequestMerged')) return 'merged';
-  // Decision 123: a merge of a different kind, counted on its own so the distribution
+  // A merge of a different kind, counted on its own so the distribution
   // never folds a heuristic into the platform's merges.
   if (activities.has('PullRequestMergedOffPlatform')) return 'merged off-platform';
   if (activities.has('PullRequestClosed')) return 'closed unmerged';
@@ -287,7 +284,7 @@ export function perObjectMetrics(graph) {
 }
 
 /**
- * Aggregate a set of rows — the "on demand" half of decision 8.
+ * Aggregate a set of rows — the "on demand" half of the per-object table.
  *
  * Reports median *and* range rather than a mean. Process durations are strongly
  * right-skewed, so a mean sits between the typical case and the outlier and

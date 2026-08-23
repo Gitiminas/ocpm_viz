@@ -8,12 +8,11 @@
  *   discrete     equal spacing by event rank; real durations are discarded and the
  *               large gaps are annotated separately by the axis
  *
- * ⚠️ There was a third, *highlights* — a compressed axis where each inter-event gap
- * contributed a fixed base plus the gap capped at three hours. Removed (decision 112):
- * it sat between the other two without answering a question either could not, and it
- * carried its own folding rule for commits. Its one lasting trace is that the discrete
- * inverse below used to borrow the compressed inverse as an approximation; it now has
- * an inverse of its own.
+ * ⚠️ A third mode, *highlights*, is deliberately absent: a compressed axis where each
+ * inter-event gap contributed a fixed base plus the gap capped at three hours. It sits
+ * between the other two without answering a question either could not, and it needs
+ * its own folding rule for commits. The discrete inverse below is exact rather than
+ * borrowing that compressed inverse as an approximation.
  *
  * Everything here is pure: it takes numbers and returns numbers, so it can be
  * checked without rendering anything.

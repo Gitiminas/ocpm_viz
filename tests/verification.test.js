@@ -91,7 +91,7 @@ describe('every fixture is a valid ObjectGraph', () => {
 });
 
 /**
- * Decisions 41 and 49, as a property of every fixture rather than of one.
+ * Both endpoints of a link are objects, as a property of every fixture rather than of one.
  *
  * Ten modules used to open with `if (link.qualifier === 'actor') continue;` — the
  * adjacency builder, the commit grouping, three toggle derivations, the visibility

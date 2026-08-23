@@ -165,8 +165,8 @@ describe('the extraction did not move anything', () => {
           );
         }
 
-        // `objectRow` is what tells a link which band its object was packed into —
-        // decision 37's defect lived exactly here.
+        // `objectRow` is what tells a link which band its object was packed into, and a
+        // link must meet its object at the row that object is drawn at.
         assert.deepEqual([...engine.objectRow.entries()].sort(), [...reference.objectRow.entries()].sort());
         assert.equal(engine.repeatRow, reference.repeatRow);
       });
@@ -443,8 +443,8 @@ describe('the structural layout', () => {
   });
 
   test('an empty picture is empty, not broken', async () => {
-    // Everything switched off is a legitimate state — decision 27 requires it to be
-    // reachable and declared, not prevented.
+    // Everything switched off is a legitimate state — it must be reachable and
+    // declared, not prevented.
     const context = await contextFor('F1');
     const layout = createLayout({
       mode: 'relationships',

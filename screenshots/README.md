@@ -69,11 +69,11 @@ them as regressions, and do not update the baseline.
 
 | # | Change | Visible effect | Owner |
 |---|---|---|---|
-| 1 | **Link evidence reclassification** (decision 7) | 29 `ref_match` links move validated → extracted, i.e. solid → dashed with a `?` badge. F1 goes from 32 solid / 2 dashed to 3 solid / 31 dashed. Most visible in `…17-36-33`, where the whole burst link fan is drawn | Task 1 step 7 |
-| 2 | **UTC rendering** (decision 9) | Every timestamp shifts **−1 hour**. These screenshots were captured on a UTC+01:00 machine and show local time: the issue opens at `05:15:54Z` in the data but renders `06:15:54` here. Affects axis ticks, tooltips, the milestone list and the stats page | Task 5 |
+| 1 | **Link evidence reclassification** | 29 `ref_match` links move validated → extracted, i.e. solid → dashed with a `?` badge. F1 goes from 32 solid / 2 dashed to 3 solid / 31 dashed. Most visible in `…17-36-33`, where the whole burst link fan is drawn | Task 1 step 7 |
+| 2 | **UTC rendering** | Every timestamp shifts **−1 hour**. These screenshots were captured on a UTC+01:00 machine and show local time: the issue opens at `05:15:54Z` in the data but renders `06:15:54` here. Affects axis ticks, tooltips, the milestone list and the stats page | Task 5 |
 | 3 | **Burst label from actual member count** | The burst label reads `21` in **nine** of the eleven images — as the collapsed badge, and as `21 commits` on the expanded handle in `…17-36-33`. It must read **20**: 21 is `meta.burst.n_commits`, but only 20 commits carry `in_burst: true` | Task 0 §4 → Task 1 step 2 |
-| 4 | **`case` → `subLog` rename** (decision 1) | Sidebar header `OCEL CASE` and the stats page title/card `Case statistics` must no longer contain the word | Task 1 step 6 |
-| 5 | **Links coloured by the object they reach** (decision 24) | Link gradients now carry the *target object's* colour along most of their length instead of fading to the qualifier colour at the very end. On F1 this changes link colour only — geometry, positions and node placement are untouched. The one `referenced_issue` link and its `?` badge turn from orange-red to the issue's blurple, because that qualifier had been borrowing the evidence palette | Task 2 |
+| 4 | **`case` → `subLog` rename** | Sidebar header `OCEL CASE` and the stats page title/card `Case statistics` must no longer contain the word | Task 1 step 6 |
+| 5 | **Links coloured by the object they reach** | Link gradients now carry the *target object's* colour along most of their length instead of fading to the qualifier colour at the very end. On F1 this changes link colour only — geometry, positions and node placement are untouched. The one `referenced_issue` link and its `?` badge turn from orange-red to the issue's blurple, because that qualifier had been borrowing the evidence palette | Task 2 |
 
 Everything else — geometry, node positions, lane and row assignment, axis tick placement, gap bands,
 glyph shapes, focus dimming, actor trails, tooltip layout — must be unchanged. **Report any other

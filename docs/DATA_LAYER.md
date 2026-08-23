@@ -12,7 +12,7 @@ functions (`remap_activity`, `utc`, and the three refreshers). `api` holds three
 `fe_owner`. PostgREST is configured with `db-schemas = "api"`, so `api` is the entire HTTP
 surface and the frontend never reads a view directly.
 
-Views are plain by default (decision 10). The frontend asks for one sub-log at a time, so a
+Views are plain by default. The frontend asks for one sub-log at a time, so a
 plain view lets the seed filter reach the underlying upstream MVs; the first lever for speed is
 an index on those MVs, not a copy of them. `fe_layer.sql` §0 creates 19 such indexes and
 `ANALYZE`s 13 of them, with the measurements that justified each. Two relations are
@@ -63,7 +63,7 @@ one: compare it against the upstream refresh.
 ## The ObjectGraph payload
 
 One RPC returns one bundle. `meta.contract_version` is `2`; a consumer that does not understand
-it should fail rather than render something subtly wrong (decision 45).
+it should fail rather than render something subtly wrong.
 
 ```
 meta:    { repo, repo_id, repo_ambiguous, contract_version: 2, seed: [{id, type}],
@@ -76,9 +76,9 @@ links:   [ { source, target, qualifier, evidence, method, n_methods, link_method
 
 Objects come ordered by `(type, id)`, events by `(time, id)`. `meta` records the query that
 produced the sub-log, for reproducibility. It is not an identity: there is no case notion, and
-the same event may legitimately belong to many sub-logs (decision 1).
+the same event may legitimately belong to many sub-logs.
 
-**Ids are type-prefixed** (decision 51). Objects: `issue:<issue_id>`, `pr:<pull_request_id>`,
+**Ids are type-prefixed**. Objects: `issue:<issue_id>`, `pr:<pull_request_id>`,
 `commit:<sha>`, `actor:<actor_id>`. Events: `issue_act:<event_id>`, `pr_act:<event_id>`,
 `commit_obs:<event_id>:<commit_index>`. The prefix is load-bearing, not cosmetic: the bare
 numeric ids collide. Measured 2026-08-04, 8 issue ids equal a pull request id, 11 equal an actor
@@ -114,7 +114,7 @@ The validator is strict about structure and silent about content. It checks: the
 keys and that three of them are arrays; object `id` present and unique, `type` in the closed set
 of four, `intervals` an array whose members have a `start`; event `id`, `time`, and an
 `object_id` that resolves; activity known and allowed on that object type; both link endpoints
-resolving to **objects**, with an event id rejected by name (decision 49); `evidence` exactly
+resolving to **objects**, with an event id rejected by name; `evidence` exactly
 `validated` or `extracted`; `method` known if present. Everything else can be absent and will
 degrade at render time instead.
 
@@ -134,10 +134,10 @@ Of the loosely-typed bags, the client reads little:
 
 ## Objects, activities, intervals
 
-Four object types, closed: `issue`, `pull_request`, `commit`, `actor`. `repo` is not one
-(decision 39) — it is a partition key upstream, has no lifecycle and no link reaches it, so it is
-carried once as `meta.repo`. Three get a lane; `actor` has no interval to draw and surfaces
-through the sidebar and the actor card (decision 15).
+Four object types, closed: `issue`, `pull_request`, `commit`, `actor`. `repo` is not one: a
+partition key upstream, with no lifecycle and no link reaching it, so it is carried once as
+`meta.repo`. Three get a lane; `actor` has no interval to draw and surfaces through the sidebar
+and the actor card.
 
 Ten activities, closed. The SQL vocabulary (`fe.activity_vocabulary`) and the JS one
 (`src/model/activities.js`) agree row for row.
@@ -173,7 +173,7 @@ same-state events are collapsed. An `end` of `null` means still open.
 ## Links
 
 `fe.link` is a `UNION ALL` of four branches. Both endpoints are always objects; there are no
-actor links (decision 41), because who performed an event is `event.actor_id` and nothing else.
+actor links, because who performed an event is `event.actor_id` and nothing else.
 
 | Branch | source → target | qualifier | method | Source |
 |---|---|---|---|---|
@@ -207,7 +207,7 @@ upstream method row, for the same reason and because aggregating recovers the re
 
 Everything else in this layer inherits upstream's rules. These two do not, and both narrow.
 
-**Commit → PR (decision 80).** GitHub never states which commits belong to a pull request; GH
+**Commit → PR.** GitHub never states which commits belong to a pull request; GH
 Archive's PR payload does not list them. The best available evidence is `ref_match`: this commit
 was pushed to the PR's branch while the PR was open. That is noisy, because merging anything into
 a long-lived branch re-enumerates every incoming commit and attributes all of them to the PR.
@@ -217,7 +217,7 @@ new by GitHub on that PR's own head branch — `fe.commit_born_ref` tested again
 `fe.pr_head_ref`. On vscode PR #116416 it admits 36 of the 217 `ref_match` commits upstream; the
 rest were born on other branches.
 
-**Issue ↔ PR (decision 62).** `mv_issue_pr_links_commit_message` is itself derived from commit→PR
+**Issue ↔ PR.** `mv_issue_pr_links_commit_message` is itself derived from commit→PR
 attribution, so it carries the wide attribution into the issue↔PR links. Branch A re-tests each
 `commit_message` method against `fe.commit_pr_link` and strips it where no still-admitted commit
 for that PR carries the mention; the primary method is recomputed from what survives, and a pair
@@ -236,8 +236,7 @@ links for vscode, 272 for react, 56 for kubernetes.
 
 `SELECT * FROM fe.diag_ref_match_narrowing` prints, per repository, the upstream pair count, what
 was kept, what was dropped as born elsewhere, what was dropped though born here (the floor's
-size), and what is kept only by `ref_match`. Run it rather than quoting the figures from memory:
-`sql/fe_layer.sql` and `DECISIONS.md` do not agree on them.
+size), and what is kept only by `ref_match`. Run it rather than quoting the figures from memory.
 
 ## The RPCs
 
@@ -300,7 +299,7 @@ needs SELECT on 14 GB of raw event data. `fe_owner` is deliberately not a superu
 function pins `search_path = fe, public, pg_temp`.
 
 `postgrest_setup.sql` applies all of this by looping over the `api` schema, never by naming a
-function (decision 71), and ends in seven checks that must all read `ok`: role membership, EXECUTE,
+function, and ends in seven checks that must all read `ok`: role membership, EXECUTE,
 `prosecdef`, `proconfig`, no superuser owner, `web_anon` cannot SELECT `public.event`, `web_anon`
 has no USAGE on `fe`. Each check counts over all `api` functions with `count(*) FILTER`, because
 `bool_and` over an empty schema would report `ok` on a broken deployment. The trap this guards is
@@ -313,9 +312,8 @@ The other source. `src/data/source.js` is the seam: three operations (`listRepos
 because a tool that fails to start when PostgREST is down would be worse than one that starts on
 fixtures and says so. The fixture source has no traversal, so a seed resolves only where a sub-log
 was pre-built, and it answers a `{fixture}` address as a direct reference for tests and written-down
-links. The database source has no default seed, because decision 34 forbids the list one would have
-to be picked from. `tests/fixtures/README.md` lists F1–F14 and the two LIVE samples and what each
-exists to exhibit.
+links. The database source has no default seed: a seed is chosen by search, never from a list.
+`tests/fixtures/README.md` lists F1–F14 and the two LIVE samples and what each exists to exhibit.
 
 ## Diagnostics
 

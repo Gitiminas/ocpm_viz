@@ -24,12 +24,10 @@ export const MIN_ZOOM = 0.55;
 export const MAX_ZOOM = 14;
 
 /*
- * There was a `TOGGLEABLE_METHODS` constant here — every `LINK_METHOD` except
- * `event_actor_id`, which was actor attribution rather than a traceability method
- * and therefore had no business in a link filter. Decision 41 deleted that method,
- * so the exception it existed to carve out no longer exists, and an alias for
- * "all of them" is not worth a name. The toggles are derived from the loaded
- * sub-log by `deriveMethods` regardless.
+ * There is no `TOGGLEABLE_METHODS` constant. Actor attribution is single-sourced on
+ * `event.actor_id` rather than being a link method, so there is no exception to carve
+ * out of the filter, and an alias for "all of them" is not worth a name. The toggles
+ * are derived from the loaded sub-log by `deriveMethods` regardless.
  */
 
 export function createState() {
@@ -58,14 +56,14 @@ export function createState() {
      * three: the mark keeps the displacement the reader gave it, relative to wherever its
      * cluster now is.
      *
-     * Deliberately NOT in a preset (decision 28): a preset captures what is shown, not
+     * Deliberately NOT in a preset: a preset captures what is shown, not
      * where you were looking, and a hand-nudged node is the latter.
      *
      * ⚠️ Keyed by ARRANGEMENT first: `Map<structuralLayout, Map<nodeId, {dx, dy}>>`,
      * read through `nudgesFor()`. An offset is relative to where *one* arrangement put
      * the node; re-applied to the other it moved marks by amounts that meant something
      * somewhere else — a drag in Rows sent clusters off screen. Each arrangement keeps
-     * its own nudges and shows its own computed layout when switched to (decision 117).
+     * its own nudges and shows its own computed layout when switched to.
      */
     nodeNudges: new Map(),
 
@@ -118,7 +116,7 @@ export function createState() {
      *
      * A control rather than a constant, because unlike a push there is no key in the
      * data that says which comments belong together — so the reader sets what "close"
-     * means and watches the answer change (decision 93).
+     * means and watches the answer change.
      */
     commentWindowDays: DEFAULT_COMMENT_WINDOW_DAYS,
     /** Highlight-mode group keys the user has unfolded. */
@@ -271,11 +269,9 @@ export function isNodeVisible(node, state, groupsByCommit = new Map()) {
  * Five independent conditions, all of which must hold. Each is separated so that a
  * link's absence is attributable to one named control rather than to "the filters".
  *
- * There was a sixth, first in the list: `qualifier === 'actor'` returned false
- * unconditionally, so an actor link was never drawn under any configuration.
- * Decision 41 removed those links from the data instead, which is the honest place
- * for the rule — a predicate that answers "no" for a whole class regardless of state
- * is not a filter, it is a deletion performed late.
+ * There is no sixth for `qualifier === 'actor'`. Those links are removed from the data
+ * instead, which is the honest place for the rule — a predicate that answers "no" for a
+ * whole class regardless of state is not a filter, it is a deletion performed late.
  */
 export function isLinkVisible(link, byId, state, groupsByCommit = new Map()) {
   const source = byId.get(link.source);
@@ -321,7 +317,7 @@ export function actorPreview(actorId, state) {
  * The sub-log as currently filtered: only the objects, events and links on screen.
  *
  * Metrics are computed over *this*, not over the whole bundle, because they must
- * respond to the toggles (decision 12). Hiding comments has to recompute gaps — a
+ * respond to the toggles. Hiding comments has to recompute gaps — a
  * gap analysis that silently counts events you have switched off answers a question
  * nobody asked, and would answer "no" to "does this change the bottleneck?" without
  * ever saying so.
@@ -333,7 +329,7 @@ export function actorPreview(actorId, state) {
  */
 export function selectVisible(graph, state, groupsByCommit = new Map()) {
   const objects = graph.objects.filter((object) => {
-    // `actor` is the only laneless object type since decision 39 dropped `repo`.
+    // `actor` is the only laneless object type.
     // Laneless objects survive every lane filter: there is no control that hides
     // them here, and the actor list and actor card read this same selection.
     if (object.type === 'actor') return true;

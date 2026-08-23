@@ -130,7 +130,7 @@ describe('fixtures exhibit the properties they claim', () => {
     const graph = await load('F5');
     const commits = graph.objects.filter((o) => o.type === 'commit');
     assert.equal(commits.length, 1);
-    // `contains_commit` reads PR → commit (decision 43), so the commit is the target
+    // `contains_commit` reads PR → commit, so the commit is the target
     // and the pull requests that reach it are the sources.
     const prs = graph.links
       .filter((l) => l.target === commits[0].id && l.qualifier === 'contains_commit')
@@ -460,10 +460,9 @@ describe('links that would coincide are fanned apart', () => {
     // different lanes with different spans — so clampToLifecycle puts them in different
     // columns and the fan does not engage.
     //
-    // ⚠️ It is touched from BOTH sides now: it is the source of its `references_issue`
-    // link and the target of the PR's `contains_commit` one (decision 43's direction).
-    // Filtering on `source` alone found two links before the corpus was rebuilt and
-    // would find one now, which is why this asks about either end.
+    // ⚠️ It is touched from BOTH sides: it is the source of its `references_issue`
+    // link and the target of the PR's `contains_commit` one. Filtering on `source` alone
+    // would find only one of the two, which is why this asks about either end.
     const commitId = 'commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3';
     const graph = await load('F1');
     const index = indexObjectGraph(graph);

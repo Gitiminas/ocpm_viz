@@ -2,7 +2,7 @@
  * Drawing the lane contents: lifecycle bars, sequence lines, actor trails, and the
  * nodes themselves.
  *
- * The lifecycle bar is where decision 4 becomes visible. The mockup drew one bar per
+ * The lifecycle bar is where the interval list becomes visible. The mockup drew one bar per
  * object from a single `t_start`/`t_end` pair, which cannot represent an issue that
  * was closed and reopened. Here every object draws one bar **per interval**, so a
  * reopened issue renders as several bars on one row.
@@ -319,10 +319,9 @@ export function renderNodes({
     const nodeColor = objectColors.get(node.objectId) || typeColor(node.lane);
 
     if (node.landmark && node.heuristicLandmark) {
-      // The off-platform merge (decision 123): a landmark by ruling, a heuristic by
-      // nature. Same ring, same slot — but dotted and in the extracted colour, the
-      // tool's one consistent cue for "parsed, not asserted" (decision 7), so the
-      // emphasis claims no more than the data does.
+      // The off-platform merge: a landmark by ruling, a heuristic by nature. Same ring,
+      // same slot — but dotted and in the extracted colour, the tool's one consistent cue
+      // for "parsed, not asserted", so the emphasis claims no more than the data does.
       group
         .append('circle')
         .attr('data-legend', 'landmark-heuristic')
@@ -764,12 +763,12 @@ export function nodeTooltipSpec(node, actorLogin) {
 
     /*
      * ⚠️ **"Git author" and "Pushed by" are two different identity spaces and the labels
-     * have to say so** (decision 5). `commit_author_name` is the string inside the commit;
-     * the actor on a `CommitObserved` event is whoever *pushed* it, and they are never
-     * joined — the upstream author email is anonymised, so there is nothing to join on.
-     * The bare label "Author" invited the obvious reading that the sidebar's actor was
-     * that author: on react, @flarnie pushed 218 observations written by 27 different
-     * people and authored none of them. Naming the role is the whole fix.
+     * have to say so**. `commit_author_name` is the string inside the commit; the actor on
+     * a `CommitObserved` event is whoever *pushed* it, and they are never joined — the
+     * upstream author email is anonymised, so there is nothing to join on. The bare label
+     * "Author" invited the obvious reading that the sidebar's actor was that author: on
+     * react, @flarnie pushed 218 observations written by 27 different people and authored
+     * none of them. Naming the role is the whole fix.
      */
     const rows = [
       ['Time', formatInstant(node.t), 'time'],
@@ -830,7 +829,7 @@ export function nodeTooltipSpec(node, actorLogin) {
   if (node.event?.attrs?.auto_closed) {
     rows.push(['Auto-close', escapeHtml(String(node.event.attrs.auto_closed).replace(/^via /, ''))]);
   }
-  // The comment's own words (decision 124): the payload ships the first 500 characters
+  // The comment's own words: the payload ships the first 500 characters
   // on the event's attrs, the card shows the opening lines and expands under the pointer.
   // Raw text here — `excerptHtml` in render/tooltip.js is the one place it is escaped.
   if (node.isComment && node.event?.attrs?.comment_excerpt) {

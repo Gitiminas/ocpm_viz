@@ -17,7 +17,6 @@ diff, so verification matters more than usual.
 | Doc | What it is |
 |---|---|
 | `README.md` | Human entry point: run it, test it, extend it. Keep current |
-| `docs/DECISIONS.md` | Numbered decisions and open questions. **Binding. Read first** |
 | `docs/ARCHITECTURE.md` | The frontend: folders, seams, data flow, layout traps |
 | `docs/DATA_LAYER.md` | Schemas `fe` and `api`, the three RPCs, the `ObjectGraph` payload, the adapter |
 | `docs/DATA_CONTRACT.md` | The written record of what exists upstream. The database itself is ground truth |
@@ -37,7 +36,7 @@ diff, so verification matters more than usual.
 | `scripts/shot.mjs` | Headless screenshot of the running app | Writes to `.shots/` (gitignored), **never** to `screenshots/`. Headless lays out ~90px shorter than `--window-size`: compare fill between shots, not against the box |
 | `scripts/build-f1.mjs`, `build-synthetic-fixtures.mjs`, `build-catalogue.mjs` | Build the fixtures and the seed catalogue | Re-runnable. `--check` fails when a committed file is stale |
 | `scripts/serve.mjs` | Zero-dependency static server and `/rpc/*` proxy (`npm start`) | Needed: ES modules and `fetch` are blocked on `file://` |
-| `vendor/d3-force.js` | d3-force 3.0.0, ISC, unmodified (decision 104) | Never edit. Replace whole from the esm.sh bundled build, and re-read `vendor/README.md` |
+| `vendor/d3-force.js` | d3-force 3.0.0, ISC, unmodified | Never edit. Replace whole from the esm.sh bundled build, and re-read `vendor/README.md` |
 | `tests/` | `node --test` suites plus `tests/fixtures/` | `npm test`. See `tests/fixtures/README.md` |
 | `../ocpm.sh` | Outside the repo. Clean start, and `./ocpm.sh db` to apply the data layer | Prefer `db` over running the SQL by hand: `fe_layer.sql` resets the `api` functions to `SECURITY INVOKER`, and the materializations go stale silently |
 | `_ds/nocturne-*/` | Design system CSS tokens | Consume via `var(--token)`. Do not restyle |
@@ -63,7 +62,7 @@ diff, so verification matters more than usual.
   `objectGraph` / `subLog` and the RPC is `get_object_graph`.
 - **Never modify the shared upstream's data or definitions.** No `UPDATE`, `DELETE`, `DROP`,
   `TRUNCATE`, no refreshes, no altering a view. Indexes are the exception: the base tables and the
-  22 in-scope views are this project's own (O9, closed), and `sql/fe_layer.sql` §0 creates 19 with
+  22 in-scope views are this project's own, and `sql/fe_layer.sql` §0 creates 19 with
   measurements. Announce an index rather than adding it quietly, and check `pg_class.reltuples` is
   not `-1`: a non-owner `ANALYZE` reports success while skipping.
 - **Out of scope, do not wire them in.** The `ocel_*` views, bot classification, OCEL 2.0 tables,
@@ -73,29 +72,28 @@ diff, so verification matters more than usual.
 - **Never change event-log semantics without asking**: object types, activity vocabulary,
   qualifiers and evidence classification are modelling decisions, not implementation details.
 - **The word is `extracted`, never `inferred`.** Two evidence classes: `validated`, `extracted`.
-- **The word is `landmark`, never `milestone`** (decision 38). Three landmarks: `IssueClosed`,
-  `PullRequestMerged`, and `PullRequestMergedOffPlatform`, which is *heuristic* (decision 123):
-  labelled "Merge (off-platform)", its own PR outcome rather than an unmerged close, with a dotted
+- **The word is `landmark`, never `milestone`.** Three landmarks: `IssueClosed`,
+  `PullRequestMerged`, and `PullRequestMergedOffPlatform`, which is *heuristic*: labelled "Merge (off-platform)", its own PR outcome rather than an unmerged close, with a dotted
   ring in the extracted colour. `milestone` survives only when quoting an upstream column.
 - **All times UTC**, parsed, rendered and labelled as such.
-- **Object types are closed at four:** `issue`, `pull_request`, `commit`, `actor` (decision 39).
+- **Object types are closed at four:** `issue`, `pull_request`, `commit`, `actor`.
   `repo` is **not** an object — a partition key upstream, carried once as `meta.repo`/`meta.repo_id`.
 
 ## Conventions
 
-- **Metrics are computed in JS over `selectVisible(...)`** (decision 12) so they follow the toggles.
+- **Metrics are computed in JS over `selectVisible(...)`** so they follow the toggles.
   SQL is only for figures spanning data that is not loaded, such as link coverage per repository.
   Precomputing them there would silently answer "comments hidden → gaps unchanged".
 - Derived relations live in **this project's own schemas**, never the shared namespace: `fe` for
-  the views, `api` for the RPCs. Plain `VIEW` by default (decision 10); two materializations, each with its
+  the views, `api` for the RPCs. Plain `VIEW` by default; two materializations, each with its
   measurement beside it — `fe.link_mat`, because the traversal needs a whole repository's adjacency,
   and `fe.seed_lookup` behind the seed box. **Both go stale silently: run `SELECT fe.refresh_all()`
   after any upstream refresh**, and read `fe.diag_staleness` for last-written times.
-- **Two admission rules belong to this project, not upstream** (decisions 62 and 80); both narrow
-  `ref_match`. Every commit-link and issue↔PR figure is therefore a **floor**, never a point
+- **Two admission rules belong to this project, not upstream**; both narrow `ref_match`.
+  Every commit-link and issue↔PR figure is therefore a **floor**, never a point
   estimate. Say so.
 - Identity is by numeric id, never `login` or repo `name` — both are renameable. Object ids are
-  **type-prefixed** (decision 51): `issue:<issue_id>`, `pr:<pull_request_id>`, `commit:<sha>`,
+  **type-prefixed**: `issue:<issue_id>`, `pr:<pull_request_id>`, `commit:<sha>`,
   `actor:<actor_id>`; the bare numbers collide across types. Two exceptions remain. A repo is
   addressed by **name**, because `repo.name` is not unique here: it resolves to the id with the most
   events, carried as `meta.repo_id`, with `meta.repo_ambiguous` when more than one row bore it. And
@@ -110,7 +108,7 @@ diff, so verification matters more than usual.
   rendering the whole app, the seam is wrong.
 - Extend `st` and the toggle vocabulary from `deriveRelGroups()` (`src/state/state.js`) rather than
   inventing parallel mechanisms. Never reintroduce a hardcoded relationship-group enumeration.
-- **Every control, row and mark gets a help text** (decision 122). Controls carry `data-tip="<key>"`,
+- **Every control, row and mark gets a help text.** Controls carry `data-tip="<key>"`,
   marks carry `data-legend` mapping to `legend.<key>`; the texts are the table in `src/help/tips.js`,
   and `tests/tips.test.js` fails when a key has no text or a text has no key. No `title=` tooltips.
 - Two notions of degree, kept named apart: **traversal degree** (server-side, what is *in* the
@@ -118,8 +116,9 @@ diff, so verification matters more than usual.
 
 ## Working style
 
-- New work comes from `DECISIONS.md` §2 and from what is asked for.
-- If something is ambiguous and the settled decisions do not cover it, **ask instead of guessing.**
+- New work comes from what is asked for.
+- If something is ambiguous and the docs do not cover it, **ask instead of guessing.**
   A wrong guess baked into layout is expensive to unwind and hard to detect by reading a diff.
 - **Flag every place you guessed** rather than silently choosing.
-- Record any new design choice in `docs/DECISIONS.md`.
+- Record any new design choice in the doc that owns the area (ARCHITECTURE, DATA_LAYER or
+  DATA_CONTRACT).

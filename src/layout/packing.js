@@ -4,7 +4,7 @@
  * Two mechanisms, deliberately separated, because they answer different questions:
  *
  *   sub-lanes   Do two *objects* need their own horizontal band? Allocated only
- *               when their temporal extents overlap (decision 3). Two PRs that run
+ *               when their temporal extents overlap. Two PRs that run
  *               one after the other share a band; two that are open at the same
  *               time do not.
  *   collision   Within a band, do two *glyphs* land on top of each other? The
@@ -69,7 +69,7 @@ export function objectExtent(object, nodes = []) {
  * Objects are taken in start order and each is placed in the first band whose last
  * occupant has already finished. That is the classic interval-partitioning greedy,
  * and it uses the minimum number of bands — so a sub-lane appears only when overlap
- * genuinely forces one, which is the rule decision 3 states.
+ * genuinely forces one.
  *
  * Ties are broken by id so the allocation is stable across renders; an object
  * silently swapping bands between two renders would be worse than a suboptimal

@@ -100,8 +100,6 @@ function event(activity, time, objectId, { actorId = 'actor:alice', comment = fa
 // Deliberately a literal list rather than an import from `src/model/evidence.js`:
 // the fixtures are the second opinion the evidence rule is checked against, and a
 // generator that read the same set as the implementation could only agree with it.
-// `event_actor_id` was a fourth member until decision 41 deleted the method; no
-// synthetic fixture ever used it, so no fixture changes.
 const VALIDATED_METHODS = ['pr_body', 'head_sha', 'merge_commit_sha'];
 
 /**
@@ -431,7 +429,7 @@ FIXTURES.F13 = () => {
 };
 
 /**
- * F14 — an off-platform merge beside a real one (decision 123).
+ * F14 — an off-platform merge beside a real one.
  *
  * PR #90 is merged on GitHub. PR #91 is closed on GitHub and its commits turn up in a
  * push minutes later: upstream emits `PullRequestMergedOffPlatform` for it — and, for a

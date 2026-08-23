@@ -18,10 +18,6 @@
  */
 
 /**
- * Collapse a push into a single node above this many commits (decision 6).
- * Exposed as a UI control in Task 3; this is only the default.
- */
-/**
  * A push carrying more than one commit is a burst. There is no size threshold.
  *
  * There used to be one, exposed as a slider. It never chose *what* a burst is — `push_id`
@@ -30,7 +26,7 @@
  * slider in different positions see different pictures of the same sub-log and have no
  * way to tell, and nothing downstream distinguishes a push of three from a push of six.
  * Folding every real push is one rule, always the same, and expanding any of them is
- * still one click (decision 94).
+ * still one click.
  */
 export const MIN_BURST = 2;
 

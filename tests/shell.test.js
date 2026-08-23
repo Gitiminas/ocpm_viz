@@ -27,8 +27,8 @@ describe('the app shell keeps its load-bearing order', () => {
   });
 
   test('the banner is out of the flex flow of the scroll area, not inside it', async () => {
-    // Inside `#scroll` it would scroll away with the chart, and decision 27 requires it
-    // to be impossible to miss while anything is hidden.
+    // Inside `#scroll` it would scroll away with the chart, and it must be impossible
+    // to miss while anything is hidden.
     const html = await shell();
     const scroll = html.indexOf('id="scroll"');
     const wrapEnd = html.indexOf('</main>', scroll);
@@ -70,8 +70,8 @@ describe('the app shell keeps its load-bearing order', () => {
   });
 
   test('the placeholder is a sibling of the chart, never its content', async () => {
-    // Decision 74: writing into #chart detaches the one <svg> the renderer holds, and
-    // every later draw then lands outside the document.
+    // Writing into #chart detaches the one <svg> the renderer holds, and every later
+    // draw then lands outside the document.
     const html = await shell();
     const [message, chart] = orderOf(html, 'chartMessage', 'chart');
     assert.ok(message > 0 && chart > 0);

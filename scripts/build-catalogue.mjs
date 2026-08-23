@@ -38,7 +38,7 @@ const TARGET = resolve(FIXTURE_DIR, 'catalogue.json');
 const GENERATED_AT = '2026-07-31T00:00:00Z';
 
 /**
- * Every fixture is listed under ONE picker entry (decision 125, amending 34).
+ * Every fixture is listed under ONE picker entry.
  *
  * The picker used to mirror the fixtures' own repositories — microsoft/vscode for F1 and
  * the LIVE samples, synthetic/fixture for the rest — plus react and kubernetes shown
@@ -79,7 +79,7 @@ function build() {
   for (const file of files) {
     const id = file.replace('.json', '');
     const graph = JSON.parse(readFileSync(resolve(FIXTURE_DIR, file), 'utf8'));
-    // One bucket for everything the source serves (decision 125); the payload's own
+    // One bucket for everything the source serves; the payload's own
     // meta.repo is untouched and stays the provenance.
     const byId = new Map(graph.objects.map((object) => [object.id, object]));
 
@@ -131,7 +131,7 @@ function build() {
       'Seeds listed here are the ones the FIXTURE source can serve: a sub-log exists only ' +
       'where one was pre-built, so an arbitrary object cannot be seeded from. The database ' +
       'source traverses for real — switch Data source to Database, or use ?source=database.',
-    // Nothing unavailable is listed any more (decision 125, amending 34): the source
+    // Nothing unavailable is listed any more: the source
     // toggle's note is the pointer to the database, and a picker of dead rows was the
     // database picker's ghost.
     repos,

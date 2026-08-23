@@ -67,7 +67,7 @@ describe('the RPC transport asks for the right thing', () => {
   });
 
   test('traversal degree defaults to 1 and is sent as a number', async () => {
-    // Decision 111: the seed and what it directly touches is the question most loads ask.
+    // The seed and what it directly touches is the question most loads ask.
     const { fetchImpl, calls } = stubFetch({ status: 200, body: MINIMAL_GRAPH });
     await createRpcTransport({ fetchImpl })({ repo: 'r', seed: 's' });
     assert.equal(calls[0].body.traversal_degree, 1);
@@ -78,9 +78,9 @@ describe('the RPC transport asks for the right thing', () => {
   });
 
   test('a degree outside 0..2 is refused before anything is sent', async () => {
-    // Decision 110 caps the range at 2 — the third hop turns a 42-object sub-log into
-    // 291 on a busy seed and nothing the tool asks needs it. The SQL guard enforces the
-    // same range; refusing here says which field is wrong instead of surfacing a 400.
+    // The range caps at 2 — the third hop turns a 42-object sub-log into 291 on a busy
+    // seed and nothing the tool asks needs it. The SQL guard enforces the same range;
+    // refusing here says which field is wrong instead of surfacing a 400.
     const { fetchImpl, calls } = stubFetch({ status: 200, body: MINIMAL_GRAPH });
     const transport = createRpcTransport({ fetchImpl });
     for (const bad of [3, -1, 1.5, 'two']) {

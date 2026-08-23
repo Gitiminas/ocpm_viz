@@ -42,15 +42,15 @@ describe('F1 loads and validates', () => {
     const graph = await loadF1();
     assert.equal(graph.objects.length, 38);
     assert.equal(graph.events.length, 42);
-    // 34, not 76: decision 41 dropped the 42 event→actor attribution links, so
-    // every link left is a traceability link between two objects and no consumer
-    // has to subtract a class before counting.
+    // 34, not 76: there are no event→actor attribution links, so every link left
+    // is a traceability link between two objects and no consumer has to subtract
+    // a class before counting.
     assert.equal(graph.links.length, 34);
   });
 
   /**
-   * Attribution survives the deletion — the point of decision 41 is that it was
-   * never carried by the links in the first place.
+   * Attribution survives the deletion — it was never carried by the links in the
+   * first place.
    *
    * Asserted on the *loaded* graph rather than on the build script, because the
    * script's own bijection check could be deleted with the script. If the 42 actor
@@ -185,10 +185,8 @@ describe('validation fails loudly on a malformed bundle', () => {
   });
 
   /**
-   * Decision 49. The validator accepted an event id as a link endpoint while the
-   * event→actor links existed; now that both endpoints must be objects, a link into
-   * an event is a fault — and a silent one if unchecked, because it draws nothing
-   * and reports nothing.
+   * Both endpoints of a link are objects, so a link into an event is a fault — and
+   * a silent one if unchecked, because it draws nothing and reports nothing.
    */
   test('a link endpoint that names an event is rejected, and says so', () => {
     const bad = {
@@ -241,8 +239,8 @@ describe('validation fails loudly on a malformed bundle', () => {
  * class silently flipping is a link changing from solid to dashed in every render
  * and a changed validated/extracted split in every figure the thesis reports.
  *
- * Decision 42 fixes `link.method` at sixteen values, and since decision 41 removed
- * `event_actor_id` the enum holds exactly those sixteen and nothing else.
+ * `link.method` is closed at sixteen values: with `event_actor_id` gone, the enum
+ * holds exactly those sixteen and nothing else.
  */
 const EXPECTED_EVIDENCE = [
   ['pr_body', 'validated'],
@@ -270,7 +268,7 @@ describe('evidence classification (decision 7)', () => {
     });
   }
 
-  // Retired by decision 41: actor attribution is `event.actor_id`, not a link. Like
+  // Retired: actor attribution is `event.actor_id`, not a link. Like
   // `merge_commit_message` below it must reach the throw rather than merely be
   // absent, so a payload built against the old enum fails loudly instead of having
   // its attribution counted among the validated traceability links.
@@ -286,7 +284,7 @@ describe('evidence classification (decision 7)', () => {
     assert.deepEqual(linkMethods, EXPECTED_EVIDENCE.map(([m]) => m).sort());
   });
 
-  // Removed by decision 42: no upstream view emits it. It must not merely be absent
+  // Retired: no upstream view emits it. It must not merely be absent
   // from the enum — it must reach the throw, so a stale payload fails loudly.
   test('the retired merge_commit_message method is gone and throws', () => {
     assert.equal(Object.values(LINK_METHOD).includes('merge_commit_message'), false);
@@ -340,7 +338,7 @@ describe('burst derivation replaces the hardcoded burst', () => {
   });
 
   test('a push of more than one commit is a burst, and a lone commit is not', async () => {
-    // There is no size threshold any more (decision 94): push_id decides what a burst is,
+    // There is no size threshold: push_id decides what a burst is,
     // and it is a fact in the data rather than a preference. Every push in F1 carries
     // either 20 commits or 1, so exactly the 20-commit push folds.
     const commits = commitsOf(await loadF1());
@@ -382,13 +380,8 @@ describe('activity vocabulary is closed', () => {
     assert.throws(() => activityLabel('IssueLabelled'), /vocabulary is closed/);
   });
 
-  // Decision 48 removed it: a ±15-minute timing heuristic drawn with the weight of a
-  // real merge. Removed from the vocabulary means it hits the closed-vocabulary throw
-  // like any other unmapped string — if a transport ever emits one again, it fails
-  // loudly here rather than being rendered.
   test('the off-platform merge is back in the vocabulary, as a heuristic landmark', () => {
-    // Removed by decision 48 on a ruling that was a miscommunication; restored by 123.
-    // The rulings that came with it: a landmark, labelled as a merge of a different
+    // A ±15-minute timing heuristic: a landmark, labelled as a merge of a different
     // kind, NOT an unmerged close, and ringed as a heuristic.
     assert.equal(isKnownActivity('PullRequestMergedOffPlatform'), true);
     assert.equal(activityLabel('PullRequestMergedOffPlatform'), 'Merge (off-platform)');
@@ -412,8 +405,8 @@ describe('activity vocabulary is closed', () => {
     assert.deepEqual(OBJECT_TYPES, ['issue', 'pull_request', 'commit', 'actor']);
     assert.deepEqual(LANE_TYPES, ['issue', 'pull_request', 'commit']);
     // `actor` is the one object type without a lane. That gap between the two lists
-    // is decision 15's whole content, and it must not close: an actor has no
-    // lifecycle interval, so a lane would draw a bar encoding nothing.
+    // must not close: an actor has no lifecycle interval, so a lane would draw a
+    // bar encoding nothing.
     assert.deepEqual(
       OBJECT_TYPES.filter((type) => !LANE_TYPES.includes(type)),
       ['actor'],
@@ -421,13 +414,12 @@ describe('activity vocabulary is closed', () => {
   });
 
   /**
-   * Decision 39 in the only place it is observable.
+   * `repo` is not an object type, in the only place that is observable.
    *
    * No fixture ever contained a repo object — the type had a permanently empty
-   * branch, which is the argument the decision makes. So the entire behavioural
-   * change is here: a payload carrying one must now fail loudly rather than be
-   * indexed into a group nothing reads. Without this test the decision would be
-   * implemented and unexercised.
+   * branch. So the entire behaviour is here: a payload carrying one must fail
+   * loudly rather than be indexed into a group nothing reads. Without this test
+   * the rule would be implemented and unexercised.
    */
   test('a repo-typed object is now rejected, and the message names the closed set', () => {
     const problems = findGraphProblems({
@@ -462,8 +454,8 @@ describe('indexing exposes collections, never a privileged first object', () => 
     // never has to distinguish "no objects of this type" from "unknown type".
     assert.equal(index.objectsByType.size, OBJECT_TYPES.length);
     // And a type outside the set answers with an empty list rather than throwing —
-    // `repo` was a member until decision 39, so stale callers must degrade quietly
-    // here even though a repo *object* would be rejected at validation.
+    // `repo` is not a member, so stale callers must degrade quietly here even
+    // though a repo *object* would be rejected at validation.
     assert.deepEqual(index.objectsOfType('repo'), []);
   });
 
@@ -526,13 +518,12 @@ describe('focus BFS', () => {
   });
 
   /**
-   * The invariant is unchanged; what guarantees it moved. `buildAdjacency` used to
-   * skip actor links explicitly, because an actor adjacent to every event it touched
-   * would make every object reachable from every other object that shares a
-   * contributor — one focus click lighting up the whole sub-log. Decision 41 removed
-   * the links instead, so this now checks the property of the data that makes the
-   * guard unnecessary. It must stay: if actor edges ever return, focus breaks
-   * quietly, and it looks like over-eager highlighting rather than a data change.
+   * `buildAdjacency` has no actor links to skip. An actor adjacent to every event it
+   * touched would make every object reachable from every other object that shares a
+   * contributor — one focus click lighting up the whole sub-log. This checks the
+   * property of the data that makes a guard unnecessary. It must stay: if actor
+   * edges ever return, focus breaks quietly, and it looks like over-eager
+   * highlighting rather than a data change.
    */
   test('no actor enters the object adjacency, so focus cannot leak through one', async () => {
     const graph = await loadF1();

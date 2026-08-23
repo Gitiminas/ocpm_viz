@@ -8,9 +8,9 @@ import { LEGEND_KEYS } from '../src/render/legend.js';
 import { TYPE_LABELS } from '../src/state/labels.js';
 
 /**
- * The help texts are data, and data gets checked in both directions (decision 82's rule,
- * applied to the help strip): a label on screen with no text behind it, or a text nobody
- * shows, is a silent drift. Plus the house rules for the words themselves.
+ * The help texts are data, and data gets checked in both directions: a label on screen with
+ * no text behind it, or a text nobody shows, is a silent drift. Plus the house rules for the
+ * words themselves.
  */
 
 const ROOT = new URL('..', import.meta.url);

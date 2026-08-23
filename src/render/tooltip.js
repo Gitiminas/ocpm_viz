@@ -8,7 +8,7 @@
  * The mockup guarded its document-level listeners with `window.__ocelTipWired`
  * because the dc-runtime could call `componentDidMount` more than once. Off that
  * runtime the module is instantiated exactly once by `main.js`, so the guards are
- * gone rather than being carried forward as cargo (decision 13).
+ * gone rather than being carried forward as cargo.
  */
 
 import { escapeHtml } from './format.js';
@@ -19,7 +19,7 @@ import { glyph } from './theme.js';
  *
  * The row arrives as `{excerptText, truncated}` — RAW text, escaped HERE, because
  * comment bodies are arbitrary user-written GitHub content and this is the one place
- * they become markup (decision 124; the XSS test pins it). Collapsed, the block clamps
+ * they become markup (the XSS test pins it). Collapsed, the block clamps
  * to a few lines with a fade to the card's surface at the bottom and a "hover to read
  * more" hint — the fade is what says there is more, the hint says how to get it. Hovering
  * the block (the card must be pinned to be hoverable at all) raises the clamp; the

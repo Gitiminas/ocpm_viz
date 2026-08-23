@@ -10,8 +10,7 @@
 >
 > It is kept because it is thesis material rather than documentation: it is the record
 > of the starting point, and §10 — the overfit inventory — is the problem statement the
-> generalization work was measured against. Every item in that inventory has since been
-> addressed; `DECISIONS.md` records how.
+> generalization work was measured against. Every item in that inventory has since been addressed.
 
 # The hardcoded mockup — architecture overview (historical)
 

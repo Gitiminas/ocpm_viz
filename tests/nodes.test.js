@@ -70,9 +70,9 @@ describe('node construction over F1', () => {
   });
 
   test('the node list does not depend on the mode — folding is by push_id alone', async () => {
-    // Decision 112 removed the Highlights mode and its own folding rule (runs of
-    // unremarkable commits into a count badge). Pinned: the same sub-log yields the same
-    // marks in every temporal mode, and no node is a "group" of anything but a push.
+    // No mode has a folding rule of its own — no runs of unremarkable commits into a
+    // count badge. Pinned: the same sub-log yields the same marks in every temporal mode,
+    // and no node is a "group" of anything but a push.
     const real = await f1Context({ mode: 'absolute' });
     const discrete = await f1Context({ mode: 'discrete' });
     assert.deepEqual(
@@ -219,9 +219,9 @@ describe('relationship toggles are derived, not enumerated', () => {
     const index = indexObjectGraph(graph);
     const groups = deriveRelGroups(graph.links, index.byId);
     const state = resetToggles(createState(), { relGroups: groups });
-    // No exemption: since decision 41 every link in the bundle is object→object, so
-    // every one of them must be reachable by a control. A link nobody can switch off
-    // is as much a defect as one that switches off something else.
+    // No exemption: every link in the bundle is object→object, so every one of them
+    // must be reachable by a control. A link nobody can switch off is as much a defect
+    // as one that switches off something else.
     for (const link of graph.links) {
       const key = linkPairKey(link, index.byId);
       assert.ok(key in state.relPairs, `link ${link.source}→${link.target} has no toggle`);

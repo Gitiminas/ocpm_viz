@@ -15,7 +15,7 @@
  *     { transport: rpcTransport },
  *   );
  *
- * ⚠️ **Seeds are database ids, not display numbers** (decision 51). `issue:<issue_id>`,
+ * ⚠️ **Seeds are database ids, not display numbers.** `issue:<issue_id>`,
  * `pr:<pull_request_id>`, `commit:<sha>` — so `issue:655615214`, never `issue:102358`.
  * The RPC rejects a display number rather than guessing, and says so in its hint; see
  * `searchSeeds` below for the lookup that bridges the two.
@@ -85,11 +85,11 @@ function errorFromBody(status, body) {
  * default and its validation all read these; the SQL guard in `api.get_object_graph`
  * (`sql/fe_layer.sql`) enforces the same range server-side. Change them together.
  *
- * `max` is 2 (decision 110, amending 72's 3): a step is steep and non-obvious — on vscode
- * PR #116416 the sub-log runs 1 → 39 → 42 objects across degrees 0–2 and 291 at 3 —
- * and nothing this tool asks (Q1–Q10) needs the third hop. `default` is 1 (decision 111):
- * the seed and what it directly touches is the question most loads are asking, and one
- * click reaches the second hop when it is not.
+ * `max` is 2: a step is steep and non-obvious — on vscode PR #116416 the sub-log runs
+ * 1 → 39 → 42 objects across degrees 0–2 and 291 at 3 — and nothing this tool asks
+ * (Q1–Q10) needs the third hop. `default` is 1: the seed and what it directly touches is
+ * the question most loads are asking, and one click reaches the second hop when it is
+ * not.
  */
 export const TRAVERSAL_DEGREE = Object.freeze({ min: 0, max: 2, default: 1 });
 
@@ -162,8 +162,8 @@ export const rpcTransport = createRpcTransport();
  * Search a repository for seeds matching what someone typed.
  *
  * The gap this closes: people know a pull request as `#102479`, and the RPC keys on
- * `pr:448781946`. Numbers are per-repository display labels, ids are identity, and
- * decision 51 chose ids deliberately — so something has to translate. Doing it here
+ * `pr:448781946`. Numbers are per-repository display labels and ids are identity, so
+ * something has to translate. Doing it here
  * keeps that knowledge in the data layer, where the renderer never has to learn it.
  *
  * ⚠️ **The parse and the ranking are NOT reimplemented server-side, on purpose.**
@@ -260,9 +260,8 @@ export function createSearchTransport({
  * of thousands of objects, so a list is honest here where it would be a lie for seeds.
  *
  * Shaped like the fixture catalogue's `repos` so the selector does not care which
- * source it is reading — including `available` and a `reason` when false, because
- * decision 34 requires an unavailable repository to be *shown with its reason* rather
- * than quietly omitted.
+ * source it is reading — including `available` and a `reason` when false, because an
+ * unavailable repository is *shown with its reason* rather than quietly omitted.
  */
 export async function listRepos({ baseUrl = DEFAULT_BASE_URL, fetchImpl = globalThis.fetch } = {}) {
   let response;
@@ -296,7 +295,7 @@ export async function listRepos({ baseUrl = DEFAULT_BASE_URL, fetchImpl = global
     // fixture repositories, and must be present either way or the label reads undefined.
     synthetic: false,
     // Deliberately absent from the API and deliberately empty here: seeds are searched,
-    // never listed (decision 34). The key exists so callers written against the fixture
+    // never listed. The key exists so callers written against the fixture
     // catalogue do not have to special-case its absence.
     seeds: [],
     // How many objects are searchable — a count, not a list, so it says "there is

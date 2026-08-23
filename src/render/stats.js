@@ -1,5 +1,5 @@
 /**
- * The statistics page: a per-object table, aggregable on demand (decision 8).
+ * The statistics page: a per-object table, aggregable on demand.
  *
  * The mockup showed nine scalar cards — "Issue open → close: 4d 16h" — computed
  * from `issueObj` and `prObj`. With two issues that presentation does not degrade,
@@ -9,7 +9,7 @@
  *
  * Everything numeric comes from `src/stats/metrics.js` as pure functions, and it is
  * computed over the **visible** sub-log, so the numbers answer the question the
- * screen is currently asking (decision 12).
+ * screen is currently asking.
  */
 
 import { formatDuration, formatInstant, escapeHtml } from './format.js';
@@ -119,7 +119,7 @@ function buildTable(groups, onRerender, objectColors = new Map()) {
     const color = typeColor(group.type);
 
     // The aggregate row. Clicking it collapses the individuals away — that is the
-    // "aggregable on demand" of decision 8, rather than a fixed level of detail.
+    // "aggregable on demand" rule, rather than a fixed level of detail.
     const groupRow = document.createElement('tr');
     groupRow.style.cssText = 'cursor:pointer;background:var(--color-neutral-900)';
     groupRow.dataset.tip = 'stats.group';

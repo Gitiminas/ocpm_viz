@@ -17,10 +17,9 @@
  *      and documented in `tests/fixtures/README.md`, because an undetectable
  *      freehand edit would silently invalidate the regression baseline.
  *
- * The three mandated exceptions to rule 2, all settled decisions rather than
- * judgement calls, are the `inferred` → `extracted` rename (decision 7), the
- * evidence reclassification that follows from it, and the removal of the 42
- * event→actor attribution links (decision 41).
+ * The three mandated exceptions to rule 2, all settled decisions rather than judgement
+ * calls, are the `inferred` → `extracted` rename, the evidence reclassification that
+ * follows from it, and the removal of the 42 event→actor attribution links.
  *
  * The third is a *deletion*, which rule 2 would normally forbid outright, so it is
  * checked rather than trusted: `selfCheck` proves the dropped links are exactly
@@ -57,21 +56,20 @@ const METHOD_FROM_PROSE = [
   [/head-SHA match/i, LINK_METHOD.HEAD_SHA],
   [/^PR body:/i, LINK_METHOD.PR_BODY],
   /*
-   * "merge commit message 'Merge pull request #243221'" once mapped to a
-   * `merge_commit_message` method of its own. Decision 42 deleted that value — no
-   * upstream view emits it — so the row folds into `commit_message`, which is what
-   * it always was: a PR reference parsed out of a commit message. The pattern must
-   * stay rather than fall through to the row below, whose `^` anchor would not
-   * match this prose, and the evidence class is unchanged (both are `extracted`).
+   * "merge commit message 'Merge pull request #243221'" has no
+   * `merge_commit_message` method of its own — nothing upstream emits one — so the
+   * row folds into `commit_message`, which is what it always was: a PR reference
+   * parsed out of a commit message. The pattern must stay rather than fall through
+   * to the row below, whose `^` anchor would not match this prose, and the evidence
+   * class is unchanged (both are `extracted`).
    */
   [/^merge commit message/i, LINK_METHOD.COMMIT_MESSAGE],
   [/^commit message/i, LINK_METHOD.COMMIT_MESSAGE],
   /*
-   * `event_actor_id` had a row here. Decision 41 deleted the method along with the
-   * links that carried it, and the row goes with it rather than being kept "just in
-   * case": the actor links are dropped by `partitionLinks` before any prose is
-   * mapped, so reaching this table with that string would mean the drop failed to
-   * catch one — and the throw below is the right answer to that.
+   * There is deliberately no `event_actor_id` row. The actor links are dropped by
+   * `partitionLinks` before any prose is mapped, so reaching this table with that
+   * string would mean the drop failed to catch one — and the throw below is the
+   * right answer to that.
    */
 ];
 
@@ -87,7 +85,7 @@ function methodFromProse(prose) {
 }
 
 /**
- * `t_start` / `t_end` → `intervals` (decision 4).
+ * `t_start` / `t_end` → `intervals`.
  *
  * A single start/end pair cannot represent a reopened issue. F1 contains no reopen,
  * so every object here yields exactly one interval — but the shape is what the
@@ -109,13 +107,13 @@ function convertObject(source) {
 }
 
 /**
- * The blob's qualifier vocabulary, mapped onto the four this project settled (decision 43).
+ * The blob's qualifier vocabulary, mapped onto the four this project settled.
  *
  * `ocel-data.json` is frozen and never edited, so the translation belongs here — this
- * script already transforms the blob rather than copying it (it drops `actor` links,
- * decision 41). Leaving the old names in place is what let fixtures F1–F13 speak a
- * vocabulary the RPC can never produce, so every qualifier-shaped assertion in the suite
- * exercised names that do not occur in the data.
+ * script already transforms the blob rather than copying it (it drops `actor` links).
+ * Leaving the old names in place is what let fixtures F1–F13 speak a vocabulary the RPC
+ * can never produce, so every qualifier-shaped assertion in the suite exercised names
+ * that do not occur in the data.
  *
  * ⚠️ **`referenced_pull_request` also reverses.** The blob stores it commit → PR; the
  * database stores the same relationship as `contains_commit`, PR → commit ("this pull
@@ -154,13 +152,13 @@ function convertLink(source) {
 //   2. `ObjectGraph` (ADAPTER_AND_API.md §4) has no prose field; tasks/01 specifies the
 //      prose becomes an enum.
 //   3. The prose embeds the retired word `inferred` and restates the evidence class, so
-//      keeping it would either violate decision 7 or require rewording it — and rewording is
-//      exactly the undetectable freehand edit this script exists to avoid.
+//      keeping it would either violate the evidence rule or require rewording it — and
+//      rewording is exactly the undetectable freehand edit this script exists to avoid.
 // What is lost is which specific keyword or SHA matched. When the adapter lands it supplies
 // that properly, as `link_convention` / `ref_scope` from `mv_commit_message_issue_links_all`.
 
 /**
- * Split the source links into the ones F1 keeps and the ones decision 41 drops.
+ * Split the source links into the ones F1 keeps and the event→actor ones it drops.
  *
  * The dropped set is returned rather than discarded here, so `selfCheck` can prove
  * it was redundant instead of the script asserting so in a comment.
@@ -181,8 +179,8 @@ function buildMeta(sourceMeta, objects, sourceLinks) {
     repo_id: sourceMeta.repo_id,
 
     // `meta` records the query that produced the sub-log, for reproducibility — it
-    // is not an identity (decision 1). There is deliberately no `case` key, and the
-    // UI derives its breadcrumb from these fields rather than from a stored string.
+    // is not an identity. There is deliberately no `case` key, and the UI derives
+    // its breadcrumb from these fields rather than from a stored string.
     seed: seeds,
 
     // The sub-log reaches commits from the issue seed via the PR: issue → PR is one
@@ -200,8 +198,8 @@ function buildMeta(sourceMeta, objects, sourceLinks) {
     data_honesty: {
       commit_time: sourceMeta.data_honesty.commit_time,
       // Renamed from `inferred_edges` and reworded: `inferred` is retired
-      // vocabulary (decision 7). The set of links this describes also changes —
-      // see tests/fixtures/README.md.
+      // vocabulary. The set of links this describes also changes — see
+      // tests/fixtures/README.md.
       extracted_edges:
         'Links we parsed from an unenforced human convention (branch-ref matches, ' +
         'commit-message references) render dashed with a "?" badge.',
@@ -235,7 +233,7 @@ function build() {
 }
 
 /**
- * Prove that dropping the actor links loses nothing (decision 41).
+ * Prove that dropping the actor links loses nothing.
  *
  * Two checks, and they do **different** jobs — worth keeping straight, because it is
  * easy to describe the second as if it did the first's work:
@@ -246,9 +244,9 @@ function build() {
  *      from the trails and the actor card with no error anywhere.
  *   2. Every event naming an actor was covered by one of those links. This one
  *      cannot prevent loss — the attribution is on the event either way. It checks
- *      the *premise* decision 41 records: that the two representations were a strict
+ *      the *premise* the drop rests on: that the two representations were a strict
  *      bijection, not that one was a subset of the other. If it fails, nothing is
- *      lost, but the source has stopped being what the decision says it is, and for a
+ *      lost, but the source has stopped being what it is assumed to be, and for a
  *      regression baseline whose job is to be a fixed point that is worth failing on.
  *
  * Returns problems rather than throwing, so one run reports everything.

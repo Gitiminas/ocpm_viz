@@ -12,9 +12,9 @@ import { prOutcomeDistribution, landmarks } from '../src/stats/metrics.js';
 import { LEGEND_KEYS } from '../src/render/legend.js';
 
 /**
- * The off-platform merge, restored by decision 123 with four rulings: a landmark, a merge
- * of a different kind (its own outcome), not an unmerged close, and its own ring. F14 is
- * the fixture built to show all four beside a real merge.
+ * The off-platform merge, in four parts: a landmark, a merge of a different kind (its own
+ * outcome), not an unmerged close, and its own ring. F14 is the fixture built to show all
+ * four beside a real merge.
  */
 
 const transport = async (query) =>

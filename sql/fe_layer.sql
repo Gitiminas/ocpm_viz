@@ -1,14 +1,14 @@
 -- =====================================================================================
 -- fe_layer.sql — the PostgREST data layer
 --
--- Produces the frontend's `ObjectGraph` JSON (docs/ADAPTER_AND_API.md §4) from the 22
+-- Produces the frontend's `ObjectGraph` JSON (docs/DATA_LAYER.md) from the 22
 -- in-scope upstream views (docs/DATA_CONTRACT.md §1). Nothing here reads an `ocel_*`
 -- view; nothing here modifies anything upstream except by adding indexes, which this
--- project owns (O9, closed).
+-- project owns.
 --
 -- Layout:
 --   §0  schema, indexes, measurements
---   §1  activity vocabulary + the remap          (10 activities: decision 40 + 123)
+--   §1  activity vocabulary + the remap          (10 activities)
 --   §2  objects        fe.object_{issue,pull_request,commit,actor}
 --   §3  intervals      fe.interval_{issue,pull_request}
 --   §4  events         fe.event
@@ -22,7 +22,7 @@
 -- Conventions that are load-bearing, and why. Each of these is a defect someone already
 -- shipped once; none of them is stylistic.
 --
---   * PLAIN VIEWS, not materialized (decision 10, ADAPTER_AND_API §1). The frontend asks
+--   * PLAIN VIEWS, not materialized. The frontend asks
 --     for one sub-log at a time — a seed and its neighbourhood, a few hundred rows out of
 --     a decade. A plain view lets that filter reach the underlying MVs; a materialized
 --     one computes every repository in advance, costs a second copy of a 14 GB dataset
@@ -30,7 +30,7 @@
 --     (§0), which is the better place anyway: one index there serves every query touching
 --     the relation rather than one path through a copy.
 --
---   * OBJECT IDS ARE TYPE-PREFIXED (decision 51): `issue:<issue_id>`, `pr:<pr_id>`,
+--   * OBJECT IDS ARE TYPE-PREFIXED: `issue:<issue_id>`, `pr:<pr_id>`,
 --     `commit:<sha>`, `actor:<actor_id>`. Not cosmetic — the bare numeric ids COLLIDE.
 --     Measured 2026-08-04: 8 issue_ids equal a pull_request_id, 11 equal an actor id, 76
 --     pull_request_ids equal an actor id. Unprefixed, a sub-log holding such a pair either
@@ -46,7 +46,7 @@
 --     just created: the object survives as a lifecycle bar with nothing on it, and nothing
 --     reports it. (SPEC R1.)
 --
---   * TIMESTAMPS (decisions 55, 56). Upstream types are mixed and the mixture is invisible:
+--   * TIMESTAMPS. Upstream types are mixed and the mixture is invisible:
 --     `activity_timestamp`, `mv_push_commits_full.created_at` and both identity views are
 --     `timestamp` WITHOUT zone, while `mv_pull_request_events_full.pr_*_at` are timestamptz.
 --     The server runs Europe/Berlin, so a naive value left alone lands 1–2 hours off. Every
@@ -64,7 +64,7 @@ CREATE SCHEMA IF NOT EXISTS fe;    -- the derivations
 CREATE SCHEMA IF NOT EXISTS api;   -- the only schema PostgREST exposes
 
 COMMENT ON SCHEMA fe  IS
-  'Thesis-owned derivations over the frozen upstream. Plain views (decision 10).';
+  'Thesis-owned derivations over the frozen upstream. Plain views.';
 COMMENT ON SCHEMA api IS
   'PostgREST surface. One RPC: get_object_graph. The frontend never queries a view directly.';
 
@@ -76,7 +76,7 @@ COMMENT ON SCHEMA api IS
 -- query was a sequential scan over as much as 4.6 GB.
 --
 -- Keys chosen are the ones §2–§6 actually filter and join by. Measurements are recorded
--- in §0.1 below; decision 10 asks for optimisation to be a finding, not a habit.
+-- in §0.1 below; optimisation here is a finding, not a habit.
 --
 -- These change relations other people read. That is why they are listed here rather than
 -- applied quietly (DATA_CONTRACT.md §2).
@@ -108,7 +108,7 @@ CREATE INDEX IF NOT EXISTS ix_issues_full_repo_actor
   ON mv_issues_full (repo_id, actor_id);
 CREATE INDEX IF NOT EXISTS ix_icomments_repo_actor
   ON mv_issue_comments_full (repo_id, actor_id);
--- The comment-excerpt joins in fe.event (decision 124) are by event_id, verified exact:
+-- The comment-excerpt joins in fe.event are by event_id, verified exact:
 -- every comment activity row has exactly one body row. Without these, each comment event
 -- in a sub-log costs a scan of a 2.3M/1.3M-row matview.
 CREATE INDEX IF NOT EXISTS ix_icomments_event
@@ -146,7 +146,7 @@ ANALYZE mv_commit_message_issue_links_all;
 --     SELECT relname, reltuples FROM pg_class WHERE reltuples = -1;
 -- Two views sat at -1 on 2026-08-04: mv_issue_pr_links_closed_via_commit (it is empty)
 -- and mv_pr_offplatform_merges (not consumed directly; its activity reaches us through
--- mv_pull_request_and_comment_activities_full — decision 123).
+-- mv_pull_request_and_comment_activities_full).
 
 -- -------------------------------------------------------------------------------------
 -- §0.1 — Measurements
@@ -171,7 +171,7 @@ ANALYZE mv_commit_message_issue_links_all;
 --
 -- MATERIALIZATION: exactly one, fe.link_mat, with its measurement in §5.1. The other
 -- candidate OCEL_TOOL_SPEC.md names — rebuilding fe_commit_pr_links — is declined: that
--- join already exists upstream as mv_commit_pr_links (decision 52, inherited), so
+-- join already exists upstream as mv_commit_pr_links (inherited), so
 -- rebuilding it would create a second admission rule to disagree with the first.
 --
 -- Every figure resting on an upstream view must quote its refresh timestamp. All 23 MVs
@@ -183,7 +183,7 @@ ANALYZE mv_commit_message_issue_links_all;
 -- §1 — The activity vocabulary, and the remap
 -- =====================================================================================
 
--- Exactly the NINE of decision 40. This whitelist and the frontend's ACTIVITIES
+-- Exactly the NINE frozen activities. This whitelist and the frontend's ACTIVITIES
 -- (src/model/activities.js) must be the same set or one of them is decorative:
 -- an activity that reaches the renderer unmapped throws at activities.js:121.
 DROP VIEW IF EXISTS fe.activity_vocabulary CASCADE;
@@ -196,8 +196,8 @@ SELECT * FROM (VALUES
   ('IssueCommented',       'issue',        false, true ),
   ('PullRequestOpened',    'pull_request', false, false),
   ('PullRequestMerged',    'pull_request', true,  false),
-  -- Restored by decision 123 (decision 48's removal was a miscommunication). A landmark
-  -- by ruling; the frontend rings it as a heuristic. Not remapped any more — see below.
+  -- A landmark, and a merge of a different kind; the frontend rings it as a heuristic.
+  -- Not remapped — see below.
   ('PullRequestMergedOffPlatform', 'pull_request', true, false),
   ('PullRequestClosed',    'pull_request', false, false),
   ('PullRequestReopened',  'pull_request', false, false),
@@ -205,14 +205,12 @@ SELECT * FROM (VALUES
 ) AS t(activity, object_type, landmark, is_comment);
 
 COMMENT ON VIEW fe.activity_vocabulary IS
-  'The 9 activities of decision 40 plus PullRequestMergedOffPlatform (decision 123). Landmarks '
-  'are IssueClosed, PullRequestMerged and PullRequestMergedOffPlatform. CommitObserved is '
-  'synthetic — no upstream MV emits it.';
+  'The 10 activities this layer admits. Landmarks are IssueClosed, PullRequestMerged and '
+  'PullRequestMergedOffPlatform. CommitObserved is synthetic — no upstream MV emits it.';
 
--- The one remap of decision 40. Applied BEFORE the whitelist join, so a remapped row
--- survives it. ⚠️ There used to be a second: decision 48 folded PullRequestMergedOffPlatform
--- into PullRequestClosed; decision 123 restored the activity, so those 31 rows now pass
--- through unchanged and the vocabulary view admits them. Verified against the live
+-- The one remap. Applied BEFORE the whitelist join, so a remapped row survives it.
+-- PullRequestMergedOffPlatform is NOT remapped: those 31 rows pass through unchanged
+-- and the vocabulary view admits them. Verified against the live
 -- vocabularies (2026-08-04):
 --   mv_issue_and_issuecomment_activities_full   IssueCommented 953,293 · IssueOpened 176,362
 --                                               IssueClosed 175,370 · IssueReopened 10,626
@@ -223,13 +221,13 @@ COMMENT ON VIEW fe.activity_vocabulary IS
 CREATE OR REPLACE FUNCTION fe.remap_activity(raw text) RETURNS text
 LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
   SELECT CASE raw
-    -- GitHub models PR comments as issue comments; so does this tool (decision 40)
+    -- GitHub models PR comments as issue comments; so does this tool
     WHEN 'PullRequestCommented'         THEN 'IssueCommented'
     ELSE raw
   END;
 $$;
 
--- Render one UTC instant the way the frontend can parse it (decision 55).
+-- Render one UTC instant the way the frontend can parse it.
 -- `+00:00`, never bare `+00`: `new Date('...T22:47:49+00')` is Invalid Date, and
 -- findGraphProblems only checks that `time` is non-empty — so the bare form passes
 -- validation and hands the layout a NaN.
@@ -242,12 +240,12 @@ $$;
 -- =====================================================================================
 -- §2 — Objects
 --
--- Four types, closed (decision 39). `repo` is NOT among them: it is the frame the sub-log
+-- Four types, closed. `repo` is NOT among them: it is the frame the sub-log
 -- is drawn inside, carried once as meta.repo / meta.repo_id.
 -- =====================================================================================
 
 -- -------------------------------------------------------------------------------------
--- ISSUE — identity preferred, first-seen fallback for pre-window issues (decision 46, G3)
+-- ISSUE — identity preferred, first-seen fallback for pre-window issues (G3)
 --
 -- 22,407 issue_ids appear in the activity stream with no issues_identity row (measured
 -- 2026-08-04) — 11.3% of all issues, acted on inside the window but opened before it.
@@ -282,7 +280,7 @@ first_seen AS (
   GROUP BY repo_id, issue_id
 )
 SELECT DISTINCT ON (u.repo_id, u.issue_id)
-       'issue:' || u.issue_id::text AS id,          -- decision 51: the prefix prevents collision
+       'issue:' || u.issue_id::text AS id,          -- the prefix prevents collision
        'issue'::text                AS type,
        '#' || u.issue_number        AS label,
        u.repo_id,
@@ -393,7 +391,7 @@ ORDER BY u.repo_id, u.pull_request_id, u.priority, u.t0;
 -- -------------------------------------------------------------------------------------
 -- COMMIT — one object per distinct SHA, attributes from the first observing push.
 --
--- Keyed `commit:<sha>` and not `commit:<repo_id>_<sha>` (decision 51): a SHA is unique by
+-- Keyed `commit:<sha>` and not `commit:<repo_id>_<sha>`: a SHA is unique by
 -- construction, a sub-log is one repository, and seedQuery.js:106 takes everything after
 -- the first ':' as the SHA — the repo-prefixed form silently demotes an exact commit-seed
 -- match to a prefix match.
@@ -458,7 +456,7 @@ ORDER BY e.repo_id, e.commit_sha, p.commit_index;
 --
 -- The `actor` base table is joined last as a backstop. DATA_CONTRACT.md §0 records it as
 -- complete, and it carries a login for ids the payload streams never name with one.
--- No is_bot: bot classification is another student's thesis (decision 47).
+-- No is_bot: bot classification is another student's thesis.
 -- -------------------------------------------------------------------------------------
 -- ⚠️ Built from the `actor` BASE TABLE, not reconstructed from the payload streams —
 -- which is what DATA_CONTRACT.md §0 says to do ("Actor objects come from these tables,
@@ -486,7 +484,7 @@ ORDER BY e.repo_id, e.commit_sha, p.commit_index;
 -- `issue_creator_login`, which names the issue's CREATOR and not the event's actor — is
 -- likewise gone, because no login is ever read from a payload column.
 --
--- No is_bot: bot classification is another student's thesis (decision 47).
+-- No is_bot: bot classification is another student's thesis.
 DROP VIEW IF EXISTS fe.object_actor CASCADE;
 CREATE VIEW fe.object_actor AS
 SELECT 'actor:' || a.id::text                                   AS id,
@@ -502,7 +500,7 @@ FROM actor a;
 
 -- ⚠️ `actor.login` is the account's login as recorded in that table, not necessarily the
 -- login a historical event displayed: a renamed account shows its later name. Identity is
--- the numeric id throughout (decision 51), so a rename no longer splits one contributor
+-- the numeric id throughout, so a rename no longer splits one contributor
 -- into two across a re-extraction — the CLAUDE.md exception expiring exactly as it said it
 -- would.
 --
@@ -514,7 +512,7 @@ FROM actor a;
 
 
 -- =====================================================================================
--- §3 — Intervals  (decision 4: interval LISTS, so a reopened object is representable)
+-- §3 — Intervals  (interval LISTS, so a reopened object is representable)
 --
 -- Consecutive same-state events are collapsed, so close-after-close and reopen-after-
 -- reopen do not mint spurious intervals. An unclosed object gets `end = NULL`, which the
@@ -560,7 +558,7 @@ DROP VIEW IF EXISTS fe.interval_pull_request CASCADE;
 CREATE VIEW fe.interval_pull_request AS
 WITH lifecycle AS (
   -- PullRequestMergedOffPlatform is in the CLOSING set: whatever the frontend draws it as
-  -- (decision 123: a landmark, a merge of a different kind), the GitHub fact underneath
+  -- (a landmark, a merge of a different kind), the GitHub fact underneath
   -- is that the PR was closed, so the interval ends there. Comment rows are not in this
   -- filter, so G9's bad pull_request_id never reaches here.
   SELECT repo_id, pull_request_id, event_id,
@@ -602,15 +600,15 @@ LEFT JOIN closes c
 -- §4 — Events
 --
 -- Normalises three row shapes into one, remapped then whitelisted (G12, G13).
--- Three branches, not six: reviews and commit comments are out of scope (decision 40) and
--- their MVs do not exist in this database anyway; `CommitsPushed` is not an activity
--- (decision 44) — the push's facts ride on each CommitObserved event's attrs instead.
+-- Three branches, not six: reviews and commit comments are out of scope and their MVs
+-- do not exist in this database anyway; `CommitsPushed` is not an activity — the push's
+-- facts ride on each CommitObserved event's attrs instead.
 -- =====================================================================================
 
 DROP VIEW IF EXISTS fe.event CASCADE;
 CREATE VIEW fe.event AS
 WITH push_facts AS (
-  -- decision 44 / G4: the DECLARED size must come from the push event's own columns and
+  -- G4: the DECLARED size must come from the push event's own columns and
   -- never from counting commit rows. GH Archive caps payload.commits at 20, so a push of
   -- 347 yields 20 rows here and any count over them reads 20 — a silent wrong number.
   SELECT activity_id, ref, commit_count, distinct_commit_count,
@@ -631,8 +629,8 @@ raw AS (
          'actor:' || a.actor_id::text              AS actor_id,
          a.actor_id                                AS actor_num,
          a.repo_id,
-         -- The comment's opening, riding on attrs like a push's facts do (decision 44's
-         -- pattern; decision 124). Truncated HERE, not in the client: p95 is ~3k chars
+         -- The comment's opening, riding on attrs the way a push's facts do.
+         -- Truncated HERE, not in the client: p95 is ~3k chars
          -- and the outliers are 260k-char bot logs nobody reads in a card. The flag says
          -- an excerpt is an excerpt, so the card can show an ellipsis honestly.
          --
@@ -640,7 +638,7 @@ raw AS (
          -- the whole 2.3M-row comment MV before the RPC's object filter could bite —
          -- measured: the kubernetes #47532 payload went from ~1s to 6.1s. The scalar
          -- subquery runs once per SURVIVING row, through ix_icomments_event, and the
-         -- payload came back to ~1s. Same trap as the seed lookup (decision 51's 300×).
+         -- payload came back to ~1s. Same trap as the seed lookup's 300× (§8).
          CASE WHEN a.activity_type = 'IssueCommented' THEN
            COALESCE((SELECT jsonb_build_object(
                        'comment_excerpt', left(ic.comment_body, 500),
@@ -679,7 +677,7 @@ raw AS (
          a.actor_id,
          a.repo_id,
          -- Same excerpt rule — and the same correlated-subquery shape, for the same
-         -- planner reason — as the issue stream above (decision 124). The event_id
+         -- planner reason — as the issue stream above. The event_id
          -- lookup is exact; G9 touches only the object join below, never this one.
          CASE WHEN a.activity_type = 'PullRequestCommented' THEN
            COALESCE((SELECT jsonb_build_object(
@@ -696,9 +694,9 @@ raw AS (
 
   UNION ALL
   ---------------------------------------------------------------------------------------
-  -- 3. CommitObserved — SYNTHETIC. One per commit row; no upstream MV emits this activity
-  --    (decision 44 documents it as synthetic). It carries the push's declared size so a
-  --    burst can say "20 shown of 347 pushed" instead of quietly claiming 20.
+  -- 3. CommitObserved — SYNTHETIC. One per commit row; no upstream MV emits this
+  --    activity. It carries the push's declared size so a burst can say
+  --    "20 shown of 347 pushed" instead of quietly claiming 20.
   ---------------------------------------------------------------------------------------
   SELECT 'commit_obs:' || pc.event_id::text || ':' || pc.commit_index::text,
          'CommitObserved'::text,
@@ -740,13 +738,12 @@ JOIN fe.activity_vocabulary v ON v.activity = r.activity;
 -- =====================================================================================
 -- §5 — Links
 --
--- FOUR qualifiers (decision 43): resolves, contains_commit, merge_commit, references_issue.
--- No `delivered_by` and no off-platform link branch (decision 48, kept by 123: the activity
--- returned, the link method and qualifier did not). No actor links — attribution
--- is single-sourced on event.actor_id (decision 41) and BOTH endpoints of a link are
--- object ids (decision 49).
+-- FOUR qualifiers: resolves, contains_commit, merge_commit, references_issue.
+-- No `delivered_by` and no off-platform link branch: the off-platform activity exists,
+-- its link method and qualifier do not. No actor links — attribution is single-sourced
+-- on event.actor_id and BOTH endpoints of a link are object ids.
 --
--- ⚠️ `commit_message` is ONE method covering TWO relationships (decision 50): issue↔PR in
+-- ⚠️ `commit_message` is ONE method covering TWO relationships: issue↔PR in
 -- branch A, commit→issue in branch D. Any per-method figure MUST group by
 -- (method, qualifier) or it silently sums two different relations — and the RQ2 detection
 -- breakdown is exactly that figure. §7.4 does it correctly.
@@ -756,7 +753,7 @@ JOIN fe.activity_vocabulary v ON v.activity = r.activity;
 -- §5.0 — Where a commit was first introduced
 --
 -- Two facts per commit, both straight from `mv_push_commits_full` and neither consulted
--- by `mv_commit_pr_links`. They are what decision 61's `ref_match` narrowing tests.
+-- by `mv_commit_pr_links`. They are what the `ref_match` narrowing tests.
 --
 --   introduced_new     GitHub's own `commit_distinct` flag: this push is the first time
 --                      the repository saw this SHA. It is *GitHub's* judgement, not ours.
@@ -795,15 +792,14 @@ ORDER BY p.repo_id, p.commit_sha, p.commit_distinct DESC, p.created_at;
 
 COMMENT ON VIEW fe.commit_branch_origin IS
   'Per commit: was this push the first sighting of the SHA (GitHub commit_distinct), and '
-  'has the SHA ever been pushed to master/main. Inputs to the ref_match narrowing, '
-  'decision 61.';
+  'has the SHA ever been pushed to master/main. Inputs to the ref_match narrowing.';
 
 
 -- -------------------------------------------------------------------------------------
--- §5.0b — The narrowed commit→PR relation (decision 61), as ONE named view.
+-- §5.0b — The narrowed commit→PR relation, as ONE named view.
 --
 -- It exists as a view rather than inline because **two different link families depend on
--- it**, and the first version of decision 61 only narrowed one of them. Branch B is the
+-- it**, and an earlier narrowing reached only one of them. Branch B is the
 -- commit→PR link itself; branch A's `commit_message` issue↔PR links are *derived* from
 -- commit→PR attribution upstream and inherited the wide rule. One definition, consumed
 -- twice, is what stops those two from drifting apart again.
@@ -818,7 +814,7 @@ FROM mv_pull_request_events_full
 WHERE head_ref IS NOT NULL;
 
 COMMENT ON VIEW fe.pr_head_ref IS
-  'Pull request to its head branch, as a full ref. Input to the decision-80 narrowing.';
+  'Pull request to its head branch, as a full ref. Input to the ref_match narrowing.';
 
 DROP VIEW IF EXISTS fe.commit_born_ref CASCADE;
 CREATE VIEW fe.commit_born_ref AS
@@ -828,11 +824,11 @@ WHERE commit_distinct AND commit_sha IS NOT NULL;
 
 COMMENT ON VIEW fe.commit_born_ref IS
   'Every (commit, ref) where GitHub flagged the commit new to the repository in that push. '
-  'Input to the decision-80 narrowing.';
+  'Input to the ref_match narrowing.';
 
 -- -------------------------------------------------------------------------------------
 -- ⚠️ **The question is "was this commit written FOR this pull request", and the only
--- honest proxy is "was it born on THIS PR's branch"** (decision 80).
+-- honest proxy is "was it born on THIS PR's branch"**.
 --
 -- The previous rule asked whether the commit was first seen on *a* branch other than
 -- master/main. That catches the common case — trunk merged into a long-lived branch — by
@@ -867,7 +863,7 @@ WHERE l.admitted
            AND h.pull_request_id = l.pull_request_id));
 
 COMMENT ON VIEW fe.commit_pr_link IS
-  'mv_commit_pr_links with the decision-80 ref_match narrowing applied: a ref_match commit '
+  'mv_commit_pr_links with the ref_match narrowing applied: a ref_match commit '
   'is admitted only where GitHub flagged it new on the PR''s own head branch. The single '
   'source of commit-to-PR attribution in this layer — fe.link branches A and B both read it.';
 
@@ -911,14 +907,14 @@ resolved AS (
   WHERE v.issue_id IS NOT NULL AND v.pull_request_id IS NOT NULL
 )
 -- A. PR resolves Issue — from the upstream union, already deduped to one row per pair.
---    O11 is closed (decision 53): ALL SEVEN upstream methods here are issue↔PR, including
+--    ALL SEVEN upstream methods here are issue↔PR, including
 --    closed_via_commit and proximity. Neither carries a commit_sha column.
---    ⚠️ **DECISION 62 — the narrowing reaches this branch too, and it did not at first.**
+--    ⚠️ **The narrowing must reach this branch too, and it is easy to miss.**
 --    `mv_issue_pr_links_commit_message` is defined as
 --        JOIN mv_commit_pr_links cpr ON ... AND cpr.admitted
 --    so its issue↔PR links are *derived from commit→PR attribution* — under the WIDE rule.
---    Decision 61 narrowed branch B and left this branch reading the old attribution, which
---    meant the fix looked complete while more than half the issue↔PR links still rested on
+--    Narrowing branch B alone leaves this branch reading the old attribution, which
+--    makes the fix look complete while more than half the issue↔PR links still rest on
 --    trunk commits that merely passed through a branch. On vscode PR #116416 that was all
 --    11 of its issue links: 23 issues mentioned under the wide attribution, **0** surviving.
 --
@@ -952,7 +948,7 @@ SELECT 'pr:'    || r.pull_request_id::text AS source,
                                          'closed_via_commit','proximity']) m
                WHERE m = ANY(r.methods)))[1]               AS method,
        array_length(r.methods, 1)                          AS n_methods,
-       -- R6: an ARRAY (ADAPTER_AND_API.md §4). Upstream stores it semicolon-joined.
+       -- R6: an ARRAY (docs/DATA_LAYER.md). Upstream stores it semicolon-joined.
        r.methods                                           AS link_methods,
        r.repo_id
 FROM resolved r
@@ -983,7 +979,7 @@ WHERE x.issue_id IS NOT NULL AND x.pull_request_id IS NOT NULL
 
 UNION ALL
 -- B. PR contains Commit / merged as Commit.
---    `admitted` is the INHERITED commit→PR admission rule (decision 52, O2 closed): not
+--    `admitted` is the INHERITED commit→PR admission rule: not
 --    the repo's default branch as head, under 250 candidate commits, and first pushed
 --    within [pr_created_at − 7 days, pr_ended_at]. Quote the MV refresh timestamp beside
 --    any figure resting on it.
@@ -997,7 +993,7 @@ UNION ALL
 --
 --    Aggregating rather than DISTINCT-ing is the better fix and not merely a tidier one:
 --    it recovers real multi-method agreement into n_methods / link_methods, which is what
---    decision 20 asks the tooltip to show and what classifyLink already knows how to
+--    the tooltip shows and what classifyLink already knows how to
 --    read. `merge_commit` wins the qualifier when it is present, because being the PR's
 --    merge commit is the more specific relationship than being one of its commits.
 SELECT 'pr:' || b.pull_request_id::text,
@@ -1017,7 +1013,7 @@ SELECT 'pr:' || b.pull_request_id::text,
        b.methods,
        b.repo_id
 -----------------------------------------------------------------------------------------
---    ⚠️ Reads fe.commit_pr_link — the DECISION 80 narrowing, defined once in §5.0b.
+--    ⚠️ Reads fe.commit_pr_link — the ref_match narrowing, defined once in §5.0b.
 --
 --    SHA matches are identity and pass untouched. `ref_match` is admitted only where
 --    GitHub flagged the commit NEW on the pull request's OWN head branch.
@@ -1054,7 +1050,7 @@ UNION ALL
 -- D. Commit references Issue.
 --    R1 again: resolved against fe.object_issue, not issues_identity, or every issue
 --    opened before the window loses its commit links while still being on screen.
---    R9 answered as decision 54: cross-repo references are DROPPED, and the reason is not
+--    R9: cross-repo references are DROPPED, and the reason is not
 --    that they are weak. mv_commit_message_issue_links_all carries source_repo_id,
 --    issue_number and ref_scope and NO TARGET REPO ID, so for a cross_repo row nothing
 --    says which repository the referenced issue lives in. Joining on source_repo_id — the
@@ -1087,7 +1083,7 @@ WHERE c.ref_scope = 'same_repo';
 -- -------------------------------------------------------------------------------------
 -- §5.1 — fe.link_mat: the ONE materialization in this layer, and the measurement for it
 --
--- Decision 10 makes materializing a finding rather than a default, so here is the finding.
+-- Materializing is a finding rather than a default, so here is the finding.
 -- OCEL_TOOL_SPEC.md named fe.link as one of two candidates "if measured"; this is the
 -- measurement, taken 2026-08-04 on the vscode sub-log seeded at issue:2902032454, degree 2.
 --
@@ -1130,7 +1126,7 @@ LANGUAGE sql AS $$
 $$;
 
 COMMENT ON MATERIALIZED VIEW fe.link_mat IS
-  'Materialized copy of fe.link. The ONE measured materialization (decision 57). Run '
+  'Materialized copy of fe.link. The ONE measured materialization. Run '
   'fe.refresh_links() after any upstream MV refresh; fe.diag_link_staleness reports drift.';
 
 -- Cheap drift check: compares the materialized copy against the live view. Not free, but
@@ -1146,7 +1142,7 @@ SELECT (SELECT count(*) FROM fe.link)     AS live_rows,
 --
 --   api.get_object_graph(repo, seed, traversal_degree)
 --
--- Never `get_case`. There is no case notion (decision 1, CLAUDE.md): the API returns a
+-- Never `get_case`. There is no case notion (CLAUDE.md): the API returns a
 -- SUB-LOG described by the query that produced it, not identified by a key.
 --
 -- ⚠️ `traversal_degree` is SERVER-SIDE — how far the graph is expanded before it is sent.
@@ -1171,8 +1167,8 @@ DECLARE
   _shas     text[];
   _payload  jsonb;
 BEGIN
-  -- 0..2, and 1 when unstated. Mirrors TRAVERSAL_DEGREE in src/data/api.js — decisions
-  -- 110 and 111 — and is enforced HERE, where the cost is paid, not only in the stepper:
+  -- 0..2, and 1 when unstated. Mirrors TRAVERSAL_DEGREE in src/data/api.js, and is
+  -- enforced HERE, where the cost is paid, not only in the stepper:
   -- a third hop turns a 42-object sub-log into 291 on vscode PR #116416, and nothing the
   -- tool asks needs it. Change the two together.
   IF traversal_degree IS NULL OR traversal_degree < 0 OR traversal_degree > 2 THEN
@@ -1325,7 +1321,7 @@ BEGIN
   -- what the sidebar and the actor card want, and is the only scope that makes sense now
   -- that fe.object_actor is global. Traversing them would explode the sub-log: one
   -- maintainer connects to thousands of objects at a single hop. It is also why there are
-  -- no actor links to traverse in the first place (decision 41).
+  -- no actor links to traverse in the first place.
   --
   -- Joined on `actor_num` against `actor.id`, a primary key, rather than on the prefixed
   -- string: an `IN` over the string form cannot use the index and made the planner build
@@ -1354,7 +1350,7 @@ BEGIN
     -- failure this project cannot afford.
     SELECT o.id, o.t0, o.t0
       FROM obj o WHERE o.type = 'commit' AND o.t0 IS NOT NULL
-    -- Actors get NO intervals. They have no lane (decision 15), so a span would draw
+    -- Actors get NO intervals. They have no lane, so a span would draw
     -- nothing; `[]` is the honest value and is what all 13 fixtures carry.
   ),
   all_obj AS MATERIALIZED (
@@ -1367,7 +1363,7 @@ BEGIN
   -- rows across every repository both times.
   --
   -- BOTH endpoints must be in the sub-log, or the payload carries a dangling reference
-  -- the validator rejects by name (decision 49).
+  -- the validator rejects by name.
   sublog_link AS MATERIALIZED (
     SELECT l.* FROM fe.link_mat l
     WHERE l.repo_id = _repo_id
@@ -1380,8 +1376,8 @@ BEGIN
        'repo',             _repo_nm,
        'repo_id',          _repo_id,
        'repo_ambiguous',   (_n_named > 1),
-       -- decision 45: every payload source declares the contract it was built against,
-       -- so a stale consumer fails loudly instead of rendering subtly wrong.
+       -- Every payload source declares the contract it was built against, so a stale
+       -- consumer fails loudly instead of rendering subtly wrong.
        'contract_version', 2,
        'seed',             COALESCE((SELECT jsonb_agg(jsonb_build_object('id', o.id, 'type', o.type))
                                      FROM all_obj o WHERE o.id = seed), '[]'::jsonb),
@@ -1438,16 +1434,16 @@ END;
 $fn$;
 
 COMMENT ON FUNCTION api.get_object_graph(text, text, integer) IS
-  'Returns one ObjectGraph sub-log (docs/ADAPTER_AND_API.md §4). Seed is a prefixed object '
+  'Returns one ObjectGraph sub-log (docs/DATA_LAYER.md). Seed is a prefixed object '
   'id: issue:<id>, pr:<id>, commit:<sha>. traversal_degree is SERVER-SIDE expansion, 0..2, '
-  'default 1, and is unrelated to MAX_FOCUS_DEGREE. There is no case notion (decision 1).';
+  'default 1, and is unrelated to MAX_FOCUS_DEGREE. There is no case notion.';
 
 
 -- =====================================================================================
 -- §7 — Diagnostics
 --
--- These are obligations, not extras. Each view above subtracts something, and CLAUDE.md /
--- decision 27 require every subtraction to be declared rather than absorbed. Run after
+-- These are obligations, not extras. Each view above subtracts something, and every
+-- subtraction must be declared rather than absorbed (CLAUDE.md). Run after
 -- every upstream refresh.
 -- =====================================================================================
 
@@ -1457,17 +1453,17 @@ COMMENT ON FUNCTION api.get_object_graph(text, text, integer) IS
 --
 -- Reading it, as of 2026-08-04. Three rows, and only one of them is large:
 --
---   CommitsPushed   144,556   EXPECTED, and not data loss. Decision 44 rejected it as an
---                             activity; its facts — commit_count, distinct_commit_count,
+--   CommitsPushed   144,556   EXPECTED, and not data loss. It is not an activity here;
+--                             its facts — commit_count, distinct_commit_count,
 --                             truncated, ref — ride on each CommitObserved event's attrs
 --                             instead, so the information is carried, not dropped. This
 --                             row will always be here and should not be "fixed".
 --   IssueComment_         1   The G13 fallback firing on an empty action. Genuinely dropped.
---   IssueLabeled          1   Out of scope (decision 40). Genuinely dropped.
+--   IssueLabeled          1   Out of scope. Genuinely dropped.
 --
 -- Note what is NOT here: PullRequestCommented (1,343,232), because the remap ran first
--- and it survived it, and PullRequestMergedOffPlatform (31), because since decision 123
--- it is in the vocabulary. Their absence from this list is the evidence that the
+-- and it survived it, and PullRequestMergedOffPlatform (31), because it is in the
+-- vocabulary. Their absence from this list is the evidence that the
 -- ordering, and the vocabulary, are right.
 CREATE OR REPLACE VIEW fe.diag_dropped_activities AS
 SELECT fe.remap_activity(activity_type) AS activity_after_remap, count(*) AS dropped
@@ -1492,8 +1488,8 @@ WHERE a.activity_type LIKE 'PullRequestComment%'
                   WHERE p.repo_id = a.repo_id AND p.pr_number = a.pr_number)
 GROUP BY 1;
 
--- §7.3 — how many objects needed the first-seen fallback. Decision 46 requires this be
--- RENDERED, not merely carried: open-ended left edge, hollow start marker.
+-- §7.3 — how many objects needed the first-seen fallback. This must be RENDERED, not
+-- merely carried: open-ended left edge, hollow start marker.
 CREATE OR REPLACE VIEW fe.diag_time_semantics AS
 SELECT repo_id, type, time_semantics, count(*) AS objects
 FROM (
@@ -1503,7 +1499,7 @@ FROM (
 GROUP BY 1,2,3 ORDER BY 1,2,3;
 
 -- §7.4 — the RQ2 link breakdown, GROUPED BY (method, qualifier).
--- ⚠️ Decision 50 makes this grouping binding. `commit_message` is one detection technique
+-- ⚠️ This grouping is binding. `commit_message` is one detection technique
 -- covering two relationships — issue↔PR (`resolves`) and commit→issue (`references_issue`)
 -- — so grouping by method alone silently sums two different relations into one number,
 -- and this is precisely the figure where that would happen.
@@ -1514,13 +1510,13 @@ SELECT l.repo_id, l.method, l.qualifier, l.evidence, count(*) AS links
 FROM fe.link l
 GROUP BY 1,2,3,4 ORDER BY 1,5 DESC;
 
--- §7.6 — what the decision-61 `ref_match` narrowing removes, and what it saves.
+-- §7.6 — what the `ref_match` narrowing removes, and what it saves.
 --
 -- Reported because the narrowing is the one place we diverge from the upstream
 -- `admitted` rule, and a divergence nobody can measure is a divergence nobody can argue
 -- with. `kept_only_by_ref_match` is the column that answers "would SHA-only have done":
 -- those commits have no SHA link at all, so under SHA-only they lose their pull request
--- entirely and fall into the "Not linked to a PR" group (decision 26).
+-- entirely and fall into the "Not linked to a PR" group.
 CREATE OR REPLACE VIEW fe.diag_ref_match_narrowing AS
 WITH rm AS (
   SELECT DISTINCT l.repo_id, l.commit_sha, l.pull_request_id
@@ -1609,24 +1605,24 @@ SELECT 'distinct activities (must be exactly 10)',
 -- =====================================================================================
 -- §8 — Seed search
 --
--- The seed picker cannot enumerate its options (decision 34): a repository holds
+-- The seed picker cannot enumerate its options: a repository holds
 -- hundreds of thousands of issues and pull requests and millions of commits, so the
 -- interaction is a *search*. This is what it searches.
 --
 -- ⚠️ **The one place this layer stores what a search could return, and nothing about
--- what a seed would YIELD.** Decision 34 is explicit: working out what a seed yields
--- means running the traversal for that candidate, which cannot be done for every
--- candidate in a repository. So: type, number or SHA, title. Nothing else.
+-- what a seed would YIELD.** Working out what a seed yields means running the traversal
+-- for that candidate, which cannot be done for every candidate in a repository.
+-- So: type, number or SHA, title. Nothing else.
 --
--- MATERIALIZED, and here is the measurement decision 10 asks for. Against the plain
+-- MATERIALIZED, and here is the measurement that justifies it. Against the plain
 -- object views a single lookup cost 348 ms (issue by number), 160 ms (commit by SHA
 -- prefix) and 597 ms (title scan) — because each one rebuilds a DISTINCT ON over the
 -- identity and first-seen union before filtering. A typeahead fires that on every
 -- keystroke. Materialized and indexed it is sub-millisecond; the numbers are in §8.1.
 --
 -- A search index is also the one thing that is *unambiguously* safe to precompute here:
--- it depends only on which objects exist, never on the sub-log selection, so decision
--- 12's objection to precomputing does not apply.
+-- it depends only on which objects exist, never on the sub-log selection, so the rule
+-- against precomputing over a sub-log does not apply.
 -- =====================================================================================
 
 DROP MATERIALIZED VIEW IF EXISTS fe.seed_lookup CASCADE;
@@ -1674,7 +1670,7 @@ ANALYZE fe.seed_lookup;
 
 COMMENT ON MATERIALIZED VIEW fe.seed_lookup IS
   'What a seed search can cheaply return about an object: type, number or SHA, title. '
-  'Never what a seed would yield (decision 34). Refresh with fe.refresh_search().';
+  'Never what a seed would yield. Refresh with fe.refresh_search().';
 
 CREATE OR REPLACE FUNCTION fe.refresh_search() RETURNS void
 LANGUAGE sql AS $$
@@ -1685,7 +1681,7 @@ $$;
 -- =====================================================================================
 -- §11 — Refreshing this layer
 --
--- Two relations here are materialized — `fe.link_mat` (decision 57) and `fe.seed_lookup`
+-- Two relations here are materialized — `fe.link_mat` (§5.1) and `fe.seed_lookup`
 -- (§8) — and both go stale silently the moment any upstream MV is refreshed. Silently is
 -- the problem: a stale link table does not error, it just quietly answers with last
 -- week's graph, and a stale search index simply cannot find objects that now exist.
@@ -1730,7 +1726,7 @@ SELECT 'fe.seed_lookup',
 
 
 -- -------------------------------------------------------------------------------------
--- §8.1 — Measurements for fe.seed_lookup (decision 10 wants the number, not the habit)
+-- §8.1 — Measurements for fe.seed_lookup (the number, not the habit)
 --
 -- Same queries, plain views versus this materialized index, 2026-08-04:
 --
@@ -1825,7 +1821,7 @@ $fn$;
 COMMENT ON FUNCTION api.search_seeds(text, text, text, text, text, integer) IS
   'Seed search. Takes an already-parsed reference (see src/data/seedQuery.js) and returns '
   'a permissive superset of candidates; the client ranks them. Carries only what a search '
-  'can cheaply return about an object, never what a seed would yield (decision 34).';
+  'can cheaply return about an object, never what a seed would yield.';
 
 
 -- =====================================================================================
@@ -1845,11 +1841,10 @@ CREATE OR REPLACE FUNCTION api.list_repos()
 RETURNS TABLE (name text, repo_id bigint, available boolean, reason text, seeds bigint)
 LANGUAGE sql STABLE AS $$
   -- ONE row per name: the row with the most seeds, id as the tie-break — the same rule
-  -- get_object_graph resolves an ambiguous name by (decision 51), so the picker offers
-  -- exactly what the RPC would pick. The duplicate `kubernetes/kubernetes` stub (a
-  -- recreated repo, 1 event, no seeds) used to be listed last as a "no data" row to
-  -- demonstrate why name resolution is deterministic; decision 125 hides it — a picker
-  -- row that cannot be chosen demonstrated nothing to a reader, and the ambiguity is
+  -- get_object_graph resolves an ambiguous name by, so the picker offers exactly what
+  -- the RPC would pick. The duplicate `kubernetes/kubernetes` stub (a recreated repo,
+  -- 1 event, no seeds) is hidden rather than listed as a "no data" row: a picker row
+  -- that cannot be chosen demonstrates nothing to a reader, and the ambiguity is
   -- still reported where it matters, on the payload (meta.repo_ambiguous).
   SELECT DISTINCT ON (r.name)
          r.name,
@@ -1881,7 +1876,7 @@ COMMENT ON FUNCTION api.list_repos() IS
 --
 -- This block turns that silence into a loud one. It only warns: the fix belongs in
 -- `postgrest_setup.sql`, which applies the policy by looping over the schema rather than
--- naming functions (decision 71), and duplicating it here is how the two would drift.
+-- naming functions, and duplicating it here is how the two would drift.
 -- =====================================================================================
 DO $$
 DECLARE

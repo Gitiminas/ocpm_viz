@@ -4,7 +4,7 @@
  * Evidence is encoded in the stroke — solid for validated, dashed with a "?" badge
  * for extracted. That is the visual answer to shortcoming S8 and the reason most of
  * this sub-log now reads as uncertain: reclassifying branch-ref matches moved 29 of
- * 34 links from solid to dashed (decision 7). That is the honest result.
+ * 34 links from solid to dashed. That is the honest result.
  *
  * Collapsed bursts complicate this. Twenty commits folded into one node would draw
  * twenty near-identical edges to the same PR, so links from folded commits are
@@ -112,9 +112,9 @@ function computeLinkOffsets(entries) {
     /*
      * ⚠️ **Past a point, fanning stops separating and starts lying.**
      *
-     * The fan (decision 25) exists so a link hidden underneath another is still
-     * visible, and it was designed against F5's two coincident links. It scales
-     * badly: a pull request containing 85 commits pushed in the same hour puts 85
+     * The fan exists so a link hidden underneath another is still visible, and
+     * it was designed against F5's two coincident links. It scales badly: a
+     * pull request containing 85 commits pushed in the same hour puts 85
      * links in one bundle, and spreading them 5px apart smears the shared endpoint
      * across 425px. The lane caption then says *one* pull request while the picture
      * shows a wall of arrival points — which reads as many. That is a wrong picture
@@ -125,7 +125,7 @@ function computeLinkOffsets(entries) {
      * each of the 85" for "you can see there are 85", which is the honest trade: at
      * 85 you could not see each of them anyway, and the commits themselves are all
      * drawn in the commit lane regardless. Declaring the count rather than silently
-     * overlapping is decision 27's rule applied to the renderer.
+     * overlapping keeps the rule that anything hidden is declared.
      */
     if (bundle.length > MAX_FANNED_LINKS) {
       for (const entry of bundle) offsets.set(entry.link, 0);
@@ -288,7 +288,7 @@ export function renderLinks({
      *
      * It circled a question mark on top of a dashed stroke that already says the same
      * thing, so a dense sub-log paid one extra glyph per uncertain link to repeat a cue
-     * the line carries on its own. The dash is the uncertainty cue (decision 7), the
+     * the line carries on its own. The dash is the uncertainty cue, the
      * legend names it, and the tooltip still spells it out in words.
      */
 

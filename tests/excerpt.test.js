@@ -5,9 +5,9 @@ import { excerptHtml } from '../src/render/tooltip.js';
 import { nodeTooltipSpec } from '../src/render/nodes.js';
 
 /**
- * The comment excerpt in the hovercard (decision 124). What matters most here is the
- * escaping: comment bodies are arbitrary user-written GitHub content, and excerptHtml is
- * the ONE place they become markup.
+ * The comment excerpt in the hovercard. What matters most here is the escaping: comment
+ * bodies are arbitrary user-written GitHub content, and excerptHtml is the ONE place they
+ * become markup.
  */
 
 describe('the excerpt block', () => {

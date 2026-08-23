@@ -18,8 +18,8 @@
  *
  * ⚠️ The strip has a fixed minimum height of two lines, so the header row never changes
  * height as the text changes — a header that jumped would move the chart under the
- * reader's eye on every hover, which is the object-constancy failure decision 100 guards
- * against in the chart itself.
+ * reader's eye on every hover, which is the object-constancy failure the chart itself
+ * avoids by never re-laying out on focus.
  */
 
 import { tipFor as defaultTipFor, DEFAULT_TIP } from '../help/tips.js';

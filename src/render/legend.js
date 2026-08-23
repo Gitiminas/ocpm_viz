@@ -99,7 +99,7 @@ export const LEGEND_SECTIONS = [
         label: 'comment',
         swatch: hollow('diamond'),
         // Hollow is the comment's own cue, which is why an abandoned pull request and a
-        // repeat commit observation had to find other devices (decisions 78, 81).
+        // repeat commit observation had to find other devices.
       },
       {
         key: 'comment-burst',
@@ -111,7 +111,7 @@ export const LEGEND_SECTIONS = [
           'font-family="monospace" fill="var(--color-neutral-400)">N</text></svg>',
       },
       { key: 'landmark', label: 'merged · issue closed', swatch: ring(false) },
-      // The off-platform merge (decision 123): a landmark, but a heuristic — emphasised
+      // The off-platform merge: a landmark, but a heuristic — emphasised
       // with a ring like a merge, dotted and in the extracted colour so it is visibly
       // not the platform's own fact.
       {
@@ -158,8 +158,8 @@ export const LEGEND_SECTIONS = [
   {
     /*
      * Only drawn in the relationships time mode, and dimmed like any other absent row in the
-     * other two (decision 83) rather than removed — a row that vanishes cannot say whether
-     * the mark is absent because the data has none or because you switched modes.
+     * other two rather than removed — a row that vanishes cannot say whether the mark is
+     * absent because the data has none or because you switched modes.
      *
      * Two rows have been removed from here. A light-to-dark fill ramp carrying time —
      * colour means "which object" in every mode now. And a ×N badge on an edge standing
@@ -207,8 +207,8 @@ export const LEGEND_KEYS = [
  * Which legend keys are present in what is currently drawn.
  *
  * Read off the picture rather than re-derived from the model, deliberately: deriving it
- * would mean a second copy of "which marks get drawn", and a second copy is what
- * decision 82 exists to prevent. The elements are the only account of what was drawn.
+ * would mean a second copy of "which marks get drawn", and a second copy is exactly what
+ * `data-legend` exists to prevent. The elements are the only account of what was drawn.
  */
 export function legendKeysPresentIn(element) {
   const present = new Set();
@@ -225,9 +225,9 @@ export function legendKeysPresentIn(element) {
  * ⚠️ **Absent rows are dimmed, never removed.** A row that vanishes cannot say whether
  * the mark is missing because the data has none or because you switched something off,
  * and the reader cannot tell those apart from the panel alone — the hidden-dependency
- * failure decision 27 exists to prevent, in the one place whose whole job is explaining
- * the picture. Dimming also keeps the vocabulary in a stable position instead of
- * reshuffling on every toggle.
+ * failure that "anything hidden is declared" exists to prevent, in the one place whose
+ * whole job is explaining the picture. Dimming also keeps the vocabulary in a stable
+ * position instead of reshuffling on every toggle.
  *
  * `present = null` means "not known yet" — before the first draw — and everything reads
  * as active, which is the honest default for "we have not looked".

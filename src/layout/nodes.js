@@ -10,13 +10,11 @@
  * silently dropped. Here every object of a lane-bearing type contributes its events.
  *
  * One aggregation mechanism reduces density: **bursts**, data-driven from `push_id` —
- * N of them, or none, folded by default and expandable individually (decision 94).
+ * N of them, or none, folded by default and expandable individually.
  *
- * ⚠️ There used to be a second, "groups": the Highlights mode folded runs of
- * unremarkable commits between two notable ones into a count badge. Highlights was
- * removed (decision 112) and the grouping went with it — it was a presentation rule with
- * no counterpart in the data, and the one thing it produced that the data did not was a
- * mark whose count changed with the mode.
+ * ⚠️ There is deliberately no second one. Folding runs of unremarkable commits into a
+ * count badge is a presentation rule with no counterpart in the data, and the one thing
+ * it produces that the data does not is a mark whose count changes with the mode.
  */
 
 import {
@@ -51,7 +49,7 @@ export function buildNodes({
   // ---- event nodes, for every object of a lane-bearing, non-commit type --------
   //
   // Comments inside a collapsed comment burst are replaced by one node standing for the
-  // run (decision 93). Folding is a display choice, so the events are still *there* —
+  // run. Folding is a display choice, so the events are still *there* —
   // `selectVisible` and every metric count them, exactly as with a folded push.
   const foldedComments = new Map();
   for (const burst of commentBursts) {
@@ -97,8 +95,8 @@ export function buildNodes({
           short: activityShortLabel(event.activity),
           isComment: !!event.comment,
           landmark: isLandmark(event.activity),
-          // The off-platform merge: emphasised like a landmark, ringed like a heuristic
-          // (decision 123). Read by the renderer beside `landmark`.
+          // The off-platform merge: emphasised like a landmark, ringed like a
+          // heuristic. Read by the renderer beside `landmark`.
           heuristicLandmark: isHeuristicLandmark(event.activity),
           // A pull request that ended without merging. Carried here rather than derived
           // in the renderer so "which glyph gets the abandoned mark" stays checkable

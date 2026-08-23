@@ -1,5 +1,5 @@
 /**
- * Link evidence classification (decision 7, `docs/ADAPTER_AND_API.md` §3).
+ * Link evidence classification (`docs/ADAPTER_AND_API.md` §3).
  *
  * Two classes only. `inferred` is retired vocabulary and must not appear anywhere.
  *
@@ -20,14 +20,14 @@ export const EVIDENCE = {
 /**
  * The closed set of link detection methods.
  *
- * **Sixteen values, and every one of them is a link between two objects.** Decision
- * 42 fixes `link.method` — how one object came to be linked to another — at the four
+ * **Sixteen values, and every one of them is a link between two objects.**
+ * `link.method` — how one object came to be linked to another — is fixed at the four
  * validated and twelve extracted entries below.
  *
- * Three values have been removed and none may return without an upstream source that
- * produces it: `merge_commit_message` (decision 42 — no view emits it),
- * `offplatform_commit_message` (decision 48, with the off-platform heuristic) and
- * `event_actor_id` (decision 41). The last is the one worth remembering, because it
+ * Three values are excluded and none may return without an upstream source that
+ * produces it: `merge_commit_message` (no view emits it), `offplatform_commit_message`
+ * (dropped with the off-platform heuristic) and `event_actor_id`. The last is the one
+ * worth remembering, because it
  * was not wrong so much as redundant: it recorded which actor performed an event,
  * which `event.actor_id` already states on the event itself. Carrying it as a
  * *link* method meant every consumer of `links` had to exclude it by hand — ten
@@ -52,7 +52,7 @@ export const LINK_METHOD = {
   /**
    * Issue reference parsed out of a commit message, e.g. "Refs #242864".
    *
-   * ⚠️ **One technique, two relationships** (decision 50). Upstream this arrives from two views:
+   * ⚠️ **One technique, two relationships.** Upstream this arrives from two views:
    * a commit→issue link, and the issue↔PR link derived from the same mention by way of the pull
    * request carrying that commit. They stay one method because `method` records *how* a link was
    * found — one regex over one commit message — while the qualifier records what it joins
@@ -72,14 +72,14 @@ export const LINK_METHOD = {
   /**
    * PR head ref matched against the push ref. A branch-naming convention.
    *
-   * ⚠️ **Narrowed in the data layer, not here** (decision 80, `sql/fe_layer.sql` §5.0b).
+   * ⚠️ **Narrowed in the data layer, not here** (`sql/fe_layer.sql` §5.0b).
    * Upstream this admits any commit pushed to the PR's head branch while the PR was open
    * — which is the right question, because GH Archive's PR payload never lists a PR's
    * commits, so for most of them this is the *only* evidence there is. But merging
    * `master` into a long-lived branch re-enumerates every incoming trunk commit in that
    * push, and all of them get attributed to the PR: vscode PR #116416 came out at 217
    * such commits, of which only 36 were born on its own branch. (The old "179 on master
-   * / 34 genuine" split was computed time-blind and is wrong — decisions 65 and 80.)
+   * / 34 genuine" split was computed time-blind and is wrong.)
    *
    * The layer therefore admits `ref_match` only where the commit was *first introduced*
    * on a non-default branch. Nothing changes for this module — the value stays in the
@@ -89,7 +89,7 @@ export const LINK_METHOD = {
   REF_MATCH: 'ref_match',
 
   /*
-   * The six extended conventions (decision 42). Project-specific issue-reference
+   * The six extended conventions. Project-specific issue-reference
    * forms that GitHub does not act on — `gh-123`, `For #123`, Symfony's PR template
    * — split by where they were found, title or body, so a repository's linking
    * habits stay legible in the method breakdown RQ2 needs. `DATA_CONTRACT.md` §4
@@ -151,7 +151,7 @@ const ALL_METHODS = new Set(Object.values(LINK_METHOD));
  * correction: seeding all thirteen issue↔PR methods would put ten permanently empty
  * toggles in the sidebar of every sub-log that uses none of them, and an always-visible
  * control that never does anything is its own kind of lie. Decide it against real data,
- * once a sub-log from the RPC shows which methods actually occur. See O11.
+ * once a sub-log from the RPC shows which methods actually occur.
  */
 export const ISSUE_PR_METHODS = [
   LINK_METHOD.PR_BODY,

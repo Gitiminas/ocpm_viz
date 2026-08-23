@@ -7,7 +7,7 @@
  *
  * A `query` describes the sub-log to select — it is *not* an identity. The same
  * event may legitimately belong to many sub-logs, which is precisely what a case id
- * would forbid (decision 1). These are also the parameters a saved preset or
+ * would forbid. These are also the parameters a saved preset or
  * shareable URL encodes, which is the reproducibility mechanism for the task-based
  * evaluation.
  */
@@ -43,7 +43,7 @@ export async function loadObjectGraph(query = {}, { transport = fixtureTransport
  *
  * This replaces the mockup's `meta.case` string, which hardcoded
  * "Issue #242864 -> PR #243221 -> commits" and reintroduced exactly the case notion
- * decision 1 removes. Naming the query rather than the result keeps the breadcrumb
+ * this project rejects. Naming the query rather than the result keeps the breadcrumb
  * honest when the same events appear in a different sub-log — which, under OCPM,
  * they legitimately can.
  */

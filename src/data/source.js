@@ -61,7 +61,7 @@ function fixtureSource() {
      *
      * ⚠️ Falls back to the first *available repository* when none is named, because a
      * bare `/` is the normal way to open the app and it carries no `?repo=`. The
-     * fixture transport always did this internally; when the seed decision moved up
+     * fixture transport always did this internally; when the seed choice moved up
      * here, dropping it meant a plain visit showed "choose something to start from"
      * with a repository already selected — which is nonsense, and is what an
      * incomplete extraction of an implicit behaviour looks like.
@@ -93,9 +93,9 @@ function databaseSource() {
     /*
      * **There is no default seed, and that is the design, not a gap.**
      *
-     * Decision 33 makes the selection a *query*: a repository AND an object to traverse
-     * out from. A repository on its own is an incomplete query, and decision 34 forbids
-     * the list a default would have to be picked from — you cannot enumerate hundreds of
+     * The selection is a *query*: a repository AND an object to traverse out from. A
+     * repository on its own is an incomplete query, and the seed is chosen by search, so
+     * there is no list for a default to come from — you cannot enumerate hundreds of
      * thousands of objects to take the first. Inventing one (the newest issue, say) would
      * put an arbitrary sub-log on screen that the user did not ask for and cannot account
      * for. So the app asks, which is what the seed box is for.
@@ -122,9 +122,9 @@ export function createSource(name = sourceFromUrl()) {
  *   1. `?fixture=F1`   a DIRECT ADDRESS, not a query. Carries no seed by design and
  *                      must not be asked for one — this is how the tests and
  *                      already-written-down links name a specific bundle.
- *   2. repo + seed     a complete query (decision 33). Load it.
+ *   2. repo + seed     a complete query. Load it.
  *   3. repo, no seed   incomplete. The fixture source may offer its first servable
- *                      seed; the database source cannot (decision 34), so: prompt.
+ *                      seed; the database source cannot, so: prompt.
  *
  * Case 1 is the trap. The first version of the missing-seed fix tested only for a seed,
  * so every `?fixture=` link started showing "choose something to start from" instead of

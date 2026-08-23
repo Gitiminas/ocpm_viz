@@ -62,7 +62,7 @@ export function applyState(state, snapshot) {
 
   if (snapshot.mode) state.mode = snapshot.mode;
   if (snapshot.structuralLayout) state.structuralLayout = snapshot.structuralLayout;
-  // `burstThreshold` was dropped in decision 94 — pushes fold by push_id, always. An
+  // `burstThreshold` is gone — pushes fold by push_id, always. An
   // older snapshot may still carry it; ignoring it is right, and saying so here is what
   // stops the next reader hunting for the field it sets.
 

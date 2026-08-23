@@ -12,7 +12,7 @@
  *
  * ⚠️ DOM-free, and tested in both directions (`tests/tips.test.js`): every key referenced
  * from the markup or a renderer must exist here, and every key here must be referenced —
- * the same rule decision 82 applies to the legend, for the same reason: a label with no
+ * the same rule the legend follows, for the same reason: a label with no
  * text, or a text nobody shows, is a silent drift. The texts are also checked for the
  * project's retired words (`case`, `milestone`, `inferred`).
  *

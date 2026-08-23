@@ -189,7 +189,6 @@ window size it captures at, so compare fill between shots and never against the 
 | Document | What it is |
 |---|---|
 | `CLAUDE.md` | Project rules: vocabulary, hard constraints, what is out of scope |
-| `docs/DECISIONS.md` | Every settled decision, numbered, plus the open questions. **Binding** |
 | `docs/ARCHITECTURE.md` | The frontend: folders, seams, data flow, layout, and the traps in the layout code |
 | `docs/DATA_LAYER.md` | Everything server-side: schemas, the payload, links, the RPCs, roles, diagnostics |
 | `docs/DATA_CONTRACT.md` | What exists upstream. A record of a read-only database that is itself the truth |
@@ -201,12 +200,12 @@ and SQL contain, compiled from the tree. Use it when you need a name, a constant
 
 ## Known limits
 
-- **Event glyphs stack without bound** (open question O12(b)). A kubernetes issue with 288
+- **Event glyphs stack without bound.** A kubernetes issue with 288
   comments in a short window allocates 52 bands and an SVG 5,654 px tall. Crowding rather than
   deception, but it is worst on the busiest issues.
-- **How to draw a dense sub-log's links is unresolved** (O13). Two measurements in
-  `DECISIONS.md` §2 constrain any fix.
-- **Events carry one object id, not many** (O10). OCEL 2.0's event-to-object relation is
+- **How to draw a dense sub-log's links is unresolved.** Two measurements in
+  `docs/_decisions_salvage.md` constrain any fix.
+- **Events carry one object id, not many.** OCEL 2.0's event-to-object relation is
   many-valued; convergence here is expressed through links between objects instead.
 - **Every link figure is a floor, never a point estimate.** Two admission rules added by this
   project narrow `ref_match`, so commit-link and issue↔PR counts undercount by an unmeasured

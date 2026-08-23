@@ -5,7 +5,7 @@
  * This is the check the database cannot do for itself. `fe.diag_sanity` proves the SQL
  * is internally consistent; this proves the payload satisfies the *frontend's* contract
  * — the closed activity vocabulary, the four object types, the two evidence classes, the
- * known link methods, and the both-endpoints-are-objects rule (decision 49) — which is
+ * known link methods, and the both-endpoints-are-objects rule — which is
  * the same gate all 13 fixtures pass.
  *
  * The transport shells out to `psql` rather than speaking to PostgREST, deliberately: the
@@ -20,7 +20,7 @@
  * call, and it is skipped — not failed — when PostgREST is not running, so the gate still
  * works on a machine with only a database.
  *
- *   node scripts/rpc-check.mjs [repo] [seed] [degree]        degree 0..2 (decision 110)
+ *   node scripts/rpc-check.mjs [repo] [seed] [degree]        degree 0..2
  *   node scripts/rpc-check.mjs microsoft/vscode issue:2902032454 2
  *
  *   PGRST_URL=http://localhost:3000   where to find PostgREST (default)
@@ -91,7 +91,7 @@ if (raw.meta.contract_version !== 2) {
   fail.push(`meta.contract_version is ${raw.meta.contract_version}, expected 2 (decision 45)`);
 }
 
-// Decision 55: a timestamp the renderer cannot parse passes findGraphProblems, which only
+// A timestamp the renderer cannot parse passes findGraphProblems, which only
 // checks that `time` is non-empty, and then reaches the layout as NaN.
 for (const e of raw.events) {
   if (Number.isNaN(Date.parse(e.time))) fail.push(`event ${e.id} has unparseable time "${e.time}"`);
@@ -107,20 +107,20 @@ for (const o of raw.objects) {
   }
 }
 
-// The vocabulary must be the nine of decision 40 — and a subset is fine (a small sub-log
+// The vocabulary must be the nine closed activities — and a subset is fine (a small sub-log
 // need not exhibit all nine), an extra is not.
 const known = new Set(Object.keys(ACTIVITIES));
 for (const a of new Set(raw.events.map((e) => e.activity))) {
   if (!known.has(a)) fail.push(`activity "${a}" is outside the closed vocabulary`);
 }
 
-// Decision 43: exactly four qualifiers.
+// Exactly four qualifiers.
 const QUALIFIERS = new Set(['resolves', 'contains_commit', 'merge_commit', 'references_issue']);
 for (const q of new Set(raw.links.map((l) => l.qualifier))) {
   if (!QUALIFIERS.has(q)) fail.push(`qualifier "${q}" is outside the four of decision 43`);
 }
 
-// Decision 20 / R6: link_methods is an ARRAY, and `method` must be one of its members.
+// link_methods is an ARRAY, and `method` must be one of its members.
 for (const l of raw.links) {
   if (!Array.isArray(l.link_methods)) {
     fail.push(`link ${l.source}->${l.target} has link_methods that is not an array`);
@@ -129,13 +129,13 @@ for (const l of raw.links) {
   }
 }
 
-// Decision 39: no repo objects, and actors carry no is_bot (decision 47).
+// No repo objects, and actors carry no is_bot.
 for (const o of raw.objects) {
   if (o.type === 'repo') fail.push(`object ${o.id} has type repo (decision 39 removed it)`);
   if (o.vmap && 'is_bot' in o.vmap) fail.push(`object ${o.id} carries is_bot (decision 47)`);
 }
 
-// Decision 44: no CommitsPushed activity — the push facts ride on CommitObserved.
+// No CommitsPushed activity — the push facts ride on CommitObserved.
 if (raw.events.some((e) => e.activity === 'CommitsPushed')) {
   fail.push('a CommitsPushed event is present (decision 44 rejected it)');
 }
@@ -156,8 +156,8 @@ console.log(`loader  ${describeSubLog(graph)}`);
 // renderer runs. It is not a substitute for looking at the picture, but it catches the
 // class of fault that makes a picture wrong rather than absent: a NaN x-position (a bad
 // timestamp reaching the scale), a lifecycle bar with no width, glyphs stacked on top of
-// one another, a link anchored to the top of a lane instead of to its object's own band
-// (decision 37), or a commit whose position cannot be resolved at all.
+// one another, a link anchored to the top of a lane instead of to its object's own band,
+// or a commit whose position cannot be resolved at all.
 const LANES = ['issue', 'pull_request', 'commit'];
 const MARGIN_LEFT = 180;
 const PLOT_WIDTH = 1100;
@@ -194,14 +194,13 @@ for (const mode of TEMPORAL_MODES) {
     if (!Number.isFinite(node.y)) layoutFail.push(`[${mode}] node ${node.id} has y=${node.y}`);
   }
 
-  // Every issue and PR must resolve to a band, and every band to a y. Decision 37: this is
-  // the arithmetic that sent every commit link to the top of the PR lane when it was wrong.
+  // Every issue and PR must resolve to a band, and every band to a y. This is the
+  // arithmetic that sends every commit link to the top of the PR lane when it is wrong.
   //
-  // ⚠️ The COMMIT lane is deliberately excluded. Decision 19: the commit lane draws one
-  // node per commit OBJECT while the issue and PR lanes draw one node per EVENT, so
-  // commits are positioned by their node's own row and never appear in `objectRow`.
-  // Asserting otherwise flags every commit in every sub-log — which it did, and which is
-  // the asymmetry decision 19 exists to record.
+  // ⚠️ The COMMIT lane is deliberately excluded: it draws one node per commit OBJECT
+  // while the issue and PR lanes draw one node per EVENT, so commits are positioned by
+  // their node's own row and never appear in `objectRow`. Asserting otherwise flags every
+  // commit in every sub-log, which is the asymmetry between node-hood and object-hood.
   for (const lane of ['issue', 'pull_request']) {
     for (const object of index.objectsOfType(lane)) {
       const row = objectRow.get(object.id);

@@ -4,9 +4,8 @@
  * A lane's height depends on how many rows its contents needed, so geometry is
  * computed after packing, not before.
  *
- * Three of the four object types get a lane (decision 15) — `actor` has no lifecycle
- * to draw and surfaces through the sidebar and the actor card instead. It is the only
- * such type; `repo` was the other until decision 39 stopped treating it as an object.
+ * Three of the four object types get a lane — `actor` has no lifecycle to draw and
+ * surfaces through the sidebar and the actor card instead. It is the only such type.
  * `laneTypes` is therefore passed in rather than assumed.
  */
 

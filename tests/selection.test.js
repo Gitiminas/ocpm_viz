@@ -49,8 +49,8 @@ describe('the catalogue describes what can be asked for', () => {
     for (const repo of cat.repos.filter((entry) => entry.available)) {
       for (const seed of repo.seeds) {
         const graph = await readFixture(seed.fixture);
-        // The bucket is a picker label, not provenance (decision 125): the payload's own
-        // meta.repo is the truth, and the catalogue's synthetic flag must agree with it.
+        // The bucket is a picker label, not provenance: the payload's own meta.repo is
+        // the truth, and the catalogue's synthetic flag must agree with it.
         assert.equal(
           seed.synthetic,
           Boolean(graph.meta.data_honesty?.synthetic),
@@ -70,7 +70,7 @@ describe('the catalogue describes what can be asked for', () => {
 
   test('one bucket, nothing unavailable, and the real sub-logs lead it (decision 125)', () => {
     // The picker lists exactly what this source can serve; the source toggle's note is
-    // the pointer to the database. Amends decision 34's shown-disabled rule.
+    // the pointer to the database. Nothing is shown disabled.
     return catalogue().then((cat) => {
       assert.equal(cat.repos.length, 1);
       assert.equal(cat.repos[0].name, 'synthetic/fixture');
@@ -87,8 +87,8 @@ describe('the catalogue describes what can be asked for', () => {
   });
 
   test('every seed is flagged so nothing is mistaken for real data', async () => {
-    // Per SEED since decision 125 put everything in one bucket: F1 and the LIVE samples
-    // are real (their payloads say so), the built fixtures are synthetic.
+    // Per SEED, since everything is in one bucket: F1 and the LIVE samples are real
+    // (their payloads say so), the built fixtures are synthetic.
     const cat = await catalogue();
     const seeds = cat.repos[0].seeds;
     assert.equal(seeds.find((seed) => seed.fixture === 'F1').synthetic, false);

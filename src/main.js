@@ -189,8 +189,7 @@ const timeline = createTimeline({
      * Recorded as an offset from where the layout put it, so it survives a re-render, a
      * zoom and an expanded push — and so the arrangement remains the computed one plus a
      * set of stated displacements rather than a pile of absolute coordinates nobody can
-     * account for. Decision 27's rule applies: this changes the picture, so it is
-     * declared and it is undoable.
+     * account for. This changes the picture, so it is declared and it is undoable.
      */
     onNodeDragged(nudges) {
       // Into the arrangement that is on: an offset means nothing in the other one.
@@ -219,9 +218,8 @@ const timeline = createTimeline({
        * It is a *time* overview — a strip of every event's instant, with a viewport you
        * drag along it — and relationships mode has no time axis for it to describe. Leaving it up
        * would be a control that silently does nothing and a picture that quietly belongs
-       * to a different mode, which is the stale-picture failure decision 87 guards
-       * against in the other direction. Its space is given back rather than blanked, so
-       * nothing suggests a strip that failed to draw.
+       * to a different mode: the stale-picture failure, in the other direction. Its space
+       * is given back rather than blanked, so nothing suggests a strip that failed to draw.
        */
       const structural = kind === 'structural';
       el('minimapWrap').style.display = structural ? 'none' : 'block';
@@ -440,7 +438,7 @@ function redraw() {
   // After the draw, never before: the legend dims the marks that are not on screen, and
   // "what is on screen" is read off the chart that was just rebuilt. Re-rendering fifteen
   // rows costs nothing, and replacing the nodes each time means the hover listeners go
-  // with them rather than stacking (the failure decision 75 records).
+  // with them rather than stacking.
   renderLegend(elements.legend, legendKeysPresentIn(elements.chart));
   if (!current) return;
   updateSubLogCard();
@@ -468,7 +466,7 @@ function showToast(message) {
 /**
  * Recompute the statistics over the **visible** sub-log.
  *
- * Not over the whole bundle: metrics must respond to the toggles (decision 12), so
+ * Not over the whole bundle: metrics must respond to the toggles, so
  * hiding comments genuinely recomputes the gaps. The stats page has no sidebar
  * controls and no banner of its own, so it is also handed the hidden summary and
  * says up front that its figures describe a filtered view.
@@ -557,7 +555,7 @@ function setZoom(value) {
  * `setZoom` alone re-renders with the surface still scrolled to where it was, so the
  * drawing — which grows about the frame's origin — ran off to the right and down and the
  * reader had to chase it. This keeps one content point fixed under one surface point:
- * the pointer for the wheel (decision 119), the surface's centre for the buttons (120).
+ * the pointer for the wheel, the surface's centre for the buttons.
  * The arithmetic is `scrollToKeepAnchor` (`render/pan.js`), pure and tested; this
  * function only reads and writes the DOM around it.
  *
@@ -585,8 +583,8 @@ function zoomAround(value, anchor = null) {
 
 /**
  * The zoom buttons. In relationships mode they zoom about the CENTRE of the visible
- * surface (decision 120): the reader is looking at the middle of what is on screen, and a
- * zoom that grew the drawing about the frame's origin sent it off to the right and down.
+ * surface: the reader is looking at the middle of what is on screen, and a zoom that
+ * grew the drawing about the frame's origin sent it off to the right and down.
  * In the timeline modes they keep their behaviour — the minimap owns horizontal position
  * there, and the picture is a strip rather than a plane.
  */
@@ -640,8 +638,8 @@ let lastTemporalMode = TEMPORAL_MODES[0];
  */
 function markMode(mode) {
   const structural = isStructuralMode(mode);
-  // The two-level control (decision 114): the first level says what position means, the
-  // second refines it — which time axis, or which arrangement. Only the second-level
+  // The two-level control: the first level says what position means, the second
+  // refines it — which time axis, or which arrangement. Only the second-level
   // control that applies is shown; the other would be a control that silently does
   // nothing, which this project forbids.
   for (const option of document.querySelectorAll('#facetSeg .seg-opt')) {
@@ -663,8 +661,8 @@ function markMode(mode) {
  * Say what the brush is currently letting through.
  *
  * Named in UTC instants rather than as percentages, because "1 Mar – 14 Mar" is a fact
- * about the sub-log and "20%–60%" is a fact about a slider. Decision 9's rule applies here
- * as everywhere: the times are UTC and labelled as such.
+ * about the sub-log and "20%–60%" is a fact about a slider. The times are UTC and
+ * labelled as such, here as everywhere.
  */
 function updateTimeBrushLabel(extent) {
   const [from, to] = state.timeBrush;
@@ -760,17 +758,16 @@ for (const option of document.querySelectorAll('#layoutSeg .seg-opt')) {
  *
  * In the timeline modes it scrolls, as a page does, and Ctrl+wheel zooms. In the
  * relationships mode it does NOT scroll: the picture is a graph, not a page, and the
- * surface is navigated by dragging it (decision 118) — a wheel that scrolled it
- * vertically moved the picture out from under a reader who meant to zoom, and there is
- * no sideways counterpart, so scrolling was half a control. The wheel's job there is
- * zooming, which the next decision gives it.
+ * surface is navigated by dragging it — a wheel that scrolled it vertically moved the
+ * picture out from under a reader who meant to zoom, and there is no sideways
+ * counterpart, so scrolling was half a control. The wheel's job there is zooming.
  */
 elements.scroll.addEventListener(
   'wheel',
   (event) => {
     if (isStructuralMode(state.mode)) {
       // The wheel zooms, about the pointer, with no modifier — and only over the surface,
-      // since this listener is the surface's (decision 119). Fine steps: a notch is ~10%.
+      // since this listener is the surface's own. Fine steps: a notch is ~10%.
       event.preventDefault();
       zoomAround(state.k * (event.deltaY < 0 ? 1.1 : 1 / 1.1), {
         clientX: event.clientX,
@@ -888,9 +885,9 @@ function queryFromUrl() {
     seed: params.get('seed') || null,
     fixture: params.get('fixture') || null,
     preset: params.get('preset') || null,
-    // Server-side expansion (decision 35). Absent means "whatever the source defaults
-    // to", which for the RPC is `TRAVERSAL_DEGREE.default` (1, decision 111) and for a
-    // fixture is whatever it was built at.
+    // Server-side expansion. Absent means "whatever the source defaults to", which for
+    // the RPC is `TRAVERSAL_DEGREE.default` (1) and for a fixture is whatever it was
+    // built at.
     traversalDegree: params.get('degree') ? Number(params.get('degree')) : undefined,
     page: params.get('page') === 'stats' ? 'stats' : 'timeline',
     /*
@@ -1045,7 +1042,7 @@ function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
    * The label for the seed currently loaded.
    *
    * It used to be looked up in the catalogue's seed list, which only the fixture source
-   * has — the database source searches rather than enumerating (decision 34), so there
+   * has — the database source searches rather than enumerating, so there
    * is no list to look in. Reading it off the loaded sub-log instead works for both, and
    * is more truthful anyway: it names what is actually on screen rather than what the
    * catalogue said would be.
@@ -1063,7 +1060,7 @@ function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
     // response overwriting a fresher one.
     // The full ranked superset in ONE query (limit 200 is the RPC's own cap, and costs
     // the same as 20 — measured 585 vs 661 ms); the dropdown reveals it 15 at a time.
-    // Ranking is client-side (decision 64), so server-side paging would page an
+    // Ranking is client-side, so server-side paging would page an
     // UNRANKED superset and shuffle the order between batches.
     search: async (text) =>
       (await source.searchSeeds(activeRepo?.name, text, { limit: 200 })).map((seed) => ({
@@ -1095,7 +1092,7 @@ const seedLabel = (seed) =>
 async function reload(query) {
   try {
     /*
-     * A repository without a seed is an incomplete query (decision 33), and how to
+     * A repository without a seed is an incomplete query, and how to
      * complete it depends on the source: fixtures can offer their first servable seed,
      * the database cannot enumerate one to offer. Previously neither case was handled —
      * `reload({repo})` went straight to the transport, which the fixture path absorbed
@@ -1118,8 +1115,8 @@ async function reload(query) {
  * The state between choosing a repository and naming a seed.
  *
  * Not an error and not a blank page: the selectors are wired so the search box works,
- * and the message says what to do. This is the honest shape of decision 33 — the tool
- * cannot show a sub-log until it has been told which one.
+ * and the message says what to do. The selection is a query — the tool cannot show a
+ * sub-log until it has been told which one.
  */
 function showSeedPrompt(repoName) {
   wireSelectors(repoName, null, null);
@@ -1141,8 +1138,8 @@ const escapeForHtml = (value) => String(value).replace(/[&<>]/g, (c) =>
 /**
  * The traversal degree line, and the sub-log info card beneath it.
  *
- * The degree is a stepper against the database and text on fixtures (decision 72): the
- * control is real where it can be honoured and text where it cannot. The card
+ * The degree is a stepper against the database and text on fixtures: the control is
+ * real where it can be honoured and text where it cannot. The card
  * (`render/subLogCard.js`) states what the query returned — counts by type, links,
  * events, span — and replaced the breadcrumb that used to run above the chart. Repository
  * and seed are not repeated: they are the two boxes directly above.
@@ -1158,14 +1155,13 @@ function updateTraversalInfo(graph) {
   /*
    * Editable at last, and only where it can be honoured.
    *
-   * Decision 35 made this read-only because the degree was fixed when a fixture was
-   * built, so a stepper would have been a control that silently did nothing — the thing
-   * this project forbids. `get_object_graph` takes the degree as a parameter, so against
-   * the database the condition that decision named is met and the control is real. On
-   * fixtures it stays text, for exactly the original reason.
+   * On a fixture the degree was fixed when the fixture was built, so a stepper would be
+   * a control that silently did nothing — the thing this project forbids.
+   * `get_object_graph` takes the degree as a parameter, so against the database the
+   * control is real. On fixtures it stays text.
    *
-   * ⚠️ The range is 0–2 and the default 1 (`TRAVERSAL_DEGREE` in `data/api.js`,
-   * decisions 110–111). A step is steep and non-obvious: on vscode PR #116416 the
+   * ⚠️ The range is 0–2 and the default 1 (`TRAVERSAL_DEGREE` in `data/api.js`).
+   * A step is steep and non-obvious: on vscode PR #116416 the
    * sub-log goes 1 → 39 → 42 objects from degree 0 to 2, and 291 at the third hop that
    * is no longer offered — a stepper that reached it would invite someone to click it on
    * a busy seed and conclude the tool had hung.
@@ -1183,9 +1179,9 @@ function updateTraversalInfo(graph) {
    * ("issue 245207 loads only itself"). Verified for that issue: zero links here AND
    * zero upstream, so the picture is right and only the silence is wrong.
    *
-   * This is decision 27's principle one step further. That rule declares what the tool
-   * *subtracted*; this declares what the data never had, which is the other way a sparse
-   * picture misleads.
+   * The rule that anything hidden is declared, one step further. That rule declares what
+   * the tool *subtracted*; this declares what the data never had, which is the other way
+   * a sparse picture misleads.
    */
   elements.traversalInfo.innerHTML = degreeNote;
   bindDegreeControl(graph);
@@ -1197,7 +1193,7 @@ function updateTraversalInfo(graph) {
  * The sub-log card: what is CURRENTLY DISPLAYED, against the payload.
  *
  * Summarised over `selectVisible(...)` — the same selection the statistics page computes
- * from (decision 12) — so hiding a lane, a relationship class or the comments changes
+ * from — so hiding a lane, a relationship class or the comments changes
  * the numbers, and each tile shows "n / total" where they differ. Called from `redraw()`
  * beside the hidden-state banner, which is the other place that says what is hidden.
  */

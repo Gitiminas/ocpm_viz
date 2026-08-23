@@ -451,8 +451,8 @@ describe('presets', () => {
 
 describe('the sub-log card follows the toggles', () => {
   // The card summarises `selectVisible(...)` — the same selection the statistics page
-  // computes from (decision 12) — against the payload's totals, so it can never say
-  // "this sub-log has N" when the truth is "you are looking at N of M" (decision 116).
+  // computes from — against the payload's totals, so it can never say "this sub-log has N"
+  // when the truth is "you are looking at N of M".
   test('hiding the pull-request lane drops the PR count and the links that reach them', async () => {
     const c = await context('F10');
     const total = summarizeSubLog(c.graph);
@@ -484,7 +484,7 @@ describe('the sub-log card follows the toggles', () => {
 describe('drag offsets belong to one arrangement', () => {
   // A nudge is relative to where ONE arrangement put the node. Re-applied to the other it
   // moved marks by amounts that meant something somewhere else — a drag in Rows sent
-  // clusters off screen. Decision 117: keyed by arrangement, read through nudgesFor().
+  // clusters off screen. Offsets are keyed by arrangement, read through nudgesFor().
   test('a nudge made in rows is not seen by clusters, and each arrangement keeps its own', () => {
     const state = createState();
     state.structuralLayout = 'layered';

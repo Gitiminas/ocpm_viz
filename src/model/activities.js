@@ -7,7 +7,7 @@
  */
 
 /**
- * The closed set of object types — **four** (decision 39).
+ * The closed set of object types — **four**.
  *
  * `repo` was a fifth. It is not an object here: in every upstream materialized view
  * `repo_id` is a partition key rather than a participant, so no activity attaches to
@@ -21,12 +21,11 @@ export const OBJECT_TYPES = ['issue', 'pull_request', 'commit', 'actor'];
 /**
  * Object types that get a timeline lane, in lane order.
  *
- * Not every object type gets a lane (decision 15). `actor` is the one remaining
- * exception: a first-class object — searchable, toggleable, a link endpoint in
- * principle — with no lifecycle interval to draw, so it surfaces through the sidebar
- * and the actor card instead. Object-hood and lane-hood are separate properties, and
- * that distinction is the whole of what decision 15 still governs now that `repo` is
- * not an object at all.
+ * Not every object type gets a lane. `actor` is the one remaining exception: a
+ * first-class object — searchable, toggleable, a link endpoint in principle — with no
+ * lifecycle interval to draw, so it surfaces through the sidebar and the actor card
+ * instead. Object-hood and lane-hood are separate properties, and `actor` is the only
+ * place that distinction now shows.
  */
 export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
 
@@ -44,10 +43,9 @@ export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
  * treating it as the event-log semantics change that it is.
  */
 /*
- * ⚠️ **The keys are the closed vocabulary of decision 40, plus the one decision 123
- * restored, and do not change here.** They are what the SQL emits, what the fixtures
- * carry and what `isKnownActivity` throws on. Only `label` and `short` moved, and only
- * because they are what a reader sees.
+ * ⚠️ **The keys are the frozen activity vocabulary and do not change here.** They are
+ * what the SQL emits, what the fixtures carry and what `isKnownActivity` throws on.
+ * Only `label` and `short` moved, and only because they are what a reader sees.
  *
  * They are now **GitHub's own action words** — the verbs on its buttons: Open, Close,
  * Merge, Reopen, Comment. The tool previously used past participles ("Issue opened",
@@ -59,8 +57,8 @@ export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
  * render `${object.label} · ${label}` — so the old form repeated it: "PR #243221 · PR
  * merged" now reads "PR #243221 · Merge".
  *
- * ⚠️ `CommitObserved` keeps its own wording. It is a **synthetic** activity (decision 44)
- * meaning "this commit was seen in a push", not a GitHub action anyone performed; naming
+ * ⚠️ `CommitObserved` keeps its own wording. It is a **synthetic** activity meaning
+ * "this commit was seen in a push", not a GitHub action anyone performed; naming
  * it "Push" would claim an act the data does not record. Its oddness is honest.
  */
 export const ACTIVITIES = {
@@ -103,19 +101,17 @@ export const ACTIVITIES = {
   /*
    * A merge GitHub did not perform: the PR was closed unmerged and its commits turned up
    * in a push within minutes (upstream's `mv_pr_offplatform_merges`, a ±15-minute
-   * `delta_seconds` heuristic). Removed by decision 48 on a supervisor ruling that
-   * turned out to be a miscommunication, and restored by decision 123 with three rulings
-   * that the objection in 48 still shapes: it IS a landmark (the process reached its
-   * end), it is NOT an unmerged close (it delivered), and it is drawn with its OWN ring
-   * — dotted, in the extracted colour — so it is emphasised like a merge and visibly not
-   * one. The label says so in words as well.
+   * `delta_seconds` heuristic). It IS a landmark (the process reached its end), it is
+   * NOT an unmerged close (it delivered), and it is drawn with its OWN ring — dotted, in
+   * the extracted colour — so it is emphasised like a merge and visibly not one. The
+   * label says so in words as well.
    */
   PullRequestMergedOffPlatform: {
     label: 'Merge (off-platform)',
     short: 'merged off-platform',
     objectTypes: ['pull_request'],
     landmark: true,
-    /** The only activity whose ring says "emphasised, but a heuristic" (decision 123). */
+    /** The only activity whose ring says "emphasised, but a heuristic". */
     heuristic: true,
   },
   PullRequestClosed: {
@@ -146,7 +142,6 @@ export const ACTIVITIES = {
  * (`milestone_id`, `milestone_number`, `milestone_title` on `mv_issues_full` —
  * `DATA_CONTRACT.md` §1). Reusing the word for "an activity we draw with a ring"
  * would collide with a real, differently-meaning field the adapter may one day read.
- * See decision 38.
  */
 export const LANDMARK_ACTIVITIES = Object.keys(ACTIVITIES).filter((a) => ACTIVITIES[a].landmark);
 
@@ -156,7 +151,7 @@ export function isKnownActivity(activity) {
 
 /**
  * A landmark that is a heuristic rather than a platform fact — today only the
- * off-platform merge (decision 123). Drawn with its own ring so the emphasis does not
+ * off-platform merge. Drawn with its own ring so the emphasis does not
  * claim more than the data does; see `render/nodes.js` and `render/structural.js`.
  */
 export function isHeuristicLandmark(activity) {
@@ -200,15 +195,15 @@ export function isLandmark(activity) {
  * `PullRequestClosed` is never a merge and the two never coincide — measured across all
  * three repositories, **no** pull request carries both at the same instant.
  *
- * `PullRequestMergedOffPlatform` is deliberately NOT an unmerged close (decision 123,
- * ruling 3): on GitHub the PR was closed unmerged, but the commits were delivered, and
- * the tool treats that as a merge of a different kind. The two PRs in the database that
+ * `PullRequestMergedOffPlatform` is deliberately NOT an unmerged close: on GitHub the
+ * PR was closed unmerged, but the commits were delivered, and the tool treats that as a
+ * merge of a different kind. The two PRs in the database that
  * carry both a `PullRequestClosed` and an off-platform merge draw both, as they are.
  *
  * It matters because the outcome is the question an issue-to-merge study asks, and
- * 22,341 of 87,647 closed pull requests here were abandoned rather than merged. Before
- * decision 81 that outcome was legible only by reading the label: `opened` and `closed`
- * drew the identical glyph.
+ * 22,341 of 87,647 closed pull requests here were abandoned rather than merged. Without
+ * the dashed ring the outcome would be legible only by reading the label: `opened` and
+ * `closed` draw the identical glyph.
  */
 export function isUnmergedClose(activity) {
   return activity === 'PullRequestClosed';

@@ -2,9 +2,9 @@
  * A page's message surface: the element that speaks when there is nothing to draw.
  *
  * Every page that renders something needs somewhere to say why it did not. The timeline
- * grew one (decision 74) because writing the message into the drawing surface detached
- * the renderer's own `<svg>`; the statistics page never grew one at all, so an exception
- * in `renderStats` left an empty dashboard while the explanation went into an element
+ * grew one because writing the message into the drawing surface detached the renderer's
+ * own `<svg>`; the statistics page never grew one at all, so an exception in
+ * `renderStats` left an empty dashboard while the explanation went into an element
  * belonging to a page that was not on screen. Both are the same mistake — a message with
  * nowhere of its own to live — so both now use this.
  *

@@ -79,7 +79,7 @@ this table is the responsibility map.
 
 `render/` has no lane module for `actor`: an actor is an object without a lane, so it is drawn
 by the sidebar, the actor card and its trail, never by `layout/lanes.js`. It is the only such
-type: `repo` is not an object at all (decision 39).
+type: `repo` is not an object at all.
 
 ## Data flow
 
@@ -266,15 +266,15 @@ smears its shared endpoint across 425 px and the picture implies 85 pull request
 caption says one. `MAX_FANNED_LINKS = 6` is the cap, and a larger bundle draws as one coincident
 line carrying a `×N` badge (`data-legend="link-crowded"`). Nothing visible is lost: at 85 no
 single line is distinguishable anyway, and every commit is drawn in the commit lane regardless.
-Declaring the count follows the standing rule that anything hidden is declared. **O12(b) is
-still open:** event glyphs stack without bound, and a kubernetes issue with 288 comments in a
+Declaring the count follows the standing rule that anything hidden is declared. **Still
+unresolved:** event glyphs stack without bound, and a kubernetes issue with 288 comments in a
 short window allocates 52 bands and a 5,654 px SVG. That is crowding rather than deception; the
 likely fix is the burst-collapse treatment commits already have.
 
 ## Statistics
 
-Every metric is computed in JS over `selectVisible(graph, state, groupsByCommit)` — decision 12
-— so hiding comments changes the gap figures, and hiding a lane changes the counts.
+Every metric is computed in JS over `selectVisible(graph, state, groupsByCommit)`, so hiding
+comments changes the gap figures, and hiding a lane changes the counts.
 `stats/metrics.js` is pure functions over an `ObjectGraph`; `render/stats.js` only presents them.
 SQL is reserved for figures spanning data that is *not* loaded, such as link coverage per
 repository. Precomputing sub-log metrics server-side would answer "comments hidden → gaps
@@ -286,7 +286,7 @@ unchanged" silently, which is the failure the rule exists to prevent.
 commit`. A new one needs an entry there, a colour, shape and shade list in `render/theme.js`, a
 legend row in `render/legend.js` (the test fails otherwise), defaults in `state.lanes` and
 `state.laneOpen`, and a band rule in `layout/packing.js` if it should get sub-lanes rather than
-collision-only rows. Object types are closed at four, so read the decision before starting.
+collision-only rows. Object types are closed at four, so ask before starting.
 
 **An activity.** Add a key to `ACTIVITIES` in `model/activities.js` with `label`, `short`,
 `objectTypes` and `landmark`. Landmarks also need a ring style and a legend key. Activity

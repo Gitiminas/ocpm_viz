@@ -1,7 +1,7 @@
 /**
  * Time and duration formatting — the single place a timestamp becomes text.
  *
- * **All times are UTC** (decision 9), and labelled as such.
+ * **All times are UTC**, and labelled as such.
  *
  * The mockup parsed UTC but rendered with `d3.timeFormat`, which is *local* time, so
  * every displayed instant shifted with the viewer's machine — the `screenshots/`

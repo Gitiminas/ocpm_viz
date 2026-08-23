@@ -6,7 +6,7 @@
  * lane or a link drawn to nowhere — those failure modes are invisible in a diff and
  * exactly what the renderer must not be asked to absorb.
  *
- * There is no case notion here, deliberately (decision 1). `meta` records the query
+ * There is no case notion here, deliberately. `meta` records the query
  * that produced the sub-log, for reproducibility; it is not an identity.
  */
 
@@ -51,8 +51,8 @@ export function findGraphProblems(graph) {
       );
     }
     if (!Array.isArray(object.intervals)) {
-      // Decision 4: interval lists, always present. An object with no lifecycle
-      // carries `[]`, which is a fact rather than missing data.
+      // Interval lists, always present. An object with no lifecycle carries `[]`,
+      // which is a fact rather than missing data.
       problems.push(`object "${object.id}" has no intervals array (decision 4)`);
     } else {
       for (const interval of object.intervals) {
@@ -74,12 +74,11 @@ export function findGraphProblems(graph) {
   problems.push(...findActivityProblems(graph.events, byId));
 
   /*
-   * **Both endpoints of a link must be objects** (decision 49). This used to accept
-   * an event id as well, for the event→actor attribution links decision 41 deleted;
-   * with those gone the leniency only made a mistake harder to see. A link to an
-   * event id passes every downstream check quietly — `byId.get` misses, so
-   * `isLinkVisible` returns false — and the link simply never appears, which is
-   * precisely the "wrong picture, no error" failure this validator exists to catch.
+   * **Both endpoints of a link must be objects.** Accepting an event id as well only
+   * made a mistake harder to see. A link to an event id passes every downstream check
+   * quietly — `byId.get` misses, so `isLinkVisible` returns false — and the link simply
+   * never appears, which is precisely the "wrong picture, no error" failure this
+   * validator exists to catch.
    *
    * The event ids are still collected, but only to say *which* mistake was made:
    * naming an event where an object belongs is the plausible error, and a bare
@@ -130,7 +129,7 @@ export function assertValidGraph(graph) {
  * The input bundle is never mutated: it may be a fixture shared across tests, and a
  * module that silently rewrites its input cannot be reasoned about in isolation.
  *
- * All times are UTC (decision 9). `Date` parses the trailing `Z` as UTC correctly;
+ * All times are UTC. `Date` parses the trailing `Z` as UTC correctly;
  * it is *rendering* that must also be pinned to UTC, which is why formatting lives
  * in one module rather than being spread across the renderer.
  */
@@ -178,7 +177,7 @@ export function indexObjectGraph(graph) {
    * The actor who pushed a commit **first**, and only that.
    *
    * The actor on a `CommitObserved` event is the *pusher*, a different identity space
-   * from `vmap.commit_author_name` (decision 5) — no heuristic join between them.
+   * from `vmap.commit_author_name` — no heuristic join between them.
    *
    * ⚠️ **This is not the answer to "who pushed this commit".** A commit is usually
    * pushed by several accounts — 89% of vscode's repeatedly-observed commits, up to

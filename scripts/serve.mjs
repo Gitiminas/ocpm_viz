@@ -7,7 +7,7 @@
  * This exists because moving off the `.dc.html` format to native ES modules means
  * the app can no longer be opened straight from disk: browsers block both
  * `<script type="module">` and `fetch()` on `file://` origins. That is a
- * consequence of decision 13, not a new dependency — no bundler and no build step
+ * consequence of the format move, not a new dependency — no bundler and no build step
  * are involved.
  *
  * It also **proxies `/rpc/*` to PostgREST**, so the app and the API share an origin.

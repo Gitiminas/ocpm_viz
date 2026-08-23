@@ -96,12 +96,12 @@ describe('the legend is a complete key to what is drawn', () => {
     // Named individually rather than by count, so the failure says which one went.
     for (const key of [
       'comments', // the comment glyph AND its dotted connector
-      'repeat-observation', // the hollow square, decision 78
-      'closed-unmerged', // the dashed ring, decision 81
+      'repeat-observation', // the hollow square
+      'closed-unmerged', // the dashed ring
       'landmark', // the solid ring — merged, issue closed
       'burst', // bulk push
-      'comment-burst', // a run of comments folded together, decision 93
-      'link-crowded', // the ×N badge, decision 68
+      'comment-burst', // a run of comments folded together
+      'link-crowded', // the ×N badge
       'sequence', // an object's own spine
       'actor-trail', // the selected actor's dashed path
     ]) {

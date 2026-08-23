@@ -41,8 +41,8 @@ describe('the two scales agree on the plot edges', () => {
   });
 
   test('there are exactly two temporal modes, and Highlights is not one of them', () => {
-    // Decision 112 removed the compressed axis. Pinned so it cannot creep back under
-    // another name without being argued for.
+    // There is no compressed axis. Pinned so it cannot creep back under another name
+    // without being argued for.
     assert.deepEqual(MODES, ['absolute', 'discrete']);
   });
 });

@@ -52,8 +52,8 @@ describe('every qualifier that occurs has a colour', () => {
   });
 
   test('the fixture corpus speaks the same vocabulary as the database', async () => {
-    // It did not, until decision 92 rebuilt it: F1-F13 carried `related_issue`,
-    // `referenced_pull_request` and `referenced_issue`, which the RPC can never produce.
+    // `related_issue`, `referenced_pull_request` and `referenced_issue` are names the RPC
+    // can never produce. Pinned so they cannot creep back into the fixtures.
     const found = await qualifiersIn('F');
     for (const q of found.keys()) {
       assert.ok(q in QUALIFIER, `fixture qualifier "${q}" is outside decision 43's four`);

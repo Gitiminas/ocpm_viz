@@ -4,7 +4,7 @@
  * Tick *selection* differs per mode. Absolute mode asks d3 for a sensible number of
  * round times. Discrete mode spaces up to nine evenly by rank. (The removed Highlights
  * mode ticked only "meaningful" instants — lifecycle boundaries, out-of-span comments,
- * folded pushes; that selection went with the mode, decision 112.)
+ * folded pushes; that selection went with the mode.)
  *
  * Label handling is shared and is fussier than it looks: labels that would collide
  * merge, labels that are merely close stagger onto two rows, and seconds appear only

@@ -16,7 +16,7 @@ export const COLORS = {
   extracted: 'oklch(78% 0.13 45)',
 };
 
-/** Per-lane visual encoding. Only lane-bearing types appear here (decision 15). */
+/** Per-lane visual encoding. Only lane-bearing types appear here. */
 export const TYPE = {
   issue: { color: COLORS.issue, label: 'Issue', shape: 'circle' },
   pull_request: { color: COLORS.pull_request, label: 'Pull request', shape: 'diamond' },
@@ -39,8 +39,8 @@ export const TYPE = {
  * ⚠️ **This table once listed three qualifiers the database has never emitted**, written
  * against the vocabulary the fixtures carried. Every real qualifier missed the lookup and
  * fell through to neutral grey — a feature quietly doing nothing, with no error to notice.
- * The fixtures have since been rebuilt onto these four (decision 92), so the shim that
- * carried the old names is gone and this table is the whole vocabulary again.
+ * The fixtures have since been rebuilt onto these four, so the shim that carried the old
+ * names is gone and this table is the whole vocabulary again.
  */
 export const QUALIFIER = {
   resolves: { color: COLORS.issue, label: 'resolves' },

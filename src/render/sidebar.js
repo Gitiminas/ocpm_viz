@@ -353,7 +353,7 @@ export function renderRelationshipRows({
   return () => syncers.forEach((sync) => sync());
 }
 
-/** The burst size threshold (decision 6) — a control, not a constant. */
+/** Folding controls: the push rule as a readout, and the comment window slider. */
 export function renderBurstControls({ container, state, bursts, commentBursts = [], onChange }) {
   container.innerHTML = '';
 
@@ -361,8 +361,8 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
   wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:2px 8px';
 
   /*
-   * Pushes fold by `push_id` and that is the whole rule (decision 94), so this states the
-   * outcome rather than offering a control.
+   * Pushes fold by `push_id` and that is the whole rule, so this states the outcome
+   * rather than offering a control.
    *
    * There used to be a size slider and a checkbox per burst here. The slider never chose
    * what a burst *is* — `push_id` does, and it is a fact in the data — only how big one
@@ -385,8 +385,8 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
    *
    * A slider precisely because comments have no `push_id` — nothing in the data says
    * which of them belong together, so the reader decides what "close together" means and
-   * watches the count change (decision 93). That is the difference between this control
-   * and the one that used to sit above it.
+   * watches the count change. That is the difference between this control and the one
+   * that used to sit above it.
    */
   const commentLabel = document.createElement('div');
   commentLabel.className = 'mono';
@@ -585,12 +585,11 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
 
     /*
      * The list reveals itself in pages as the reader scrolls (15 at a time), but the
-     * DATA arrived whole: one ranked query, because ranking is client-side (decision 64)
-     * and paging the server would page an unranked superset. So there is no spinner —
-     * a spinner over results already in memory would be theatre — the next page simply
-     * fades in the moment the bottom comes into view. When even the 200-row superset
-     * was full, the tail says so and how to get the rest, rather than pretending the
-     * list ended.
+     * DATA arrived whole: one ranked query, because ranking is client-side and paging the
+     * server would page an unranked superset. So there is no spinner — a spinner over
+     * results already in memory would be theatre — the next page simply fades in the
+     * moment the bottom comes into view. When even the 200-row superset was full, the
+     * tail says so and how to get the rest, rather than pretending the list ended.
      */
     let shown = 0;
     const revealNext = () => {
@@ -623,7 +622,7 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
       row.className = 'mono';
       // The row truncates the title; the help strip does not. Hovering a result shows
       // "issue #47532 — the whole title" there, which is where a reader can actually
-      // read it (decision 122's mechanism; `seed.result` takes the text as its argument).
+      // read it (`seed.result` takes the text as its argument).
       if (option.tipText) {
         row.dataset.tip = 'seed.result';
         row.dataset.tipArg = option.tipText;

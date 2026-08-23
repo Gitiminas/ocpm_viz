@@ -9,10 +9,10 @@
  *
  * ⚠️ **Counts follow the toggles, and say so when they differ from the payload.** The
  * card is summarised over `selectVisible(...)` — the same selection the statistics page
- * computes from (decision 12) — so hiding the pull-request lane or the extracted links
- * makes the numbers drop. A count that dropped is shown against the payload's total
- * ("6 / 8") so the card can never be read as "this sub-log has six pull requests" when
- * the truth is "you are looking at six of eight" — decision 27's rule, in numbers. The
+ * computes from — so hiding the pull-request lane or the extracted links makes the
+ * numbers drop. A count that dropped is shown against the payload's total ("6 / 8") so
+ * the card can never be read as "this sub-log has six pull requests" when the truth is
+ * "you are looking at six of eight" — anything hidden is declared, in numbers. The
  * kicker reads "Currently displayed" for the same reason.
  *
  * Renders into the container it is given and nothing else; both summaries come from

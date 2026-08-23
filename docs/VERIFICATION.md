@@ -41,7 +41,7 @@ against stub objects instead of one.
 Each synthesized fixture also asserts that it exhibits its own property (`sublanes`, first block).
 Without that, an "overlapping PRs" fixture whose PRs do not overlap would pass every layout test
 while verifying nothing. The UTC formatters are hand-written so nothing in `render/format.js` can
-reach a local-time API (decision 32); independence from `TZ` was checked by hand under UTC+9, UTC−8
+reach a local-time API; independence from `TZ` was checked by hand under UTC+9, UTC−8
 and UTC+14.
 
 ---
@@ -62,28 +62,27 @@ Differences 1–6 were compared against the baseline and accounted for. Differen
 that comparison and were never re-compared, the baseline being read-only. Anyone re-running the
 comparison must expect all twelve.
 
-| # | Difference | Mandated by |
-|---|---|---|
-| 1 | 29 links moved solid → dashed | decision 7 |
-| 2 | Every timestamp −1 hour, labelled UTC | decision 9 |
-| 3 | Burst badge `21` → `20` | the count is derived from `push_id` |
-| 4 | `OCEL CASE` → `Sub-log`; `Case statistics` → `Per-object statistics` | decision 1 |
-| 5 | Links coloured by the object they reach | decision 24 |
-| 6 | Highlights tick `22:47:51` → `21:47:49` | decision 112 removed the mode and its ticks |
-| 7 | Activity labels are verbs: `opened/closed/merged` → `open/close/merge` | decision 89 |
-| 8 | Commit↔PR links reversed to PR → commit, so their gradients run the other way | decision 92 |
-| 9 | A pull request closed without merging carries a dashed ring | decision 81 |
-| 10 | The `?` badge on extracted links is gone — 31 of them in F1 | — |
-| 11 | Comments within a day of each other fold into one mark with a count | decision 93 |
-| 12 | The legend is four sections and dims what is absent; sidebar renamed *Lanes* / *Folding* | decisions 82, 83, 90, 94 |
+| # | Difference |
+|---|---|
+| 1 | 29 links moved solid → dashed |
+| 2 | Every timestamp −1 hour, labelled UTC |
+| 3 | Burst badge `21` → `20`, the count now derived from `push_id` |
+| 4 | `OCEL CASE` → `Sub-log`; `Case statistics` → `Per-object statistics` |
+| 5 | Links coloured by the object they reach |
+| 6 | The Highlights mode is gone, with its ticks |
+| 7 | Activity labels are verbs: `opened/closed/merged` → `open/close/merge` |
+| 8 | Commit↔PR links reversed to PR → commit, so their gradients run the other way |
+| 9 | A pull request closed without merging carries a dashed ring |
+| 10 | The `?` badge on extracted links is gone — 31 of them in F1 |
+| 11 | Comments within a day of each other fold into one mark with a count |
+| 12 | The legend is four sections and dims what is absent; sidebar renamed *Lanes* / *Folding* |
 
 The strongest single piece of evidence was the discrete axis: every tick label exactly −1 h from the
 baseline, at the same count and positions (`Mar 07 06:15 → 05:15`, … `Mar 19 15:08 → 14:08`). Tick
 *selection* unchanged while only the zone moved exercises the scale, ranking, tick-selection,
 label-merge and stagger logic end to end.
 
-Decision 41 adds no thirteenth difference: deleting F1's 42 event→actor links changes nothing on
-screen because nothing ever drew them. Checked rather than assumed — the node list feeding every
+Dropping F1's 42 event→actor links adds no thirteenth difference: nothing ever drew them. Checked rather than assumed — the node list feeding every
 trail is byte-identical before and after in both temporal modes, and F1, F13 and the stats page were
 re-rendered headlessly and compared.
 
@@ -116,8 +115,7 @@ then asserts in order:
 
 - `findGraphProblems()` returns `[]` — the same validator every fixture passes.
 - The contract facts it has no opinion on: `contract_version === 2`; every event time and interval
-  bound parseable by `Date.parse`; activities inside the closed vocabulary; qualifiers among the
-  four of decision 43; `link_methods` an array containing `method`; no `repo`-typed object; no
+  bound parseable by `Date.parse`; activities inside the closed vocabulary; qualifiers among the closed four; `link_methods` an array containing `method`; no `repo`-typed object; no
   `is_bot`; no `CommitsPushed` event.
 - The same payload through `loadObjectGraph`, so the loader is exercised and not only the validator.
 - Both temporal modes through the real layout pipeline: finite x and y, every issue and PR in a band
@@ -141,8 +139,7 @@ be 0, the sixth exactly 10 distinct activities), `fe.diag_link_staleness`,
 checks passed: no dangling event objects, no issue or PR object without events, every actor named by
 an event has an actor object, no pair linked twice by one qualifier, both link endpoints objects,
 distinct activities exactly 10. `fe.diag_link_staleness` reported drift 0. The gate passed on ten
-real sub-logs across all three repositories and all three seed types, at degrees 0–3 (the cap is 2
-since decision 110), from 5 to 404 objects. The
+real sub-logs across all three repositories and all three seed types, at degrees 0–3 (the cap is now 2), from 5 to 404 objects. The
 34-pull-request hub kubernetes #68026 reported 30 soft footprint shortfalls and no failure. Latency
 1.7–3.4 s per sub-log end to end, from 19.4 s before indexing and tuning (`sql/fe_layer.sql` §0.1);
 `fe.refresh_links()` is ~6 s.
@@ -150,7 +147,7 @@ since decision 110), from 5 to 404 objects. The
 **Defects this found**, each caught by a check rather than by reading: duplicate links from two
 branches (16,040 + 5,111 surplus rows), 3,359 objects with no events, 2 objects with a NULL id, a
 nonexistent seed returning an empty payload instead of erroring, four point-intervals on one commit,
-and — after the fix — the decision-61 narrowing reaching only one of the two link families (62).
+and — after the fix — the `ref_match` narrowing reaching only one of the two link families.
 
 ---
 
@@ -164,13 +161,13 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   none of the tests: commits wrongly excluded from merged pull requests, a dead app when no seed was
   given, isolated objects indistinguishable from failures, one pull request drawn as ~30, and the
   seed prompt detaching the timeline's `<svg>` so every later render drew into a node outside the
-  document (decision 74). Each left every check passing. The fifth could not have been caught even
+  document. Each left every check passing. The fifth could not have been caught even
   in principle — the others were wrong pictures, this was *no* picture, and no DOM-free assertion
   reaches a defect whose entire content is which element is attached to what. It was verified by
   driving the app headlessly and reading `#chart` out of the live DOM at each step, with the fix
   reverted as a control; that probe was scaffolding and was deleted. `scripts/shot.mjs` makes
   looking cheap, not automatic, and no baseline is compared. One narrow thing is machine-checked
-  (`tests/legend.test.js`, decision 82): completeness of the key, not correctness of the picture.
+  (`tests/legend.test.js`): completeness of the key, not correctness of the picture.
 - **Most pointer interaction has no assertion behind it.** Tooltips and pin-to-copy, the minimap's
   drag-to-zoom grips, legend hover, the degree stepper and the actor card are exercised only by
   looking at them. Four narrower things are checked against stubs — canvas pan and zoom-about-anchor
@@ -181,15 +178,15 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   `0005d1e`, PR #14576 and issue #14578 were loaded at degree 2 by all three routes — direct RPC,
   direct URL, in-session seed switching — and returned identical payloads (6 objects, 8 events,
   2 links) and identical renders. The asymmetry originally reported was real but lived elsewhere:
-  stacked combo listeners changed the *repository* mid-query (decision 75). The traversal is
+  stacked combo listeners changed the *repository* mid-query. The traversal is
   symmetric by construction — `adj` unions both link directions and `reached` takes `min(hop)` — but
   that is an argument, not a measurement, and **no test asserts that two seeds in one component give
   the same sub-log at a degree that spans them.**
 - **The Stats page has never been opened against real data.** Durations, gaps, handoffs and the
-  per-object tables are computed in JS over the loaded sub-log (decision 12) and have only run over
-  fixtures. Real sub-logs are larger, sparser, and hold shapes fixtures do not, such as a commit
-  belonging to several PRs. Unchecked, not known-broken. The page reports *that* a render failed
-  (decision 87); nothing asserts the numbers.
+  per-object tables are computed in JS over the loaded sub-log and have only run over fixtures.
+  Real sub-logs are larger, sparser, and hold shapes fixtures do not, such as a commit belonging to
+  several PRs. Unchecked, not known-broken. The page reports *that* a render failed; nothing
+  asserts the numbers.
 - **Rendering performance** is covered only by a 3-second tripwire on F10's layout, not by
   measurement. Sub-logs are small; if a real one is slow, report it.
 - **No aspect-ratio pass has been done.** Renders have only been looked at near 1920×1200 (the
@@ -197,9 +194,8 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
 - **One dataset, one snapshot, three repositories.** Every figure here comes from materialized views
   last refreshed 2026-08-02. Nothing establishes that the layer holds on a different extraction, a
   re-refresh, or a repository with other conventions.
-- **The commit→PR admission rule has been wrong twice.** Decision 61 was corrected by 65 after it
-  discarded merged pull requests' own commits, and 80 then replaced 61. It is right as far as can be
-  measured now, but it has the worst track record in the layer, and every figure resting on it
+- **The commit→PR admission rule has been wrong twice**, the first version discarding merged pull
+  requests' own commits. It is right as far as can be measured now, but it has the worst track record in the layer, and every figure resting on it
   deserves more scepticism than its precision suggests.
 - **The `commit_distinct` floor is measured and is still a floor** (2026-08-07). Real links lost —
   born on the PR's own branch but with no `commit_distinct` push there, so a force-push, a rebase or
@@ -213,11 +209,10 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
 
 Checked since, one line each: a real sub-log renders and the PostgREST → `fetch()` → browser path
 works (2026-08-05); `rpc-check.mjs` probes the `web_anon` path, for one function only (2026-08-07);
-the `repo` type needs no fixture, decision 39 having removed it; `PullRequestMergedOffPlatform` has
-F14 and `tests/offplatform.test.js` (123); the fixture corpus sits on decision 43's four
-qualifiers, and rebuilding it onto them found a live defect in the link fan (2026-08-09); the
+the `repo` type needs no fixture, not being an object; `PullRequestMergedOffPlatform` has F14 and
+`tests/offplatform.test.js`; the fixture corpus sits on the four qualifiers, and rebuilding it onto them found a live defect in the link fan (2026-08-09); the
 traversal was exercised at degrees 0–3 (2026-08-04); the Stats page owns an error surface
-(87, 2026-08-08).
+(2026-08-08).
 
 ---
 
@@ -234,7 +229,7 @@ measured. See `DATA_CONTRACT.md` §4.
 
 **The figure is measurable.** `fe.diag_link_methods` in `sql/fe_layer.sql` returns
 `(repo_id, method, qualifier, evidence, links)` over `fe.link` — per repository, per method, grouped
-by qualifier as decision 50 requires, with `proximity` a row of its own so its share can be reported
+by qualifier as the per-method rule requires, with `proximity` a row of its own so its share can be reported
 separately. It is not run here and no number from it is published in this document.
 
 Until it is run, state the limitation qualitatively and say the number is not measured. **Do not
