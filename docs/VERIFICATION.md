@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**724 tests in 29 files, 0 failures, ~1.8 s — run 2026-08-23.** None needs a browser, a network or a
+**724 tests in 29 files, 0 failures, ~1 s — run 2026-08-23.** None needs a browser, a network or a
 database. The count moves every session: 377 on 2026-08-04, 401 on 2026-08-08, 478 at Task 6.
 
 ---

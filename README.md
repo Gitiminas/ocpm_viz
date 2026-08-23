@@ -38,7 +38,7 @@ Then start both servers, and apply the data layer once:
 ../ocpm.sh status   # what is running, and is it healthy
 ```
 
-Prefer `ocpm.sh db` to running the SQL by hand. The order is `sql/fe_layer.sql`, then
+Prefer `ocpm.sh db` to running the SQL by hand; it applies both files and refreshes `fe.link_mat`, so run `fe.refresh_all()` yourself after an upstream refresh. The order is `sql/fe_layer.sql`, then
 `sql/postgrest_setup.sql`, then `SELECT fe.refresh_all()`, and it is not negotiable:
 `fe_layer.sql` issues `CREATE OR REPLACE` on every `api` function, which silently resets it to
 `SECURITY INVOKER`, and the app then fails with *"permission denied for schema fe"* while every
@@ -211,7 +211,7 @@ and SQL contain, compiled from the tree. Use it when you need a name, a constant
   `ref_match` and are ours rather than upstream's, so commit-link and issue↔PR counts undercount
   by an unmeasured amount. Say so wherever one is quoted.
 - **Clusters overprint on a large sub-log.** Labels collide where pull requests sit close, and a
-  34-commit fan is unreadable by label in either arrangement, though the shape still reads.
+  34-pull-request hub is unreadable by label in either arrangement, though the shape still reads.
 - **Fixtures key actors by `actor:<login>`**, because `ocel-data.json` carries no numeric actor
   id. The live payload uses `actor:<actor_id>`. A renamed account splits into two actors in the
   fixtures only; note it if fixture actor counts are reported.

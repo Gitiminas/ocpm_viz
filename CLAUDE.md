@@ -41,7 +41,7 @@ a subtle rendering bug by reading a diff, so verification matters more than usua
 | `src/` | The application, as ES modules | Work here. Keep `model/`, `layout/`, `state/` and `stats/` DOM-free |
 | `sql/fe_layer.sql` | The data layer: schema `fe` (15 views/MVs + 8 diagnostics) and the three `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
 | `scripts/rpc-check.mjs` | Acceptance gate: a real RPC payload through `loadObjectGraph`, then the layout pipeline, then one unauthenticated call as `web_anon` | Run after any change to `sql/`. `findGraphProblems()` must return `[]`. The HTTP probe skips if PostgREST is down |
-| `scripts/pull-sublog.mjs` | Snapshots RPC output to `tests/fixtures/LIVE*.json` | Samples, not fixtures — nothing asserts against them |
+| `scripts/pull-sublog.mjs` | Snapshots RPC output to `tests/fixtures/LIVE*.json` | Samples, not fixtures — no test asserts a count against them |
 | `scripts/shot.mjs` | Headless screenshot of the running app | Writes to `.shots/` (gitignored), **never** to `screenshots/`. Headless lays out ~90px shorter than `--window-size`: compare fill between shots, not against the box |
 | `scripts/build-f1.mjs`, `build-synthetic-fixtures.mjs`, `build-catalogue.mjs` | Build the fixtures and the seed catalogue | Re-runnable. `--check` fails when a committed file is stale |
 | `scripts/serve.mjs` | Zero-dependency static server and `/rpc/*` proxy (`npm start`) | Needed: ES modules and `fetch` are blocked on `file://` |

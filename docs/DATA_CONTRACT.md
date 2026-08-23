@@ -268,7 +268,7 @@ Measured 2026-08-04 on vscode PR #116416: 23 issues mentioned under the wide att
 surviving the narrow one.
 
 #### `mv_issue_pr_links_proximity`
-Links inferred from closeness in time alone.
+Links derived from closeness in time alone.
 **Columns (10), captured 2026-08-04 — ⚠️ NOT the shared 11:** `repo_id`, `issue_id`, `issue_number`,
 `pull_request_id`, `pr_number`, `pr_is_merged`, `pr_merged_at`, `issue_closed_at`,
 `close_delta_seconds`, `link_method`.

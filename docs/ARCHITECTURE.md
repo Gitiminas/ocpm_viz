@@ -257,7 +257,7 @@ marks are absent instead of removing them, so "the data has none" and "you switc
 stay distinguishable.
 
 **Link fanning.** When two links would be drawn on top of each other, `computeLinkOffsets` in
-`src/render/links.js` bundles them (same source endpoint, target x within 2 px) and spreads them
+`src/render/links.js` bundles them (shared endpoint at either end, the other end within 2 px) and spreads them
 5 px apart. It exists because of a real failure in fixture F5: one commit belonging to two
 overlapping pull requests draws the nearer link as a strict sub-segment of the further one, so
 the buried link — the **extracted** one, dashed with its `?` badge — vanished under a solid
@@ -313,7 +313,7 @@ second `if (mode === …)` to a renderer is how the seam gets lost.
 
 Other people's theses: bot and human classification, the real OCEL 2.0 tables, labels, forks,
 reviews, review comments, branch and ref lifecycle. Modifying or extending the shared upstream
-views, including indexes. Auth, rate limiting and XSS hardening; render optimisation,
+views (indexes on them are ours; see DATA_LAYER.md). Auth, rate limiting and XSS hardening; render optimisation,
 virtualisation and canvas; a bundler, framework or TypeScript; generalizing beyond the four
 object types; restyling away from the Nocturne tokens.
 
