@@ -173,7 +173,7 @@ export function classifyMethod(method) {
   if (!ALL_METHODS.has(method)) {
     throw new Error(
       `Unknown link method "${method}". Add it to LINK_METHOD and decide, by the ` +
-        `rule in ADAPTER_AND_API.md §3, whether the platform asserts it (validated) ` +
+        `rule in docs/DATA_LAYER.md, whether the platform asserts it (validated) ` +
         `or we parsed a convention (extracted).`,
     );
   }

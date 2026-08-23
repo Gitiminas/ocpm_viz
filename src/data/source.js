@@ -1,7 +1,7 @@
 /**
  * Which data source the app is talking to — fixtures on disk, or the database.
  *
- * Both are real and both stay. The 13 fixtures are the test corpus and the visual
+ * Both are real and both stay. The fixtures are the test corpus and the visual
  * baseline; they exercise shapes real data does not conveniently contain (a reopened
  * issue, three PRs in two bands, a commit inside two overlapping PRs) and they must
  * keep loading. The database is what the tool is actually for.

@@ -262,7 +262,7 @@ stay distinguishable.
 overlapping pull requests draws the nearer link as a strict sub-segment of the further one, so
 the buried link — the **extracted** one, dashed with its `?` badge — vanished under a solid
 stroke, and a viewer saw one confident connection where there were two. The offset then grew
-linearly with bundle size and nothing capped it, so a vscode PR with 85 commits pushed in an
+linearly with bundle size and nothing capped it, so a vscode PR with 35 commits pushed in an
 hour smeared its shared endpoint across 425 px and the picture implied 85 pull requests where
 the caption said one. `MAX_FANNED_LINKS = 6` caps it: a larger bundle draws as one coincident
 line carrying a `×N` badge (`data-legend="link-crowded"`). Nothing visible was lost — at 85 you

@@ -36,7 +36,7 @@ export function createState() {
   return {
     /** Horizontal zoom multiplier. */
     k: 1,
-    /** Active time mode: real | discrete | off. */
+    /** Active time mode: absolute | discrete | relationships. */
     mode: 'absolute',
     /**
      * The brushed time range in the relationships mode, as two fractions of the sub-log's span.

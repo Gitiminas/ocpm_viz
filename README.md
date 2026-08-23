@@ -103,7 +103,7 @@ times are UTC, labelled.
 Commits pushed together fold into one bulk-push mark, and runs of comments inside the folding
 window fold into one comment burst; click either to expand, and the `−` handle to fold it back.
 Where more than six links land on the same point they stop fanning apart and declare a `×N`
-badge instead, because at 37 commits the fan drew one pull request as a cascade of diamonds.
+badge instead, because at 35 commits the fan drew one pull request as a cascade of diamonds.
 
 **Nothing disappears quietly.** Anything a toggle hides is named in a banner across the top of the
 chart, one chip per hidden item, each restoring on click. The header's help strip says in a
