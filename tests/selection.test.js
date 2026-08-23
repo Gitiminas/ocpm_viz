@@ -68,7 +68,7 @@ describe('the catalogue describes what can be asked for', () => {
     }
   });
 
-  test('one bucket, nothing unavailable, and the real sub-logs lead it (decision 125)', () => {
+  test('one bucket, nothing unavailable, and the real sub-logs lead it', () => {
     // The picker lists exactly what this source can serve; the source toggle's note is
     // the pointer to the database. Nothing is shown disabled.
     return catalogue().then((cat) => {

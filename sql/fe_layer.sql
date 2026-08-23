@@ -1221,10 +1221,10 @@ BEGIN
     END) THEN
     RAISE EXCEPTION 'seed % is not an issue, pull request or commit in %', seed, repo
       USING HINT = 'Object ids are type-prefixed and carry the DATABASE id, not the '
-                || 'display number (decision 51): issue:<issue_id>, pr:<pull_request_id>, '
+                || 'display number: issue:<issue_id>, pr:<pull_request_id>, '
                 || 'commit:<sha>. To resolve #242864, look it up: SELECT id FROM '
                 || 'fe.object_issue WHERE repo_id = <id> AND issue_number = 242864. '
-                || 'An actor cannot be a seed — actors are not traversed (decision 41).';
+                || 'An actor cannot be a seed: actors are not traversed.';
   END IF;
 
   ------------------------------------------------------------------------------------
@@ -1398,7 +1398,7 @@ BEGIN
                           || 'attrs.truncated = true describe a push with more commits '
                           || 'than are drawn.',
           'commit_authorship', 'vmap.commit_author_name is a git identity string and is '
-                          || 'NOT joined to any GitHub account (decision 5). The actor on '
+                          || 'NOT joined to any GitHub account. The actor on '
                           || 'a CommitObserved event is the PUSHER.'),
        'source', jsonb_build_object(
           'rpc',          'api.get_object_graph',

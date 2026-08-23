@@ -69,7 +69,7 @@ describe('F1 loads and validates', () => {
     }
   });
 
-  test('no link carries actor attribution any more (decision 41)', async () => {
+  test('no link carries actor attribution any more', async () => {
     const graph = await loadF1();
     const eventIds = new Set(graph.events.map((event) => event.id));
 
@@ -261,7 +261,7 @@ const EXPECTED_EVIDENCE = [
   ['pr_body_refs', 'extracted'],
 ];
 
-describe('evidence classification (decision 7)', () => {
+describe('evidence classification', () => {
   for (const [method, expected] of EXPECTED_EVIDENCE) {
     test(`${method} is ${expected}`, () => {
       assert.equal(classifyMethod(method), expected);
@@ -278,7 +278,7 @@ describe('evidence classification (decision 7)', () => {
     assert.throws(() => classifyMethod('event_actor_id'), /Unknown link method/);
   });
 
-  test('link.method is exactly the sixteen values of decision 42', () => {
+  test('link.method has exactly sixteen values', () => {
     const linkMethods = Object.values(LINK_METHOD).sort();
     assert.equal(linkMethods.length, 16);
     assert.deepEqual(linkMethods, EXPECTED_EVIDENCE.map(([m]) => m).sort());

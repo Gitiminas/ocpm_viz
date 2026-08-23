@@ -180,7 +180,7 @@ describe('the transport is a drop-in for the fixture transport', () => {
           { transport: createRpcTransport({ fetchImpl }) },
         ),
       /closed set/,
-      'a repo-typed object must be rejected however it arrived (decision 39)',
+      'a repo-typed object must be rejected however it arrived',
     );
   });
 });

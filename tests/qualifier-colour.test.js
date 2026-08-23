@@ -28,7 +28,7 @@ async function qualifiersIn(prefix) {
 }
 
 describe('every qualifier that occurs has a colour', () => {
-  test('the four of decision 43 are all covered', () => {
+  test('all four qualifiers are covered', () => {
     // These are what fe.link_mat emits, and the only vocabulary the RPC may produce.
     for (const q of ['resolves', 'references_issue', 'contains_commit', 'merge_commit']) {
       assert.ok(q in QUALIFIER, `${q} is missing from the colour table`);
@@ -56,7 +56,7 @@ describe('every qualifier that occurs has a colour', () => {
     // can never produce. Pinned so they cannot creep back into the fixtures.
     const found = await qualifiersIn('F');
     for (const q of found.keys()) {
-      assert.ok(q in QUALIFIER, `fixture qualifier "${q}" is outside decision 43's four`);
+      assert.ok(q in QUALIFIER, `fixture qualifier "${q}" is outside the four`);
     }
     assert.ok(found.size > 0);
     for (const [q, file] of found) {

@@ -66,7 +66,7 @@ describe('every help text reads as one or two plain sentences', () => {
   test('the retired words do not appear, and neither do the house style’s pet hates', () => {
     for (const [key, text] of everyText()) {
       assert.doesNotMatch(text, /\bcase\b/i, `${key} says "case" (CLAUDE.md: there is no case)`);
-      assert.doesNotMatch(text, /\bmilestone/i, `${key} says "milestone" (decision 38: landmark)`);
+      assert.doesNotMatch(text, /\bmilestone/i, `${key} says "milestone" (it is "landmark")`);
       assert.doesNotMatch(text, /\binferred\b/i, `${key} says "inferred" (it is "extracted")`);
       assert.doesNotMatch(text, /—|;/, `${key} uses a dash or semicolon: "${text}"`);
     }

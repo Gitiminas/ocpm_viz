@@ -17,7 +17,7 @@
  *      and documented in `tests/fixtures/README.md`, because an undetectable
  *      freehand edit would silently invalidate the regression baseline.
  *
- * The three mandated exceptions to rule 2, all settled decisions rather than judgement
+ * The three mandated exceptions to rule 2, all settled rules rather than judgement
  * calls, are the `inferred` → `extracted` rename, the evidence reclassification that
  * follows from it, and the removal of the 42 event→actor attribution links.
  *
@@ -310,7 +310,7 @@ function selfCheck(graph, source) {
   if (graph.links.length !== kept.length)
     problems.push('link count changed by something other than the actor-link drop');
   if (graph.links.some((l) => l.qualifier === 'actor'))
-    problems.push('an actor link survived the conversion (decision 41)');
+    problems.push('an actor link survived the conversion');
   problems.push(...checkActorLinksAreRedundant(dropped, source));
 
   if (JSON.stringify(graph).includes('inferred'))
@@ -360,6 +360,6 @@ if (process.argv.includes('--check')) {
       `(${graph.links.filter((l) => l.evidence === 'validated').length} validated, ` +
       `${graph.links.filter((l) => l.evidence === 'extracted').length} extracted). ` +
       `Dropped ${dropped.length} event→actor links, each verified redundant with ` +
-      `event.actor_id (decision 41).`,
+      `event.actor_id.`,
   );
 }

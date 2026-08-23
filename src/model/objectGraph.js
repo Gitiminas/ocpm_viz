@@ -47,13 +47,13 @@ export function findGraphProblems(graph) {
     if (!OBJECT_TYPE_SET.has(object.type)) {
       problems.push(
         `object "${object.id}" has type "${object.type}"; the closed set is ` +
-          `${OBJECT_TYPES.join(', ')} (decisions 2 and 39)`,
+          `${OBJECT_TYPES.join(', ')}`,
       );
     }
     if (!Array.isArray(object.intervals)) {
       // Interval lists, always present. An object with no lifecycle carries `[]`,
       // which is a fact rather than missing data.
-      problems.push(`object "${object.id}" has no intervals array (decision 4)`);
+      problems.push(`object "${object.id}" has no intervals array`);
     } else {
       for (const interval of object.intervals) {
         if (!interval || !interval.start) {
@@ -94,14 +94,14 @@ export function findGraphProblems(graph) {
       problems.push(
         eventIds.has(id)
           ? `link ${link.source}→${link.target} has event "${id}" as its ${end}; both ` +
-            `endpoints must be objects (decision 49)`
+            `endpoints must be objects`
           : `link references unknown ${end} "${id}"`,
       );
     }
     if (link.evidence !== 'validated' && link.evidence !== 'extracted') {
       problems.push(
         `link ${link.source}→${link.target} has evidence "${link.evidence}"; the only ` +
-          `classes are validated and extracted (decision 7)`,
+          `classes are validated and extracted`,
       );
     }
     if (link.method && !isKnownMethod(link.method)) {

@@ -22,7 +22,7 @@
       "commit_time": "first-seen in PushEvent, NOT real git commit time",
       "extracted_edges": "Links we parsed from an unenforced human convention (branch-ref matches, commit-message references, timing proximity) render dashed with a \"?\" badge.",
       "validated_edges": "Links the platform's own data asserts (a closing keyword in the PR body, an exact SHA match) render solid.",
-      "commit_authorship": "vmap.commit_author_name is a git identity string and is NOT joined to any GitHub account (decision 5). The actor on a CommitObserved event is the PUSHER."
+      "commit_authorship": "vmap.commit_author_name is a git identity string and is NOT joined to any GitHub account. The actor on a CommitObserved event is the PUSHER."
     },
     "generated_at": "2026-08-04T19:18:34+00:00",
     "activity_scope": "OCEL-strict + comments (reviews/dismissals/review-comments excluded)",

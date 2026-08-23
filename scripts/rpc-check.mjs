@@ -88,7 +88,7 @@ console.log('gate    findGraphProblems() === []   ✓');
 const fail = [];
 
 if (raw.meta.contract_version !== 2) {
-  fail.push(`meta.contract_version is ${raw.meta.contract_version}, expected 2 (decision 45)`);
+  fail.push(`meta.contract_version is ${raw.meta.contract_version}, expected 2`);
 }
 
 // A timestamp the renderer cannot parse passes findGraphProblems, which only
@@ -117,7 +117,7 @@ for (const a of new Set(raw.events.map((e) => e.activity))) {
 // Exactly four qualifiers.
 const QUALIFIERS = new Set(['resolves', 'contains_commit', 'merge_commit', 'references_issue']);
 for (const q of new Set(raw.links.map((l) => l.qualifier))) {
-  if (!QUALIFIERS.has(q)) fail.push(`qualifier "${q}" is outside the four of decision 43`);
+  if (!QUALIFIERS.has(q)) fail.push(`qualifier "${q}" is not one of the four qualifiers`);
 }
 
 // link_methods is an ARRAY, and `method` must be one of its members.
@@ -131,13 +131,13 @@ for (const l of raw.links) {
 
 // No repo objects, and actors carry no is_bot.
 for (const o of raw.objects) {
-  if (o.type === 'repo') fail.push(`object ${o.id} has type repo (decision 39 removed it)`);
-  if (o.vmap && 'is_bot' in o.vmap) fail.push(`object ${o.id} carries is_bot (decision 47)`);
+  if (o.type === 'repo') fail.push(`object ${o.id} has type repo; repo is not an object type`);
+  if (o.vmap && 'is_bot' in o.vmap) fail.push(`object ${o.id} carries is_bot; vmap must not`);
 }
 
 // No CommitsPushed activity — the push facts ride on CommitObserved.
 if (raw.events.some((e) => e.activity === 'CommitsPushed')) {
-  fail.push('a CommitsPushed event is present (decision 44 rejected it)');
+  fail.push('a CommitsPushed event is present; push facts ride on CommitObserved');
 }
 
 if (fail.length) {

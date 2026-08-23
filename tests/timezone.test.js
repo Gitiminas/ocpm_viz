@@ -9,7 +9,7 @@ import { formatInstant, formatDateMinute } from '../src/render/format.js';
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture}.json`, import.meta.url), 'utf8'));
 
-describe('all times render in UTC, labelled (decision 9)', () => {
+describe('all times render in UTC, labelled', () => {
   test('an instant renders at its UTC clock time, not the machine’s', () => {
     // The vscode issue opens at 05:15:54Z. The screenshots/ baseline was captured on
     // a UTC+01:00 machine and shows 06:15:54 — the defect this fixes.
