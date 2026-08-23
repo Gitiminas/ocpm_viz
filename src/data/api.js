@@ -1,8 +1,8 @@
 /**
  * The PostgREST transport: one sub-log, fetched over HTTP.
  *
- * This is the swap `docs/ADAPTER_AND_API.md` §4 promised would be a one-function
- * change. Nothing above the data layer knows it exists — `loadObjectGraph(query,
+ * The transport swap is a one-function change. Nothing above the data layer knows
+ * this file exists — `loadObjectGraph(query,
  * { transport })` takes it, validates what comes back, and the renderer cannot tell
  * a fixture from a live payload. That is the whole point of the seam, and it is why
  * this file is small.

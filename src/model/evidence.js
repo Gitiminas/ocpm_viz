@@ -1,5 +1,5 @@
 /**
- * Link evidence classification (`docs/ADAPTER_AND_API.md` §3).
+ * Link evidence classification (`docs/DATA_LAYER.md`, "Links").
  *
  * Two classes only. `inferred` is retired vocabulary and must not appear anywhere.
  *
@@ -7,8 +7,7 @@
  *               that GitHub itself acts on, or an exact identity match.
  *   extracted — we parsed a human convention that no system enforces.
  *
- * The rule is what is defensible in the thesis; the table below is only what the
- * rule produces. Adding a detection method means asking "does GitHub assert this,
+ * The rule is the definition; the table below is only what the rule produces. Adding a detection method means asking "does GitHub assert this,
  * or did we parse it?" — not copying a neighbouring row.
  */
 
@@ -60,7 +59,7 @@ export const LINK_METHOD = {
    *
    * The obligation that comes with that: **any figure counting links by method must group by
    * `(method, qualifier)`.** Counting by method alone silently sums two different relations, and
-   * the RQ2 detection-coverage breakdown is exactly that figure.
+   * the detection-coverage breakdown is exactly that figure.
    */
   COMMIT_MESSAGE: 'commit_message',
   /** PR reference inside an issue comment. */
@@ -92,7 +91,7 @@ export const LINK_METHOD = {
    * The six extended conventions. Project-specific issue-reference
    * forms that GitHub does not act on — `gh-123`, `For #123`, Symfony's PR template
    * — split by where they were found, title or body, so a repository's linking
-   * habits stay legible in the method breakdown RQ2 needs. `DATA_CONTRACT.md` §4
+   * habits stay legible in the method breakdown. `DATA_CONTRACT.md` §3
    * records why they matter: kubernetes and react use these forms where vscode uses
    * the standard ones, so treating them as absent would make a detection-coverage
    * artifact look like a process difference.
@@ -117,8 +116,7 @@ export const LINK_METHOD = {
  *
  * `pr_body` is the one arguable member: the upstream view regex-parses the body
  * rather than observing GitHub's auto-close. It is admitted because the syntax is
- * documented and GitHub acts on it. See `ADAPTER_AND_API.md` §3 for the optional
- * corroboration step and the limitations note.
+ * documented and GitHub acts on it.
  *
  * Note what is *not* here. `pr_body_refs` and `pr_body_fixed_tickets` are also read
  * out of the PR body, and `closed_via_commit` is also about closing — but the rule
@@ -135,7 +133,7 @@ const VALIDATED_METHODS = new Set([
 const ALL_METHODS = new Set(Object.values(LINK_METHOD));
 
 /**
- * Issue↔PR detection methods whose toggle is seeded even when unused (Task 3).
+ * Issue↔PR detection methods whose toggle is seeded even when unused.
  *
  * These four have a toggle whatever the loaded sub-log contains; every other method
  * gets one only when a link actually carries it, which is the normal rule and the one

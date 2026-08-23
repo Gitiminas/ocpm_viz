@@ -1,7 +1,8 @@
 # Fixtures
 
 Every fixture is a complete `ObjectGraph` (`docs/DATA_LAYER.md`) that can be loaded
-through `loadObjectGraph()` exactly as a real sub-log would be.
+through `loadObjectGraph()` exactly as a real sub-log would be. "The mockup", where it is
+named below, is the superseded hand-built prototype this tool replaced.
 
 | ID | Sub-log | Property it exists to exhibit | Status |
 |---|---|---|---|
@@ -41,8 +42,8 @@ npm run build:fixtures      # regenerate F1 and F2–F14
 **F1 is the only fixture built from real GitHub data.** Everything else — F2 through F14, which is
 every other row in the table above — is synthesized. That includes F10, F11, F12 and F13, which
 sit in the same table and are built by the same script. F10 carries a "300 commits" figure and F11
-"one PR per detection method": exactly the shape of number that could be quoted into a results
-chapter by mistake.
+"one PR per detection method": exactly the shape of number that could be quoted as a real
+finding by mistake.
 
 Built by `scripts/build-synthetic-fixtures.mjs`. They are **not real GitHub data**; each carries
 `meta.data_honesty.synthetic` saying so, and the sidebar labels them. They exist to exercise
@@ -92,8 +93,7 @@ script asserts the 3/31 split rather than trusting it.
 **Method prose dropped.** The source's free-text `method` is replaced by the enum rather than
 carried alongside it, because nothing upstream produces that prose: a field only this fixture
 could populate would make F1 an unfaithful model of a real sub-log. What is lost is which
-specific keyword or SHA matched; the adapter supplies that properly as `link_convention` /
-`ref_scope` when it lands.
+specific keyword or SHA matched. The live payload does not carry it either.
 
 **Actor links dropped, and proved redundant first.** Dropping the 42 event→actor links is a
 deletion — normally forbidden outright by rule 2. It is admissible only because nothing is lost,
@@ -135,8 +135,7 @@ the model for id handling.** A real sub-log will not look like this.
 - **Only one issue and one PR**, so it cannot catch a regression in multi-object layout. That is
   what F2–F5 exist for.
 - **Only one of the four seeded issue↔PR detection methods** appears (`pr_body`; the rest of the object
-  links are commit attribution), so the per-method toggles in Task 3 are unverifiable here —
-  hence F11.
+  links are commit attribution), so the per-method toggles are unverifiable here — hence F11.
 - **Every link has `n_methods: 1`**, so multi-method agreement is unexercised — hence F12.
 - **No reopen**, so every object yields exactly one interval — hence F9.
 - **`generated_at` is fixed**, not `now()`, so the fixture is byte-stable across runs.
@@ -147,18 +146,15 @@ the model for id handling.** A real sub-log will not look like this.
 Every fixture speaks the four qualifiers — `resolves`, `contains_commit`, `merge_commit`,
 `references_issue` — the same set `fe.link` emits and the RPC serves.
 
-⚠️ **They did not, until 2026-08-09.** The corpus carried `related_issue`,
-`referenced_pull_request` and `referenced_issue`, names the database has never produced,
-so every qualifier-shaped assertion in the suite exercised a vocabulary that cannot occur
-and the per-qualifier toggles a fixture derived were not the ones a real sub-log derives.
-`build-f1.mjs` now remaps the frozen blob (which keeps its own names — it is never
-edited), and `build-synthetic-fixtures.mjs` writes the new names directly.
+⚠️ **No other qualifier name may enter the corpus.** `related_issue`,
+`referenced_pull_request` and `referenced_issue` are names the database has never produced;
+a fixture carrying one exercises a vocabulary that cannot occur, and the per-qualifier
+toggles it derives are not the ones a real sub-log derives. `build-f1.mjs` remaps the frozen
+blob, which keeps its own names because it is never edited; `build-synthetic-fixtures.mjs`
+writes the current names directly.
 
-⚠️ **`contains_commit` reversed as well as renamed.** The old name was stored commit → PR;
-the database stores the relationship PR → commit, because the qualifier means "this pull
-request contains this commit". Renaming without swapping the endpoints would have kept
-the name honest and made the direction a lie.
+⚠️ **`contains_commit` is stored PR → commit**, because the qualifier means "this pull
+request contains this commit". The direction is part of the name.
 
-`merge_commit` had no equivalent in the old vocabulary, so it was added to F12: it is the
-only qualifier that arrives by identity (`merge_commit_sha`) rather than by convention,
-and without it the corpus would exercise three of four.
+`merge_commit` is the only qualifier that arrives by identity (`merge_commit_sha`) rather
+than by convention, so F12 carries it; without it the corpus would exercise three of four.

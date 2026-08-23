@@ -1,7 +1,7 @@
 /**
  * `ObjectGraph` shape validation and indexing.
  *
- * The contract is in `docs/ADAPTER_AND_API.md` §4. This module fails loudly on a
+ * The contract is in `docs/DATA_LAYER.md`. This module fails loudly on a
  * malformed bundle rather than letting a missing field surface later as an empty
  * lane or a link drawn to nowhere — those failure modes are invisible in a diff and
  * exactly what the renderer must not be asked to absorb.

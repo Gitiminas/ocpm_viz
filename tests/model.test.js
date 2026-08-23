@@ -237,7 +237,7 @@ describe('validation fails loudly on a malformed bundle', () => {
  * the implementation reads asserts only that a Set works. This table is the second
  * opinion: changing an evidence class in `evidence.js` must fail here, because a
  * class silently flipping is a link changing from solid to dashed in every render
- * and a changed validated/extracted split in every figure the thesis reports.
+ * and a changed validated/extracted split in every figure that quotes it.
  *
  * `link.method` is closed at sixteen values: with `event_actor_id` gone, the enum
  * holds exactly those sixteen and nothing else.
@@ -310,8 +310,8 @@ describe('evidence classification', () => {
     const graph = await loadF1();
     // Over `graph.links` directly: the split used to be quoted over a filtered
     // subset, because the 42 attribution links were all validated and would have
-    // turned 3/31 into 45/31. Nothing to filter now — the number the thesis reports
-    // and the number in the bundle are the same number.
+    // turned 3/31 into 45/31. Nothing to filter now — the quoted number and the
+    // number in the bundle are the same number.
     const links = graph.links;
     assert.equal(links.filter((l) => l.evidence === 'validated').length, 3);
     assert.equal(links.filter((l) => l.evidence === 'extracted').length, 31);

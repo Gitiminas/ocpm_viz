@@ -13,9 +13,9 @@
  * output the UI must always display. Presets without that summary would be a net
  * loss in comprehensibility.
  *
- * Encoding a preset into a URL is the reproducibility mechanism for the task-based
- * evaluation: "load this link" is the cheapest possible guarantee that two people on
- * two machines are looking at the same configuration.
+ * Encoding a preset into a URL is how a configuration is reproduced: "load this link"
+ * is the cheapest possible guarantee that two people on two machines are looking at the
+ * same configuration.
  */
 
 const STORAGE_KEY = 'ocpm_viz.presets.v1';
@@ -70,8 +70,8 @@ export function applyState(state, snapshot) {
    * ⚠️ **`tracks` is read as well as `lanes`, and must stay readable.**
    *
    * Snapshot v1 wrote `tracks`; v2 writes `lanes` (the rename that made one word for one
-   * concept). Presets live in local storage and in shared `?preset=` URLs — they are the
-   * reproducibility mechanism the task-based evaluation depends on — so a v1 snapshot
+   * concept). Presets live in local storage and in shared `?preset=` URLs — they are how
+   * a configuration is reproduced — so a v1 snapshot
    * that quietly lost its lane settings would restore a *different picture* under the
    * same link, with nothing saying so. Dropping the alias is only safe once no v1
    * snapshot can exist anywhere, which is not a thing this code can know.
@@ -234,8 +234,8 @@ export function renamePreset(from, to) {
 /**
  * Shipped views.
  *
- * They double as zero-interaction defaults and as evaluation material: each is a
- * question someone might actually arrive with, already configured.
+ * They double as zero-interaction defaults and as worked examples: each is a question
+ * someone might actually arrive with, already configured.
  *
  * Each is a function of the derived toggle vocabulary rather than a fixed snapshot,
  * because the keys depend on what the loaded sub-log contains — a fixed snapshot

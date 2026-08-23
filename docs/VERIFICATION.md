@@ -48,8 +48,8 @@ and UTC+14.
 
 ## 2. The baseline comparison
 
-`screenshots/` holds 11 pre-change renders, captured 2026-07-30 against the hardcoded vscode
-sub-log. Inventory in `screenshots/README.md`. Read-only.
+The baseline is 11 pre-change renders, captured 2026-07-30 against the hardcoded vscode sub-log.
+They are kept outside the repository and are read-only.
 
 **It is not a pixel comparison and cannot be.** The baseline came from Firefox at a scale where the
 sidebar occupies ~367 px; the verification renders come from headless Edge at 1:1, where it is
@@ -225,7 +225,7 @@ cross-repository process differences may be artifacts of coverage rather than re
 The non-standard forms are detected: `gh-N`, `bug #N` and `For #N` are common in kubernetes and
 react, and `mv_issue_pr_links_extended_conventions` detects exactly those. But *detection exists*
 and *coverage is comparable across repositories* are different claims, and the second is not
-measured. See `DATA_CONTRACT.md` §4.
+measured. See `DATA_CONTRACT.md` §3.
 
 **The figure is measurable.** `fe.diag_link_methods` in `sql/fe_layer.sql` returns
 `(repo_id, method, qualifier, evidence, links)` over `fe.link` — per repository, per method, grouped

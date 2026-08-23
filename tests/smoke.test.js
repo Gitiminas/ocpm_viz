@@ -1,4 +1,4 @@
-// Smoke test for the test harness itself (Task 0 §5).
+// Smoke test for the test harness itself.
 //
 // Asserts only that `node --test` runs, that native ES modules load without a
 // build step, and that top-level await works — the three things every later

@@ -3,7 +3,7 @@
  *
  * One mutable object, as in the mockup — but the fields that hardcoded a single
  * issue, a single PR and a single burst are now collections, and every dimension of
- * the picture is independently toggleable (tasks/03).
+ * the picture is independently toggleable.
  *
  * The filters are deliberately **independent and ANDed**. A link is drawn only if
  * its lanes, its object-pair, its qualifier, its detection method and both its
@@ -198,7 +198,7 @@ export function deriveQualifiers(links) {
  * Detection methods, with counts.
  *
  * The four issue↔PR methods are listed even when this sub-log uses none of them, so
- * the per-method toggles Task 3 requires exist regardless of what is loaded. A
+ * a per-method toggle exists regardless of what is loaded. A
  * method you cannot switch off because the current data happens not to use it is a
  * gap in the control, not an absence of one — and F1 exercises only `pr_body`, so
  * without this the other three would be untestable.
@@ -365,7 +365,7 @@ export function selectVisible(graph, state, groupsByCommit = new Map()) {
  * This is not a nicety. Filtering and saved views introduce **hidden dependencies**:
  * a sparse timeline reads as "this project had few links" when the truth is "you
  * switched the links off". The user cannot distinguish those two states from the
- * picture alone, and a misreading of that kind would go straight into a thesis
+ * picture alone, and a misreading of that kind would go straight into a reported
  * finding. Every control that can subtract therefore reports here, and the summary
  * is non-dismissible while anything is hidden.
  *

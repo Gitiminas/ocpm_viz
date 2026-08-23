@@ -159,8 +159,8 @@ non-overlapping. It ends with one unauthenticated HTTP call as `web_anon`, which
 that travels the path the `SECURITY INVOKER` reset breaks.
 
 `scripts/shot.mjs` renders the running app headlessly and writes a PNG to `.shots/`, which is
-gitignored. It never writes to `screenshots/`. Headless lays out about 90 px shorter than the
-window size it captures at, so compare fill between shots and never against the box.
+gitignored. Headless lays out about 90 px shorter than the window size it captures at, so
+compare fill between shots and never against the box.
 
 ## Repository map
 
@@ -180,7 +180,6 @@ window size it captures at, so compare fill between shots and never against the 
 | `vendor/` | d3-force 3.0.0, unmodified, because there is no bundler to resolve a bare import |
 | `_ds/` | Nocturne design tokens. Consume via `var(--token)`; do not restyle |
 | `ocel-data.json` | The original data blob. Never edit — F1 is built from it by script |
-| `screenshots/` | Pre-change visual baseline. Read-only; never regenerate |
 | `docs/` | The written record. See below |
 | `../ocpm.sh` | Outside the repo. Starts both servers and applies the data layer in the one order that works |
 
@@ -193,18 +192,16 @@ window size it captures at, so compare fill between shots and never against the 
 | `docs/DATA_LAYER.md` | Everything server-side: schemas, the payload, links, the RPCs, roles, diagnostics |
 | `docs/DATA_CONTRACT.md` | What exists upstream. A record of a read-only database that is itself the truth |
 | `docs/VERIFICATION.md` | What was checked, how, and what was not. §5 is the not-verified list; read it before quoting a figure |
-| `docs/_archive/MOCKUP_OVERVIEW.md` | The superseded mockup, described. Historical; describes deleted code |
-
-`docs/_ground_truth.md` is untracked and kept: a dense, dated inventory of exactly what the code
-and SQL contain, compiled from the tree. Use it when you need a name, a constant or a count.
 
 ## Known limits
 
 - **Event glyphs stack without bound.** A kubernetes issue with 288
   comments in a short window allocates 52 bands and an SVG 5,654 px tall. Crowding rather than
   deception, but it is worst on the busiest issues.
-- **How to draw a dense sub-log's links is unresolved.** Two measurements in
-  `docs/_decisions_salvage.md` constrain any fix.
+- **How to draw a dense sub-log's links is unresolved.** Two measurements constrain any fix. On
+  kubernetes #47532, collapsing links by shared source folds nothing: no source has more than one
+  link, while two targets have 6 and 7. And bundling cannot subsume the fan, because links may
+  share a target while differing in evidence class.
 - **Events carry one object id, not many.** OCEL 2.0's event-to-object relation is
   many-valued; convergence here is expressed through links between objects instead.
 - **Every link figure is a floor, never a point estimate.** Two admission rules added by this

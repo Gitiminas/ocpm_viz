@@ -874,8 +874,8 @@ for (const dashboard of [
  * from. That is the `get_object_graph` contract, and the UI now names it rather
  * than picking a file.
  *
- * `?repo=` and `?seed=` make a selection reproducible by link, which the
- * task-based evaluation needs. `?fixture=` is kept as a direct address for tests
+ * `?repo=` and `?seed=` make a selection reproducible by link. `?fixture=` is kept
+ * as a direct address for tests
  * and for the links already written down.
  */
 function queryFromUrl() {
@@ -894,8 +894,8 @@ function queryFromUrl() {
      * The time mode, for the same reason `?page=` exists: a link has to reproduce what
      * someone was looking at. It matters more than it did when every mode was a timeline,
      * because the relationships mode changes what *position* means — "look at this sub-log" and "look at this
-     * sub-log with time released" are two different requests, and the task-based evaluation
-     * needs to be able to make the second one.
+     * sub-log with time released" are two different requests, and a link has to be able to
+     * make the second one.
      *
      * A preset also carries the mode (`serializeState`), but a preset is a whole
      * configuration; this is the one knob on its own. An unknown value is ignored rather
@@ -967,10 +967,9 @@ const source = createSource();
  * Say which data source is live, and let it be changed without editing the URL.
  *
  * The source is chosen by `?source=` and defaults to fixtures. Before this existed the
- * only way to know whether you were looking at the real database or at 13 hand-built
- * test bundles was to remember what you had typed — and an evaluation session run on
- * fixtures by accident would measure the wrong thing while looking identical to one run
- * on real data. Switching reloads the page rather than swapping the source in place,
+ * only way to know whether you were looking at the real database or at hand-built
+ * test bundles was to remember what you had typed — and a reading taken on fixtures by
+ * accident would say the wrong thing while looking identical to one taken on real data. Switching reloads the page rather than swapping the source in place,
  * because a seed from one source is meaningless in the other (fixtures key on
  * `issue:242864`, the database on `issue:2902032454`), so carrying the query across
  * would guarantee a failed load.
@@ -1012,9 +1011,8 @@ let catalogue = null;
  * Populate the two selectors from the catalogue.
  *
  * Repositories with no loadable sub-log are listed and disabled with their reason
- * rather than omitted: their absence is itself a finding — the RQ2 limitation is
- * precisely about react and kubernetes — and a picker that never mentioned them
- * would hide that.
+ * rather than omitted: their absence is itself a finding, and a picker that never
+ * mentioned them would hide that.
  */
 function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
   const repos = catalogue.repos;

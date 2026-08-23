@@ -21,8 +21,6 @@ diff, so verification matters more than usual.
 | `docs/DATA_LAYER.md` | Schemas `fe` and `api`, the three RPCs, the `ObjectGraph` payload, the adapter |
 | `docs/DATA_CONTRACT.md` | The written record of what exists upstream. The database itself is ground truth |
 | `docs/VERIFICATION.md` | What was checked and how. §5 is the not-verified list — read it before trusting a figure |
-| `docs/_archive/MOCKUP_OVERVIEW.md` | The superseded mockup. **Historical**; describes deleted code |
-| `docs/_ground_truth.md` | Untracked dense inventory of the tree: modules, relations, fixtures, tests. Facts, no rationale |
 
 ## Repository map
 
@@ -33,7 +31,7 @@ diff, so verification matters more than usual.
 | `sql/fe_layer.sql` | The data layer: schema `fe` (15 views/MVs + 8 diagnostics) and the three `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
 | `scripts/rpc-check.mjs` | Acceptance gate: a real RPC payload through `loadObjectGraph`, then the layout pipeline, then one unauthenticated call as `web_anon` | Run after any change to `sql/`. `findGraphProblems()` must return `[]`. The HTTP probe skips if PostgREST is down |
 | `scripts/pull-sublog.mjs` | Snapshots RPC output to `tests/fixtures/LIVE*.json` | Samples, not fixtures — no test asserts a count against them |
-| `scripts/shot.mjs` | Headless screenshot of the running app | Writes to `.shots/` (gitignored), **never** to `screenshots/`. Headless lays out ~90px shorter than `--window-size`: compare fill between shots, not against the box |
+| `scripts/shot.mjs` | Headless screenshot of the running app | Writes to `.shots/`, gitignored. Headless lays out ~90px shorter than `--window-size`: compare fill between shots, not against the box |
 | `scripts/build-f1.mjs`, `build-synthetic-fixtures.mjs`, `build-catalogue.mjs` | Build the fixtures and the seed catalogue | Re-runnable. `--check` fails when a committed file is stale |
 | `scripts/serve.mjs` | Zero-dependency static server and `/rpc/*` proxy (`npm start`) | Needed: ES modules and `fetch` are blocked on `file://` |
 | `vendor/d3-force.js` | d3-force 3.0.0, ISC, unmodified | Never edit. Replace whole from the esm.sh bundled build, and re-read `vendor/README.md` |
@@ -41,7 +39,6 @@ diff, so verification matters more than usual.
 | `../ocpm.sh` | Outside the repo. Clean start, and `./ocpm.sh db` to apply the data layer | Prefer `db` over running the SQL by hand: `fe_layer.sql` resets the `api` functions to `SECURITY INVOKER`, and the materializations go stale silently |
 | `_ds/nocturne-*/` | Design system CSS tokens | Consume via `var(--token)`. Do not restyle |
 | `ocel-data.json` | The untouched original data blob | **Never edit.** F1 is built from it by script |
-| `screenshots/` | Pre-change reference renders | **Visual regression baseline. Read-only** — never regenerate. Inventory in `screenshots/README.md` |
 
 **Running it:** `npm start`, then `http://localhost:8000`.
 
@@ -61,8 +58,8 @@ diff, so verification matters more than usual.
   privileged. Never use `case` in names, comments, SQL or UI labels; the vocabulary is
   `objectGraph` / `subLog` and the RPC is `get_object_graph`.
 - **Never modify the shared upstream's data or definitions.** No `UPDATE`, `DELETE`, `DROP`,
-  `TRUNCATE`, no refreshes, no altering a view. Indexes are the exception: the base tables and the
-  22 in-scope views are this project's own, and `sql/fe_layer.sql` §0 creates 19 with
+  `TRUNCATE`, no refreshes, no altering a view. The relations are shared and read-only. Indexes on
+  them are the exception: they belong to this project, and `sql/fe_layer.sql` §0 creates 19 with
   measurements. Announce an index rather than adding it quietly, and check `pg_class.reltuples` is
   not `-1`: a non-owner `ANALYZE` reports success while skipping.
 - **Out of scope, do not wire them in.** The `ocel_*` views, bot classification, OCEL 2.0 tables,

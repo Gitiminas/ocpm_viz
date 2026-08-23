@@ -1,5 +1,5 @@
 /**
- * The single data entry point (`docs/ADAPTER_AND_API.md` §4).
+ * The single data entry point. The payload contract is in `docs/DATA_LAYER.md`.
  *
  * Nothing above this layer may fetch, parse or reshape data. Everything the
  * renderer sees has passed through here, which is what makes swapping the fixture
@@ -7,9 +7,8 @@
  *
  * A `query` describes the sub-log to select — it is *not* an identity. The same
  * event may legitimately belong to many sub-logs, which is precisely what a case id
- * would forbid. These are also the parameters a saved preset or
- * shareable URL encodes, which is the reproducibility mechanism for the task-based
- * evaluation.
+ * would forbid. These are also the parameters a saved preset or shareable URL encodes,
+ * which is how a picture is reproduced.
  */
 
 import { assertValidGraph, normalizeGraph } from '../model/objectGraph.js';

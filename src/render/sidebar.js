@@ -6,7 +6,7 @@
  * sub-toggles that disable themselves when the lane they depend on is hidden. That
  * dependency-awareness is what "independently toggleable" needs to stay honest.
  *
- * What Task 3 adds:
+ * What it adds over the mockup's:
  *   - individual issues and PRs, so one of two concurrent PRs can be hidden
  *     without hiding its lane
  *   - commit *groups* rather than individual commits: a real sub-log has hundreds

@@ -18,7 +18,7 @@
  *
  * The commit lane has no sub-lanes. A commit is an instant, not a span, and a
  * commit linked to several PRs needs extra edges rather than extra layout
- * (tasks/02). Its nodes are packed by collision alone, exactly as before.
+ * Its nodes are packed by collision alone.
  */
 
 /** Minimum horizontal separation before two nodes are considered to collide. */

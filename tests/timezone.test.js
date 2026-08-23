@@ -11,7 +11,7 @@ const fileTransport = async (query) =>
 
 describe('all times render in UTC, labelled', () => {
   test('an instant renders at its UTC clock time, not the machine’s', () => {
-    // The vscode issue opens at 05:15:54Z. The screenshots/ baseline was captured on
+    // The vscode issue opens at 05:15:54Z. The pre-change baseline was captured on
     // a UTC+01:00 machine and shows 06:15:54 — the defect this fixes.
     const opened = new Date('2025-03-07T05:15:54Z');
     assert.match(formatInstant(opened), /05:15:54/);
@@ -28,7 +28,7 @@ describe('all times render in UTC, labelled', () => {
 
   test('the rendering is independent of the machine timezone', async () => {
     // Every formatter must give the same answer whatever TZ the viewer has set;
-    // that is the whole point — evaluation numbers must reproduce across machines.
+    // that is the whole point — a quoted instant must reproduce across machines.
     const graph = await loadObjectGraph({ fixture: 'F1' }, { transport: fileTransport });
     const rendered = landmarks(graph).map((entry) => formatInstant(entry.time));
     assert.ok(rendered.length > 0);

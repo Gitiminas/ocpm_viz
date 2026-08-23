@@ -4,13 +4,11 @@
  * **All times are UTC**, and labelled as such.
  *
  * The mockup parsed UTC but rendered with `d3.timeFormat`, which is *local* time, so
- * every displayed instant shifted with the viewer's machine — the `screenshots/`
- * baseline was captured at UTC+01:00 and shows an issue opening at 06:15:54 that the
- * data records as 05:15:54Z. Evaluation numbers have to reproduce across whoever
- * runs the study, so that had to go.
+ * every displayed instant shifted with the viewer's machine — the pre-change baseline
+ * renders were captured at UTC+01:00 and show an issue opening at 06:15:54 that the
+ * data records as 05:15:54Z. A displayed instant must not depend on who is looking.
  *
- * ⚠️ It was **not** the one-line formatter swap an earlier version of this comment
- * promised. `d3.scaleTime()` also *chooses* ticks on local midnights, and the axis
+ * ⚠️ It is **not** a one-line formatter swap. `d3.scaleTime()` also *chooses* ticks on local midnights, and the axis
  * decided whether a tick was a date boundary with `getHours()`; a UTC formatter over
  * locally-chosen ticks would have labelled "Mar 09 23:00" as a day boundary. Those
  * two live in `render/axis.js`, which now uses `d3.scaleUtc` and `getUTCHours`.

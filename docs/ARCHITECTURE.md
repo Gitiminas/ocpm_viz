@@ -33,7 +33,7 @@ the `fe` views, the two admission rules and the evidence mapping are all in `DAT
 function in them is importable and assertable in plain Node, so "how many nodes, in which lane,
 in what order" is a test rather than a screenshot. If a function needs a DOM to be exercised, it
 is in the wrong folder. `render/` is the only place that touches the document, and `main.js` is
-wiring with no logic of its own. Exported names and signatures are in `_ground_truth.md` §1;
+wiring with no logic of its own. Exported names and signatures are in the modules themselves;
 this table is the responsibility map.
 
 | Module | Responsibility |
@@ -115,7 +115,7 @@ Adding a filter is an edit to one file and its tests.
 
 ## State
 
-`createState()` (`src/state/state.js:35`). Full defaults in `_ground_truth.md` §5.1.
+`createState()` (`src/state/state.js:35`) carries the full defaults.
 
 | Key | What it holds |
 |---|---|
@@ -241,8 +241,7 @@ axis`. `preview` exists for marks that belong to a pointer rather than to state 
 trail while their sidebar row is hovered. It is written without a re-render and cleared by the
 next `render()`, so a preview cannot outlive the positions it was drawn against.
 
-Encoding lives in `theme.js` and is explained by `legend.js`; both are listed in
-`_ground_truth.md` §7. In summary: issue is a circle, pull request a diamond, commit a square,
+Encoding lives in `theme.js` and is explained by `legend.js`. In summary: issue is a circle, pull request a diamond, commit a square,
 each in a per-object shade; comment marks are the same shape hollow; landmarks carry a ring
 (solid for `IssueClosed` and `PullRequestMerged`, dotted in the extracted colour for the
 heuristic `PullRequestMergedOffPlatform`, dashed grey for a closed-unmerged PR); validated links

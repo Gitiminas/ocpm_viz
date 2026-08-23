@@ -30,7 +30,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip .tip-title{font-size:14px;font-weight:500;color:var(--color-text);line-height:1.4;word-break:break-word;font-family:var(--font-heading)}
 #tip .tip-body{padding:10px 14px;display:flex;flex-direction:column;gap:6px}
 #tip .tip-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:3px 0;border-bottom:1px dashed var(--color-neutral-800)}
-/* The comment excerpt (decision 124): collapsed to a few lines with a fade to the card's
+/* The comment excerpt: collapsed to a few lines with a fade to the card's
    surface saying "there is more", expanding while the pointer is on it. Hoverable only
    when the card is pinned, which is what the pin is for. max-height rather than
    line-clamp because a clamp cannot transition, and the grow is the affordance. */
@@ -98,7 +98,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 /* A search page revealed on scroll blends in rather than popping (setupSearchCombo). */
 @keyframes searchRowIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 .searchRowIn{animation:searchRowIn .18s ease}
-/* The FIRST level of the mode control is a switch, not a segment (decision 114): a pill
+/* The FIRST level of the mode control is a switch, not a segment: a pill
    whose active side is filled, with a radio dot as the literal indicator. It is drawn
    differently from the second-level segments on purpose — outlined alike, "Time |
    Relationships" and "Absolute | Discrete" read as equals, and they are not: the first
@@ -143,7 +143,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 <button class="pageTab" data-page="stats" data-tip="page.stats" style="box-sizing:border-box;border:1px solid transparent;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-neutral-400);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><line x1="4" x2="4" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="20" x2="20" y1="20" y2="14"></line></svg>Stats</button>
 </div>
 <div style="margin-bottom:var(--space-8)">
-<!-- "OCEL case" in the mockup. There is no case in OCPM (decision 1). -->
+<!-- "OCEL case" in the mockup. There is no case in OCPM. -->
 <!-- The tool's name lives here, at the head of the query it is always about, rather
      than as a page title above the chart: the chart's header row is for the mode and zoom
      controls, and a title there repeated what the sidebar already says. -->
@@ -153,9 +153,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 
   Not cosmetic. The source is selected by `?source=` and defaults to fixtures, so
   before this existed the only way to know whether you were looking at the real
-  database or at 13 hand-built test bundles was to remember what you typed into the
-  URL. An evaluation session run on fixtures by accident would measure the wrong
-  thing and look exactly like one run on real data.
+  database or at hand-built test bundles was to remember what you typed into the
+  URL. A reading taken on fixtures by accident would say the wrong thing and look
+  exactly like one taken on real data.
 -->
 <div style="margin-bottom:10px">
 <div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Data source</div>
@@ -178,16 +178,13 @@ html,body{height:100%;margin:0;overflow:hidden}
 <!--
   Written by updateTraversalInfo(), and what it holds depends on the source.
 
-  Against the DATABASE the traversal degree is a real 0-2 stepper: get_object_graph takes
-  it as a parameter, so the condition decision 35 set has been met (decision 72). On
-  FIXTURES it stays text, for decision 35's original reason - the degree was fixed when
+  Against the DATABASE the traversal degree is a real 0-2 stepper: get_object_graph
+  takes it as a parameter. On FIXTURES it stays text, because the degree was fixed when
   the fixture was built, so a stepper there would be a control that silently does nothing.
-
-  Corrected 2026-08-16: this comment said the degree was read-only, full stop.
 -->
 <div id="traversalInfo" class="mono" style="font-size:10px;color:var(--color-neutral-500);margin-top:6px;line-height:1.5"></div>
 <!-- What the query returned: counts by type, links, events, span. Rendered by
-     render/subLogCard.js from summarizeSubLog(); replaced the breadcrumb above the chart. -->
+     render/subLogCard.js from summarizeSubLog(). -->
 <div id="subLogCard" data-tip="card"></div>
 </div>
 </div>
@@ -273,7 +270,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:nowrap;margin-left:auto;min-width:0;flex:0 0 auto">
 <div class="mono" id="focusInfo" data-tip="focus.info" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
 <!--
-  The mode control has two levels (decision 114). The FIRST chooses what position means:
+  The mode control has two levels. The FIRST chooses what position means:
   Time — the timeline, x is a time axis — or Relationships, which releases the time axis
   and lets position encode relationship structure (time is demoted, not deleted: it moves
   to the edge arrowheads, the time brush and the hovercard). The SECOND refines the first:
@@ -375,7 +372,7 @@ html,body{height:100%;margin:0;overflow:hidden}
   that jumps at the same moment destroys it. Here it takes its space from the bottom of
   the scroll area, so the top of the timeline never moves.
 
-  Below the chart rather than floating over it, because decision 27 requires it be
+  Below the chart rather than floating over it, because it must be
   impossible to miss: an overlay would cover the last lane, and covering data to report
   hidden data is the wrong trade.
 -->
@@ -384,7 +381,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 <main id="statsPage" style="flex:1;min-width:0;display:none;flex-direction:column;padding:var(--space-8);overflow:auto">
 <h1 style="font-size:20px;margin:0 0 var(--space-6)">Sub-log statistics</h1>
 <!-- No one-line description here either: the sub-log card in the shared sidebar states
-     what the query returned, on this page as on the timeline (decision 115). -->
+     what the query returned, on this page as on the timeline. -->
 <!--
   This page's message surface, and a sibling of the dashboards for the same reason
   #chartMessage is a sibling of #chart: the renderer owns what is inside, and a message
@@ -411,8 +408,8 @@ html,body{height:100%;margin:0;overflow:hidden}
   The mockup's third card was a blurred activity heatmap filled with Math.random(),
   behind an "In progress / This dashboard isn't built yet" overlay, plus a disabled
   "Activity heatmap · Soon" sidebar row and a "•••" placeholder. All removed:
-  fabricated placeholder UI is forbidden, and in a task-based usability evaluation a
-  fake dashboard invites participants to critique something that does not exist.
+  fabricated placeholder UI is forbidden, and a fake dashboard invites a reader to
+  judge something that does not exist.
 -->
 </div>
 </main>

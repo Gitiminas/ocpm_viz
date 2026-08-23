@@ -1,18 +1,16 @@
 /**
  * The actor profile card.
  *
- * ⚠️ Two mocks were deliberately **not** carried over from the mockup, which is
- * nominally Task 5's job but could not wait: porting them would have meant writing
- * `Math.random()` placeholder rows and a fake loading delay into new files, and
- * fabricated placeholder UI is forbidden outright.
+ * ⚠️ Two mocks were deliberately **not** carried over from the mockup: porting them
+ * would have meant writing `Math.random()` placeholder rows and a fake loading delay
+ * into new files, and fabricated placeholder UI is forbidden outright.
  *
  * What was dropped:
  *   - four blurred `Math.random()`-width rows behind a "Look up user activity" prompt
  *   - a 650 ms artificial spinner before the *already-loaded* list was revealed
  *
- * Both were pure theatre — the data was in memory the whole time — and in a
- * task-based usability evaluation a fake spinner invites a participant to report a
- * performance problem that does not exist.
+ * Both were pure theatre — the data was in memory the whole time — and a fake spinner
+ * invites a reader to report a performance problem that does not exist.
  */
 
 import { formatInstant, escapeHtml } from './format.js';

@@ -1,5 +1,5 @@
 /**
- * The closed activity vocabulary (`docs/ADAPTER_AND_API.md` §5).
+ * The closed activity vocabulary (`docs/DATA_LAYER.md`, "Objects, activities, intervals").
  *
  * Closed and complete: anything unmapped is a defect in the adapter, not something
  * to render as a raw enum string. Changing this vocabulary is a research decision,
@@ -140,7 +140,7 @@ export const ACTIVITIES = {
  * Called *landmarks*, not milestones, and deliberately so: GitHub has a first-class
  * feature called a milestone, and the upstream views carry its columns verbatim
  * (`milestone_id`, `milestone_number`, `milestone_title` on `mv_issues_full` —
- * `DATA_CONTRACT.md` §1). Reusing the word for "an activity we draw with a ring"
+ * `DATA_CONTRACT.md` §3). Reusing the word for "an activity we draw with a ring"
  * would collide with a real, differently-meaning field the adapter may one day read.
  */
 export const LANDMARK_ACTIVITIES = Object.keys(ACTIVITIES).filter((a) => ACTIVITIES[a].landmark);
@@ -163,7 +163,7 @@ function lookup(activity) {
   if (!isKnownActivity(activity)) {
     throw new Error(
       `Unknown activity "${activity}". The vocabulary is closed — see ` +
-        `docs/ADAPTER_AND_API.md §5. Either the adapter emitted something it should ` +
+        `docs/DATA_LAYER.md. Either the adapter emitted something it should ` +
         `not, or the vocabulary needs extending, which is a research decision.`,
     );
   }

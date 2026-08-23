@@ -28,7 +28,7 @@
 -- API role can read every raw payload in the database, which is exactly what schema
 -- isolation exists to prevent (PostgREST docs, "Schema Isolation" and "Security definer").
 --
--- ⚠️ **`fe_owner` is deliberately NOT a superuser and not `minas`.** A SECURITY DEFINER
+-- ⚠️ **`fe_owner` is deliberately NOT a superuser and not the applying role.** A SECURITY DEFINER
 -- function owned by a superuser and reachable over HTTP is a privilege-escalation surface
 -- — any flaw in it executes with full rights. `fe_owner` can read what the layer needs
 -- and nothing else, so the blast radius of the API is bounded by construction. This is
@@ -79,9 +79,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO fe_owner;
 -- §3 — fe_owner owns the layer.
 --
 -- A loop rather than a list of ALTERs, so a view added to `fe_layer.sql` tomorrow is
--- picked up by re-running this file instead of being silently left owned by `minas` —
--- which would quietly re-introduce the superuser-owned SECURITY DEFINER this design
--- exists to avoid.
+-- picked up by re-running this file instead of being silently left owned by the role that
+-- applied it — which would quietly re-introduce the superuser-owned SECURITY DEFINER this
+-- design exists to avoid.
 -- -------------------------------------------------------------------------------------
 ALTER SCHEMA fe  OWNER TO fe_owner;
 ALTER SCHEMA api OWNER TO fe_owner;

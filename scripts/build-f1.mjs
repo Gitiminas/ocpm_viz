@@ -6,7 +6,7 @@
  *
  * F1 is the regression baseline: the vscode sub-log the mockup was built around
  * (issue #242864 → PR #243221 → its commits), reshaped into the `ObjectGraph`
- * contract in `docs/ADAPTER_AND_API.md` §4.
+ * contract described in `docs/DATA_LAYER.md`.
  *
  * Two rules govern this script:
  *
@@ -149,13 +149,12 @@ function convertLink(source) {
 // it. Three reasons, in order of weight:
 //   1. Nothing upstream produces that prose. A field only this fixture could populate would
 //      make F1 an unfaithful model of a real sub-log — the opposite of a regression baseline.
-//   2. `ObjectGraph` (ADAPTER_AND_API.md §4) has no prose field; tasks/01 specifies the
-//      prose becomes an enum.
+//   2. `ObjectGraph` has no prose field, and the prose becomes an enum.
 //   3. The prose embeds the retired word `inferred` and restates the evidence class, so
 //      keeping it would either violate the evidence rule or require rewording it — and
 //      rewording is exactly the undetectable freehand edit this script exists to avoid.
-// What is lost is which specific keyword or SHA matched. When the adapter lands it supplies
-// that properly, as `link_convention` / `ref_scope` from `mv_commit_message_issue_links_all`.
+// What is lost is which specific keyword or SHA matched. The live payload does not carry
+// it either.
 
 /**
  * Split the source links into the ones F1 keeps and the event→actor ones it drops.
@@ -294,9 +293,8 @@ function selfCheck(graph, source) {
   const extracted = graph.links.filter((l) => l.evidence === 'extracted').length;
 
   // The reclassification is the one change that alters how F1 renders, so assert
-  // the predicted split rather than trusting it. Predicted in tasks/01: of the 34
-  // object links, only the single pr_body match and the two head-SHA matches
-  // survive as validated.
+  // the predicted split rather than trusting it: of the 34 object links, only the
+  // single pr_body match and the two head-SHA matches survive as validated.
   if (validated !== 3) problems.push(`expected 3 validated object links, got ${validated}`);
   if (extracted !== 31) problems.push(`expected 31 extracted object links, got ${extracted}`);
 

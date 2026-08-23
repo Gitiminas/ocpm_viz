@@ -1,8 +1,7 @@
 /**
- * The Task 6 verification suite.
+ * The verification suite.
  *
- * These are the claims the thesis makes about the renderer, checked rather than
- * asserted. They are deliberately stated as properties over *every* fixture rather
+ * These are the claims made about the renderer, checked rather than asserted. They are deliberately stated as properties over *every* fixture rather
  * than as spot checks, because a spot check passes for the one sub-log it was
  * written against — which is the exact failure mode this whole project exists to
  * remove.
@@ -98,7 +97,7 @@ describe('every fixture is a valid ObjectGraph', () => {
  * predicate, two metric counts. Every one of them was a restatement of the same
  * fact, and each had to be written separately and could be forgotten separately;
  * `linkCounts` forgetting it would have reported F1 as 45 validated / 31 extracted
- * instead of 3 / 31, in a figure the thesis quotes.
+ * instead of 3 / 31, in a figure that gets quoted.
  *
  * They are all gone, so this is what holds the line for them: if a link that is not
  * object→object ever re-enters a payload, it fails here rather than in whichever

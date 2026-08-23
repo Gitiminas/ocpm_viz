@@ -8,10 +8,10 @@
  * Pure functions over an `ObjectGraph` — no DOM, no fetching — so they can be
  * checked directly against fixtures.
  *
- * ⚠️ Task 4 replaces the presentation of these with a per-object table that
- * aggregates on demand. What is here is the generalization of the
- * mockup's nine cards: they assumed exactly one issue and one PR, and would read the
- * wrong object or divide by nothing as soon as there were two.
+ * The Stats page presents these as a per-object table that aggregates on demand.
+ * What is here is the generalization of the mockup's nine cards: they assumed exactly
+ * one issue and one PR, and would read the wrong object or divide by nothing as soon
+ * as there were two.
  */
 
 import { isLandmark, activityLabel, LANE_TYPES } from '../model/activities.js';
@@ -38,7 +38,7 @@ export function objectLifetime(object) {
   return { total: total || null, complete, intervals: object.intervals.length };
 }
 
-/** Per-object durations, the basis of the Task 4 table. */
+/** Per-object durations, the basis of the per-object table. */
 export function perObjectDurations(graph) {
   return graph.objects
     .filter((object) => object.intervals.length > 0)
@@ -342,7 +342,7 @@ export function prOutcomeDistribution(graph) {
 }
 
 /**
- * Cross-object lead times, from `DATA_REQUIREMENTS.md` §9.
+ * Cross-object lead times.
  *
  * ⚠️ These are the metrics that do **not** generalize cleanly. "Issue → PR opened"
  * is one number only when there is one issue and one PR; with several of either

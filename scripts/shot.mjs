@@ -14,15 +14,13 @@
  * PNG catches the whole class of faults where the payload validates and the render is
  * still wrong — a lane drawn empty, glyphs stacked into a column, links to nowhere.
  *
- * ⚠️ **Never writes to `screenshots/`.** That directory is the pre-change visual
- * regression baseline and is read-only by project rule (`CLAUDE.md`). Output goes to a
- * scratch directory instead, and is not committed.
+ * Output goes to `.shots/`, which is gitignored.
  *
- * **How it works, and why it is not Playwright.** There is no browser installed under
- * Linux here and no Playwright. There *is* Microsoft Edge on the Windows side, reachable
- * through WSL interop, and Chromium's `--headless=new --screenshot` needs no driver. The
- * cost is that the output path must be a Windows path, which is the only awkward part
- * below. On a machine with a Linux Chrome/Chromium, set `BROWSER` and it works unchanged.
+ * **How it works, and why it is not Playwright.** Chromium's `--headless=new
+ * --screenshot` needs no driver, so the only dependency is a browser binary. The first
+ * of `$BROWSER`, a Windows-side Microsoft Edge reachable over WSL interop, or a local
+ * chromium/chrome wins. A Windows binary needs a Windows output path, which is the only
+ * awkward part below.
  */
 
 import { execFileSync } from 'node:child_process';

@@ -79,3 +79,5 @@ States are built in: hovers and pressed states come from the accent ramp, keyboa
 - `theme.html` — the theme's parameters rendered as a reference sheet.
 - `templates/landing/` — a starter page consuming the system the intended way (`index.html`, its `ds-base.js` loader, and the vendored `image-slot.js` its photograph mounts).
 - `assets/photo.jpg` — the reference photograph the imagery page treats.
+
+Only `styles.css` is vendored here; the linked `templates/`, `components/` and `foundations/` pages are not included.

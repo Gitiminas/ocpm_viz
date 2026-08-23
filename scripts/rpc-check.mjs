@@ -45,7 +45,7 @@ const DB = process.env.PGDATABASE || 'gharchive_ocpm_viz_wsl';
 const [repo = 'microsoft/vscode', seed = 'issue:2902032454', degree = '2'] =
   process.argv.slice(2);
 
-/** The RPC transport. One function — exactly the swap `ADAPTER_AND_API.md` §4 promises. */
+/** The RPC transport. One function — the whole of the transport swap. */
 function rpcTransport(query) {
   const sql = `SELECT api.get_object_graph(
                  ${quote(query.repo)}, ${quote(query.seed)}, ${Number(query.traversalDegree)})`;

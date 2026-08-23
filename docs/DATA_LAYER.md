@@ -2,8 +2,8 @@
 
 Everything between the shared upstream database and `loadObjectGraph()`. Two schemas in
 PostgreSQL, three RPCs over PostgREST, and one client-side adapter. Upstream is read-only and
-described in `DATA_CONTRACT.md`; the exact relation-by-relation inventory of this layer is in
-`_ground_truth.md` §3, which this document explains rather than repeats.
+described in `DATA_CONTRACT.md`. The relation-by-relation inventory is `sql/fe_layer.sql` itself,
+which this document explains rather than repeats.
 
 ## Schemas
 

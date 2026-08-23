@@ -287,8 +287,8 @@ describe('presets', () => {
   });
 
   test('a v1 snapshot written as `tracks` still applies its lanes', () => {
-    // Presets live in local storage and in shared ?preset= URLs — the reproducibility
-    // mechanism the task-based evaluation depends on. A v1 snapshot that quietly lost
+    // Presets live in local storage and in shared ?preset= URLs — how a configuration
+    // is reproduced. A v1 snapshot that quietly lost
     // its lane settings would restore a *different picture* under the same link, with
     // nothing saying so.
     const state = createState();
