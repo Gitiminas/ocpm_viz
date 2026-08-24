@@ -36,14 +36,14 @@ const plural = (word, n) => (n === 1 ? word : `${word}s`);
 export const TIPS = Object.freeze({
   // ---- pages ----------------------------------------------------------------------
   'page.trace': 'The trace page: the sub-log drawn over time, or as a graph of relationships.',
-  'page.stats': 'The statistics page: durations, counts and gaps for each object, computed from what is currently shown.',
+  'page.stats': 'The statistics page: durations, counts and gaps for each object. Computed from what is currently shown.',
 
   // ---- the query ------------------------------------------------------------------
-  'source.fixtures': 'Pre-built test sub-logs that ship with the tool. Synthetic data for trying things out. No database needed.',
+  'source.fixtures': 'Synthetic data (pre-built test sub-logs) for trying things out. No database needed.',
   'source.database': 'Live data from the database through PostgREST. Any issue, pull request or commit can be the starting point.',
   'query.repo': 'The repository the sub-log is taken from. Type to search.',
-  'query.seed': 'The object to start from: an issue or PR number, a commit SHA, or some words from a title. The sub-log is everything reached from it.',
-  'query.degree': 'How many hops to follow from the starting object. 0 is the object alone, 1 adds what it touches directly, 2 adds what those touch.',
+  'query.seed': 'The artifact to start from: an issue or PR number, a commit SHA, or some words from a title. The sub-log is everything reached from it.',
+  'query.degree': 'How many hops to follow from the starting artifact. 0 is the object alone, 1 adds what it touches directly, 2 adds what those touch.',
   'query.degree.fixed': 'Pre-built sub-logs were built at a fixed number of hops. Use the database source to change it.',
   // The one entry whose argument IS the text: a search result's row truncates its title,
   // so the strip shows the whole thing — "issue #47532 — the full title".

@@ -36,7 +36,7 @@ diff, so verification matters more than usual.
 | `scripts/serve.mjs` | Zero-dependency static server and `/rpc/*` proxy (`npm start`) | Needed: ES modules and `fetch` are blocked on `file://` |
 | `vendor/d3-force.js` | d3-force 3.0.0, ISC, unmodified | Never edit. Replace whole from the esm.sh bundled build, and re-read `vendor/README.md` |
 | `tests/` | `node --test` suites plus `tests/fixtures/` | `npm test`. See `tests/fixtures/README.md` |
-| `../ocpm.sh` | Outside the repo. Clean start, and `./ocpm.sh db` to apply the data layer | Prefer `db` over running the SQL by hand: `fe_layer.sql` resets the `api` functions to `SECURITY INVOKER`, and the materializations go stale silently |
+| `./ocpm.sh` | Clean start, and `./ocpm.sh db` to apply the data layer | Prefer `db` over running the SQL by hand: `fe_layer.sql` resets the `api` functions to `SECURITY INVOKER`, and the materializations go stale silently |
 | `_ds/nocturne-*/` | Design system CSS tokens | Consume via `var(--token)`. Do not restyle |
 | `ocel-data.json` | The untouched original data blob | **Never edit.** F1 is built from it by script |
 

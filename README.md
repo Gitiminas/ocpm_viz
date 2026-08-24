@@ -24,7 +24,14 @@ sub-logs under one repository, `synthetic/fixture` — F1 is a real vscode sub-l
 synthetic shapes, LIVE1 and LIVE2 are snapshots of real RPC output. That is enough to see the
 tool work.
 
-**The database source needs PostgREST running.** Copy the config and fill in the password:
+**The database source needs PostgREST running**, and a database to point it at. The upstream
+corpus is not part of this repository: it lives on the project's server, and `sql/matviews_scoped.sql`
+is the definition of the 23 views it was set up with — the 14 that `sql/fe_layer.sql` reads, plus
+the rest of that dependency-ordered set. It is a record of how the server was built, applied once
+and not re-runnable against a database that already has them. `docs/DATA_CONTRACT.md` describes
+what those relations contain.
+
+Copy the config, point `db-uri` at the database, and fill in the password:
 
 ```
 cp postgrest.conf.example postgrest.conf     # gitignored; it holds the password
@@ -33,9 +40,9 @@ cp postgrest.conf.example postgrest.conf     # gitignored; it holds the password
 Then start both servers, and apply the data layer once:
 
 ```
-../ocpm.sh          # stop, start PostgREST + the app server, health-check the whole path
-../ocpm.sh db       # apply the data layer, restart, run the acceptance gate
-../ocpm.sh status   # what is running, and is it healthy
+./ocpm.sh          # stop, start PostgREST + the app server, health-check the whole path
+./ocpm.sh db       # apply the data layer, restart, run the acceptance gate
+./ocpm.sh status   # what is running, and is it healthy
 ```
 
 Prefer `ocpm.sh db` to running the SQL by hand; it applies both files and refreshes
@@ -174,14 +181,14 @@ compare fill between shots and never against the box.
 | `src/render/` | The SVG renderers, sidebar, tooltips, stats page, theme |
 | `src/stats/metrics.js` | Durations, counts, gaps, outcomes as pure functions |
 | `src/help/tips.js` | Help texts as data: key → sentence |
-| `sql/` | `fe_layer.sql` (schema `fe` and the three RPCs) and `postgrest_setup.sql` (roles and grants) |
+| `sql/` | `fe_layer.sql` (schema `fe` and the three RPCs), `postgrest_setup.sql` (roles and grants), and `matviews_scoped.sql` (the 23 upstream views the layer reads) |
 | `scripts/` | The dev server, fixture builders, `rpc-check.mjs`, `pull-sublog.mjs`, `shot.mjs` |
 | `tests/` | `node --test` suites and `tests/fixtures/` (F1–F14, LIVE1–LIVE2, `catalogue.json`) |
 | `vendor/` | d3-force 3.0.0, unmodified, because there is no bundler to resolve a bare import |
 | `_ds/` | Nocturne design tokens. Consume via `var(--token)`; do not restyle |
 | `ocel-data.json` | The original data blob. Never edit — F1 is built from it by script |
 | `docs/` | The written record. See below |
-| `../ocpm.sh` | Outside the repo. Starts both servers and applies the data layer in the one order that works |
+| `./ocpm.sh` | Starts both servers and applies the data layer in the one order that works |
 
 ## Documents
 

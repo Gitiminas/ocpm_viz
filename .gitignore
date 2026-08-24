@@ -22,3 +22,12 @@ docs/OCEL_TOOL_SPEC.md
 simple_*.md
 screenshots/
 docs/_archive/
+
+# Working notes compiled against the tree, not maintained as part of it. Both are
+# snapshots dated to the commit they were read at, so they go stale the moment the
+# code moves; the binding account lives in the tracked docs.
+docs/_ground_truth.md
+docs/_decisions_salvage.md
+
+# Runtime logs written by ocpm.sh
+.ocpm-logs/

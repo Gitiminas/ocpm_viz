@@ -33,7 +33,7 @@ fe"* while every local check still passes, because `scripts/rpc-check.mjs` reach
 as the owner and never travels the `web_anon` path that broke. `fe_layer.sql` ends in a `DO`
 block that warns when any `api` function is `SECURITY INVOKER`.
 
-Prefer `../ocpm.sh db` to running the files by hand. It applies both, runs
+Prefer `./ocpm.sh db` to running the files by hand. It applies both, runs
 `fe.refresh_links()`, checks `fe.diag_sanity`, restarts PostgREST (otherwise it serves the old
 schema from its cache) and then runs the acceptance gate. Note that it refreshes only
 `fe.link_mat`; after an upstream refresh, run `fe.refresh_all()` yourself.
