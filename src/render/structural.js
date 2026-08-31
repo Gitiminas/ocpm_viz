@@ -175,6 +175,10 @@ export function renderStructuralEdges({
        * pinning with it.
        */
       if (tooltip) {
+        // The fat path is also what the pointer actually rests on, so the help strip's
+        // attributes go here: on the drawn stroke or the arrowhead they would never fire,
+        // this path masking both. `data-tip` rather than `data-legend`, because the legend
+        // hover-highlight mutates every `data-legend` element and this one is not a mark.
         tooltip.bind(
           gLink
             .append('path')
@@ -183,6 +187,8 @@ export function renderStructuralEdges({
             .attr('stroke', '#000')
             .attr('stroke-opacity', 0)
             .attr('stroke-width', 16)
+            .attr('data-tip', 'rel.arrow')
+            .attr('data-tip-arg', evidence)
             .style('cursor', 'pointer'),
           () => edgeCard(group, source, target, heading),
         );

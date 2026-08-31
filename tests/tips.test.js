@@ -75,6 +75,8 @@ describe('every help text reads as one or two plain sentences', () => {
   test('a parametrised entry takes its argument, and an unknown key says so', () => {
     assert.match(tipFor('lane', 'pull_request'), /every pull request/);
     assert.match(tipFor('card.type', 'issue'), /issues/);
+    assert.match(tipFor('rel.arrow', 'validated'), /platform itself asserts.*arrowhead points/);
+    assert.match(tipFor('rel.arrow', 'extracted'), /parsed from a convention.*arrowhead points/);
     assert.equal(tipFor('views.preset', 'A custom description.'), 'A custom description.');
     assert.equal(tipFor('no.such.key'), null);
     assert.equal(tipFor('zoom.out'), TIPS['zoom.out']);
