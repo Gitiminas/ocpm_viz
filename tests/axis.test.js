@@ -127,6 +127,54 @@ describe('absolute tick labels state the instant they mark', () => {
   });
 });
 
+describe('a multi-year span carries the year on the ticks that begin one', () => {
+  // kubernetes #47532 runs 2017 into 2018; a bare "Mon DD" on that axis names a day in
+  // no particular year. The carrying rule mirrors the anchor's: the first tick states
+  // the year, and so does each tick whose year differs from its neighbour's.
+  const spanning = [
+    at('2017-06-14T09:00:00Z'),
+    at('2017-09-01T00:00:00Z'),
+    at('2018-01-01T00:00:00Z'),
+    at('2018-03-10T12:30:00Z'),
+  ];
+
+  test('discrete: the first tick and the year-change tick state the year, the rest stay bare', () => {
+    assert.deepEqual(buildLabels(spanning, 'discrete'), [
+      'Jun 14, 2017  09:00',
+      'Sep 01  00:00',
+      'Jan 01, 2018  00:00',
+      'Mar 10  12:30',
+    ]);
+  });
+
+  test('absolute: the anchor and the new year’s first midnight state the year', () => {
+    const ticks = [{ ...spanning[0], anchor: true }, ...spanning.slice(1)];
+    assert.deepEqual(buildLabels(ticks, 'absolute'), [
+      'Jun 14, 2017  09:00',
+      'Sep 01',
+      'Jan 01, 2018',
+      '12:30',
+    ]);
+  });
+
+  test('a single-year span stays exactly as it was', () => {
+    assert.deepEqual(buildLabels(spanning.slice(0, 2), 'discrete'), [
+      'Jun 14  09:00',
+      'Sep 01  00:00',
+    ]);
+  });
+
+  test('a same-minute collision keeps its seconds beside the year', () => {
+    const labels = buildLabels(
+      [at('2017-12-31T23:59:58Z'), at('2018-01-01T00:00:02Z'), at('2018-01-01T00:00:30Z')],
+      'discrete',
+    );
+    assert.equal(labels[0], 'Dec 31, 2017  23:59');
+    assert.equal(labels[1], 'Jan 01, 2018  00:00:02');
+    assert.equal(labels[2], 'Jan 01  00:00:30');
+  });
+});
+
 describe('a hovered gap marking tells the help strip the span it hides', () => {
   const gap = (fromIso, toIso) => ({
     t0: +new Date(fromIso),

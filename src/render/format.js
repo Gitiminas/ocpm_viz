@@ -62,6 +62,11 @@ export function formatTime(date) {
   return `${hour}:${minute}`;
 }
 
+export function formatTimeSecond(date) {
+  const { hour, minute, second } = utcParts(date);
+  return `${hour}:${minute}:${second}`;
+}
+
 export function formatDateMinute(date) {
   const { month, day, hour, minute } = utcParts(date);
   return `${month} ${day}  ${hour}:${minute}`;

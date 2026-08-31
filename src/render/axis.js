@@ -18,7 +18,9 @@
 
 import {
   formatDate,
+  formatDateYear,
   formatTime,
+  formatTimeSecond,
   formatDateMinute,
   formatDateSecond,
   formatDuration,
@@ -88,18 +90,34 @@ export function withStartAnchor(ticks, first, marginLeft) {
  * that states a date *and* a clock time; every other label stays a bare date at midnight or
  * a bare time within the day. The anchor is what carries the date for the stretch before the
  * first midnight, which is why no tick needs a first-one special case any more.
+ *
+ * The same carrying rule, one level up: a bare "Mon DD" names a day in no particular year,
+ * which turns ambiguous the moment the sub-log spans more than one. When the ticks cross a
+ * year boundary, the year rides on the first tick and on each tick that begins a new year —
+ * kubernetes #47532 runs 2017 into 2018, and nothing on the axis said so.
  */
 export function buildLabels(ticks, mode) {
+  const years = new Set(ticks.map((tick) => tick.t.getUTCFullYear()));
+  const carriesYear = (i) =>
+    years.size > 1 &&
+    (i === 0 || ticks[i].t.getUTCFullYear() !== ticks[i - 1].t.getUTCFullYear());
+
   return ticks.map((tick, i) => {
     if (mode === 'absolute') {
-      if (tick.anchor) return formatDateMinute(tick.t);
+      if (tick.anchor) {
+        return carriesYear(i) ? `${formatDateYear(tick.t)}  ${formatTime(tick.t)}` : formatDateMinute(tick.t);
+      }
       const isMidnight = tick.t.getUTCHours() === 0 && tick.t.getUTCMinutes() === 0;
-      return isMidnight ? formatDate(tick.t) : formatTime(tick.t);
+      if (isMidnight) return carriesYear(i) ? formatDateYear(tick.t) : formatDate(tick.t);
+      return carriesYear(i) ? `${formatDateYear(tick.t)}  ${formatTime(tick.t)}` : formatTime(tick.t);
     }
     const minuteLabel = formatDateMinute(tick.t);
     const collides =
       (i > 0 && formatDateMinute(ticks[i - 1].t) === minuteLabel) ||
       (i < ticks.length - 1 && formatDateMinute(ticks[i + 1].t) === minuteLabel);
+    if (carriesYear(i)) {
+      return `${formatDateYear(tick.t)}  ${collides ? formatTimeSecond(tick.t) : formatTime(tick.t)}`;
+    }
     return collides ? formatDateSecond(tick.t) : minuteLabel;
   });
 }
