@@ -91,7 +91,7 @@ computed in JavaScript over the visible sub-log, so it follows the toggles.
 | Facet | Arrangement | Position means |
 |---|---|---|
 | Time | Absolute | linear in real time |
-| Time | Discrete | one step per event, with the long gaps annotated with their true duration (hover a gap marking for the exact span) |
+| Time | Discrete | one step per event, with the long gaps annotated with their true duration |
 | Relationships | Rows | layered by type: issues, then pull requests, then commits |
 | Relationships | Clusters | each pull request a hub with its commits fanned around it |
 
@@ -145,7 +145,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 762 tests over 33 files, ~1 s, no browser
+npm test                  # 758 tests over 33 files, ~1 s, no browser
 npm run test:watch
 ```
 
