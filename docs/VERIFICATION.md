@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**742 tests in 32 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
+**743 tests in 32 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
 database.
 
 ---
@@ -135,6 +135,27 @@ The SQL's own diagnostics are separate and queried by hand: `fe.diag_sanity` (si
 be 0, the sixth exactly 10 distinct activities), `fe.diag_link_staleness`,
 `fe.diag_ref_match_narrowing`, `fe.diag_link_methods`. See `DATA_LAYER.md`.
 
+### The seed box, driven in a browser, 2026-09-01 — not re-run since
+
+The one pointer interaction that has been checked by something other than the eye. Focus was
+dispatched and the resulting DOM read back, for three cases:
+
+| Case | Box after focus | Dropdown |
+|---|---|---|
+| Database, `issue:829212149` loaded | `issue #100138`, fully selected | one row, that issue |
+| Fixtures, `LIVE1` loaded | `pull request #102479`, fully selected | one row, that pull request |
+| Database, no seed | empty | `Type an issue or PR number, or a commit SHA.` |
+
+**How, because the obvious route does not work here.** Headless Edge binds its CDP port to the
+*Windows* loopback, which WSL2 cannot reach, so `--remote-debugging-port` is a dead end from this
+shell. What does work is a same-origin page served by `scripts/serve.mjs`: it holds the app in an
+iframe, so it can focus a control and read `getComputedStyle`, `selectionStart` and the dropdown's
+rows straight out of the live DOM, and `--headless=new --dump-dom --virtual-time-budget` prints the
+result. Two gotchas cost most of the time: Edge ignores every debugging flag if a Windows instance
+is already running, unless given its own `--user-data-dir`; and `&` in a `sed` replacement means
+"the whole match", which silently rewrote a query string and produced a confidently wrong reading.
+The probe was scaffolding and is deleted; this paragraph is what survives of it.
+
 ### Against the live database, 2026-08-04 — not re-run since
 
 `gharchive_ocpm_viz_wsl`, MVs last refreshed 2026-08-02 19:32–19:45 UTC. All six `fe.diag_sanity`
@@ -180,7 +201,8 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   (`pan`), minimap dot placement (`minimap`), help-strip resolution (`helpStrip`), the two message
   surfaces (`message`), and which text the seed box hands to its search (`searchCombo`) — but the
   widgets need a DOM and a pointer, and a browser-driver suite is out of scope. The seed box's row
-  *rendering* is still eye-only: the stub covers what is searched, not what is drawn.
+  *rendering* is not covered by any of them: the stub says what is searched, not what is drawn.
+  It was driven in a real browser once, by hand, on 2026-09-01 (below); nothing re-runs that.
 - ⚠️ **Seed symmetry is checked for one triple, and only by URL.** `facebook/react` commit
   `0005d1e`, PR #14576 and issue #14578 were loaded at degree 2 by all three routes — direct RPC,
   direct URL, in-session seed switching — and returned identical payloads (6 objects, 8 events,

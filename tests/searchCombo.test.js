@@ -18,10 +18,13 @@ function inputStub(value = '') {
   const listeners = new Map();
   return {
     value,
-    attribute: null,
+    selected: false,
     addEventListener: (type, handler) => listeners.set(type, handler),
-    setAttribute: (_name, next) => {
+    setAttribute: (_name, _next) => {
       /* the DOM attribute, so a re-render keeps the typed text */
+    },
+    select() {
+      this.selected = true;
     },
     fire: (type) => listeners.get(type)?.(),
     has: (type) => listeners.has(type),
@@ -86,6 +89,16 @@ describe('the seed box searches what it is showing', () => {
   test('the box starts showing the loaded seed', () => {
     const { input } = harness({ initialLabel: 'issue #100138' });
     assert.equal(input.value, 'issue #100138');
+  });
+
+  test('focus selects the text, so a new search does not start by deleting the old one', () => {
+    // The box is never empty once a seed is loaded, and searching for something else is
+    // the usual reason to click it.
+    const { input } = harness({ initialLabel: 'issue #100138' });
+    assert.equal(input.selected, false);
+    input.fire('focus');
+    assert.equal(input.selected, true);
+    assert.equal(input.value, 'issue #100138', 'selecting must not clear what is loaded');
   });
 });
 

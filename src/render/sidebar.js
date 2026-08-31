@@ -678,8 +678,14 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
    * The two have to agree: the dropdown is the box's results, so it answers the box's text.
    * `seedLabel`'s output is written to be parsed back by `parseSeedRef`, so the loaded
    * seed's own label finds the loaded seed, which the row then marks with a ✓.
+   *
+   * The text is selected on the way in, because searching for something else is the usual
+   * reason to click here and the box is never empty once a seed is loaded — without this
+   * every new search starts by deleting a label by hand. Typing replaces it; the caret
+   * keys still put the cursor in it for anyone who meant to edit rather than replace.
    */
   input.addEventListener('focus', () => {
+    input.select?.();
     renderResults(input.value);
     dropdown.style.display = 'block';
   }, bind);
