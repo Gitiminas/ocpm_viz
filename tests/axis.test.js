@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { withStartAnchor, buildLabels } from '../src/render/axis.js';
+import { withStartAnchor, buildLabels, gapTooltipSpec } from '../src/render/axis.js';
 import { createScales } from '../src/layout/scales.js';
 
 /*
@@ -123,6 +123,61 @@ describe('absolute tick labels state the instant they mark', () => {
       'absolute',
     );
     assert.match(anchor, /May 29\s+23:30/);
+  });
+});
+
+describe('the compressed-gap hovercard states what the band stands for', () => {
+  const DAY = 86400000;
+  const gap = (fromIso, toIso) => ({
+    t0: +new Date(fromIso),
+    t1: +new Date(toIso),
+    duration: +new Date(toIso) - +new Date(fromIso),
+  });
+
+  test('one band: its own span, exact bounds in UTC, and the honesty note', () => {
+    const spec = gapTooltipSpec([gap('2023-05-29T13:38:34Z', '2023-06-05T13:38:34Z')]);
+    assert.equal(spec.title, '≈ 7 days');
+    assert.equal(spec.kicker, 'Axis · compressed gap');
+    const rows = Object.fromEntries(spec.rows.map(([k, v]) => [k, v]));
+    assert.match(rows.From, /May 29, 2023 · 13:38:34 UTC/);
+    assert.match(rows.To, /Jun 05, 2023 · 13:38:34 UTC/);
+    assert.equal(rows.Exactly, '7d');
+    assert.match(spec.note, /narrower than the time it covers/);
+    assert.doesNotMatch(spec.note, /combined/);
+  });
+
+  test('the title repeats the text written above the marking', () => {
+    // The card exists to explain the marking, so it must name the same figure the axis
+    // shows, not a second rounding of it.
+    const one = [gap('2024-01-01T00:00:00Z', '2024-02-01T00:00:00Z')];
+    assert.equal(gapTooltipSpec(one).title, '≈ 1 month');
+  });
+
+  test('a merged group: the sum, the count, and every gap listed with its own span', () => {
+    const gaps = [
+      gap('2023-01-01T00:00:00Z', '2023-01-08T00:00:00Z'),
+      gap('2023-02-01T00:00:00Z', '2023-02-04T00:00:00Z'),
+    ];
+    const spec = gapTooltipSpec(gaps);
+    assert.equal(spec.title, '≈ 10 days (2 gaps)');
+    assert.equal(spec.kicker, 'Axis · compressed gaps');
+    const total = spec.rows.find((row) => Array.isArray(row) && row[0] === 'Total');
+    assert.equal(total[1], '10d');
+    const group = spec.rows.find((row) => !Array.isArray(row));
+    assert.equal(group.value, '2');
+    assert.equal(group.items.length, 2);
+    assert.match(group.items[0].primary, /≈ 7 days/);
+    assert.match(group.items[0].secondary, /Jan 01, 2023 .* → .*Jan 08, 2023/);
+    assert.match(spec.note, /one label states their combined length/);
+  });
+
+  test('durations are UTC-independent differences', () => {
+    // A gap spanning a DST change in the viewer's zone must still read as its true length.
+    const spec = gapTooltipSpec([
+      { t0: 0, t1: 3 * DAY + 4 * 3600000, duration: 3 * DAY + 4 * 3600000 },
+    ]);
+    const rows = Object.fromEntries(spec.rows.map(([k, v]) => [k, v]));
+    assert.equal(rows.Exactly, '3d 4h');
   });
 });
 

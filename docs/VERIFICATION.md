@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**758 tests in 33 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
+**762 tests in 33 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
 database.
 
 ---
@@ -36,7 +36,7 @@ against stub objects instead of one.
 | Metrics respond to toggles; folding is not filtering (29) | `stats-table` | F1, F3, F13 |
 | Every drawn mark has a legend row and every row names something drawn (82); every control and mark has a help text, and every text a user (122) | `legend`, `tips` | F1; key table |
 | All times render UTC, labelled (9); every qualifier the live samples carry has a colour; an off-platform merge is its own outcome (123) | `timezone`, `qualifier-colour`, `offplatform` | F1; LIVE1/2; F14 |
-| The absolute axis anchors its left edge, so no mark sits left of every tick; no round label claims a day boundary its tick is not on | `axis` | k8s #118316 ticks + synthetic |
+| The absolute axis anchors its left edge, so no mark sits left of every tick; no round label claims a day boundary its tick is not on; the compressed-gap hovercard states the span a band stands for, in UTC, repeating the marking's own label | `axis` | k8s #118316 ticks + synthetic |
 | Fixtures are byte-reproducible from their build scripts; a `{repo, seed}` query resolves or fails loudly; seed search parses and ranks | `fixtures`, `selection` | `--check`; catalogue |
 | The seed box searches the text it is showing; an empty reference never becomes a database request, while a type word alone still does | `searchCombo` | stubs + fake transport |
 | A load under the delay is never announced; a slow one blurs the stale picture and blocks it; a failed load still restores it; no timer outlives the load | `loading` | stubs + fake clock |
