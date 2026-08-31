@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**743 tests in 32 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
+**758 tests in 33 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
 database.
 
 ---
@@ -39,6 +39,7 @@ against stub objects instead of one.
 | The absolute axis anchors its left edge, so no mark sits left of every tick; no round label claims a day boundary its tick is not on | `axis` | k8s #118316 ticks + synthetic |
 | Fixtures are byte-reproducible from their build scripts; a `{repo, seed}` query resolves or fails loudly; seed search parses and ranks | `fixtures`, `selection` | `--check`; catalogue |
 | The seed box searches the text it is showing; an empty reference never becomes a database request, while a type word alone still does | `searchCombo` | stubs + fake transport |
+| A load under the delay is never announced; a slow one blurs the stale picture and blocks it; a failed load still restores it; no timer outlives the load | `loading` | stubs + fake clock |
 
 Each synthesized fixture also asserts that it exhibits its own property (`sublanes`, first block).
 Without that, an "overlapping PRs" fixture whose PRs do not overlap would pass every layout test
@@ -203,6 +204,17 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   widgets need a DOM and a pointer, and a browser-driver suite is out of scope. The seed box's row
   *rendering* is not covered by any of them: the stub says what is searched, not what is drawn.
   It was driven in a real browser once, by hand, on 2026-09-01 (below); nothing re-runs that.
+- ⚠️ **The loading overlay's wiring has not been driven in a browser, only its logic and its
+  appearance.** `tests/loading.test.js` decides the timing rules against a fake clock, and the card
+  was rendered from the real module through the real stylesheet and looked at
+  (`.shots/loading-overlay.png`, not kept). What is unchecked is the three lines in `reload()` that
+  call `show`/`hide` around the load. It resisted three routes: headless Edge binds its CDP port to
+  the *Windows* loopback, which WSL2 cannot reach; `--remote-debugging-pipe` needs file descriptors
+  3 and 4, which WSL interop does not pass to a Windows binary; and under
+  `--virtual-time-budget` the clock **pauses while a fetch is pending**, so the overlay's own
+  200 ms delay can never elapse during the request it exists to report. The same-origin iframe probe
+  confirmed the reload fires (a second `get_object_graph` in the resource timings) but could not see
+  the overlay for that last reason. Verify by hand, or from a browser on the Windows side.
 - ⚠️ **Seed symmetry is checked for one triple, and only by URL.** `facebook/react` commit
   `0005d1e`, PR #14576 and issue #14578 were loaded at degree 2 by all three routes — direct RPC,
   direct URL, in-session seed switching — and returned identical payloads (6 objects, 8 events,

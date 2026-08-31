@@ -98,6 +98,31 @@ html,body{height:100%;margin:0;overflow:hidden}
 /* A search page revealed on scroll blends in rather than popping (setupSearchCombo). */
 @keyframes searchRowIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 .searchRowIn{animation:searchRowIn .18s ease}
+/* The loading overlay (render/loading.js). It covers a page while its sub-log is in
+   flight: the stale picture blurs behind a scrim, so it still gives context while being
+   unmistakably not current, and stops taking pointer events so nothing can be dragged or
+   toggled on a sub-log that is being replaced. The scrim is the page's own background at
+   partial opacity rather than a neutral grey, so the card reads as part of the app. */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes loadingIn{from{opacity:0}to{opacity:1}}
+.loadingOverlay{position:absolute;inset:0;z-index:100;display:none;align-items:center;
+  justify-content:center;background:color-mix(in srgb, var(--color-bg) 62%, transparent);
+  animation:loadingIn .12s ease}
+.loadingCard{display:flex;align-items:center;gap:14px;padding:16px 20px;
+  background:var(--color-surface);border:1px solid var(--color-neutral-700);
+  border-radius:var(--radius-md);box-shadow:var(--shadow-lg);max-width:420px}
+.spinner{flex:0 0 auto;width:20px;height:20px;border-radius:50%;
+  border:2px solid var(--color-neutral-700);border-top-color:var(--color-accent);
+  animation:spin .7s linear infinite}
+.loadingTitle{font-size:13px;font-weight:600;color:var(--color-text)}
+.loadingQuery{font-size:11.5px;color:var(--color-neutral-400);margin-top:3px}
+.loadingPatience{font-size:11.5px;color:var(--color-neutral-500);margin-top:7px;line-height:1.5}
+/* Someone who has asked for less movement gets a card that does not spin. It still
+   appears, because the message is the point and the rotation is decoration. */
+@media (prefers-reduced-motion:reduce){
+  .spinner{animation:none;border-top-color:var(--color-accent)}
+  .loadingOverlay{animation:none}
+}
 /* The FIRST level of the mode control is a switch, not a segment: a pill
    whose active side is filled, with a radio dot as the literal indicator. It is drawn
    differently from the second-level segments on purpose — outlined alike, "Time |
@@ -357,6 +382,10 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div id="chartMessage" style="display:none"></div>
 <div id="chart"></div>
 </div>
+<!-- Covers the chart while a sub-log loads. A child of #wrap rather than of #scroll so
+     it stays put while the stale picture scrolls behind it, and BELOW #toast's z-index so
+     a message can still be read over it. -->
+<div class="loadingOverlay" id="chartLoading"></div>
 <div id="tip"></div>
 <div id="toast" class="mono" style="display:none;position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:150;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:7px 14px;font-size:11.5px;color:var(--color-text)"></div>
 </div>
@@ -378,7 +407,11 @@ html,body{height:100%;margin:0;overflow:hidden}
 -->
 <div id="hiddenBanner" data-tip="hidden.banner" style="display:none;flex:0 0 auto"></div>
 </main>
-<main id="statsPage" style="flex:1;min-width:0;display:none;flex-direction:column;padding:var(--space-8);overflow:auto">
+<main id="statsPage" style="position:relative;flex:1;min-width:0;display:none;flex-direction:column;padding:var(--space-8);overflow:auto">
+<!-- Its own overlay, for the same reason it has its own message surface: a load blocks
+     both pages and the reader may be on either. `position:relative` above is what this
+     is positioned against. -->
+<div class="loadingOverlay" id="statsLoading"></div>
 <h1 style="font-size:20px;margin:0 0 var(--space-6)">Sub-log statistics</h1>
 <!-- No one-line description here either: the sub-log card in the shared sidebar states
      what the query returned, on this page as on the timeline. -->

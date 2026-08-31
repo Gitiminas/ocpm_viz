@@ -72,6 +72,11 @@ reads "fixed by the query". Do not confuse it with **focus degree**: clicking a 
 object and dims everything more than one hop away, with a floating stepper to reach two. Focus
 changes what is *highlighted*, never what is loaded.
 
+A sub-log arrives in one query and that query is slow — 2.4 s to 3.3 s warm against the live
+database, 7.4 s cold — so changing the repository, the seed or the degree blurs the picture behind
+a loading card naming what is being fetched, and the stale picture stops taking clicks until the
+new one arrives. Nothing appears for loads under 200 ms, which is every load on the fixture source.
+
 The sub-log card under the query states what is on screen: counts per object type, links, events
 and the time span, shown as `n / total` whenever a toggle has hidden something. There is no
 "case" anywhere — the same event may belong to many sub-logs.
@@ -140,7 +145,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 743 tests over 32 files, ~1 s, no browser
+npm test                  # 758 tests over 33 files, ~1 s, no browser
 npm run test:watch
 ```
 

@@ -43,6 +43,7 @@ import { scrollToKeepAnchor } from './render/pan.js';
 import { bindHelpStrip } from './render/helpStrip.js';
 import { renderLegend, legendKeysPresentIn } from './render/legend.js';
 import { createMessageSurface, messageHtml, errorHtml } from './render/message.js';
+import { createLoadingOverlay } from './render/loading.js';
 import { renderStats } from './render/stats.js';
 import { formatInstant } from './render/format.js';
 import {
@@ -60,6 +61,9 @@ const elements = {
   chart: el('chart'),
   chartMessage: el('chartMessage'),
   statsMessage: el('statsMessage'),
+  chartLoading: el('chartLoading'),
+  statsLoading: el('statsLoading'),
+  scroll: el('scroll'),
   statsContent: el('statsContent'),
   sourceToggle: el('sourceToggle'),
   sourceNote: el('sourceNote'),
@@ -113,6 +117,23 @@ const statsSurface = createMessageSurface({
   messageEl: elements.statsMessage,
   contentEl: elements.statsContent,
 });
+
+/*
+ * One loading overlay per page, for the reason each page has its own message surface: a
+ * load blocks both, and the reader may be on either. `loading` fans out to both so the
+ * call sites stay a single `show`/`hide` pair.
+ *
+ * The chart's overlay blurs `#scroll` rather than `#chart`, so whatever is on that page —
+ * the drawing, or the message standing in for it — goes behind the scrim together.
+ */
+const overlays = [
+  createLoadingOverlay({ overlayEl: elements.chartLoading, contentEl: elements.scroll }),
+  createLoadingOverlay({ overlayEl: elements.statsLoading, contentEl: elements.statsContent }),
+];
+const loading = {
+  show: (description) => overlays.forEach((overlay) => overlay.show(description)),
+  hide: () => overlays.forEach((overlay) => overlay.hide()),
+};
 
 const state = createState();
 const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.wrap });
@@ -1088,6 +1109,13 @@ const seedLabel = (seed) =>
   `${seed.type.replace('_', ' ')} ${seed.type === 'pull_request' ? String(seed.label).replace(/^PR\s+/, '') : seed.label}`;
 
 async function reload(query) {
+  /*
+   * Everything that changes the sub-log comes through here — the repository picker, the
+   * seed box, the traversal stepper and startup — so this is the one place the wait has
+   * to be reported. `finally`, because a failed load must not leave the overlay up over
+   * the error it is hiding.
+   */
+  loading.show(describeQuery(query));
   try {
     /*
      * A repository without a seed is an incomplete query, and how to
@@ -1106,7 +1134,27 @@ async function reload(query) {
     await load(resolved.query);
   } catch (error) {
     showFatal(error, query);
+  } finally {
+    loading.hide();
   }
+}
+
+/**
+ * What the overlay says it is loading.
+ *
+ * The repository and the traversal degree, never the seed id: those two are what a reader
+ * can act on — the degree above all, since reaching further is what makes a wait long —
+ * while `issue:829212149` is a database key that means nothing on screen. The seed box
+ * already shows which object was asked for.
+ */
+function describeQuery(query) {
+  // `traversalDegree`, the key the query actually uses — `degree` is only the URL
+  // parameter's spelling, and reading it here would silently drop the one fact that
+  // explains a long wait.
+  const degree = query?.traversalDegree;
+  return [query?.repo, degree != null ? `traversal degree ${degree}` : null]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /**
