@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**724 tests in 29 files, 0 failures, ~1 s — run 2026-08-23.** None needs a browser, a network or a
+**734 tests in 31 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
 database.
 
 ---
@@ -36,6 +36,7 @@ against stub objects instead of one.
 | Metrics respond to toggles; folding is not filtering (29) | `stats-table` | F1, F3, F13 |
 | Every drawn mark has a legend row and every row names something drawn (82); every control and mark has a help text, and every text a user (122) | `legend`, `tips` | F1; key table |
 | All times render UTC, labelled (9); every qualifier the live samples carry has a colour; an off-platform merge is its own outcome (123) | `timezone`, `qualifier-colour`, `offplatform` | F1; LIVE1/2; F14 |
+| The absolute axis anchors its left edge, so no mark sits left of every tick; no round label claims a day boundary its tick is not on | `axis` | k8s #118316 ticks + synthetic |
 | Fixtures are byte-reproducible from their build scripts; a `{repo, seed}` query resolves or fails loudly; seed search parses and ranks | `fixtures`, `selection` | `--check`; catalogue |
 
 Each synthesized fixture also asserts that it exhibits its own property (`sublanes`, first block).
@@ -159,9 +160,13 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   project.** Every layout assertion checks that positions are finite, banded and anchored, never
   that the drawing means what it claims. Five defects were found by looking at the screen and by
   none of the tests: commits wrongly excluded from merged pull requests, a dead app when no seed was
-  given, isolated objects indistinguishable from failures, one pull request drawn as ~30, and the
+  given, isolated objects indistinguishable from failures, one pull request drawn as ~30, the
   seed prompt detaching the timeline's `<svg>` so every later render drew into a node outside the
-  document. Each left every check passing. The fifth could not have been caught even
+  document, and (2026-09-01) an absolute axis whose leftmost tick sat *right* of the earliest
+  marks — d3 ticks only inside the domain — so a mark at 13:38 on the 29th read as the 28th.
+  Each left every check passing. The sixth is the one that now *has* a check
+  (`tests/axis.test.js`), because it lived in two pure functions that had no suite at all; the
+  other five did not. The fifth could not have been caught even
   in principle — the others were wrong pictures, this was *no* picture, and no DOM-free assertion
   reaches a defect whose entire content is which element is attached to what. It was verified by
   driving the app headlessly and reading `#chart` out of the live DOM at each step, with the fix

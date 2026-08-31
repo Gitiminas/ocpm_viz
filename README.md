@@ -140,7 +140,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 724 tests over 29 files, ~1 s, no browser
+npm test                  # 734 tests over 31 files, ~1 s, no browser
 npm run test:watch
 ```
 

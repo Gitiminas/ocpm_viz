@@ -2,9 +2,12 @@
  * The time axis: ticks, collision-aware labels, and gap annotation.
  *
  * Tick *selection* differs per mode. Absolute mode asks d3 for a sensible number of
- * round times. Discrete mode spaces up to nine evenly by rank. (The removed Highlights
- * mode ticked only "meaningful" instants — lifecycle boundaries, out-of-span comments,
- * folded pushes; that selection went with the mode.)
+ * round times and puts the sub-log's own start at the left edge ahead of them, because
+ * d3's round times all sit *inside* the domain and so leave the edge — where the earliest
+ * marks are — unlabelled. Discrete mode spaces up to nine evenly by rank; its rank 0 is
+ * already the first instant, so it anchors itself. (The removed Highlights mode ticked only
+ * "meaningful" instants — lifecycle boundaries, out-of-span comments, folded pushes; that
+ * selection went with the mode.)
  *
  * Label handling is shared and is fussier than it looks: labels that would collide
  * merge, labels that are merely close stagger onto two rows, and seconds appear only
@@ -31,11 +34,12 @@ const STAGGER_DISTANCE_PX = 110;
 export function computeTicks({ mode, scales, zoom, rankOrder, rankMax, plotWidth, marginLeft }) {
   if (mode === 'absolute') {
     const idealCount = Math.max(3, Math.min(200, Math.round(6 * zoom)));
-    return d3
+    const rounds = d3
       .scaleUtc()
       .domain([new Date(scales.first), new Date(scales.last)])
       .ticks(idealCount)
       .map((t) => ({ x: scales.x(t), t }));
+    return withStartAnchor(rounds, scales.first, marginLeft);
   }
 
   const count = Math.min(9, rankOrder.length);
@@ -50,12 +54,45 @@ export function computeTicks({ mode, scales, zoom, rankOrder, rankMax, plotWidth
   return ticks;
 }
 
-/** Build one label per tick, adding seconds only where minutes would be ambiguous. */
-function buildLabels(ticks, mode) {
+/**
+ * Put the sub-log's own start at the left edge, ahead of d3's round times.
+ *
+ * ⚠️ d3 chooses ticks on round times *inside* the domain, so its first tick is the first
+ * interval boundary at or after the earliest instant — midnight only by coincidence. That
+ * left the plot's left edge unlabelled, and the leftmost marks stranded to the left of every
+ * tick: on kubernetes PR #118316 (2023-05-29 13:38 → 2023-05-30 16:29) d3 ticks 6-hourly from
+ * 18:00, so the PR's opening mark sat left of the first tick and read as the previous day.
+ * The edge is a real instant — it is exactly where the sub-log begins — so it gets a tick of
+ * its own, and it is the one tick whose position is not a round number.
+ *
+ * A round tick landing on the same instant is dropped rather than drawn twice; the anchor
+ * wins, because it is the more precise label for that position.
+ *
+ * Pure and exported for the tests: `x` comes from the caller because the anchor is the left
+ * edge by construction, not by evaluating the scale.
+ */
+export function withStartAnchor(ticks, first, marginLeft) {
+  const start = new Date(first);
+  return [
+    { x: marginLeft, t: start, anchor: true },
+    ...ticks.filter((tick) => +tick.t > +start),
+  ];
+}
+
+/**
+ * Build one label per tick, adding seconds only where minutes would be ambiguous.
+ *
+ * The anchor is the only absolute tick that is not on a round time, so it is the only one
+ * that states a date *and* a clock time; every other label stays a bare date at midnight or
+ * a bare time within the day. The anchor is what carries the date for the stretch before the
+ * first midnight, which is why no tick needs a first-one special case any more.
+ */
+export function buildLabels(ticks, mode) {
   return ticks.map((tick, i) => {
     if (mode === 'absolute') {
+      if (tick.anchor) return formatDateMinute(tick.t);
       const isMidnight = tick.t.getUTCHours() === 0 && tick.t.getUTCMinutes() === 0;
-      return i === 0 || isMidnight ? formatDate(tick.t) : formatTime(tick.t);
+      return isMidnight ? formatDate(tick.t) : formatTime(tick.t);
     }
     const minuteLabel = formatDateMinute(tick.t);
     const collides =
@@ -75,7 +112,7 @@ function mergeTicks(ticks, labels) {
       const b = labels[i].match(/^(\w{3} \d{2})\s+(.*)$/);
       previous.label = a && b && a[1] === b[1] ? `${a[1]}  ${a[2]} / ${b[2]}` : `${previous.label} / ${labels[i]}`;
     } else {
-      merged.push({ x: tick.x, label: labels[i], isFirst: i === 0 });
+      merged.push({ x: tick.x, label: labels[i], isFirst: i === 0, anchor: !!tick.anchor });
     }
   });
   return merged;
@@ -133,7 +170,8 @@ export function renderAxis({
   let staggered = false;
 
   for (const tick of merged) {
-    const isDateTick = hasHourTicks && (tick.isFirst || !/:/.test(tick.label));
+    // The anchor names the day, so it is emphasised whatever rhythm the round ticks fell into.
+    const isDateTick = tick.anchor || (hasHourTicks && !/:/.test(tick.label));
     const closeSpacing = mode !== 'absolute' && tick.x - lastX < STAGGER_DISTANCE_PX;
     const yOffset = closeSpacing ? (staggered ? 34 : 16) : 16;
     staggered = closeSpacing ? !staggered : false;
