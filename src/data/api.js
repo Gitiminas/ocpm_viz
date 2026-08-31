@@ -184,6 +184,19 @@ export const rpcTransport = createRpcTransport();
  */
 export async function searchSeeds(repo, input, { limit = 20, transport } = {}) {
   const ref = parseSeedRef(input);
+
+  /*
+   * Naming nothing finds nothing — and deliberately does NOT mirror the fixture search,
+   * which enumerates its catalogue for an empty query. The asymmetry is the difference
+   * between the sources rather than an inconsistency: 16 fixture seeds are a list worth
+   * showing, and a repository is not. With every filter NULL the RPC answers with whatever
+   * the stable key orders first — commits by SHA ascending — so an empty box used to open
+   * on `commit 0000a70, commit 0000f18, …`, which is not a starting point for anything and
+   * cost a 200-row round trip to produce. Returning nothing lets `emptyMessage` say what
+   * the box actually wants, which is what it was written for and could never reach.
+   */
+  if (!ref) return [];
+
   const search = transport || createSearchTransport();
 
   const rows = await search({

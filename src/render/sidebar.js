@@ -669,8 +669,18 @@ export function setupSearchCombo({ input, dropdown, initialLabel, search, emptyM
     };
   }
 
+  /*
+   * Focus searches what the box HOLDS, not the empty string.
+   *
+   * ⚠️ It used to search `''`, so clicking the box while "issue #100138" was displayed
+   * opened a dropdown of whatever an unfiltered search returns — on the database source,
+   * commits ordered by SHA — a list that names nothing the box says and nothing on screen.
+   * The two have to agree: the dropdown is the box's results, so it answers the box's text.
+   * `seedLabel`'s output is written to be parsed back by `parseSeedRef`, so the loaded
+   * seed's own label finds the loaded seed, which the row then marks with a ✓.
+   */
   input.addEventListener('focus', () => {
-    renderResults('');
+    renderResults(input.value);
     dropdown.style.display = 'block';
   }, bind);
   // Debounced, because each keystroke may be a network round trip. 150 ms is below

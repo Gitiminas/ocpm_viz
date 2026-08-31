@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**734 tests in 31 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
+**742 tests in 32 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
 database.
 
 ---
@@ -38,6 +38,7 @@ against stub objects instead of one.
 | All times render UTC, labelled (9); every qualifier the live samples carry has a colour; an off-platform merge is its own outcome (123) | `timezone`, `qualifier-colour`, `offplatform` | F1; LIVE1/2; F14 |
 | The absolute axis anchors its left edge, so no mark sits left of every tick; no round label claims a day boundary its tick is not on | `axis` | k8s #118316 ticks + synthetic |
 | Fixtures are byte-reproducible from their build scripts; a `{repo, seed}` query resolves or fails loudly; seed search parses and ranks | `fixtures`, `selection` | `--check`; catalogue |
+| The seed box searches the text it is showing; an empty reference never becomes a database request, while a type word alone still does | `searchCombo` | stubs + fake transport |
 
 Each synthesized fixture also asserts that it exhibits its own property (`sublanes`, first block).
 Without that, an "overlapping PRs" fixture whose PRs do not overlap would pass every layout test
@@ -175,10 +176,11 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   (`tests/legend.test.js`): completeness of the key, not correctness of the picture.
 - **Most pointer interaction has no assertion behind it.** Tooltips and pin-to-copy, the minimap's
   drag-to-zoom grips, legend hover, the degree stepper and the actor card are exercised only by
-  looking at them. Four narrower things are checked against stubs — canvas pan and zoom-about-anchor
+  looking at them. Five narrower things are checked against stubs — canvas pan and zoom-about-anchor
   (`pan`), minimap dot placement (`minimap`), help-strip resolution (`helpStrip`), the two message
-  surfaces (`message`) — but the widgets need a DOM and a pointer, and a browser-driver suite is out
-  of scope.
+  surfaces (`message`), and which text the seed box hands to its search (`searchCombo`) — but the
+  widgets need a DOM and a pointer, and a browser-driver suite is out of scope. The seed box's row
+  *rendering* is still eye-only: the stub covers what is searched, not what is drawn.
 - ⚠️ **Seed symmetry is checked for one triple, and only by URL.** `facebook/react` commit
   `0005d1e`, PR #14576 and issue #14578 were loaded at degree 2 by all three routes — direct RPC,
   direct URL, in-session seed switching — and returned identical payloads (6 objects, 8 events,

@@ -280,6 +280,15 @@ about. So: **SQL filters, JavaScript ranks.** The function returns a permissive 
 uses. The client asks for `min(200, limit × 5)` rows because trimming before ranking would discard
 better matches than it keeps, and sends free text only when there is no number and no SHA.
 
+⚠️ **An empty box is not a query, and the client does not send one.** With every filter NULL the
+function is well-defined and answers with whatever its ordering puts first — commits by SHA
+ascending — so the seed box used to open on `commit 0000a70, commit 0000f18, …`, a list that names
+nothing anyone asked for and cost a 200-row round trip per focus. `searchSeeds` in
+`src/data/api.js` returns `[]` when `parseSeedRef` names nothing, and the box says what it wants
+instead. This deliberately does *not* mirror the fixture search, which enumerates its catalogue for
+an empty query: 16 fixture seeds are a list worth showing and a repository is not. A type word
+alone ("pr") is a filter rather than nothing, and still queries.
+
 **`api.list_repos()`** returns `(name, repo_id, available, reason, seeds)`, one row per distinct
 name, most seeds winning. `available` is computed from `fe.seed_lookup` rather than declared;
 `reason` is `'No issues, pull requests or commits in the window.'` when it is false.
