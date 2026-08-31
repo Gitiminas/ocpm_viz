@@ -187,8 +187,10 @@ export function renderStructuralEdges({
             .attr('stroke', '#000')
             .attr('stroke-opacity', 0)
             .attr('stroke-width', 16)
-            .attr('data-tip', 'rel.arrow')
-            .attr('data-tip-arg', evidence)
+            .attr(
+              'data-tip',
+              evidence === 'validated' ? 'rel.arrow.validated' : 'rel.arrow.extracted',
+            )
             .style('cursor', 'pointer'),
           () => edgeCard(group, source, target, heading),
         );

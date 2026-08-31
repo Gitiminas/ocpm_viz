@@ -101,15 +101,10 @@ export const TIPS = Object.freeze({
   'mode.relationships': 'Position means relationships. Objects that are linked sit near each other, and the time axis is released.',
   'mode.absolute': 'The time axis is linear. A long quiet stretch takes as much room as a busy one.',
   'mode.discrete': 'Events are spaced evenly in order. Long gaps are marked on the axis instead of taking room.',
-  'rel.arrow': (evidence) => {
-    const what =
-      evidence === 'validated'
-        ? 'A link the platform itself asserts.'
-        : evidence === 'extracted'
-          ? 'A link parsed from a convention, such as a number in a commit message.'
-          : 'A link between two objects.';
-    return `${what} The arrowhead points at the end that came later in time.`;
-  },
+  'rel.arrow.validated':
+    'A link the platform itself asserts. The arrowhead points at the end that came later in time.',
+  'rel.arrow.extracted':
+    'A link parsed from a convention, such as a number in a commit message. The arrowhead points at the end that came later in time.',
   'axis.gap': (span) =>
     `A quiet stretch drawn compressed: its width stands for the duration written above it.${
       span ? ` ${span}${/[.!?]$/.test(span) ? '' : '.'}` : ''
