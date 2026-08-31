@@ -21,9 +21,7 @@ import {
   formatTime,
   formatDateMinute,
   formatDateSecond,
-  formatDuration,
   formatApproxDuration,
-  formatInstant,
 } from './format.js';
 import { findLargeGaps } from '../layout/scales.js';
 
@@ -132,7 +130,6 @@ export function renderAxis({
   marginLeft,
   marginTop,
   axisY,
-  tooltip,
 }) {
   gAxis
     .append('line')
@@ -216,8 +213,6 @@ export function renderAxis({
   if (mode === 'discrete') {
     const gaps = findLargeGaps(rankTimes).map((gap) => ({
       ...gap,
-      t0: rankTimes[gap.fromRank],
-      t1: rankTimes[gap.toRank],
       x0: marginLeft + (gap.fromRank / rankMax) * plotWidth,
       x1: marginLeft + (gap.toRank / rankMax) * plotWidth,
     }));
@@ -229,14 +224,9 @@ export function renderAxis({
     // sum of its silences — a first attempt kept only the biggest gap's label, and
     // "≈ 5 months" over a region hiding nearly a year under-reported it. Zooming in
     // spreads the bands and the groups fall apart into individual labels by themselves.
-    // Hovering a band explains the one distortion this mode commits: the band's width
-    // says nothing about its length, and the card states the span the band stands for.
-    // A band carries its OWN gap; the label — which for a merged group states the sum
-    // over several bands — carries the whole group, so the two cards agree with what
-    // each element is written to claim.
     for (const group of mergeGapLabels(gaps)) {
       for (const gap of group.gaps) {
-        const band = gAxis
+        gAxis
           .append('rect')
           .attr('x', gap.x0)
           .attr('y', axisY - 6)
@@ -246,12 +236,9 @@ export function renderAxis({
           .attr('fill-opacity', 0.35)
           .attr('stroke', 'var(--color-neutral-500)')
           .attr('stroke-width', 1)
-          .attr('stroke-dasharray', '2 2')
-          .attr('data-tip', 'axis.gap')
-          .style('cursor', 'help');
-        if (tooltip) tooltip.bind(band, () => gapTooltipSpec([gap]));
+          .attr('stroke-dasharray', '2 2');
       }
-      const label = gAxis
+      gAxis
         .append('text')
         .attr('x', group.x)
         .attr('y', axisY - 11)
@@ -259,56 +246,9 @@ export function renderAxis({
         .attr('font-size', 10)
         .attr('class', 'mono')
         .attr('fill', 'var(--color-neutral-400)')
-        .attr('data-tip', 'axis.gap')
-        .style('cursor', 'help')
         .text(group.label);
-      if (tooltip) tooltip.bind(label, () => gapTooltipSpec(group.gaps));
     }
   }
-}
-
-/**
- * The hovercard for a compressed-gap marking: the span of real time the band stands
- * for, its exact bounds, and why it is drawn so narrow.
- *
- * Takes the gaps the hovered element speaks for — one for a band, a whole merged
- * group for a label — as `{duration, t0, t1}` in x order. The title repeats the text
- * written above the marking, so the card visibly explains the thing being hovered
- * rather than introducing a second figure. Pure and exported for the tests.
- */
-export function gapTooltipSpec(gaps) {
-  const total = gaps.reduce((sum, gap) => sum + gap.duration, 0);
-  const rows =
-    gaps.length === 1
-      ? [
-          ['From', formatInstant(new Date(gaps[0].t0)), 'time'],
-          ['To', formatInstant(new Date(gaps[0].t1)), 'time'],
-          ['Exactly', formatDuration(total)],
-        ]
-      : [
-          ['Total', formatDuration(total)],
-          {
-            label: 'Gaps',
-            value: String(gaps.length),
-            items: gaps.map((gap) => ({
-              primary: formatApproxDuration(gap.duration),
-              secondary: `${formatInstant(new Date(gap.t0))} → ${formatInstant(new Date(gap.t1))}`,
-            })),
-          },
-        ];
-  return {
-    accent: 'var(--color-neutral-400)',
-    shape: 'line',
-    kicker: gaps.length === 1 ? 'Axis · compressed gap' : 'Axis · compressed gaps',
-    title: gapGroupLabel(gaps),
-    rows,
-    note:
-      'Discrete mode spaces marks evenly by event order, so this quiet stretch is drawn ' +
-      'far narrower than the time it covers. The duration above the marking is its real length.' +
-      (gaps.length === 1
-        ? ''
-        : ' Several gaps crowd this stretch, so one label states their combined length.'),
-  };
 }
 
 /** Roughly what a 10px mono label covers, plus breathing room between neighbours. */
