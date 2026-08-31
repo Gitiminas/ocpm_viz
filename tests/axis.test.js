@@ -1,8 +1,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { withStartAnchor, buildLabels } from '../src/render/axis.js';
+import { withStartAnchor, buildLabels, gapTipArg } from '../src/render/axis.js';
 import { createScales } from '../src/layout/scales.js';
+import { tipFor } from '../src/help/tips.js';
 
 /*
  * `computeTicks` reaches the global d3 that only the browser has, so what is asserted here is
@@ -123,6 +124,44 @@ describe('absolute tick labels state the instant they mark', () => {
       'absolute',
     );
     assert.match(anchor, /May 29\s+23:30/);
+  });
+});
+
+describe('a hovered gap marking tells the help strip the span it hides', () => {
+  const gap = (fromIso, toIso) => ({
+    t0: +new Date(fromIso),
+    t1: +new Date(toIso),
+    duration: +new Date(toIso) - +new Date(fromIso),
+  });
+
+  test('one band: from → to in UTC, with the length in parentheses', () => {
+    assert.equal(
+      gapTipArg([gap('2020-07-21T23:21:00Z', '2020-08-12T23:42:00Z')]),
+      'Spans Jul 21, 2020 · 23:21:00 UTC → Aug 12, 2020 · 23:42:00 UTC (22d).',
+    );
+  });
+
+  test('the parenthesised length reads days and hours', () => {
+    assert.match(gapTipArg([gap('2023-05-29T13:00:00Z', '2023-06-02T17:00:00Z')]), /\(4d 4h\)\.$/);
+  });
+
+  test('a merged label: the count, the stretch the group sits in, and the combined length', () => {
+    assert.equal(
+      gapTipArg([
+        gap('2023-01-01T00:00:00Z', '2023-01-08T00:00:00Z'),
+        gap('2023-02-01T00:00:00Z', '2023-02-04T00:00:00Z'),
+      ]),
+      '2 gaps between Jan 01, 2023 · 00:00:00 UTC and Feb 04, 2023 · 00:00:00 UTC (10d combined).',
+    );
+  });
+
+  test('the strip text composes: what the marking does, then the span', () => {
+    const text = tipFor('axis.gap', gapTipArg([gap('2020-07-21T23:21:00Z', '2020-08-12T23:42:00Z')]));
+    assert.equal(
+      text,
+      'A quiet stretch drawn compressed: its width stands for the duration written above it. ' +
+        'Spans Jul 21, 2020 · 23:21:00 UTC → Aug 12, 2020 · 23:42:00 UTC (22d).',
+    );
   });
 });
 

@@ -21,7 +21,9 @@ import {
   formatTime,
   formatDateMinute,
   formatDateSecond,
+  formatDuration,
   formatApproxDuration,
+  formatInstant,
 } from './format.js';
 import { findLargeGaps } from '../layout/scales.js';
 
@@ -213,6 +215,8 @@ export function renderAxis({
   if (mode === 'discrete') {
     const gaps = findLargeGaps(rankTimes).map((gap) => ({
       ...gap,
+      t0: rankTimes[gap.fromRank],
+      t1: rankTimes[gap.toRank],
       x0: marginLeft + (gap.fromRank / rankMax) * plotWidth,
       x1: marginLeft + (gap.toRank / rankMax) * plotWidth,
     }));
@@ -224,6 +228,10 @@ export function renderAxis({
     // sum of its silences — a first attempt kept only the biggest gap's label, and
     // "≈ 5 months" over a region hiding nearly a year under-reported it. Zooming in
     // spreads the bands and the groups fall apart into individual labels by themselves.
+    // Hovering a marking puts its story in the help strip, like every other control:
+    // `axis.gap` carries the fixed explanation, and `data-tip-arg` the specifics — the
+    // exact span the marking hides. A band speaks for its own gap; the label, which for
+    // a merged group states the sum over several bands, speaks for the whole group.
     for (const group of mergeGapLabels(gaps)) {
       for (const gap of group.gaps) {
         gAxis
@@ -236,7 +244,10 @@ export function renderAxis({
           .attr('fill-opacity', 0.35)
           .attr('stroke', 'var(--color-neutral-500)')
           .attr('stroke-width', 1)
-          .attr('stroke-dasharray', '2 2');
+          .attr('stroke-dasharray', '2 2')
+          .attr('data-tip', 'axis.gap')
+          .attr('data-tip-arg', gapTipArg([gap]))
+          .style('cursor', 'help');
       }
       gAxis
         .append('text')
@@ -246,9 +257,27 @@ export function renderAxis({
         .attr('font-size', 10)
         .attr('class', 'mono')
         .attr('fill', 'var(--color-neutral-400)')
+        .attr('data-tip', 'axis.gap')
+        .attr('data-tip-arg', gapTipArg(group.gaps))
+        .style('cursor', 'help')
         .text(group.label);
     }
   }
+}
+
+/**
+ * The specifics a hovered gap marking hands the help strip: one sentence stating the
+ * exact span it hides, from → to in UTC with the length in parentheses. The fixed
+ * explanation of what the marking does is `axis.gap` in `help/tips.js`; this argument
+ * completes it. Takes the gaps the element speaks for — one for a band, a whole merged
+ * group for a label — as `{duration, t0, t1}` in x order. Pure and exported for the tests.
+ */
+export function gapTipArg(gaps) {
+  const total = gaps.reduce((sum, gap) => sum + gap.duration, 0);
+  const from = formatInstant(new Date(gaps[0].t0));
+  const to = formatInstant(new Date(gaps[gaps.length - 1].t1));
+  if (gaps.length === 1) return `Spans ${from} → ${to} (${formatDuration(total)}).`;
+  return `${gaps.length} gaps between ${from} and ${to} (${formatDuration(total)} combined).`;
 }
 
 /** Roughly what a 10px mono label covers, plus breathing room between neighbours. */

@@ -101,6 +101,10 @@ export const TIPS = Object.freeze({
   'mode.relationships': 'Position means relationships. Objects that are linked sit near each other, and the time axis is released.',
   'mode.absolute': 'The time axis is linear. A long quiet stretch takes as much room as a busy one.',
   'mode.discrete': 'Events are spaced evenly in order. Long gaps are marked on the axis instead of taking room.',
+  'axis.gap': (span) =>
+    `A quiet stretch drawn compressed: its width stands for the duration written above it.${
+      span ? ` ${span}${/[.!?]$/.test(span) ? '' : '.'}` : ''
+    }`,
   'layout.rows': 'Issues in the top row, pull requests below, commits at the bottom, arranged to keep links short.',
   'layout.clusters': 'Each pull request is a hub with its commits around it. Drag a mark to move it and its neighbours follow.',
   'zoom.in': 'Zoom in. In relationships mode the wheel zooms too, around the pointer.',
