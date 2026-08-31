@@ -10,7 +10,7 @@ server-side is in `DATA_LAYER.md`.
 Fixed stack: PostgreSQL → PostgREST → D3. No bundler, no framework, no TypeScript. Native ES
 modules loaded straight from `index.html`; D3 7.8.5 from a CDN as the global `d3`; `d3-force`
 3.0.0 vendored unmodified in `vendor/` because `layout/` must run in bare Node. `package.json`
-has no dependencies at all. Tests are `node --test` (`npm test`), 758 tests over 33 files.
+has no dependencies at all. Tests are `node --test` (`npm test`), 762 tests over 33 files.
 
 ```
 PostgreSQL  →  fe views  →  api.get_object_graph  →  PostgREST  →  loadObjectGraph
@@ -67,7 +67,7 @@ this table is the responsibility map.
 | `render/nodes.js` | Lifecycle bars, sequence lines, marks, actor trails, burst handles. |
 | `render/links.js` | Timeline links: gradients, evidence styles, fanning. |
 | `render/structural.js` | The second, small renderer for relationships mode: edges, marks, hovercards, dragging. |
-| `render/axis.js` | Ticks, UTC labels, gap annotations. Absolute mode anchors the left edge with the sub-log's start, since d3 ticks only inside the domain. |
+| `render/axis.js` | Ticks, UTC labels, gap annotations. Absolute mode anchors the left edge with the sub-log's start, since d3 ticks only inside the domain. The compressed-gap markings in discrete mode carry a plain two-sentence tip (`gapTipText`, pure): what the marking does, and the exact span it hides. |
 | `render/loading.js` | The loading overlay: what a page says while a sub-log is in flight. Waits before appearing, so a fast source never flashes one. |
 | `render/minimap.js` `pan.js` `motion.js` | Overview and scroll; background pan when zoomed; settle and idle drift. |
 | `render/legend.js` | `LEGEND_SECTIONS` as exported data, plus presence dimming. |

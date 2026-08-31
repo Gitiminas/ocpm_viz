@@ -21,7 +21,9 @@ import {
   formatTime,
   formatDateMinute,
   formatDateSecond,
+  formatDuration,
   formatApproxDuration,
+  formatInstant,
 } from './format.js';
 import { findLargeGaps } from '../layout/scales.js';
 
@@ -130,6 +132,7 @@ export function renderAxis({
   marginLeft,
   marginTop,
   axisY,
+  tooltip,
 }) {
   gAxis
     .append('line')
@@ -213,6 +216,8 @@ export function renderAxis({
   if (mode === 'discrete') {
     const gaps = findLargeGaps(rankTimes).map((gap) => ({
       ...gap,
+      t0: rankTimes[gap.fromRank],
+      t1: rankTimes[gap.toRank],
       x0: marginLeft + (gap.fromRank / rankMax) * plotWidth,
       x1: marginLeft + (gap.toRank / rankMax) * plotWidth,
     }));
@@ -224,9 +229,13 @@ export function renderAxis({
     // sum of its silences — a first attempt kept only the biggest gap's label, and
     // "≈ 5 months" over a region hiding nearly a year under-reported it. Zooming in
     // spreads the bands and the groups fall apart into individual labels by themselves.
+    // Hovering a marking gets a plain two-sentence tip: the one distortion this mode
+    // commits (a band's width says nothing about its length) and the exact span it hides.
+    // A band speaks for its own gap; the label — which for a merged group states the sum
+    // over several bands — speaks for the whole group.
     for (const group of mergeGapLabels(gaps)) {
       for (const gap of group.gaps) {
-        gAxis
+        const band = gAxis
           .append('rect')
           .attr('x', gap.x0)
           .attr('y', axisY - 6)
@@ -236,9 +245,12 @@ export function renderAxis({
           .attr('fill-opacity', 0.35)
           .attr('stroke', 'var(--color-neutral-500)')
           .attr('stroke-width', 1)
-          .attr('stroke-dasharray', '2 2');
+          .attr('stroke-dasharray', '2 2')
+          .attr('data-tip', 'axis.gap')
+          .style('cursor', 'help');
+        if (tooltip) tooltip.bind(band, () => ({ plain: gapTipText([gap]) }));
       }
-      gAxis
+      const label = gAxis
         .append('text')
         .attr('x', group.x)
         .attr('y', axisY - 11)
@@ -246,9 +258,34 @@ export function renderAxis({
         .attr('font-size', 10)
         .attr('class', 'mono')
         .attr('fill', 'var(--color-neutral-400)')
+        .attr('data-tip', 'axis.gap')
+        .style('cursor', 'help')
         .text(group.label);
+      if (tooltip) tooltip.bind(label, () => ({ plain: gapTipText(group.gaps) }));
     }
   }
+}
+
+/**
+ * The two sentences a compressed-gap marking says when hovered: what the marking does,
+ * then the exact span it hides with its length in parentheses. Takes the gaps the
+ * hovered element speaks for — one for a band, a whole merged group for a label — as
+ * `{duration, t0, t1}` in x order. Pure and exported for the tests.
+ */
+export function gapTipText(gaps) {
+  const total = gaps.reduce((sum, gap) => sum + gap.duration, 0);
+  const from = formatInstant(new Date(gaps[0].t0));
+  const to = formatInstant(new Date(gaps[gaps.length - 1].t1));
+  if (gaps.length === 1) {
+    return [
+      'A quiet stretch drawn compressed: the band’s width stands for the duration written above it, not for time at scale.',
+      `It spans ${from} → ${to} (${formatDuration(total)}).`,
+    ];
+  }
+  return [
+    `${gaps.length} quiet stretches drawn compressed: the label states their combined duration.`,
+    `They sit between ${from} and ${to} (${formatDuration(total)} combined).`,
+  ];
 }
 
 /** Roughly what a 10px mono label covers, plus breathing room between neighbours. */

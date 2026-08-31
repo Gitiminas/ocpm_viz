@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { withStartAnchor, buildLabels } from '../src/render/axis.js';
+import { withStartAnchor, buildLabels, gapTipText } from '../src/render/axis.js';
 import { createScales } from '../src/layout/scales.js';
 
 /*
@@ -123,6 +123,40 @@ describe('absolute tick labels state the instant they mark', () => {
       'absolute',
     );
     assert.match(anchor, /May 29\s+23:30/);
+  });
+});
+
+describe('the compressed-gap tip states what the marking hides', () => {
+  const gap = (fromIso, toIso) => ({
+    t0: +new Date(fromIso),
+    t1: +new Date(toIso),
+    duration: +new Date(toIso) - +new Date(fromIso),
+  });
+
+  test('one band: what the marking does, then the exact span with its length in parentheses', () => {
+    const [what, span] = gapTipText([gap('2020-07-21T23:21:00Z', '2020-08-12T23:42:00Z')]);
+    assert.match(what, /width stands for the duration written above it/);
+    assert.match(span, /^It spans Jul 21, 2020 · 23:21:00 UTC → Aug 12, 2020 · 23:42:00 UTC \(22d\)\.$/);
+  });
+
+  test('the parenthesised length reads days and hours', () => {
+    const [, span] = gapTipText([gap('2023-05-29T13:00:00Z', '2023-06-02T17:00:00Z')]);
+    assert.match(span, /\(4d 4h\)\.$/);
+  });
+
+  test('a merged label: the count, the stretch the group sits in, and the combined length', () => {
+    const [what, span] = gapTipText([
+      gap('2023-01-01T00:00:00Z', '2023-01-08T00:00:00Z'),
+      gap('2023-02-01T00:00:00Z', '2023-02-04T00:00:00Z'),
+    ]);
+    assert.match(what, /^2 quiet stretches .* combined duration\.$/);
+    assert.match(span, /^They sit between Jan 01, 2023 .* and Feb 04, 2023 .* \(10d combined\)\.$/);
+  });
+
+  test('exactly two sentences, both UTC-labelled where they state an instant', () => {
+    const sentences = gapTipText([gap('2020-07-21T23:21:00Z', '2020-08-12T23:42:00Z')]);
+    assert.equal(sentences.length, 2);
+    assert.match(sentences[1], /UTC.*UTC/);
   });
 });
 

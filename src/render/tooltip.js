@@ -206,6 +206,10 @@ export function createTooltip({ tipEl, wrapEl }) {
   /**
    * Render a card.
    *
+   * A spec with `plain` renders those sentences and nothing else — no header, no rows,
+   * no pin affordance — for marks whose whole story fits in prose, like the discrete
+   * axis's compressed-gap markings.
+   *
    * @param {object} spec
    * @param {string} spec.accent  colour of the top rule and kicker glyph
    * @param {string} spec.shape   glyph shape
@@ -213,9 +217,21 @@ export function createTooltip({ tipEl, wrapEl }) {
    * @param {string} spec.title   already-escaped title HTML
    * @param {Array}  spec.rows    [label, valueHtml, className?]
    * @param {string} [spec.note]  footer note
+   * @param {string[]} [spec.plain]  already-escaped sentences; replaces everything above
    */
   function show(event, spec) {
     clearTimeout(hideTimer);
+    tipEl.classList.toggle('plain', Boolean(spec.plain));
+
+    if (spec.plain) {
+      tipEl.innerHTML =
+        `<div class="tip-body tip-plain">${spec.plain.map((s) => `<div>${s}</div>`).join('')}</div>`;
+      tipEl.style.display = 'flex';
+      void tipEl.offsetWidth; // force a reflow so the fade-in transition runs
+      tipEl.classList.add('show');
+      position(event);
+      return;
+    }
 
     const rows = spec.rows
       .filter(Boolean)
@@ -306,7 +322,13 @@ export function createTooltip({ tipEl, wrapEl }) {
           if (pinned) return;
           show(event, buildSpec());
         })
-        .on('contextmenu', (event) => pin(event, () => show(event, buildSpec())))
+        .on('contextmenu', (event) => {
+          // A plain tip has nothing to copy, so pinning it would be a dead end; the
+          // native menu is more useful there.
+          const spec = buildSpec();
+          if (spec.plain) return;
+          pin(event, () => show(event, spec));
+        })
         .on('mousemove', (event) => {
           if (!pinned) position(event);
         })

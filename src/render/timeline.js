@@ -414,6 +414,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
       marginLeft: MARGIN.left,
       marginTop: MARGIN.top,
       axisY: height - MARGIN.bottom + 24,
+      tooltip,
     });
 
     renderSequenceLines({

@@ -29,6 +29,10 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip .tip-kicker{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-400);margin-bottom:5px}
 #tip .tip-title{font-size:14px;font-weight:500;color:var(--color-text);line-height:1.4;word-break:break-word;font-family:var(--font-heading)}
 #tip .tip-body{padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+/* The plain variant: a sentence or two and nothing else, for marks whose whole story
+   fits in prose — the compressed-gap markings on the discrete axis. */
+#tip.plain{width:auto;max-width:340px}
+#tip .tip-plain{font-size:12px;line-height:1.5;color:var(--color-text)}
 #tip .tip-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:3px 0;border-bottom:1px dashed var(--color-neutral-800)}
 /* The comment excerpt: collapsed to a few lines with a fade to the card's
    surface saying "there is more", expanding while the pointer is on it. Hoverable only
