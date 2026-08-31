@@ -50,25 +50,12 @@ export function computeTicks({ mode, scales, zoom, rankOrder, rankMax, plotWidth
   return ticks;
 }
 
-/**
- * Build one label per tick, adding seconds only where minutes would be ambiguous.
- *
- * ⚠️ In absolute mode a label states an *instant*, and a label coarser than the instant it
- * marks is read as the round number it resembles. The first tick has to carry a date —
- * otherwise the axis names no day at all until the first midnight — but d3 chooses ticks
- * on round times *inside* the domain, so tick 0 is the first boundary at or after the
- * earliest instant and is very often not midnight. On kubernetes PR #118316 (2023-05-29
- * 13:38 → 2023-05-30 16:29) d3 picks a 6-hour interval and tick 0 lands at 18:00; labelling
- * it "May 29" put a midnight-looking tick to the *right* of the opening mark, so the mark
- * — genuinely 13:38 on the 29th — read as the 28th. The date and the time both have to be
- * there, which is exactly `formatDateMinute`.
- */
-export function buildLabels(ticks, mode) {
+/** Build one label per tick, adding seconds only where minutes would be ambiguous. */
+function buildLabels(ticks, mode) {
   return ticks.map((tick, i) => {
     if (mode === 'absolute') {
       const isMidnight = tick.t.getUTCHours() === 0 && tick.t.getUTCMinutes() === 0;
-      if (isMidnight) return formatDate(tick.t);
-      return i === 0 ? formatDateMinute(tick.t) : formatTime(tick.t);
+      return i === 0 || isMidnight ? formatDate(tick.t) : formatTime(tick.t);
     }
     const minuteLabel = formatDateMinute(tick.t);
     const collides =
