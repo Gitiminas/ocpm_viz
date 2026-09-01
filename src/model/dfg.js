@@ -18,7 +18,7 @@
  * objects only through links (`cross_edges`, whose counts are floors).
  */
 
-import { LANE_TYPES, ACTIVITIES, isKnownActivity } from './activities.js';
+import { LANE_TYPES, ACTIVITIES, READING_ORDER, isKnownActivity } from './activities.js';
 
 export const DFG_CONTRACT_VERSION = 1;
 
@@ -152,6 +152,138 @@ export function assertValidDfg(dfg) {
     );
   }
   return dfg;
+}
+
+/** The stable key for a cross-type pair, types sorted — the `linkPairKey` convention. */
+export function dfgPairKey(typeA, typeB) {
+  return [typeA, typeB].sort().join('_');
+}
+
+/**
+ * The Process page's toggle vocabulary, derived from the loaded artifact the way the
+ * sub-log sidebar derives its rows from the loaded graph — never from a fixed list.
+ *
+ * `defaultRange` starts the count slider with the bottom decile of edges hidden: the
+ * p10 boundary over every edge count, and the smallest count on a bundle too small for
+ * a decile to mean anything (the default then hides nothing).
+ */
+export function deriveDfgToggles(dfg) {
+  const lanes = LANE_TYPES.filter((type) => dfg.nodes.some((n) => n.object_type === type)).map(
+    (type) => ({ type, edges: dfg.edges.filter((e) => e.object_type === type).length }),
+  );
+
+  const byPair = new Map();
+  for (const edge of dfg.cross_edges) {
+    const key = dfgPairKey(edge.from_type, edge.to_type);
+    if (!byPair.has(key)) {
+      byPair.set(key, { key, types: [edge.from_type, edge.to_type].sort(), successions: 0 });
+    }
+    byPair.get(key).successions += edge.successions;
+  }
+  const pairs = [...byPair.values()].sort((a, b) => a.key.localeCompare(b.key));
+
+  const activities = [];
+  for (const { type } of lanes) {
+    for (const activity of READING_ORDER) {
+      const node = dfg.nodes.find((n) => n.object_type === type && n.activity === activity);
+      if (node) activities.push({ type, activity, events: node.events });
+    }
+  }
+
+  const counts = [...dfg.edges, ...dfg.cross_edges].map((e) => e.successions);
+  const maxSuccessions = counts.length ? Math.max(...counts) : 0;
+  const sorted = [...counts].sort((a, b) => a - b);
+  const defaultRange = counts.length
+    ? [sorted[Math.floor(0.1 * sorted.length)], maxSuccessions]
+    : [1, 1];
+
+  return { lanes, pairs, activities, maxSuccessions, defaultRange };
+}
+
+/**
+ * Filter the artifact by the page's view, BEFORE layout — the sub-log's own rule, so
+ * hiding something re-spreads what remains and an emptied lane collapses.
+ *
+ * A lane switched off removes its edges but keeps its nodes (the lane's shape stays as
+ * context); a hidden activity removes its node and every succession touching it. The
+ * counts returned are the readout's: `shown + hiddenByRange + hiddenByToggles` always
+ * equals `total`, an edge failing both filters counting once, under toggles.
+ */
+export function filterDfg(dfg, view = {}) {
+  const laneOn = (type) => view.lanes?.[type] !== false;
+  const hidden = view.hiddenActivities ?? new Set();
+  const nodeOn = (type, activity) => !hidden.has(`${type}/${activity}`);
+  const [min, max] = view.range ?? [-Infinity, Infinity];
+
+  let hiddenByToggles = 0;
+  let hiddenByRange = 0;
+  const keep = (edge, togglePass) => {
+    if (!togglePass) {
+      hiddenByToggles += 1;
+      return false;
+    }
+    if (edge.successions < min || edge.successions > max) {
+      hiddenByRange += 1;
+      return false;
+    }
+    return true;
+  };
+
+  const edges = dfg.edges.filter((edge) =>
+    keep(
+      edge,
+      laneOn(edge.object_type) &&
+        nodeOn(edge.object_type, edge.from_activity) &&
+        nodeOn(edge.object_type, edge.to_activity),
+    ),
+  );
+  const crossEdges = dfg.cross_edges.filter((edge) =>
+    keep(
+      edge,
+      laneOn(edge.from_type) &&
+        laneOn(edge.to_type) &&
+        view.pairs?.[dfgPairKey(edge.from_type, edge.to_type)] !== false &&
+        nodeOn(edge.from_type, edge.from_activity) &&
+        nodeOn(edge.to_type, edge.to_activity),
+    ),
+  );
+
+  const total = dfg.edges.length + dfg.cross_edges.length;
+  return {
+    dfg: {
+      ...dfg,
+      nodes: dfg.nodes.filter((n) => nodeOn(n.object_type, n.activity)),
+      edges,
+      cross_edges: crossEdges,
+    },
+    shown: edges.length + crossEdges.length,
+    total,
+    hiddenByRange,
+    hiddenByToggles,
+  };
+}
+
+/**
+ * The count slider's scale: logarithmic, because succession counts span five orders of
+ * magnitude and a linear slider would spend nearly all its travel on the top decade.
+ * Edge counts are ≥ 1 by construction (an edge exists because a succession was
+ * observed), so the [1, max] domain loses nothing. Shared by the slider and the
+ * readout, so the label always names the exact count the filter uses.
+ */
+export function dfgRangeScale(maxSuccessions) {
+  const usable = maxSuccessions > 1;
+  return {
+    countAt(fraction) {
+      if (!usable) return 1;
+      const f = Math.min(1, Math.max(0, fraction));
+      return Math.min(maxSuccessions, Math.max(1, Math.round(Math.exp(f * Math.log(maxSuccessions)))));
+    },
+    fractionOf(count) {
+      if (!usable) return 0;
+      const c = Math.min(maxSuccessions, Math.max(1, count));
+      return Math.log(c) / Math.log(maxSuccessions);
+    },
+  };
 }
 
 /**

@@ -6,6 +6,9 @@ import {
   findDfgProblems,
   assertValidDfg,
   normalizeDfg,
+  deriveDfgToggles,
+  filterDfg,
+  dfgRangeScale,
   DFG_CONTRACT_VERSION,
 } from '../src/model/dfg.js';
 
@@ -130,5 +133,125 @@ describe('the pulled sample is a shape, never a count', () => {
       await readFile(new URL('./fixtures/DFG1.json', import.meta.url), 'utf8'),
     );
     assert.deepEqual(findDfgProblems(raw), []);
+  });
+});
+
+describe('the toggle vocabulary is derived from the artifact, never a fixed list', () => {
+  test('lanes in lane order with edge counts, pairs sorted, activities in reading order', () => {
+    const toggles = deriveDfgToggles(validDfg());
+    assert.deepEqual(
+      toggles.lanes,
+      [
+        { type: 'issue', edges: 3 },
+        { type: 'pull_request', edges: 1 },
+        { type: 'commit', edges: 1 },
+      ],
+    );
+    assert.deepEqual(toggles.pairs, [
+      { key: 'issue_pull_request', types: ['issue', 'pull_request'], successions: 1 },
+    ]);
+    assert.deepEqual(
+      toggles.activities.filter((a) => a.type === 'issue').map((a) => a.activity),
+      ['IssueOpened', 'IssueCommented', 'IssueClosed'],
+      'the lifecycle reading order, not the declaration order',
+    );
+    assert.equal(toggles.activities.find((a) => a.activity === 'IssueCommented').events, 3);
+    assert.equal(toggles.maxSuccessions, 2);
+  });
+
+  test('the default range hides the bottom decile, and nothing on a tiny bundle', () => {
+    // Six edges cannot carry a decile, so p10 is the smallest count and nothing hides.
+    assert.deepEqual(deriveDfgToggles(validDfg()).defaultRange, [1, 2]);
+    const wide = validDfg();
+    wide.cross_edges = Array.from({ length: 20 }, (_, i) => ({
+      from_type: 'pull_request', from_activity: 'PullRequestMerged',
+      to_type: 'issue', to_activity: 'IssueClosed', successions: i + 1, pairs: 1,
+    }));
+    const counts = [...wide.edges, ...wide.cross_edges].map((e) => e.successions).sort((a, b) => a - b);
+    assert.equal(deriveDfgToggles(wide).defaultRange[0], counts[Math.floor(0.1 * counts.length)]);
+  });
+});
+
+describe('filterDfg runs the page view before layout, and counts what it hides', () => {
+  test('an all-on view is the identity, with the arithmetic at zero', () => {
+    const dfg = validDfg();
+    const out = filterDfg(dfg, {});
+    assert.deepEqual(out.dfg.edges, dfg.edges);
+    assert.deepEqual(out.dfg.nodes, dfg.nodes);
+    assert.equal(out.shown, out.total);
+    assert.equal(out.hiddenByRange + out.hiddenByToggles, 0);
+  });
+
+  test('a lane off removes its edges and its cross pairs, but keeps its nodes', () => {
+    const out = filterDfg(validDfg(), { lanes: { issue: false } });
+    assert.equal(out.dfg.edges.filter((e) => e.object_type === 'issue').length, 0);
+    assert.equal(out.dfg.cross_edges.length, 0, 'the one cross edge touches the issue lane');
+    assert.ok(out.dfg.nodes.some((n) => n.object_type === 'issue'), 'nodes stay as context');
+    assert.equal(out.hiddenByToggles, 4);
+    assert.equal(out.shown + out.hiddenByRange + out.hiddenByToggles, out.total);
+  });
+
+  test('a pair off removes exactly that pair', () => {
+    const out = filterDfg(validDfg(), { pairs: { issue_pull_request: false } });
+    assert.equal(out.dfg.cross_edges.length, 0);
+    assert.equal(out.dfg.edges.length, 5, 'per-type edges untouched');
+  });
+
+  test('a hidden activity takes its node and every incident succession, cross included', () => {
+    const out = filterDfg(validDfg(), { hiddenActivities: new Set(['issue/IssueClosed']) });
+    assert.ok(!out.dfg.nodes.some((n) => `${n.object_type}/${n.activity}` === 'issue/IssueClosed'));
+    assert.ok(!out.dfg.edges.some((e) => e.to_activity === 'IssueClosed'));
+    assert.equal(out.dfg.cross_edges.length, 0, 'the cross edge lands on the hidden activity');
+  });
+
+  test('hiding all of a type‘s activities empties its nodes, the layout-collapse precondition', () => {
+    const out = filterDfg(validDfg(), { hiddenActivities: new Set(['commit/CommitObserved']) });
+    assert.equal(out.dfg.nodes.filter((n) => n.object_type === 'commit').length, 0);
+  });
+
+  test('the range is inclusive at both bounds', () => {
+    const two = filterDfg(validDfg(), { range: [2, 2] });
+    assert.ok(two.dfg.edges.every((e) => e.successions === 2));
+    assert.equal(two.dfg.edges.length, 2);
+    const ones = filterDfg(validDfg(), { range: [1, 1] });
+    assert.ok(ones.dfg.edges.every((e) => e.successions === 1));
+  });
+
+  test('an edge failing a toggle and the range counts once, under toggles', () => {
+    // The commit self-edge (successions 1) fails both the lane toggle and the [2,2]
+    // range; it must count once, as a toggle hide, or the readout would overstate.
+    const out = filterDfg(validDfg(), { lanes: { commit: false }, range: [2, 2] });
+    assert.equal(out.hiddenByToggles, 1);
+    assert.equal(out.hiddenByRange, 3, 'the three toggle-passing edges with successions 1');
+    assert.equal(out.shown, 2);
+    assert.equal(out.shown + out.hiddenByRange + out.hiddenByToggles, out.total);
+  });
+
+  test('the input is never mutated', () => {
+    const dfg = validDfg();
+    const before = JSON.stringify(dfg);
+    filterDfg(dfg, { lanes: { issue: false }, range: [2, 2], hiddenActivities: new Set(['commit/CommitObserved']) });
+    assert.equal(JSON.stringify(dfg), before);
+  });
+});
+
+describe('the count scale is logarithmic, clamped and round-trippable', () => {
+  test('endpoints, round trip, clamping', () => {
+    const scale = dfgRangeScale(40000);
+    assert.equal(scale.countAt(0), 1);
+    assert.equal(scale.countAt(1), 40000);
+    for (const f of [0, 0.25, 0.5, 0.75, 1]) {
+      assert.ok(Math.abs(scale.fractionOf(scale.countAt(f)) - f) <= 1 / 1000, `round trip at ${f}`);
+    }
+    assert.equal(scale.countAt(-1), 1);
+    assert.equal(scale.countAt(2), 40000);
+    assert.equal(scale.fractionOf(0), 0);
+    assert.equal(scale.fractionOf(40005), 1);
+  });
+
+  test('a degenerate maximum pins everything to one', () => {
+    const scale = dfgRangeScale(1);
+    assert.equal(scale.countAt(0.7), 1);
+    assert.equal(scale.fractionOf(1), 0);
   });
 });

@@ -145,6 +145,32 @@ export const ACTIVITIES = {
  */
 export const LANDMARK_ACTIVITIES = Object.keys(ACTIVITIES).filter((a) => ACTIVITIES[a].landmark);
 
+/**
+ * The lifecycle READING order, left to right: open, comment, merge, close, reopen.
+ * NOT the declaration order above — that lists IssueClosed before IssueCommented, which
+ * would bend the dominant open → comment → close traffic backwards wherever activities
+ * are laid out or listed in sequence (the process map's rows, its sidebar). One list,
+ * covering exactly the closed vocabulary; the guard throws if an activity is ever added
+ * without a slot here, so it cannot silently vanish from an ordered surface.
+ */
+export const READING_ORDER = [
+  'IssueOpened',
+  'PullRequestOpened',
+  'IssueCommented',
+  'PullRequestMerged',
+  'PullRequestMergedOffPlatform',
+  'IssueClosed',
+  'PullRequestClosed',
+  'IssueReopened',
+  'PullRequestReopened',
+  'CommitObserved',
+];
+for (const activity of Object.keys(ACTIVITIES)) {
+  if (!READING_ORDER.includes(activity)) {
+    throw new Error(`model/activities.js: no reading-order slot for activity "${activity}"`);
+  }
+}
+
 export function isKnownActivity(activity) {
   return Object.prototype.hasOwnProperty.call(ACTIVITIES, activity);
 }

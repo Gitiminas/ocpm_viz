@@ -19,7 +19,7 @@
  * would draw one visible edge, and equal widths would hide the orders entirely.
  */
 
-import { LANE_TYPES, ACTIVITIES } from '../model/activities.js';
+import { LANE_TYPES, ACTIVITIES, READING_ORDER } from '../model/activities.js';
 
 export const DFG_NODE_RADIUS = 14;
 
@@ -48,32 +48,7 @@ export function dfgEdgeWidth(successions, maxSuccessions) {
   return Math.min(EDGE_WIDTH_MAX, Math.max(EDGE_WIDTH_MIN, width));
 }
 
-/**
- * The within-row order, left to right: the lifecycle reading. NOT the vocabulary's
- * declaration order — that one lists IssueClosed before IssueCommented, which would
- * bend the dominant open → comment → close traffic backwards through the row. The
- * list still covers exactly the closed vocabulary (asserted below), so an activity
- * added to `ACTIVITIES` without a slot here fails loudly instead of vanishing.
- */
-const READING_ORDER = [
-  'IssueOpened',
-  'PullRequestOpened',
-  'IssueCommented',
-  'PullRequestMerged',
-  'PullRequestMergedOffPlatform',
-  'IssueClosed',
-  'PullRequestClosed',
-  'IssueReopened',
-  'PullRequestReopened',
-  'CommitObserved',
-];
-for (const activity of Object.keys(ACTIVITIES)) {
-  if (!READING_ORDER.includes(activity)) {
-    throw new Error(`layout/dfg.js: no reading-order slot for activity "${activity}"`);
-  }
-}
-
-/** The reading order, filtered to one type — the within-row order. */
+/** The lifecycle reading order (model/activities.js), filtered to one type. */
 function activitiesOf(type) {
   return READING_ORDER.filter((activity) => ACTIVITIES[activity].objectTypes.includes(type));
 }
