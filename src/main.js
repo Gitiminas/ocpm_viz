@@ -903,6 +903,7 @@ function showPage(page) {
   elements.subLogQuery.style.display = isDfg ? 'none' : '';
   elements.dfgQueryNote.style.display = isDfg ? '' : 'none';
 
+  renderSourceToggle();
   PAGES[page].onShow();
 }
 
@@ -941,7 +942,7 @@ const dfgChart = createDfgView({
  */
 const dfgView = { lanes: {}, pairs: {}, hiddenActivities: new Set(), range: null, focus: null };
 let currentDfgToggles = null;
-/** Loaded DFGs, one per repository (the sample counts as one). */
+/** Loaded DFGs, one per repository. */
 const dfgCache = new Map();
 let currentDfg = null;
 
@@ -957,17 +958,31 @@ function dfgRepoName() {
  * the page is visible; errors land on this page's own surface and nowhere else.
  */
 async function refreshDfg() {
+  // The capability flag, not the source name — the traversalEditable pattern. Fixtures
+  // hold pre-built sub-logs; a whole-repository map has nothing to be built from there.
+  if (!source.dfgAvailable) {
+    dfgSurface.show(
+      messageHtml(
+        'The process map needs the database',
+        'Fixtures hold pre-built sub-logs, and a process map covers a whole ' +
+          'repository’s log.<br>Switch the data source: ' +
+          '<a href="?source=database&page=dfg" style="color:var(--color-accent-300)">' +
+          '?source=database</a>.',
+      ),
+    );
+    return;
+  }
   const repo = dfgRepoName();
-  if (source.name === 'database' && !repo) {
+  if (!repo) {
     dfgSurface.show(
       messageHtml('Choose a repository', 'The process map covers one repository’s whole log.'),
     );
     return;
   }
-  const key = `${source.name}:${repo ?? 'sample'}`;
+  const key = `${source.name}:${repo}`;
   try {
     if (!dfgCache.has(key)) {
-      dfgLoadingOverlay.show(`process map of ${repo ?? 'the sample'}`);
+      dfgLoadingOverlay.show(`process map of ${repo}`);
       try {
         dfgCache.set(key, await source.loadDfg(repo));
       } finally {
@@ -1183,8 +1198,13 @@ function renderSourceToggle() {
     { id: 'database', label: 'Database', tip: 'source.database', note: 'Live via PostgREST. Seed from any object.' },
   ];
 
+  // The process map is whole-log and the fixtures hold sub-logs, so on that page the
+  // Fixtures option is REMOVED, not greyed — a source that cannot serve the page is not
+  // a choice. The Trace and Stats pages get both back.
+  const options = activePage === 'dfg' ? OPTIONS.filter((o) => o.id === 'database') : OPTIONS;
+
   elements.sourceToggle.innerHTML = '';
-  for (const option of OPTIONS) {
+  for (const option of options) {
     const active = option.id === source.name;
     const button = document.createElement('button');
     button.className = 'mono';
@@ -1204,7 +1224,8 @@ function renderSourceToggle() {
     }
     elements.sourceToggle.appendChild(button);
   }
-  elements.sourceNote.textContent = OPTIONS.find((o) => o.id === source.name).note;
+  elements.sourceNote.textContent =
+    (options.find((o) => o.id === source.name) ?? options[0]).note;
 }
 renderSourceToggle();
 

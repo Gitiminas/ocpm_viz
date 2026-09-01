@@ -12,7 +12,8 @@
  *   listRepos()                  what can be asked about
  *   searchSeeds(repo, text)      what can be asked for
  *   loadSubLog(query)            the answer
- *   loadDfg(repo)                the whole-log directly-follows graph
+ *   loadDfg(repo)                the whole-log directly-follows graph (database only,
+ *                                declared by the dfgAvailable capability flag)
  *
  * ⚠️ **`searchSeeds` is async in both.** The fixture version has nothing to await, but
  * making the shapes differ would push the difference up into the caller, which is the
@@ -29,7 +30,6 @@ import {
   loadCatalogue,
   searchSeeds as searchFixtureSeeds,
   fixtureTransport,
-  dfgSampleTransport,
 } from './fixtures.js';
 import {
   rpcTransport,
@@ -68,11 +68,9 @@ function fixtureSource() {
     loadSubLog(query) {
       return loadObjectGraph(query, { transport: fixtureTransport });
     },
-    // The sample, whatever repository is picked; the page shows the sample's own
-    // meta.repo rather than pretending it matches the picker.
-    loadDfg() {
-      return loadDfg({}, { transport: dfgSampleTransport });
-    },
+    // The process map is whole-log and the fixtures hold sub-logs; the capability flag
+    // is what the page reads, the traversalEditable pattern.
+    dfgAvailable: false,
     /*
      * The first servable seed, so opening the app shows something.
      *
@@ -107,6 +105,7 @@ function databaseSource() {
     loadSubLog(query) {
       return loadObjectGraph(query, { transport: rpcTransport });
     },
+    dfgAvailable: true,
     loadDfg(repo) {
       return loadDfg({ repo }, { transport: dfgTransport });
     },

@@ -164,8 +164,9 @@ Being computed server-side over data the client never loads, the DFG is the stat
 to the metrics-in-JS rule — and therefore cannot follow the sidebar toggles, which the Process
 page declares in a standing notice. `loadDfg` (`src/data/loadDfg.js`) is the client entry
 point: validate raw, normalize (only `generated_at` becomes a `Date`), attach the query. The
-fixtures source serves the pulled sample `tests/fixtures/DFG1.json` whatever repository is
-picked, and says so.
+page is database-only: the fixtures source declares `dfgAvailable: false` (the
+`traversalEditable` capability pattern) and the pulled sample `tests/fixtures/DFG1.json`
+is a test input for the validator, never served to the page.
 
 ## Objects, activities, intervals
 
