@@ -89,8 +89,12 @@ object-centric directly-follows graph over the repository's **whole log**: one a
 object type and activity, succession edges whose width grows (√) with how often one activity
 directly follows another within one object's events, and dashed cross-type edges counted through
 the links — floors, and labelled as such. It is pre-computed server-side (`fe.dfg_mat`,
-`api.get_dfg`), so it does not follow the toggles and says so; there is no seed on this page, the
-repository is the whole query. On the fixtures source it draws the pulled sample `DFG1`.
+`api.get_dfg`), so the sub-log sidebar's toggles do not apply — the page carries its own:
+per-lane and per-type-pair succession masters, per-activity hides, a logarithmic min–max count
+range that opens with the rarest tenth of edges hidden, and click-to-focus on an activity. The
+notice always states the filter's arithmetic ("Showing 86 of 94 successions"), so nothing
+disappears quietly; there is no seed on this page, the repository is the whole query. On the
+fixtures source it draws the pulled sample `DFG1`.
 
 **Modes** are a two-level control:
 
@@ -153,7 +157,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 798 tests over 34 files, ~1 s, no browser
+npm test                  # 813 tests over 34 files, ~1 s, no browser
 npm run test:watch
 ```
 

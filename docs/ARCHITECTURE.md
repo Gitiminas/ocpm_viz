@@ -10,7 +10,7 @@ server-side is in `DATA_LAYER.md`.
 Fixed stack: PostgreSQL → PostgREST → D3. No bundler, no framework, no TypeScript. Native ES
 modules loaded straight from `index.html`; D3 7.8.5 from a CDN as the global `d3`; `d3-force`
 3.0.0 vendored unmodified in `vendor/` because `layout/` must run in bare Node. `package.json`
-has no dependencies at all. Tests are `node --test` (`npm test`), 798 tests over 34 files.
+has no dependencies at all. Tests are `node --test` (`npm test`), 813 tests over 34 files.
 
 ```
 PostgreSQL  →  fe views  →  api.get_object_graph  →  PostgREST  →  loadObjectGraph
@@ -47,9 +47,9 @@ this table is the responsibility map.
 | `data/source.js` | Fixtures or database behind one shape, chosen by `?source=`. Both async, so the branch never reaches `main.js`. |
 | `data/seedQuery.js` | Parse and rank what is typed into "Start from". Shared by both sources, so the two searches cannot disagree. |
 | `data/loadDfg.js` | The whole-log entry point: transport → `assertValidDfg` → `normalizeDfg`. No default transport — the source decides which. |
-| `model/dfg.js` | DFG validation (closed vocabularies, nonnegative counts, per-type conservation, no evidence on a succession) and its one-timestamp normalization. |
-| `layout/dfg.js` | The process map's arrangement: lane rows, lifecycle reading order, forward arcs above / rework below, loops, `dfgEdgeWidth` (√, clamped). |
-| `render/dfg.js` | The Process page's renderer: lane bands, activity marks, succession edges with widths and counts, hovercards, the whole-log notice. |
+| `model/dfg.js` | DFG validation (closed vocabularies, nonnegative counts, per-type conservation, no evidence on a succession), one-timestamp normalization, and the Process page's derivations: `deriveDfgToggles`, `filterDfg`, `dfgRangeScale`. |
+| `layout/dfg.js` | The process map's arrangement: lane rows, lifecycle reading order, forward arcs above / rework below, loops, fanned cross bundles, `dfgEdgeWidth` (√, clamped, pinned to the unfiltered maximum via the `maxSuccessions` override). |
+| `render/dfg.js` | The Process page's renderer: lane bands, activity marks, succession edges with widths and counts, hovercards (labels bound to the same card, hover targets in their own layer, thinnest topmost), focus dimming, and the notice carrying the filter's own arithmetic. |
 | `model/objectGraph.js` | Shape validation (`findGraphProblems`), normalization, indexing. |
 | `model/activities.js` | The closed vocabulary: 4 object types, 10 activities, 3 landmarks. |
 | `model/evidence.js` | 16 link methods → `validated` / `extracted`. |
@@ -77,7 +77,7 @@ this table is the responsibility map.
 | `render/loading.js` | The loading overlay: what a page says while a sub-log is in flight. Waits before appearing, so a fast source never flashes one. |
 | `render/minimap.js` `pan.js` `motion.js` | Overview and scroll; background pan when zoomed; settle and idle drift. |
 | `render/legend.js` | `LEGEND_SECTIONS` as exported data, plus presence dimming. |
-| `render/sidebar.js` `controls.js` `actorCard.js` `subLogCard.js` `stats.js` | The panels: lane and relationship rows, presets and the hidden-state banner, actor profile, sub-log card, statistics page. |
+| `render/sidebar.js` `controls.js` `actorCard.js` `subLogCard.js` `stats.js` | The panels: lane and relationship rows, `renderDfgControls` (the Process page's masters, count range and activity rows), presets and the hidden-state banner, actor profile, sub-log card, statistics page. |
 | `render/theme.js` | Colours, shapes, glyphs, evidence styles. Every renderer reads them from here. |
 | `render/format.js` | The one place a timestamp becomes text. All UTC. |
 | `render/tooltip.js` `message.js` `helpStrip.js` | Tooltips, the "why it cannot draw" surface, the header help strip. |

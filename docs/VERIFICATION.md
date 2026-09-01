@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**798 tests in 34 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
+**813 tests in 34 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
 database.
 
 ---
@@ -38,7 +38,7 @@ against stub objects instead of one.
 | All times render UTC, labelled (9); every qualifier the live samples carry has a colour; an off-platform merge is its own outcome (123) | `timezone`, `qualifier-colour`, `offplatform` | F1; LIVE1/2; F14 |
 | The absolute axis anchors its left edge, so no mark sits left of every tick; no round label claims a day boundary its tick is not on; a gap marking's help-strip text states the exact span it hides, in UTC, with the length in parentheses; a multi-year span carries the year on the first tick and on each tick that begins a new year, in both modes | `axis` | k8s #118316 ticks + synthetic |
 | A comment run never crosses a close or a reopen (interval end inclusive, a null end open); the folded mark carries its span end in absolute mode only | `nodes`, `engine` | synthetic; F1 |
-| The DFG validator enforces the closed vocabularies, nonnegative counts, cross-type-only cross edges, no evidence on a succession, and per-type conservation; the DFG arrangement is finite, boxed, deterministic, lane-ordered, forward arcs above and rework below, widths √-monotone and clamped; the transport fails before fetching without a repo (21) | `dfg`, `dfg-layout`, `api` | hand-built bundle; DFG1 shape only |
+| The DFG validator enforces the closed vocabularies, nonnegative counts, cross-type-only cross edges, no evidence on a succession, and per-type conservation; the arrangement is finite, boxed, deterministic, lane-ordered, forward arcs above and rework below, shared-pair cross bundles fanned; widths √-monotone, clamped, and stable under filtering via the unfiltered-maximum override; filterDfg's toggles and inclusive count range obey shown + hidden = total with a double failure counted once; the toggle vocabulary and log count scale round-trip (36) | `dfg`, `dfg-layout`, `api` | hand-built bundle; DFG1 shape only |
 | Fixtures are byte-reproducible from their build scripts; a `{repo, seed}` query resolves or fails loudly; seed search parses and ranks | `fixtures`, `selection` | `--check`; catalogue |
 | The seed box searches the text it is showing; an empty reference never becomes a database request, while a type word alone still does | `searchCombo` | stubs + fake transport |
 | A load under the delay is never announced; a slow one blurs the stale picture and blocks it; a failed load still restores it; no timer outlives the load | `loading` | stubs + fake clock |
@@ -272,7 +272,10 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
 - **The process map's rendering has no automated look.** Its layout is asserted DOM-free
   (finite, boxed, ordered) and it was rendered and looked at against the live database and the
   sample on 2026-09-01; like the rest of the tool, no check says the picture means what it
-  claims.
+  claims. Its pointer surfaces — count-label and thin-edge hovercards, click-to-focus dimming
+  with the geometry pinned, the dual-handle count range, the lane/pair/activity toggles and the
+  readout they drive — were each driven once in a live browser via the iframe probe
+  (2026-09-01); nothing re-runs that.
 
 Checked since, one line each: a real sub-log renders and the PostgREST → `fetch()` → browser path
 works (2026-08-05); `rpc-check.mjs` probes the `web_anon` path, for one function only (2026-08-07);
