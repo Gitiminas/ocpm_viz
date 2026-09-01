@@ -119,3 +119,23 @@ export async function fixtureTransport(query) {
   }
   return response.json();
 }
+
+/**
+ * The one DFG this source can serve: the pulled sample, by fixed path.
+ *
+ * DFG1 is a live snapshot of `api.get_dfg` (scripts/pull-dfg.mjs) — a SAMPLE of a real
+ * repository, whatever repository the picker shows, and the page displays the sample's
+ * own `meta.repo` rather than pretending. Not in the catalogue: the catalogue maps
+ * seeds to sub-logs, and a DFG has no seed.
+ */
+export async function dfgSampleTransport() {
+  const url = `${BASE}DFG1.json`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Could not load the DFG sample from ${url} (HTTP ${response.status}). ` +
+        `Pull it with: node scripts/pull-dfg.mjs`,
+    );
+  }
+  return response.json();
+}

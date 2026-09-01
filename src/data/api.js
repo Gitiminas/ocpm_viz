@@ -79,6 +79,39 @@ function errorFromBody(status, body) {
 }
 
 /**
+ * POST one RPC and hand back its JSON, with both failure modes reworded.
+ *
+ * The one fetch in this module. Four transports share the same dance — POST JSON,
+ * rewrap an unreachable server, turn an error body into a readable Error — and with a
+ * fourth copy the duplication stopped being hypothetical. Module-private: callers own
+ * their argument validation and body shape, this owns the wire.
+ */
+async function postRpc(path, body, { baseUrl, fetchImpl }) {
+  let response;
+  try {
+    response = await fetchImpl(`${baseUrl}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body,
+    });
+  } catch (error) {
+    throw errorFromFetch(error, baseUrl);
+  }
+
+  if (!response.ok) {
+    let parsed = null;
+    try {
+      parsed = await response.json();
+    } catch {
+      // A non-JSON error body means something in front of PostgREST answered —
+      // a proxy, or nothing listening at all. Keep the status, lose nothing else.
+    }
+    throw errorFromBody(response.status, parsed);
+  }
+  return response.json();
+}
+
+/**
  * How far `get_object_graph` may expand from the seed, and how far it does by default.
  *
  * ⚠️ **One place for both numbers.** The stepper in the sidebar, this transport's
@@ -126,37 +159,42 @@ export function createRpcTransport({
     if (!repo) throw new Error('rpcTransport: query.repo is required');
     if (!seed) throw new Error('rpcTransport: query.seed is required');
 
-    let response;
-    try {
-      response = await fetchImpl(`${baseUrl}/rpc/get_object_graph`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        // Argument names must match the SQL parameter names exactly — PostgREST resolves
-        // the overload by name, and a typo is a 404 "could not find the function",
-        // not a 400.
-        body: JSON.stringify({ repo, seed, traversal_degree: Number(traversalDegree) }),
-      });
-    } catch (error) {
-      throw errorFromFetch(error, baseUrl);
-    }
-
-    if (!response.ok) {
-      let body = null;
-      try {
-        body = await response.json();
-      } catch {
-        // A non-JSON error body means something in front of PostgREST answered —
-        // a proxy, or nothing listening at all. Keep the status, lose nothing else.
-      }
-      throw errorFromBody(response.status, body);
-    }
-
-    return response.json();
+    // Argument names must match the SQL parameter names exactly — PostgREST resolves
+    // the overload by name, and a typo is a 404 "could not find the function",
+    // not a 400.
+    return postRpc(
+      '/rpc/get_object_graph',
+      JSON.stringify({ repo, seed, traversal_degree: Number(traversalDegree) }),
+      { baseUrl, fetchImpl },
+    );
   };
 }
 
 /** A transport against the default instance, for the common case. */
 export const rpcTransport = createRpcTransport();
+
+/**
+ * The DFG half of the API: one whole-log directly-follows graph per repository.
+ *
+ * No seed and no degree — the repository IS the query — so this is the one transport
+ * whose argument list is a single name. `loadDfg` validates what comes back.
+ */
+export function createDfgTransport({
+  baseUrl = DEFAULT_BASE_URL,
+  fetchImpl = globalThis.fetch,
+} = {}) {
+  if (typeof fetchImpl !== 'function') {
+    throw new Error('No fetch available. Pass fetchImpl, or run on Node 18+ / a browser.');
+  }
+
+  return async function dfgTransport(query = {}) {
+    if (!query.repo) throw new Error('dfgTransport: query.repo is required');
+    return postRpc('/rpc/get_dfg', JSON.stringify({ repo: query.repo }), { baseUrl, fetchImpl });
+  };
+}
+
+/** A DFG transport against the default instance, for the common case. */
+export const dfgTransport = createDfgTransport();
 
 /**
  * Search a repository for seeds matching what someone typed.
@@ -242,27 +280,7 @@ export function createSearchTransport({
   }
 
   return async function searchTransport(params) {
-    let response;
-    try {
-      response = await fetchImpl(`${baseUrl}/rpc/search_seeds`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(params),
-      });
-    } catch (error) {
-      throw errorFromFetch(error, baseUrl);
-    }
-
-    if (!response.ok) {
-      let body = null;
-      try {
-        body = await response.json();
-      } catch {
-        /* see errorFromBody */
-      }
-      throw errorFromBody(response.status, body);
-    }
-    return response.json();
+    return postRpc('/rpc/search_seeds', JSON.stringify(params), { baseUrl, fetchImpl });
   };
 }
 
@@ -277,28 +295,7 @@ export function createSearchTransport({
  * unavailable repository is *shown with its reason* rather than quietly omitted.
  */
 export async function listRepos({ baseUrl = DEFAULT_BASE_URL, fetchImpl = globalThis.fetch } = {}) {
-  let response;
-  try {
-    response = await fetchImpl(`${baseUrl}/rpc/list_repos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: '{}',
-    });
-  } catch (error) {
-    throw errorFromFetch(error, baseUrl);
-  }
-
-  if (!response.ok) {
-    let body = null;
-    try {
-      body = await response.json();
-    } catch {
-      /* see errorFromBody */
-    }
-    throw errorFromBody(response.status, body);
-  }
-
-  const rows = await response.json();
+  const rows = await postRpc('/rpc/list_repos', '{}', { baseUrl, fetchImpl });
   return rows.map((row) => ({
     name: row.name,
     repo_id: row.repo_id,

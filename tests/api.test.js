@@ -15,11 +15,13 @@ import assert from 'node:assert/strict';
 
 import {
   createRpcTransport,
+  createDfgTransport,
   searchSeeds,
   DEFAULT_BASE_URL,
   TRAVERSAL_DEGREE,
 } from '../src/data/api.js';
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
+import { loadDfg } from '../src/data/loadDfg.js';
 import { resolveQuery } from '../src/data/source.js';
 
 /** A fetch stub that records the request and replays a canned response. */
@@ -351,5 +353,61 @@ describe('an unreachable database says so, and says what to do', () => {
         return true;
       },
     );
+  });
+});
+
+describe('the DFG transport asks for one repository and nothing else', () => {
+  const MINIMAL_DFG = {
+    meta: { repo: 'microsoft/vscode', dfg_contract_version: 1, generated_at: '2026-09-01T00:00:00+00:00' },
+    nodes: [],
+    edges: [],
+    cross_edges: [],
+  };
+
+  test('posts to /rpc/get_dfg with the SQL parameter name', async () => {
+    const { fetchImpl, calls } = stubFetch({ status: 200, body: MINIMAL_DFG });
+    await createDfgTransport({ fetchImpl })({ repo: 'microsoft/vscode' });
+    assert.equal(calls[0].url, `${DEFAULT_BASE_URL}/rpc/get_dfg`);
+    assert.deepEqual(calls[0].body, { repo: 'microsoft/vscode' });
+  });
+
+  test('a missing repo fails before anything is fetched', async () => {
+    const { fetchImpl, calls } = stubFetch({ status: 200, body: MINIMAL_DFG });
+    await assert.rejects(() => createDfgTransport({ fetchImpl })({}), /query\.repo is required/);
+    assert.equal(calls.length, 0);
+  });
+
+  test('an unreachable server is reworded the same way as the sub-log transport', async () => {
+    const fetchImpl = async () => {
+      throw new Error('fetch failed');
+    };
+    await assert.rejects(
+      () => createDfgTransport({ fetchImpl, baseUrl: 'http://localhost:9999' })({ repo: 'r' }),
+      (error) => {
+        assert.match(error.message, /Could not reach PostgREST/);
+        assert.equal(error.unreachable, true);
+        return true;
+      },
+    );
+  });
+
+  test('loadDfg validates, normalizes and records the query', async () => {
+    const dfg = await loadDfg({ repo: 'r' }, { transport: async () => MINIMAL_DFG });
+    assert.ok(dfg.meta.generated_at instanceof Date);
+    assert.deepEqual(dfg.meta.query, { repo: 'r' });
+  });
+
+  test('loadDfg refuses a malformed payload with the problems listed', async () => {
+    const broken = { ...MINIMAL_DFG, meta: { ...MINIMAL_DFG.meta, dfg_contract_version: 9 } };
+    await assert.rejects(
+      () => loadDfg({ repo: 'r' }, { transport: async () => broken }),
+      /Malformed DFG/,
+    );
+  });
+
+  test('loadDfg demands a transport rather than defaulting to one', async () => {
+    // Which DFG transport applies is the source's call; a silent default would let a
+    // caller load the sample while believing it queried the database.
+    await assert.rejects(() => loadDfg({ repo: 'r' }), /a transport is required/);
   });
 });

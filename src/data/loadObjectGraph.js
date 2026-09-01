@@ -1,9 +1,10 @@
 /**
- * The single data entry point. The payload contract is in `docs/DATA_LAYER.md`.
+ * The sub-log data entry point; its sibling `loadDfg.js` is the whole-log one. The
+ * payload contracts are in `docs/DATA_LAYER.md`.
  *
  * Nothing above this layer may fetch, parse or reshape data. Everything the
- * renderer sees has passed through here, which is what makes swapping the fixture
- * transport for the PostgREST RPC a one-function change.
+ * renderer sees has passed through one of the two, which is what makes swapping the
+ * fixture transport for the PostgREST RPC a one-function change.
  *
  * A `query` describes the sub-log to select — it is *not* an identity. The same
  * event may legitimately belong to many sub-logs, which is precisely what a case id

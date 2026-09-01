@@ -7,15 +7,16 @@
  * keep loading. The database is what the tool is actually for.
  *
  * So this module is the seam, and it exists to keep `main.js` from growing a branch
- * everywhere it touches data. Three operations, two implementations, one shape:
+ * everywhere it touches data. Four operations, two implementations, one shape:
  *
  *   listRepos()                  what can be asked about
  *   searchSeeds(repo, text)      what can be asked for
  *   loadSubLog(query)            the answer
+ *   loadDfg(repo)                the whole-log directly-follows graph
  *
  * ⚠️ **`searchSeeds` is async in both.** The fixture version has nothing to await, but
  * making the shapes differ would push the difference up into the caller, which is the
- * one thing this module exists to prevent.
+ * one thing this module exists to prevent. `loadDfg` follows the same rule.
  *
  * Selection is by URL, `?source=`, defaulting to fixtures. That is deliberate for now:
  * the database source needs PostgREST running, and a tool that fails to start when a
@@ -23,8 +24,19 @@
  */
 
 import { loadObjectGraph } from './loadObjectGraph.js';
-import { loadCatalogue, searchSeeds as searchFixtureSeeds, fixtureTransport } from './fixtures.js';
-import { rpcTransport, searchSeeds as searchDatabaseSeeds, listRepos as listDbRepos } from './api.js';
+import { loadDfg } from './loadDfg.js';
+import {
+  loadCatalogue,
+  searchSeeds as searchFixtureSeeds,
+  fixtureTransport,
+  dfgSampleTransport,
+} from './fixtures.js';
+import {
+  rpcTransport,
+  dfgTransport,
+  searchSeeds as searchDatabaseSeeds,
+  listRepos as listDbRepos,
+} from './api.js';
 
 export const SOURCES = ['fixtures', 'database'];
 
@@ -55,6 +67,11 @@ function fixtureSource() {
     },
     loadSubLog(query) {
       return loadObjectGraph(query, { transport: fixtureTransport });
+    },
+    // The sample, whatever repository is picked; the page shows the sample's own
+    // meta.repo rather than pretending it matches the picker.
+    loadDfg() {
+      return loadDfg({}, { transport: dfgSampleTransport });
     },
     /*
      * The first servable seed, so opening the app shows something.
@@ -89,6 +106,9 @@ function databaseSource() {
     searchSeeds: searchDatabaseSeeds,
     loadSubLog(query) {
       return loadObjectGraph(query, { transport: rpcTransport });
+    },
+    loadDfg(repo) {
+      return loadDfg({ repo }, { transport: dfgTransport });
     },
     /*
      * **There is no default seed, and that is the design, not a gap.**
