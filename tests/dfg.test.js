@@ -44,7 +44,7 @@ function validDfg() {
       { object_type: 'commit', from_activity: 'CommitObserved', to_activity: 'CommitObserved', successions: 1, objects: 1 },
     ],
     cross_edges: [
-      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1 },
+      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body' },
     ],
   };
 }
@@ -62,8 +62,8 @@ describe('the DFG validator accepts an honest bundle and names every fault', () 
 
   test('a foreign contract version is refused, not rendered subtly wrong', () => {
     const dfg = validDfg();
-    dfg.meta.dfg_contract_version = 2;
-    assert.match(findDfgProblems(dfg).join('\n'), /dfg_contract_version is 2/);
+    dfg.meta.dfg_contract_version = 9;
+    assert.match(findDfgProblems(dfg).join('\n'), /dfg_contract_version is 9/);
   });
 
   test('an unknown activity is named', () => {
@@ -98,6 +98,35 @@ describe('the DFG validator accepts an honest bundle and names every fault', () 
     const dfg = validDfg();
     dfg.edges[0].evidence = 'validated';
     assert.match(findDfgProblems(dfg).join('\n'), /not a traceability link/);
+  });
+
+  test('the prefix rule holds in both directions', () => {
+    // A cross succession CARRIES its link's class, link_-prefixed; the bare names would
+    // claim the succession itself is classified, and a per-type edge rides no link.
+    const bare = validDfg();
+    bare.cross_edges[0].qualifier = 'resolves';
+    assert.match(findDfgProblems(bare).join('\n'), /the link's class is link_qualifier/);
+
+    const perType = validDfg();
+    perType.edges[0].link_evidence = 'validated';
+    assert.match(findDfgProblems(perType).join('\n'), /a per-type succession rides no link/);
+  });
+
+  test('a cross edge without its link class, or with a foreign one, is refused', () => {
+    const missing = validDfg();
+    delete missing.cross_edges[0].link_qualifier;
+    assert.match(findDfgProblems(missing).join('\n'), /has no link_qualifier/);
+
+    const retired = validDfg();
+    retired.cross_edges[0].link_evidence = 'inferred';
+    assert.match(
+      findDfgProblems(retired).join('\n'),
+      /link_evidence "inferred"; the only classes are validated and extracted/,
+    );
+
+    const unknown = validDfg();
+    unknown.cross_edges[0].link_method = 'crystal_ball';
+    assert.match(findDfgProblems(unknown).join('\n'), /unknown link_method "crystal_ball"/);
   });
 
   test('broken conservation is a counting fault, and says which type', () => {

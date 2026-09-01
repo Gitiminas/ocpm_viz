@@ -10,17 +10,22 @@
  * like omissions are deliberate:
  *   - `normalizeDfg` turns `meta.generated_at` into a `Date` and does nothing else. There
  *     is nothing else to parse; do not "fix" its emptiness.
- *   - An edge must NOT carry an `evidence` field. A succession is an observation, not a
- *     traceability claim, and dressing it in the link vocabulary would assert a
- *     classification the artifact does not have. The validator rejects it by name.
+ *   - An edge must NOT carry a bare `evidence` field. A succession is an observation,
+ *     not a traceability claim, and dressing it in the link vocabulary would assert a
+ *     classification the artifact does not have. What a CROSS succession does carry,
+ *     `link_`-prefixed, is the class of the link it rides on (qualifier, evidence,
+ *     method — one class per row, since no linked pair holds two links); the prefix is
+ *     the statement that the classification belongs to the link. The validator enforces
+ *     the prefix in both directions.
  *
  * There is no case notion here: succession is counted per object, and across
  * objects only through links (`cross_edges`, whose counts are floors).
  */
 
 import { LANE_TYPES, ACTIVITIES, READING_ORDER, isKnownActivity } from './activities.js';
+import { EVIDENCE, isKnownMethod } from './evidence.js';
 
-export const DFG_CONTRACT_VERSION = 1;
+export const DFG_CONTRACT_VERSION = 2;
 
 const LANE_TYPE_SET = new Set(LANE_TYPES);
 
@@ -88,6 +93,11 @@ export function findDfgProblems(dfg) {
     if ('evidence' in edge) {
       problems.push(`${where} carries "evidence"; a succession is not a traceability link`);
     }
+    for (const field of ['link_qualifier', 'link_evidence', 'link_method']) {
+      if (field in edge) {
+        problems.push(`${where} carries "${field}"; a per-type succession rides no link`);
+      }
+    }
   }
 
   for (const edge of dfg.cross_edges) {
@@ -109,8 +119,31 @@ export function findDfgProblems(dfg) {
     for (const field of ['successions', 'pairs']) {
       if (badCount(edge[field])) problems.push(`${where} has a bad ${field} count`);
     }
-    if ('evidence' in edge) {
-      problems.push(`${where} carries "evidence"; a succession is not a traceability link`);
+    /*
+     * The prefix rule, enforced both ways: a cross succession CARRIES its link's
+     * classification (`link_*`, one class per row, since no pair holds two links),
+     * but never wears the bare names — those would claim the succession itself is
+     * validated or extracted, which no observation is.
+     */
+    for (const bare of ['evidence', 'qualifier', 'method']) {
+      if (bare in edge) {
+        problems.push(
+          `${where} carries "${bare}"; the link's class is link_${bare}, and a ` +
+            `succession itself has none`,
+        );
+      }
+    }
+    if (typeof edge.link_qualifier !== 'string' || !edge.link_qualifier) {
+      problems.push(`${where} has no link_qualifier`);
+    }
+    if (!Object.values(EVIDENCE).includes(edge.link_evidence)) {
+      problems.push(
+        `${where} has link_evidence "${edge.link_evidence}"; the only classes are ` +
+          `validated and extracted`,
+      );
+    }
+    if (!isKnownMethod(edge.link_method)) {
+      problems.push(`${where} has unknown link_method "${edge.link_method}"`);
     }
   }
 

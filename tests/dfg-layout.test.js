@@ -28,7 +28,7 @@ function dfg() {
       { object_type: 'commit', from_activity: 'CommitObserved', to_activity: 'CommitObserved', successions: 1, objects: 1 },
     ],
     cross_edges: [
-      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1 },
+      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body' },
     ],
   };
 }
@@ -106,6 +106,7 @@ describe('edges carry their reading: direction by side, frequency by width', () 
     bundle.cross_edges.push({
       from_type: 'issue', from_activity: 'IssueClosed',
       to_type: 'pull_request', to_activity: 'PullRequestMerged', successions: 3, pairs: 1,
+      link_qualifier: 'resolves', link_evidence: 'extracted', link_method: 'commit_message',
     });
     const layout = layoutDfg(bundle, BOX);
     const [one, two] = layout.crossEdges;

@@ -30,6 +30,31 @@ const DB = process.env.PGDATABASE || 'gharchive_ocpm_viz_wsl';
 const [repo = 'microsoft/vscode'] = process.argv.slice(2);
 
 const quote = (value) => value.replace(/'/g, "''");
+
+// The fact the cross-edge attribution leans on: no linked pair carries two links, so a
+// succession inherits ONE (qualifier, evidence, method). Verified 2026-09-01; asserted
+// here so it fails loudly the day an fe.link change breaks it.
+const duplicatePairs = execFileSync(
+  'psql',
+  [
+    '-d',
+    DB,
+    '-Atc',
+    'SELECT count(*) FROM (SELECT repo_id, source, target FROM fe.link_mat ' +
+      'GROUP BY 1, 2, 3 HAVING count(*) > 1) d',
+  ],
+  { encoding: 'utf8' },
+).trim();
+if (duplicatePairs !== '0') {
+  console.error(
+    `\nFAIL — ${duplicatePairs} (source, target) pair(s) carry more than one link; ` +
+      'the DFG attributes each cross succession to its pair’s ONE link, and that ' +
+      'just stopped being true.',
+  );
+  process.exit(1);
+}
+console.log('gate    one link per pair in fe.link_mat   ✓');
+
 const started = Date.now();
 const text = execFileSync('psql', ['-d', DB, '-Atc', `SELECT api.get_dfg('${quote(repo)}')`], {
   encoding: 'utf8',
@@ -68,9 +93,15 @@ for (const type of LANE_TYPES) {
 }
 
 // The vocabulary rules, checked against the raw text so a field the parser ignores
-// still counts: no case notion, no evidence classes on successions.
+// still counts: no case notion, and no BARE link vocabulary on successions — the
+// key-form regexes (`"evidence":`) cannot match the sanctioned link_-prefixed keys,
+// whose quote sits before the `l`.
 if (/"case/i.test(text)) fail.push('the raw payload contains a "case…" key');
-if (/"evidence"/.test(text)) fail.push('the raw payload carries an evidence field');
+for (const bare of ['evidence', 'qualifier', 'method']) {
+  if (new RegExp(`"${bare}"\\s*:`).test(text)) {
+    fail.push(`the raw payload carries a bare "${bare}" key; the link's class is link_${bare}`);
+  }
+}
 
 if (fail.length) {
   console.error(`\nFAIL — ${fail.length} problem(s):`);

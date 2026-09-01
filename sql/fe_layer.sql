@@ -1720,7 +1720,10 @@ $$;
 --   * api.get_dfg('microsoft/vscode') off the MV: 0.43 s end to end, 16,056 B payload.
 -- =====================================================================================
 
-CREATE OR REPLACE VIEW fe.dfg AS
+-- Dropped rather than replaced: the column list changed at v2 (the class columns), and
+-- CREATE OR REPLACE cannot reshape a view. The CASCADE takes fe.dfg_mat, rebuilt below.
+DROP VIEW IF EXISTS fe.dfg CASCADE;
+CREATE VIEW fe.dfg AS
 WITH typed AS (
   -- Key columns ONLY: projecting attrs would drag the §4 comment-excerpt subqueries
   -- through 3.2M rows (the 1 s vs 6.1 s warning there, at full-log scale).
@@ -1761,46 +1764,65 @@ edges AS (
 pair_events AS (
   -- Both endpoints' events, tagged with the pair they belong to. Two equality joins
   -- rather than `object_id IN (source, target)`, so each side can use an index path.
-  SELECT l.repo_id, l.source, l.target, t.object_id, t.object_type, t.activity, t.time, t.id
+  -- The link's own classification rides along: verified 2026-09-01, no (source, target)
+  -- appears twice in fe.link_mat, so every pair carries exactly ONE (qualifier,
+  -- evidence, method) — a succession inherits it with no attribution rule. The
+  -- dfg-check gate asserts that fact so it fails loudly the day it stops holding.
+  SELECT l.repo_id, l.source, l.target, l.qualifier, l.evidence, l.method,
+         t.object_id, t.object_type, t.activity, t.time, t.id
   FROM fe.link_mat l JOIN typed t ON t.repo_id = l.repo_id AND t.object_id = l.source
   UNION ALL
-  SELECT l.repo_id, l.source, l.target, t.object_id, t.object_type, t.activity, t.time, t.id
+  SELECT l.repo_id, l.source, l.target, l.qualifier, l.evidence, l.method,
+         t.object_id, t.object_type, t.activity, t.time, t.id
   FROM fe.link_mat l JOIN typed t ON t.repo_id = l.repo_id AND t.object_id = l.target
 ),
 merged AS (
   -- The linked pair's two sequences interleaved by time. Only ADJACENT events that
   -- cross from one object to the other count as a succession; a run of events on one
-  -- side contributes nothing until the other side speaks.
-  SELECT repo_id, source, target, object_id, object_type, activity,
+  -- side contributes nothing until the other side speaks. The link attributes sit in
+  -- the PARTITION deliberately: constant per pair today (so a no-op), but should a
+  -- duplicate link ever appear, each link then counts its own interleaving instead of
+  -- two copies interleaving into phantom successions.
+  SELECT repo_id, source, target, qualifier, evidence, method,
+         object_id, object_type, activity,
          LAG(object_id)   OVER w AS prev_object,
          LAG(object_type) OVER w AS prev_type,
          LAG(activity)    OVER w AS prev_activity
   FROM pair_events
-  WINDOW w AS (PARTITION BY repo_id, source, target ORDER BY time, id)
+  WINDOW w AS (PARTITION BY repo_id, source, target, qualifier, evidence, method
+               ORDER BY time, id)
 ),
 cross_edges AS (
   -- from_type <> to_type always: fe.link endpoints are cross-type by construction.
+  -- One row per (edge, link class); the frontend aggregates back to one arrow and
+  -- keeps the classes for its breakdown.
   SELECT repo_id, prev_type AS from_type, prev_activity AS from_activity,
          object_type AS to_type, activity AS to_activity,
+         qualifier, evidence, method,
          count(*)                         AS successions,
          count(DISTINCT (source, target)) AS pairs
   FROM merged
   WHERE prev_object IS NOT NULL AND prev_object <> object_id
-  GROUP BY 1, 2, 3, 4, 5
+  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
 )
 SELECT repo_id, 'node'::text AS kind, object_type, activity,
        NULL::text AS from_activity, NULL::text AS to_activity, NULL::text AS to_type,
-       events, objects, starts, ends, NULL::bigint AS successions
+       events, objects, starts, ends, NULL::bigint AS successions,
+       NULL::text AS link_qualifier, NULL::text AS link_evidence, NULL::text AS link_method
 FROM nodes
 UNION ALL
 SELECT repo_id, 'edge', object_type, NULL, from_activity, to_activity, NULL,
-       NULL, objects, NULL, NULL, successions
+       NULL, objects, NULL, NULL, successions,
+       NULL, NULL, NULL
 FROM edges
 UNION ALL
 -- Cross rows carry the pair count in `objects`: a pair is the unit a cross succession
--- is counted within, the way an object is for a per-type edge.
+-- is counted within, the way an object is for a per-type edge. The class columns are
+-- link_-prefixed: the classification belongs to the LINK a succession rides on, never
+-- to the succession itself, which remains an observation.
 SELECT repo_id, 'cross_edge', from_type, NULL, from_activity, to_activity, to_type,
-       NULL, pairs, NULL, NULL, successions
+       NULL, pairs, NULL, NULL, successions,
+       qualifier, evidence, method
 FROM cross_edges;
 
 DROP MATERIALIZED VIEW IF EXISTS fe.dfg_mat CASCADE;
@@ -2061,16 +2083,18 @@ BEGIN
        'repo_ambiguous',   (_n_named > 1),
        -- Its OWN counter, not the ObjectGraph's contract_version: the two payloads
        -- change independently, and a consumer of one must not fail on the other's bump.
-       'dfg_contract_version', 1,
+       'dfg_contract_version', 2,
        'generated_at',     fe.utc(now()),
        'activity_scope',   'OCEL-strict + comments (reviews/dismissals/review-comments excluded)',
        'data_honesty', jsonb_build_object(
           'succession',    'Counted within each object''s own event sequence, over the '
-                        || 'whole log, no windowing. No evidence classes: a succession '
-                        || 'is an observation, not a traceability claim.',
+                        || 'whole log, no windowing. A succession is an observation, '
+                        || 'not a traceability claim.',
           'cross_edges',   'Derived through the admitted links, which two admission '
                         || 'rules narrow. Every cross-edge count is a floor, never a '
-                        || 'point estimate.',
+                        || 'point estimate. One row per link class, link_-prefixed: '
+                        || 'the classification belongs to the link a succession rides '
+                        || 'on, never to the succession itself.',
           'commit_time',   'first-seen in PushEvent, NOT real git commit time',
           'truncation',    'GH Archive caps PushEvent.commits at 20; commit sequences '
                         || 'undercount pushes larger than that.'),
@@ -2097,8 +2121,13 @@ BEGIN
        SELECT jsonb_agg(jsonb_build_object(
          'from_type', d.object_type, 'from_activity', d.from_activity,
          'to_type', d.to_type, 'to_activity', d.to_activity,
-         'successions', d.successions, 'pairs', d.objects)
-         ORDER BY d.object_type, d.from_activity, d.to_type, d.to_activity)
+         'successions', d.successions, 'pairs', d.objects,
+         'link_qualifier', d.link_qualifier, 'link_evidence', d.link_evidence,
+         'link_method', d.link_method)
+         -- The class keys joined the sort: the four-key order stopped being unique
+         -- the moment one arrow could carry several class rows.
+         ORDER BY d.object_type, d.from_activity, d.to_type, d.to_activity,
+                  d.link_qualifier, d.link_method)
        FROM fe.dfg_mat d WHERE d.repo_id = _repo_id AND d.kind = 'cross_edge'), '[]'::jsonb)
   ) INTO _payload;
 
@@ -2109,7 +2138,8 @@ $fn$;
 COMMENT ON FUNCTION api.get_dfg(text) IS
   'The whole-log directly-follows graph for one repository (docs/DATA_LAYER.md): activity '
   'nodes and succession edges per object type, plus cross-type edges through links, which '
-  'are floors. Pre-computed in fe.dfg_mat. There is no case notion.';
+  'are floors and carry their link''s class (link_qualifier, link_evidence, link_method), '
+  'one row per class. Pre-computed in fe.dfg_mat. There is no case notion.';
 
 
 -- =====================================================================================
