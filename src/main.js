@@ -909,7 +909,23 @@ for (const tab of document.querySelectorAll('.pageTab')) {
 // the process-map page
 // ---------------------------------------------------------------------------
 
-const dfgChart = createDfgView({ container: elements.dfgContent, tooltip });
+const dfgChart = createDfgView({
+  container: elements.dfgContent,
+  tooltip,
+  handlers: {
+    // Click a mark to see only what touches it, click the background to clear —
+    // the Trace page's focus gesture. Highlight only; the geometry never moves.
+    onNodeClick(key) {
+      dfgView.focus = dfgView.focus === key ? null : key;
+      renderDfg();
+    },
+    onBackgroundClick() {
+      if (!dfgView.focus) return;
+      dfgView.focus = null;
+      renderDfg();
+    },
+  },
+});
 /*
  * The page's own view state, deliberately outside `st` and outside presets: presets
  * describe sub-log views, and none of this describes anything a sub-log has. Across a
@@ -996,7 +1012,7 @@ function renderDfg() {
     width,
     maxSuccessions: currentDfgToggles.maxSuccessions,
   });
-  dfgChart.render(currentDfg, layout, { counts: filtered });
+  dfgChart.render(currentDfg, layout, { counts: filtered, focus: dfgView.focus });
   renderLegend(elements.dfgLegend, legendKeysPresentIn(elements.dfgContent));
 }
 

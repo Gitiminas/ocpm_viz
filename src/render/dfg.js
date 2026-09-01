@@ -17,6 +17,7 @@
 
 import { TYPE, typeColor, drawSymbol, COLORS } from './theme.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
+import { DIM_OPACITY } from '../model/graph.js';
 import { escapeHtml } from './format.js';
 import { DFG_LOOP_RADIUS } from '../layout/dfg.js';
 
@@ -52,7 +53,7 @@ function trimmed(points, radius) {
   return [cut(from, mid, radius + 2), mid, cut(to, mid, radius + 2 + ARROW_SIZE)];
 }
 
-export function createDfgView({ container, tooltip }) {
+export function createDfgView({ container, tooltip, handlers = {} }) {
   const notice = document.createElement('div');
   notice.className = 'mono';
   notice.style.cssText =
@@ -66,6 +67,11 @@ export function createDfgView({ container, tooltip }) {
     .append('svg')
     .attr('id', 'dfgChart')
     .style('display', 'block');
+
+  // A click on empty canvas clears the focus, the timeline's own gesture.
+  svg.on('click', (event) => {
+    if (event.target === svg.node()) handlers.onBackgroundClick?.();
+  });
 
   let width = 960;
 
@@ -87,11 +93,15 @@ export function createDfgView({ container, tooltip }) {
    * kept (`filterDfg` runs before `layoutDfg`); `counts` is that filter's arithmetic,
    * printed in the notice so nothing disappears quietly.
    *
+   * `focus` is an activity key (`type/activity`) or null: everything not touching it
+   * dims to the standard focus opacity. Highlight only — the geometry this function
+   * receives is identical with and without a focus, by construction.
+   *
    * @param {object} dfg      the loaded payload (for meta: repo, sample note, dates)
    * @param {object} layout   from `layoutDfg`, post-filter
-   * @param {{counts?: object}} options
+   * @param {{counts?: object, focus?: string|null}} options
    */
-  function render(dfg, layout, { counts = null } = {}) {
+  function render(dfg, layout, { counts = null, focus = null } = {}) {
     svg.selectAll('*').remove();
     svg.attr('width', layout.width).attr('height', layout.height);
 
@@ -151,7 +161,26 @@ export function createDfgView({ container, tooltip }) {
     ];
     const hoverTargets = [];
 
+    // The focus reading: an edge is bright only when it TOUCHES the focused activity,
+    // and a node only when it is the focus or shares such an edge.
+    const endpoints = (edge, cross) =>
+      cross
+        ? [`${edge.from_type}/${edge.from_activity}`, `${edge.to_type}/${edge.to_activity}`]
+        : [`${edge.object_type}/${edge.from_activity}`, `${edge.object_type}/${edge.to_activity}`];
+    const neighbours = new Set(focus ? [focus] : []);
+    if (focus) {
+      for (const { edge, cross } of edgeSets) {
+        const [a, b] = endpoints(edge, cross);
+        if (a === focus) neighbours.add(b);
+        if (b === focus) neighbours.add(a);
+      }
+    }
+    const edgeDim = (edge, cross) =>
+      focus && !endpoints(edge, cross).includes(focus) ? DIM_OPACITY : 1;
+    const nodeDim = (key) => (focus && !neighbours.has(key) ? DIM_OPACITY : 1);
+
     for (const { edge, cross } of edgeSets) {
+      const dim = edgeDim(edge, cross);
       const color = cross ? COLORS.extracted : typeColor(edge.object_type);
       const group = gLink.append('g');
       group.attr('data-legend', cross ? 'dfg-cross-succession' : 'dfg-succession');
@@ -184,8 +213,8 @@ export function createDfgView({ container, tooltip }) {
         .attr('stroke-width', edge.width)
         .attr('stroke-linecap', 'round')
         .attr('stroke-dasharray', cross ? '6 6' : null)
-        .attr('opacity', cross ? 0.7 : 0.8);
-      if (head) head.attr('opacity', cross ? 0.7 : 0.9);
+        .attr('opacity', (cross ? 0.7 : 0.8) * dim);
+      if (head) head.attr('opacity', (cross ? 0.7 : 0.9) * dim);
 
       // The count label answers the pointer with the SAME card as its edge, so a number
       // in a crowd can be interrogated without finding its arrow first.
@@ -200,6 +229,7 @@ export function createDfgView({ container, tooltip }) {
         .attr('paint-order', 'stroke')
         .attr('stroke', 'var(--color-bg)')
         .attr('stroke-width', 3)
+        .attr('opacity', dim)
         .style('cursor', 'pointer')
         .text(edge.successions.toLocaleString('en-US'));
       tooltip.bind(label, () => successionCard(edge, cross));
@@ -228,11 +258,15 @@ export function createDfgView({ container, tooltip }) {
     }
 
     for (const node of layout.nodes) {
+      const key = `${node.object_type}/${node.activity}`;
+      const dim = nodeDim(key);
       const group = gNode
         .append('g')
         .attr('transform', `translate(${node.x},${node.y})`)
         .attr('data-legend', 'dfg-activity')
-        .style('cursor', 'pointer');
+        .attr('opacity', dim)
+        .style('cursor', 'pointer')
+        .on('click', () => handlers.onNodeClick?.(key));
       drawSymbol(group, TYPE[node.object_type].shape, node.radius, typeColor(node.object_type), 'var(--color-bg)', 1.5);
       gLabel
         .append('text')
@@ -245,6 +279,7 @@ export function createDfgView({ container, tooltip }) {
         .attr('paint-order', 'stroke')
         .attr('stroke', 'var(--color-bg)')
         .attr('stroke-width', 3)
+        .attr('opacity', dim)
         .text(activityShortLabel(node.activity));
       gLabel
         .append('text')
@@ -254,6 +289,7 @@ export function createDfgView({ container, tooltip }) {
         .attr('font-size', 9)
         .attr('class', 'mono')
         .attr('fill', 'var(--color-neutral-400)')
+        .attr('opacity', dim)
         .text(`${node.events.toLocaleString('en-US')} ev`);
       tooltip.bind(group, () => activityCard(node));
     }
