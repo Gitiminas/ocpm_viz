@@ -72,6 +72,9 @@ export function createTooltip({ tipEl, wrapEl }) {
   }
   let hideTimer = null;
   let pinned = false;
+  // Right-click-to-pin is not guessable, so the unpinned card says so — until the
+  // reader pins once, after which the hint has done its job and stops appearing.
+  let pinHintSeen = false;
 
   function position(event) {
     const bounds = wrapEl.getBoundingClientRect();
@@ -232,6 +235,7 @@ export function createTooltip({ tipEl, wrapEl }) {
 
     tipEl.innerHTML =
       '<button class="tip-close" aria-label="Close">&times;</button>' +
+      (pinned || pinHintSeen ? '' : '<div class="tip-pin-hint">right-click pins</div>') +
       `<div class="tip-accent" style="background:${spec.accent}"></div>` +
       `<div class="tip-header"><div class="tip-kicker">${glyph(spec.shape, spec.accent)}` +
       `<span>${spec.kicker}</span></div>` +
@@ -274,6 +278,7 @@ export function createTooltip({ tipEl, wrapEl }) {
     event.preventDefault();
     event.stopPropagation();
     pinned = true;
+    pinHintSeen = true;
     render();
     tipEl.classList.add('pinned');
     tipEl.style.pointerEvents = 'auto';

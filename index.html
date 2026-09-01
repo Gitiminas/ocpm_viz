@@ -74,6 +74,10 @@ html,body{height:100%;margin:0;overflow:hidden}
 #tip .tip-close{display:none;position:absolute;top:8px;right:8px;width:18px;height:18px;border:none;background:none;color:var(--color-neutral-500);cursor:pointer;font-size:14px;line-height:1;padding:0}
 #tip .tip-close:hover{color:var(--color-text)}
 #tip.pinned .tip-close{display:block}
+/* Where the close button will sit once pinned, the unpinned card teaches the gesture.
+   The JS stops emitting it after the first pin — the lesson took. */
+#tip .tip-pin-hint{position:absolute;top:8px;right:8px;font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-neutral-500);background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:4px;padding:2px 6px;pointer-events:none}
+#tip.pinned .tip-pin-hint{display:none}
 #tip .pin-hint{display:none;padding:6px 14px;font-size:10px;color:var(--color-neutral-500);border-top:1px solid var(--color-neutral-800);background:var(--color-neutral-900)}
 #tip.pinned .pin-hint{display:block}
 #tip.pinned .tip-title{cursor:pointer}
