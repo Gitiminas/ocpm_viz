@@ -63,6 +63,8 @@ export const TIPS = Object.freeze({
   'section.folding': 'How marks that belong together are folded into one: pushes by push id, comments by time.',
   'section.actors': 'Everyone who did something in this sub-log. Hover to preview their trail, click to pin it.',
   'section.legend': 'What each shape, ring and line means. Dimmed rows are not in the current picture.',
+  'section.successions': 'Which successions are drawn: within each type, across links, and how common they must be.',
+  'section.activities': 'Show or hide single activities. Hiding one removes its node and every succession touching it.',
 
   // ---- views --------------------------------------------------------------------
   'views.preset': (description) => description || 'A saved combination of toggles. Click to apply it.',
