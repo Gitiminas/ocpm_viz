@@ -15,7 +15,7 @@
 
 /* global d3 */
 
-import { TYPE, typeColor, drawSymbol, COLORS } from './theme.js';
+import { TYPE, typeColor, drawSymbol } from './theme.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
 import { DIM_OPACITY } from '../model/graph.js';
 import { escapeHtml } from './format.js';
@@ -181,7 +181,11 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
 
     for (const { edge, cross } of edgeSets) {
       const dim = edgeDim(edge, cross);
-      const color = cross ? COLORS.extracted : typeColor(edge.object_type);
+      // A cross edge wears the colour of the lane it LEAVES — the timeline's
+      // coloured-by-endpoint language — while the dash stays its derived-through-links
+      // cue. A per-type edge and a cross edge can share a colour; they never share a
+      // dash.
+      const color = typeColor(cross ? edge.from_type : edge.object_type);
       const group = gLink.append('g');
       group.attr('data-legend', cross ? 'dfg-cross-succession' : 'dfg-succession');
 
@@ -253,6 +257,11 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
         .attr('stroke', '#000')
         .attr('stroke-opacity', 0)
         .attr('stroke-width', Math.max(8, edge.width + 4))
+        // The hover target is what the pointer actually rests on, so the help strip's
+        // label goes here — the relationships-mode lesson. The legend key doubles as
+        // the tip key; `data-tip` rather than `data-legend`, because the legend
+        // hover-highlight mutates every data-legend element and this is not a mark.
+        .attr('data-tip', cross ? 'legend.dfg-cross-succession' : 'legend.dfg-succession')
         .style('cursor', 'pointer');
       tooltip.bind(hover, () => successionCard(edge, cross));
     }
@@ -315,7 +324,7 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
     const from = cross ? `${TYPE[edge.from_type].label} ${activityShortLabel(edge.from_activity)}` : activityShortLabel(edge.from_activity);
     const to = cross ? `${TYPE[edge.to_type].label} ${activityShortLabel(edge.to_activity)}` : activityShortLabel(edge.to_activity);
     return {
-      accent: cross ? COLORS.extracted : typeColor(edge.object_type),
+      accent: typeColor(cross ? edge.from_type : edge.object_type),
       shape: cross ? 'line' : TYPE[edge.object_type].shape,
       kicker: cross ? 'Succession · across a link' : `${TYPE[edge.object_type].label} · succession`,
       title: `${escapeHtml(from)} → ${escapeHtml(to)}`,

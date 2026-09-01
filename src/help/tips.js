@@ -114,7 +114,7 @@ export const TIPS = Object.freeze({
   'dfg.range': 'Keep only successions whose count falls inside this range. The scale is logarithmic, and the rarest tenth of edges starts hidden.',
   'legend.dfg-activity': 'One activity, drawn as its lane’s shape. The number is how many events it has in the whole log.',
   'legend.dfg-succession': 'One activity directly followed by another within one object’s events. Wider means more often.',
-  'legend.dfg-cross-succession': 'A succession between the two objects of a linked pair. A floor, because the links it rides on are narrowed.',
+  'legend.dfg-cross-succession': 'A succession between the two objects of a linked pair, dashed and coloured by the side it leaves. A floor, because the links it rides on are narrowed.',
   'rel.arrow.validated':
     'A link the platform itself asserts. The arrowhead points at the end that came later in time.',
   'rel.arrow.extracted':
