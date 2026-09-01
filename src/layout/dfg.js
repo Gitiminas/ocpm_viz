@@ -155,18 +155,55 @@ export function layoutDfg(dfg, { width = 960 } = {}) {
     }];
   });
 
-  const crossEdges = dfg.cross_edges.flatMap((edge) => {
-    const from = nodeAt.get(`${edge.from_type}/${edge.from_activity}`);
-    const to = nodeAt.get(`${edge.to_type}/${edge.to_activity}`);
-    if (!from || !to) return [];
-    const control = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
-    return [{
-      ...edge,
-      loop: false,
-      width: dfgEdgeWidth(edge.successions, maxSuccessions),
-      points: [{ x: from.x, y: from.y }, control, { x: to.x, y: to.y }],
-      labelAt: { x: control.x, y: control.y - 8 },
-    }];
+  /*
+   * Cross edges sharing the two SAME endpoints — the usual case is one in each
+   * direction — fan apart perpendicular to the line, or the later-drawn one buries the
+   * earlier and two counts read as one arrow. A singleton keeps the exact midpoint: only
+   * offset when there is something to separate from (the link-fanning rule).
+   */
+  const crossKey = (edge) =>
+    [`${edge.from_type}/${edge.from_activity}`, `${edge.to_type}/${edge.to_activity}`]
+      .sort()
+      .join('|');
+  const crossBundles = new Map();
+  for (const edge of dfg.cross_edges) {
+    const key = crossKey(edge);
+    if (!crossBundles.has(key)) crossBundles.set(key, []);
+    crossBundles.get(key).push(edge);
+  }
+
+  const crossEdges = [...crossBundles.values()].flatMap((bundle) => {
+    // Rank by directed key, so the offset is deterministic whatever order the payload
+    // listed the bundle in.
+    const ranked = [...bundle].sort((a, b) =>
+      `${a.from_type}/${a.from_activity}`.localeCompare(`${b.from_type}/${b.from_activity}`),
+    );
+    return ranked.flatMap((edge, rank) => {
+      const from = nodeAt.get(`${edge.from_type}/${edge.from_activity}`);
+      const to = nodeAt.get(`${edge.to_type}/${edge.to_activity}`);
+      if (!from || !to) return [];
+      // The perpendicular is taken in ONE canonical frame for the whole bundle (endpoints
+      // in sorted-key order), or the two directions of a pair would flip its sign and
+      // land their offsets on the same side.
+      const [a, b] = `${edge.from_type}/${edge.from_activity}` < `${edge.to_type}/${edge.to_activity}`
+        ? [from, to]
+        : [to, from];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const length = Math.hypot(dx, dy) || 1;
+      const shift = (rank - (ranked.length - 1) / 2) * 20;
+      const control = {
+        x: (from.x + to.x) / 2 + (-dy / length) * shift,
+        y: (from.y + to.y) / 2 + (dx / length) * shift,
+      };
+      return [{
+        ...edge,
+        loop: false,
+        width: dfgEdgeWidth(edge.successions, maxSuccessions),
+        points: [{ x: from.x, y: from.y }, control, { x: to.x, y: to.y }],
+        labelAt: { x: control.x, y: control.y - 8 },
+      }];
+    });
   });
 
   return {

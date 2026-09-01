@@ -99,6 +99,36 @@ describe('edges carry their reading: direction by side, frequency by width', () 
     assert.deepEqual(loop.points[0], { x: node.x, y: node.y });
   });
 
+  test('two cross edges sharing endpoints fan apart; a singleton keeps the midpoint', () => {
+    // The usual bundle is one succession in each direction; drawn through the same
+    // midpoint the later one buries the earlier and two counts read as one arrow.
+    const bundle = dfg();
+    bundle.cross_edges.push({
+      from_type: 'issue', from_activity: 'IssueClosed',
+      to_type: 'pull_request', to_activity: 'PullRequestMerged', successions: 3, pairs: 1,
+    });
+    const layout = layoutDfg(bundle, BOX);
+    const [one, two] = layout.crossEdges;
+    const midpoint = {
+      x: (one.points[0].x + one.points[2].x) / 2,
+      y: (one.points[0].y + one.points[2].y) / 2,
+    };
+    const off = (edge) => Math.hypot(edge.points[1].x - midpoint.x, edge.points[1].y - midpoint.y);
+    assert.ok(Math.abs(off(one) - 10) < 1e-9 && Math.abs(off(two) - 10) < 1e-9, '±10px each');
+    assert.ok(
+      Math.hypot(one.points[1].x - two.points[1].x, one.points[1].y - two.points[1].y) > 19,
+      'the two controls sit on opposite sides',
+    );
+    assert.notDeepEqual(one.labelAt, two.labelAt, 'labels separate with their edges');
+
+    const [single] = layoutDfg(dfg(), BOX).crossEdges;
+    assert.deepEqual(
+      single.points[1],
+      { x: (single.points[0].x + single.points[2].x) / 2, y: (single.points[0].y + single.points[2].y) / 2 },
+      'nothing to separate from, so the exact midpoint',
+    );
+  });
+
   test('a cross edge runs between the two named rows', () => {
     const layout = layoutDfg(dfg(), BOX);
     const [cross] = layout.crossEdges;
