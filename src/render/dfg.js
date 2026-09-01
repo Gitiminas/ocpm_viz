@@ -83,23 +83,29 @@ export function createDfgView({ container, tooltip }) {
   }
 
   /**
-   * Draw one laid-out DFG.
+   * Draw one laid-out DFG. The layout already carries exactly what the page's filter
+   * kept (`filterDfg` runs before `layoutDfg`); `counts` is that filter's arithmetic,
+   * printed in the notice so nothing disappears quietly.
    *
    * @param {object} dfg      the loaded payload (for meta: repo, sample note, dates)
-   * @param {object} layout   from `layoutDfg`
-   * @param {{showPerType?: boolean, showCross?: boolean}} toggles
+   * @param {object} layout   from `layoutDfg`, post-filter
+   * @param {{counts?: object}} options
    */
-  function render(dfg, layout, { showPerType = true, showCross = true } = {}) {
+  function render(dfg, layout, { counts = null } = {}) {
     svg.selectAll('*').remove();
     svg.attr('width', layout.width).attr('height', layout.height);
 
     const sample = dfg.meta.source?.sample
       ? ` Drawn from sample ${dfg.meta.source.sample}, a snapshot of ${dfg.meta.repo}.`
       : '';
+    const readout = counts
+      ? ` Showing ${counts.shown} of ${counts.total} successions.` +
+        (counts.hiddenByRange ? ` ${counts.hiddenByRange} outside the count range.` : '') +
+        (counts.hiddenByToggles ? ` ${counts.hiddenByToggles} switched off.` : '')
+      : '';
     notice.textContent =
-      `The whole log of ${dfg.meta.repo}, computed server-side — the sidebar toggles do ` +
-      `not apply here. Cross-type successions are floors: they ride on the admitted ` +
-      `links.${sample}`;
+      `The whole log of ${dfg.meta.repo}, computed server-side. Cross-type successions ` +
+      `are floors: they ride on the admitted links.${sample}${readout}`;
 
     const gBand = svg.append('g');
     const gLink = svg.append('g');
@@ -140,8 +146,8 @@ export function createDfgView({ container, tooltip }) {
     });
 
     const edgeSets = [
-      ...(showPerType ? layout.edges.map((edge) => ({ edge, cross: false })) : []),
-      ...(showCross ? layout.crossEdges.map((edge) => ({ edge, cross: true })) : []),
+      ...layout.edges.map((edge) => ({ edge, cross: false })),
+      ...layout.crossEdges.map((edge) => ({ edge, cross: true })),
     ];
     const hoverTargets = [];
 

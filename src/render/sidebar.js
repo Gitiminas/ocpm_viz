@@ -20,6 +20,8 @@
 
 import { glyph, typeColor, TYPE, chevron } from './theme.js';
 import { escapeHtml } from './format.js';
+import { activityLabel, activityShortLabel } from '../model/activities.js';
+import { dfgRangeScale } from '../model/dfg.js';
 
 const CHECKBOX = 'accent-color:var(--color-accent);width:14px;height:14px;flex:0 0 auto;cursor:pointer';
 const SUB_CHECKBOX = 'accent-color:var(--color-accent);width:13px;height:13px;cursor:pointer';
@@ -784,4 +786,203 @@ export function setupCombo({ input, dropdown, options, initialLabel, onSelect })
       dropdown.style.display = 'none';
     }, 120);
   }, bind);
+}
+
+// ---------------------------------------------------------------------------
+// the Process page's controls
+// ---------------------------------------------------------------------------
+
+/**
+ * The process map's drill-downs, in the sub-log sidebar's own vocabulary: two
+ * master/child sections (lanes and cross pairs, with counts), a dual-handle count
+ * range on the brush-track control, and per-activity rows grouped by lane.
+ *
+ * `vocabulary` comes from `deriveDfgToggles(dfg)` — derived from the loaded artifact,
+ * never a fixed list — and `view` is the page's own state object, mutated in place the
+ * way the sub-log rows mutate `st`. A cross pair is available only while both of its
+ * lanes are on, with the same disable-and-dim treatment the relationship pairs get.
+ * `onChange` re-renders the map; the range label updates live but the picture waits
+ * for the release, the comment-window slider's split.
+ */
+export function renderDfgControls({ container, activitiesContainer, vocabulary, view, onChange }) {
+  container.innerHTML = '';
+  activitiesContainer.innerHTML = '';
+
+  const laneControls = [];
+  const pairControls = [];
+
+  const laneChildren = vocabulary.lanes.map((lane) => {
+    const control = subRow({
+      label: TYPE[lane.type].label,
+      checked: view.lanes[lane.type] !== false,
+      swatch: typeColor(lane.type),
+      count: lane.edges,
+      tip: { key: 'dfg.lane', arg: TYPE[lane.type].label },
+      onChange: (checked) => {
+        view.lanes[lane.type] = checked;
+        sync();
+        onChange();
+      },
+    });
+    laneControls.push({ lane, ...control });
+    return control.row;
+  });
+
+  const laneSection = masterSection({
+    label: 'Within a type',
+    open: true,
+    children: laneChildren,
+    tip: { key: 'dfg.showPerType' },
+    onMasterChange: (checked) => {
+      for (const { lane, checkbox } of laneControls) {
+        view.lanes[lane.type] = checked;
+        checkbox.checked = checked;
+      }
+      sync();
+      onChange();
+    },
+  });
+
+  const pairLabel = (pair) => pair.types.map((type) => TYPE[type].label).join(' ↔ ');
+  const pairChildren = vocabulary.pairs.map((pair) => {
+    const control = subRow({
+      label: pairLabel(pair),
+      checked: view.pairs[pair.key] !== false,
+      count: pair.successions,
+      tip: { key: 'dfg.pair', arg: pairLabel(pair) },
+      onChange: (checked) => {
+        view.pairs[pair.key] = checked;
+        sync();
+        onChange();
+      },
+    });
+    pairControls.push({ pair, ...control });
+    return control.row;
+  });
+
+  const pairSection = masterSection({
+    label: 'Across links',
+    open: true,
+    children: pairChildren,
+    tip: { key: 'dfg.showCross' },
+    onMasterChange: (checked) => {
+      for (const { pair, checkbox } of pairControls) {
+        if (checkbox.disabled) continue; // an unavailable pair keeps its state
+        view.pairs[pair.key] = checked;
+        checkbox.checked = checked;
+      }
+      sync();
+      onChange();
+    },
+  });
+
+  /** Master states and pair availability, the relationship rows' contract. */
+  function sync() {
+    const laneValues = laneControls.map(({ lane }) => view.lanes[lane.type] !== false);
+    laneSection.master.indeterminate = !laneValues.every(Boolean) && laneValues.some(Boolean);
+    laneSection.master.checked = laneValues.every(Boolean);
+    laneSection.row.classList.toggle('on', laneValues.some(Boolean));
+
+    const available = (pair) => pair.types.every((type) => view.lanes[type] !== false);
+    const availablePairs = pairControls.filter(({ pair }) => available(pair));
+    const pairValues = availablePairs.map(({ pair }) => view.pairs[pair.key] !== false);
+    pairSection.master.indeterminate =
+      pairValues.length > 0 && !pairValues.every(Boolean) && pairValues.some(Boolean);
+    pairSection.master.checked = pairValues.length > 0 && pairValues.every(Boolean);
+    pairSection.master.disabled = availablePairs.length === 0;
+    pairSection.labelEl.style.opacity = availablePairs.length === 0 ? 0.45 : 1;
+    pairSection.row.classList.toggle('on', pairValues.some(Boolean));
+
+    for (const control of pairControls) {
+      const ok = available(control.pair);
+      control.checkbox.disabled = !ok;
+      control.row.style.opacity = ok ? 1 : 0.45;
+      control.row.style.pointerEvents = ok ? 'auto' : 'none';
+    }
+  }
+
+  container.append(laneSection.wrapper, pairSection.wrapper);
+
+  // ---- the count range: two handles on one track, log-scaled -----------------------
+  const scale = dfgRangeScale(vocabulary.maxSuccessions);
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:2px;padding:8px 8px 2px';
+
+  const rangeLabel = document.createElement('div');
+  rangeLabel.className = 'mono';
+  rangeLabel.dataset.tip = 'dfg.range';
+  rangeLabel.style.cssText =
+    'font-size:11px;color:var(--color-neutral-400);display:flex;justify-content:space-between';
+
+  const track = document.createElement('div');
+  track.className = 'brushTrack';
+  track.dataset.tip = 'dfg.range';
+  track.innerHTML =
+    '<div class="brushRail"></div><div class="brushFill"></div>' +
+    '<input type="range" min="0" max="1000" aria-label="Lowest succession count shown">' +
+    '<input type="range" min="0" max="1000" aria-label="Highest succession count shown">';
+  const fill = track.querySelector('.brushFill');
+  const [fromInput, toInput] = track.querySelectorAll('input');
+  fromInput.value = String(Math.round(scale.fractionOf(view.range[0]) * 1000));
+  toInput.value = String(Math.round(scale.fractionOf(view.range[1]) * 1000));
+
+  const rangeOfHandles = () => [
+    scale.countAt(Number(fromInput.value) / 1000),
+    scale.countAt(Number(toInput.value) / 1000),
+  ];
+  const paint = () => {
+    const [low, high] = rangeOfHandles();
+    rangeLabel.innerHTML =
+      `<span>Count range <span style="color:var(--color-text)">${low.toLocaleString('en-US')}` +
+      `</span> to <span style="color:var(--color-text)">${high.toLocaleString('en-US')}</span></span>`;
+    fill.style.left = `${(Number(fromInput.value) / 1000) * 100}%`;
+    fill.style.width = `${((Number(toInput.value) - Number(fromInput.value)) / 1000) * 100}%`;
+  };
+  // Stopped from crossing rather than allowed to swap, the time brush's rule: swapped,
+  // the handle under the pointer would no longer be the one that was grabbed.
+  const onDrag = (which) => () => {
+    if (which === 'from' && Number(fromInput.value) > Number(toInput.value)) {
+      fromInput.value = toInput.value;
+    }
+    if (which === 'to' && Number(toInput.value) < Number(fromInput.value)) {
+      toInput.value = fromInput.value;
+    }
+    paint(); // the label follows the drag; the picture waits for the release
+  };
+  fromInput.addEventListener('input', onDrag('from'));
+  toInput.addEventListener('input', onDrag('to'));
+  for (const input of [fromInput, toInput]) {
+    input.addEventListener('change', () => {
+      view.range = rangeOfHandles();
+      onChange();
+    });
+  }
+  paint();
+
+  wrap.append(rangeLabel, track);
+  container.appendChild(wrap);
+
+  // ---- per-activity rows, grouped by lane ------------------------------------------
+  for (const lane of vocabulary.lanes) {
+    activitiesContainer.appendChild(sectionLabel(TYPE[lane.type].label));
+    for (const entry of vocabulary.activities.filter((a) => a.type === lane.type)) {
+      const key = `${entry.type}/${entry.activity}`;
+      const { row } = subRow({
+        label: activityShortLabel(entry.activity),
+        checked: !view.hiddenActivities.has(key),
+        swatch: typeColor(entry.type),
+        count: entry.events,
+        tip: { key: 'dfg.activity', arg: activityLabel(entry.activity) },
+        onChange: (checked) => {
+          if (checked) view.hiddenActivities.delete(key);
+          else view.hiddenActivities.add(key);
+          onChange();
+        },
+      });
+      activitiesContainer.appendChild(row);
+    }
+  }
+
+  sync();
+  return sync;
 }

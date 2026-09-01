@@ -47,12 +47,14 @@ import { createLoadingOverlay } from './render/loading.js';
 import { renderStats } from './render/stats.js';
 import { createDfgView } from './render/dfg.js';
 import { layoutDfg } from './layout/dfg.js';
+import { deriveDfgToggles, filterDfg } from './model/dfg.js';
 import { formatInstant } from './render/format.js';
 import {
   renderLaneRows,
   renderRelationshipRows,
   renderActorRows,
   renderBurstControls,
+  renderDfgControls,
   setupCombo,
   setupSearchCombo,
 } from './render/sidebar.js';
@@ -71,6 +73,7 @@ const elements = {
   statsContent: el('statsContent'),
   dfgContent: el('dfgContent'),
   dfgToggles: el('dfgToggles'),
+  dfgActivities: el('dfgActivities'),
   dfgLegend: el('dfgLegend'),
   subLogQuery: el('subLogQuery'),
   dfgQueryNote: el('dfgQueryNote'),
@@ -906,11 +909,17 @@ for (const tab of document.querySelectorAll('.pageTab')) {
 // the process-map page
 // ---------------------------------------------------------------------------
 
-const dfgView = createDfgView({ container: elements.dfgContent, tooltip });
-// Ephemeral view toggles, deliberately outside `st` and outside presets: presets
-// describe sub-log views, and these two describe nothing a sub-log has.
-let dfgShowPerType = true;
-let dfgShowCross = true;
+const dfgChart = createDfgView({ container: elements.dfgContent, tooltip });
+/*
+ * The page's own view state, deliberately outside `st` and outside presets: presets
+ * describe sub-log views, and none of this describes anything a sub-log has. Across a
+ * repository switch the toggles KEEP (the vocabulary is closed and shared, and "hide
+ * commits" is an intent that transfers); `focus` clears (it names a node in a picture
+ * that no longer exists); `range` re-derives to the new artifact's default, because an
+ * absolute count is a statement about one log while the decile default transfers.
+ */
+const dfgView = { lanes: {}, pairs: {}, hiddenActivities: new Set(), range: null, focus: null };
+let currentDfgToggles = null;
 /** Loaded DFGs, one per repository (the sample counts as one). */
 const dfgCache = new Map();
 let currentDfg = null;
@@ -944,7 +953,22 @@ async function refreshDfg() {
         dfgLoadingOverlay.hide();
       }
     }
+    const isNewArtifact = currentDfg !== dfgCache.get(key);
     currentDfg = dfgCache.get(key);
+    if (isNewArtifact) {
+      currentDfgToggles = deriveDfgToggles(currentDfg);
+      // The repo-switch policy from the state object's comment: toggles keep, focus
+      // clears, range re-derives to this artifact's default.
+      dfgView.focus = null;
+      dfgView.range = [...currentDfgToggles.defaultRange];
+      renderDfgControls({
+        container: elements.dfgToggles,
+        activitiesContainer: elements.dfgActivities,
+        vocabulary: currentDfgToggles,
+        view: dfgView,
+        onChange: renderDfg,
+      });
+    }
     dfgSurface.hide();
     renderDfg();
   } catch (error) {
@@ -954,36 +978,26 @@ async function refreshDfg() {
   }
 }
 
-/** Draw the loaded DFG at the current width and toggles. */
+/** Draw the loaded DFG: the page view filters BEFORE layout, so rows re-spread. */
 function renderDfg() {
   if (!currentDfg) return;
-  const width = dfgView.measure();
-  dfgView.render(currentDfg, layoutDfg(currentDfg, { width }), {
-    showPerType: dfgShowPerType,
-    showCross: dfgShowCross,
+  const filtered = filterDfg(currentDfg, dfgView);
+  // A focused activity that has since been hidden names nothing; clear it.
+  if (
+    dfgView.focus &&
+    !filtered.dfg.nodes.some((n) => `${n.object_type}/${n.activity}` === dfgView.focus)
+  ) {
+    dfgView.focus = null;
+  }
+  const width = dfgChart.measure();
+  // Widths pinned to the UNFILTERED maximum, so a stroke means the same count at
+  // every filter setting.
+  const layout = layoutDfg(filtered.dfg, {
+    width,
+    maxSuccessions: currentDfgToggles.maxSuccessions,
   });
+  dfgChart.render(currentDfg, layout, { counts: filtered });
   renderLegend(elements.dfgLegend, legendKeysPresentIn(elements.dfgContent));
-}
-
-for (const toggle of [
-  ['Within a type', 'dfg.showPerType', (on) => (dfgShowPerType = on)],
-  ['Across links', 'dfg.showCross', (on) => (dfgShowCross = on)],
-]) {
-  const row = document.createElement('label');
-  row.className = 'sideRow on';
-  row.dataset.tip = toggle[1];
-  row.style.cssText =
-    'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);cursor:pointer';
-  row.innerHTML =
-    '<input type="checkbox" checked style="accent-color:var(--color-accent);width:14px;height:14px;' +
-    `flex:0 0 auto;cursor:pointer"><span class="mono" style="font-size:12px;flex:1">${toggle[0]}</span>`;
-  const checkbox = row.querySelector('input');
-  checkbox.addEventListener('change', () => {
-    toggle[2](checkbox.checked);
-    row.classList.toggle('on', checkbox.checked);
-    renderDfg();
-  });
-  elements.dfgToggles.appendChild(row);
 }
 
 for (const dashboard of [
