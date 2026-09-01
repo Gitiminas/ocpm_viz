@@ -157,7 +157,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 813 tests over 34 files, ~1 s, no browser
+npm test                  # 821 tests over 34 files, ~1 s, no browser
 npm run test:watch
 ```
 
