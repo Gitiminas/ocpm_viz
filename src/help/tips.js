@@ -101,6 +101,15 @@ export const TIPS = Object.freeze({
   'mode.relationships': 'Position means relationships. Objects that are linked sit near each other, and the time axis is released.',
   'mode.absolute': 'The time axis is linear. A long quiet stretch takes as much room as a busy one.',
   'mode.discrete': 'Events are spaced evenly in order. Long gaps are marked on the axis instead of taking room.',
+
+  // ---- the process-map page ------------------------------------------------------
+  'page.dfg': 'The process map: how often each activity directly follows another, over the repository’s whole log.',
+  'dfg.repoOnly': 'The process map covers the whole log, so there is no seed and no traversal. Pick a repository and everything counts.',
+  'dfg.showPerType': 'Show or hide the successions within each object type’s own sequences.',
+  'dfg.showCross': 'Show or hide the successions between linked objects. These counts are floors.',
+  'legend.dfg-activity': 'One activity, drawn as its lane’s shape. The number is how many events it has in the whole log.',
+  'legend.dfg-succession': 'One activity directly followed by another within one object’s events. Wider means more often.',
+  'legend.dfg-cross-succession': 'A succession between the two objects of a linked pair. A floor, because the links it rides on are narrowed.',
   'rel.arrow.validated':
     'A link the platform itself asserts. The arrowhead points at the end that came later in time.',
   'rel.arrow.extracted':

@@ -170,6 +170,9 @@ html,body{height:100%;margin:0;overflow:hidden}
      which draws both, and the URL keeps ?page=stats as the only page parameter. -->
 <button class="pageTab on" data-page="timeline" data-tip="page.trace" style="box-sizing:border-box;border:1px solid var(--color-accent);background:color-mix(in srgb, var(--color-accent) 16%, transparent);cursor:pointer;font-size:13px;font-weight:500;color:var(--color-text);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><circle cx="6" cy="19" r="3"></circle><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"></path><circle cx="18" cy="5" r="3"></circle></svg>Trace</button>
 <button class="pageTab" data-page="stats" data-tip="page.stats" style="box-sizing:border-box;border:1px solid transparent;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-neutral-400);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><line x1="4" x2="4" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="20" x2="20" y1="20" y2="14"></line></svg>Stats</button>
+<!-- The whole-log directly-follows graph. The URL value stays "dfg"; the visible label
+     says what the picture is rather than the initialism. -->
+<button class="pageTab" data-page="dfg" data-tip="page.dfg" style="box-sizing:border-box;border:1px solid transparent;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-neutral-400);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><circle cx="5" cy="6" r="3"></circle><circle cx="19" cy="6" r="3"></circle><circle cx="12" cy="18" r="3"></circle><path d="M8 6h8M6.5 8.5L10 15M17.5 8.5L14 15"></path></svg>Process</button>
 </div>
 <div style="margin-bottom:var(--space-8)">
 <!-- "OCEL case" in the mockup. There is no case in OCPM. -->
@@ -198,7 +201,11 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div id="repoDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);overflow:hidden"></div>
 </div>
 </div>
-<div>
+<!-- The seed half of the query, swapped out by showPage on the Process page: a DFG is
+     the whole log, so a seed box there would be a control that silently does nothing —
+     the same rule that turns the degree stepper into text on fixtures. The repo combo
+     above stays: a DFG is still per-repository. -->
+<div id="subLogQuery">
 <div style="font-size:10px;color:var(--color-neutral-500);margin-bottom:4px">Start from</div>
 <div style="position:relative">
 <input autocomplete="off" class="mono" id="objectInput" data-tip="query.seed" placeholder="Search issue / PR / commit…" style="width:100%;box-sizing:border-box;background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);border-radius:var(--radius-sm);color:var(--color-text);font-size:13px;font-weight:500;padding:7px 10px"/>
@@ -216,6 +223,7 @@ html,body{height:100%;margin:0;overflow:hidden}
      render/subLogCard.js from summarizeSubLog(). -->
 <div id="subLogCard" data-tip="card"></div>
 </div>
+<div id="dfgQueryNote" data-tip="dfg.repoOnly" class="mono" style="display:none;font-size:10px;color:var(--color-neutral-500);line-height:1.5">The process map covers the repository's whole log. No seed: every object's events count.</div>
 </div>
 <div id="timelineSidebarSections" style="display:flex;flex-direction:column">
 <!--
@@ -277,6 +285,16 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div style="margin-bottom:var(--space-8)">
 <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500);margin-bottom:var(--space-3)">Dashboards</div>
 <div id="dashboards" style="display:flex;flex-direction:column;gap:4px"></div>
+</div>
+</div>
+<div id="dfgSidebarSections" style="display:none;flex-direction:column">
+<div style="margin-bottom:var(--space-8)">
+<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500);margin-bottom:var(--space-3)">Successions</div>
+<div id="dfgToggles" style="display:flex;flex-direction:column;gap:4px"></div>
+</div>
+<div>
+<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500);margin-bottom:var(--space-3)">Legend</div>
+<div id="dfgLegend" style="display:flex;flex-direction:column;gap:8px"></div>
 </div>
 </div>
 </aside>
@@ -449,6 +467,17 @@ html,body{height:100%;margin:0;overflow:hidden}
   judge something that does not exist.
 -->
 </div>
+</main>
+<main id="dfgPage" style="position:relative;flex:1;min-width:0;display:none;flex-direction:column;padding:var(--space-8);overflow:auto">
+<!-- Its own overlay: a DFG load is independent of the sub-log load and must not blur
+     the Trace page, nor be blurred by it. `position:relative` above anchors it. -->
+<div class="loadingOverlay" id="dfgLoading"></div>
+<h1 style="font-size:20px;margin:0 0 var(--space-6)">Process map</h1>
+<!-- This page's message surface — a SIBLING of the content root, before it, for the
+     same reason #statsMessage is: the renderer owns what is inside #dfgContent, and a
+     message written there would destroy it. -->
+<div id="dfgMessage" style="display:none"></div>
+<div id="dfgContent" style="display:flex;flex-direction:column;gap:var(--space-4)"></div>
 </main>
 </div>
 <script type="module" src="./src/main.js"></script>

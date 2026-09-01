@@ -52,6 +52,17 @@ describe('the app shell keeps its load-bearing order', () => {
     assert.ok(message < content, 'the message must precede the content as a sibling');
   });
 
+  test('the process-map page has its tab, and a message surface of its own', async () => {
+    // The same contract the stats page carries: a page that can fail needs somewhere
+    // on ITSELF to say why, before the content root it stands in for.
+    const html = await shell();
+    assert.ok(html.includes('data-page="dfg"'), 'the page needs a tab to reach it');
+    const [message, content] = orderOf(html, 'dfgMessage', 'dfgContent');
+    assert.ok(message > 0, 'the process-map page needs somewhere to say why it is empty');
+    assert.ok(content > 0, 'and something to say it instead of');
+    assert.ok(message < content, 'the message must precede the content as a sibling');
+  });
+
   test('the sidebar follows the order of the task', async () => {
     // Choose what you are looking at, choose how you want to see it, then refine.
     // A saved view sets every toggle below it at once, so it belongs above them:

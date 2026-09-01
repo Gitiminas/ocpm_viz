@@ -181,6 +181,36 @@ export const LEGEND_SECTIONS = [
     ],
   },
   {
+    /*
+     * The Process page's marks. Dimmed everywhere else, like the relationships-mode
+     * row: the legend explains the whole tool's vocabulary and dims what the current
+     * view does not draw, rather than reshuffling per page.
+     */
+    title: 'Process map',
+    rows: [
+      {
+        key: 'dfg-activity',
+        label: 'an activity, in its lane',
+        swatch:
+          '<svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" ' +
+          'fill="var(--color-neutral-400)" stroke="var(--color-bg)" stroke-width="1.5"/></svg>',
+      },
+      {
+        key: 'dfg-succession',
+        label: 'directly follows — wider is more often',
+        swatch:
+          '<svg width="24" height="12" viewBox="0 0 24 12"><path d="M0,9 Q11,1 15,5" fill="none" ' +
+          'stroke="var(--color-neutral-400)" stroke-width="3" stroke-linecap="round"/>' +
+          '<path d="M22 8L14 9.4L16.8 2.8Z" fill="var(--color-neutral-400)"/></svg>',
+      },
+      {
+        key: 'dfg-cross-succession',
+        label: 'across a link — a floor',
+        swatch: stroke('stroke-width="2" stroke-dasharray="6 6"'),
+      },
+    ],
+  },
+  {
     title: 'Lines',
     rows: [
       { key: 'sequence', label: "one object's own history", swatch: stroke('stroke-width="2"') },

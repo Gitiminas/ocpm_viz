@@ -45,6 +45,8 @@ import { renderLegend, legendKeysPresentIn } from './render/legend.js';
 import { createMessageSurface, messageHtml, errorHtml } from './render/message.js';
 import { createLoadingOverlay } from './render/loading.js';
 import { renderStats } from './render/stats.js';
+import { createDfgView } from './render/dfg.js';
+import { layoutDfg } from './layout/dfg.js';
 import { formatInstant } from './render/format.js';
 import {
   renderLaneRows,
@@ -61,13 +63,19 @@ const elements = {
   chart: el('chart'),
   chartMessage: el('chartMessage'),
   statsMessage: el('statsMessage'),
+  dfgMessage: el('dfgMessage'),
   chartLoading: el('chartLoading'),
   statsLoading: el('statsLoading'),
+  dfgLoading: el('dfgLoading'),
   scroll: el('scroll'),
   statsContent: el('statsContent'),
+  dfgContent: el('dfgContent'),
+  dfgToggles: el('dfgToggles'),
+  dfgLegend: el('dfgLegend'),
+  subLogQuery: el('subLogQuery'),
+  dfgQueryNote: el('dfgQueryNote'),
   sourceToggle: el('sourceToggle'),
   sourceNote: el('sourceNote'),
-  scroll: el('scroll'),
   wrap: el('wrap'),
   tip: el('tip'),
   minimap: el('minimap'),
@@ -117,6 +125,12 @@ const statsSurface = createMessageSurface({
   messageEl: elements.statsMessage,
   contentEl: elements.statsContent,
 });
+// The process-map page's surface. NOT in the sub-log fan-outs below: its load, its
+// failures and its seed-less-ness are all independent of the sub-log's.
+const dfgSurface = createMessageSurface({
+  messageEl: elements.dfgMessage,
+  contentEl: elements.dfgContent,
+});
 
 /*
  * One loading overlay per page, for the reason each page has its own message surface: a
@@ -134,6 +148,12 @@ const loading = {
   show: (description) => overlays.forEach((overlay) => overlay.show(description)),
   hide: () => overlays.forEach((overlay) => overlay.hide()),
 };
+// Separate from the fan-out: a sub-log load must not blur the process map, nor a DFG
+// load the timeline. Each page's overlay answers its own fetch.
+const dfgLoadingOverlay = createLoadingOverlay({
+  overlayEl: elements.dfgLoading,
+  contentEl: elements.dfgContent,
+});
 
 const state = createState();
 const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.wrap });
@@ -834,7 +854,25 @@ for (const header of document.querySelectorAll('.collapseHeader')) {
 /** Which page is showing — what a copied link has to carry (`presetUrl`). */
 let activePage = 'timeline';
 
-/** Switch pages. Extracted so `?page=stats` can drive it as a click would. */
+/**
+ * The three pages, as data: their container, their sidebar block, and what to run
+ * once the page is VISIBLE — visibility first, because a hidden page measures 0 wide
+ * and lays out into nothing (ARCHITECTURE trap #8).
+ */
+const PAGES = {
+  timeline: {
+    pageEl: 'timelinePage',
+    sidebarEl: 'timelineSidebarSections',
+    onShow: () => {
+      timeline.measure();
+      redraw();
+    },
+  },
+  stats: { pageEl: 'statsPage', sidebarEl: 'statsSidebarSections', onShow: () => refreshStats() },
+  dfg: { pageEl: 'dfgPage', sidebarEl: 'dfgSidebarSections', onShow: () => refreshDfg() },
+};
+
+/** Switch pages. Extracted so `?page=` can drive it as a click would. */
 function showPage(page) {
   activePage = page;
   for (const other of document.querySelectorAll('.pageTab')) {
@@ -847,22 +885,105 @@ function showPage(page) {
     other.style.border = isThis ? '1px solid var(--color-accent)' : '1px solid transparent';
   }
 
-  const isTimeline = page === 'timeline';
-  el('timelinePage').style.display = isTimeline ? 'flex' : 'none';
-  el('statsPage').style.display = isTimeline ? 'none' : 'flex';
-  el('timelineSidebarSections').style.display = isTimeline ? 'flex' : 'none';
-  el('statsSidebarSections').style.display = isTimeline ? 'none' : 'flex';
-
-  if (isTimeline) {
-    timeline.measure();
-    redraw();
-  } else {
-    refreshStats();
+  for (const [name, entry] of Object.entries(PAGES)) {
+    el(entry.pageEl).style.display = name === page ? 'flex' : 'none';
+    el(entry.sidebarEl).style.display = name === page ? 'flex' : 'none';
   }
+  // The seed half of the shared query block makes no sense on the process map — the
+  // whole log counts — so it is swapped for a sentence, never greyed.
+  const isDfg = page === 'dfg';
+  elements.subLogQuery.style.display = isDfg ? 'none' : '';
+  elements.dfgQueryNote.style.display = isDfg ? '' : 'none';
+
+  PAGES[page].onShow();
 }
 
 for (const tab of document.querySelectorAll('.pageTab')) {
   tab.addEventListener('click', () => showPage(tab.dataset.page));
+}
+
+// ---------------------------------------------------------------------------
+// the process-map page
+// ---------------------------------------------------------------------------
+
+const dfgView = createDfgView({ container: elements.dfgContent, tooltip });
+// Ephemeral view toggles, deliberately outside `st` and outside presets: presets
+// describe sub-log views, and these two describe nothing a sub-log has.
+let dfgShowPerType = true;
+let dfgShowCross = true;
+/** Loaded DFGs, one per repository (the sample counts as one). */
+const dfgCache = new Map();
+let currentDfg = null;
+
+/** Which repository the process map should describe right now. */
+function dfgRepoName() {
+  // The loaded sub-log's repo first; the combo's text covers the prompt state, where a
+  // repository is chosen but no seed is, and no sub-log exists to read it from.
+  return current?.graph?.meta?.repo ?? ((elements.repoInput.value || '').trim() || null);
+}
+
+/**
+ * Load (or reuse) the DFG for the current repository, then draw it. Runs only while
+ * the page is visible; errors land on this page's own surface and nowhere else.
+ */
+async function refreshDfg() {
+  const repo = dfgRepoName();
+  if (source.name === 'database' && !repo) {
+    dfgSurface.show(
+      messageHtml('Choose a repository', 'The process map covers one repository’s whole log.'),
+    );
+    return;
+  }
+  const key = `${source.name}:${repo ?? 'sample'}`;
+  try {
+    if (!dfgCache.has(key)) {
+      dfgLoadingOverlay.show(`process map of ${repo ?? 'the sample'}`);
+      try {
+        dfgCache.set(key, await source.loadDfg(repo));
+      } finally {
+        dfgLoadingOverlay.hide();
+      }
+    }
+    currentDfg = dfgCache.get(key);
+    dfgSurface.hide();
+    renderDfg();
+  } catch (error) {
+    console.error(error);
+    dfgCache.delete(key);
+    dfgSurface.show(errorHtml(error));
+  }
+}
+
+/** Draw the loaded DFG at the current width and toggles. */
+function renderDfg() {
+  if (!currentDfg) return;
+  const width = dfgView.measure();
+  dfgView.render(currentDfg, layoutDfg(currentDfg, { width }), {
+    showPerType: dfgShowPerType,
+    showCross: dfgShowCross,
+  });
+  renderLegend(elements.dfgLegend, legendKeysPresentIn(elements.dfgContent));
+}
+
+for (const toggle of [
+  ['Within a type', 'dfg.showPerType', (on) => (dfgShowPerType = on)],
+  ['Across links', 'dfg.showCross', (on) => (dfgShowCross = on)],
+]) {
+  const row = document.createElement('label');
+  row.className = 'sideRow on';
+  row.dataset.tip = toggle[1];
+  row.style.cssText =
+    'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);cursor:pointer';
+  row.innerHTML =
+    '<input type="checkbox" checked style="accent-color:var(--color-accent);width:14px;height:14px;' +
+    `flex:0 0 auto;cursor:pointer"><span class="mono" style="font-size:12px;flex:1">${toggle[0]}</span>`;
+  const checkbox = row.querySelector('input');
+  checkbox.addEventListener('change', () => {
+    toggle[2](checkbox.checked);
+    row.classList.toggle('on', checkbox.checked);
+    renderDfg();
+  });
+  elements.dfgToggles.appendChild(row);
 }
 
 for (const dashboard of [
@@ -910,7 +1031,9 @@ function queryFromUrl() {
     // the RPC is `TRAVERSAL_DEGREE.default` (1) and for a fixture is whatever it was
     // built at.
     traversalDegree: params.get('degree') ? Number(params.get('degree')) : undefined,
-    page: params.get('page') === 'stats' ? 'stats' : 'timeline',
+    // Whitelisted against the page map, the way ?mode= and ?layout= are — an unknown
+    // value falls back to the timeline rather than being half-honoured.
+    page: ['stats', 'dfg'].includes(params.get('page')) ? params.get('page') : 'timeline',
     /*
      * The time mode, for the same reason `?page=` exists: a link has to reproduce what
      * someone was looking at. It matters more than it did when every mode was a timeline,
@@ -1053,8 +1176,12 @@ function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
     })),
     initialLabel: activeRepo?.name ?? '',
     // Changing repository loads that repository's first servable seed; there is no
-    // meaningful "same seed" across repositories.
-    onSelect: (option) => reload({ repo: option.repo }),
+    // meaningful "same seed" across repositories. The process map, if it is what is on
+    // screen, follows the new repository too.
+    onSelect: (option) => {
+      reload({ repo: option.repo });
+      if (activePage === 'dfg') refreshDfg();
+    },
   });
 
   /*
@@ -1325,8 +1452,14 @@ let resizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    timeline.measure();
-    timeline.render();
+    // Only the visible page re-measures: a hidden one reads 0 wide and would lay out
+    // into nothing. Whichever was hidden re-measures in its onShow instead.
+    if (activePage === 'dfg') {
+      renderDfg();
+    } else {
+      timeline.measure();
+      timeline.render();
+    }
   }, 150);
 });
 
@@ -1341,6 +1474,6 @@ source
     return reload(initialQuery);
   })
   .then(() => {
-    if (initialQuery.page === 'stats') showPage('stats');
+    if (initialQuery.page !== 'timeline') showPage(initialQuery.page);
   })
   .catch(showFatal);
