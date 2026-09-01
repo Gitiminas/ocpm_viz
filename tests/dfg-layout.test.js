@@ -173,3 +173,12 @@ describe('widths hold against the artifact’s own maximum, whatever is filtered
     assert.ok(widthOf(drifting) > widthOf(full));
   });
 });
+
+describe('aggregated cross arrows pass their members through the layout', () => {
+  test('members survive the spread untouched', () => {
+    const bundle = dfg();
+    bundle.cross_edges[0].members = [{ link_qualifier: 'resolves', successions: 1 }];
+    const layout = layoutDfg(bundle, BOX);
+    assert.deepEqual(layout.crossEdges[0].members, bundle.cross_edges[0].members);
+  });
+});

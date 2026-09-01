@@ -8,6 +8,7 @@ import {
   normalizeDfg,
   deriveDfgToggles,
   filterDfg,
+  aggregateCrossEdges,
   dfgRangeScale,
   DFG_CONTRACT_VERSION,
 } from '../src/model/dfg.js';
@@ -282,5 +283,72 @@ describe('the count scale is logarithmic, clamped and round-trippable', () => {
     const scale = dfgRangeScale(1);
     assert.equal(scale.countAt(0.7), 1);
     assert.equal(scale.fractionOf(1), 0);
+  });
+});
+
+describe('link classes filter, then aggregate to one arrow, then the range applies', () => {
+  // Two class rows on one directed edge, one on another — the drawn picture must hold
+  // one arrow each, whatever the classes say.
+  function classedDfg() {
+    const dfg = validDfg();
+    dfg.cross_edges = [
+      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 3, pairs: 2, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body' },
+      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'extracted', link_method: 'commit_message' },
+      { from_type: 'commit', from_activity: 'CommitObserved', to_type: 'issue', to_activity: 'IssueOpened', successions: 1, pairs: 1, link_qualifier: 'references_issue', link_evidence: 'extracted', link_method: 'commit_message' },
+    ];
+    return dfg;
+  }
+
+  test('aggregation folds class rows into one arrow, members sorted by weight', () => {
+    const arrows = aggregateCrossEdges(classedDfg().cross_edges);
+    assert.equal(arrows.length, 2);
+    const merged = arrows.find((a) => a.to_activity === 'IssueClosed');
+    assert.equal(merged.successions, 4);
+    assert.equal(merged.pairs, 3);
+    assert.deepEqual(
+      merged.members.map((m) => m.link_evidence),
+      ['validated', 'extracted'],
+      'heaviest class first',
+    );
+  });
+
+  test('a class toggled off leaves the arrow, minus that member', () => {
+    const out = filterDfg(classedDfg(), { linkMethods: { commit_message: false } });
+    const merged = out.dfg.cross_edges.find((a) => a.to_activity === 'IssueClosed');
+    assert.equal(merged.successions, 3, 'the extracted member is gone from the sum');
+    assert.equal(merged.members.length, 1);
+    assert.ok(!out.dfg.cross_edges.some((a) => a.to_activity === 'IssueOpened'),
+      'the arrow whose only class was commit_message disappears entirely');
+    assert.equal(out.hiddenByToggles, 1, 'one whole arrow off; the thinned one still shows');
+    assert.equal(out.shown + out.hiddenByRange + out.hiddenByToggles, out.total);
+  });
+
+  test('every class off hides the arrow and counts it once, under toggles', () => {
+    const out = filterDfg(classedDfg(), {
+      linkEvidence: { validated: false, extracted: false },
+    });
+    assert.equal(out.dfg.cross_edges.length, 0);
+    assert.equal(out.hiddenByToggles, 2);
+    assert.equal(out.shown + out.hiddenByRange + out.hiddenByToggles, out.total);
+  });
+
+  test('the range judges the aggregate, never the members', () => {
+    // The merged arrow is 3+1=4; a [4,4] range keeps it though no member is 4.
+    const out = filterDfg(classedDfg(), { range: [4, 4] });
+    assert.equal(out.dfg.cross_edges.length, 1);
+    assert.equal(out.dfg.cross_edges[0].successions, 4);
+  });
+
+  test('the toggle vocabulary sums per class, and counts arrows for the card', () => {
+    const toggles = deriveDfgToggles(classedDfg());
+    assert.deepEqual(toggles.linkEvidence, [
+      { key: 'extracted', successions: 2 },
+      { key: 'validated', successions: 3 },
+    ]);
+    assert.deepEqual(toggles.linkQualifiers.map((q) => q.key), ['references_issue', 'resolves']);
+    assert.deepEqual(toggles.linkMethods.map((m) => m.key), ['commit_message', 'pr_body']);
+    assert.equal(toggles.crossArrows, 2);
+    // maxSuccessions in arrow units: the merged arrow's 4 beats every raw row.
+    assert.equal(toggles.maxSuccessions, 4);
   });
 });

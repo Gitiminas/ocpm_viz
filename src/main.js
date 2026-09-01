@@ -940,7 +940,16 @@ const dfgChart = createDfgView({
  * that no longer exists); `range` re-derives to the new artifact's default, because an
  * absolute count is a statement about one log while the decile default transfers.
  */
-const dfgView = { lanes: {}, pairs: {}, hiddenActivities: new Set(), range: null, focus: null };
+const dfgView = {
+  lanes: {},
+  pairs: {},
+  hiddenActivities: new Set(),
+  linkEvidence: {},
+  linkQualifiers: {},
+  linkMethods: {},
+  range: null,
+  focus: null,
+};
 let currentDfgToggles = null;
 /** Loaded DFGs, one per repository. */
 const dfgCache = new Map();
@@ -1054,7 +1063,8 @@ function renderDfg() {
     total: {
       activities: currentDfg.nodes.length,
       perType: currentDfg.edges.length,
-      cross: currentDfg.cross_edges.length,
+      // Arrow units: the raw cross rows are per link class since contract v2.
+      cross: currentDfgToggles.crossArrows,
     },
   });
   renderLegend(elements.dfgLegend, legendKeysPresentIn(elements.dfgContent), { only: ['Process map'] });

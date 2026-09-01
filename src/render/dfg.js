@@ -109,7 +109,7 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
       ? ` Drawn from sample ${dfg.meta.source.sample}, a snapshot of ${dfg.meta.repo}.`
       : '';
     const readout = counts
-      ? ` Showing ${counts.shown} of ${counts.total} successions.` +
+      ? ` Showing ${counts.shown} of ${counts.total} succession arrows.` +
         (counts.hiddenByRange ? ` ${counts.hiddenByRange} outside the count range.` : '') +
         (counts.hiddenByToggles ? ` ${counts.hiddenByToggles} switched off.` : '')
       : '';

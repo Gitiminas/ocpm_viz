@@ -193,6 +193,45 @@ export function dfgPairKey(typeA, typeB) {
 }
 
 /**
+ * Fold the per-class cross rows back into ONE arrow per directed edge, keeping the
+ * classes as `members` for the hovercard's breakdown. Sums are exact: no linked pair
+ * carries two links (asserted by the dfg-check gate), so members of one arrow never
+ * share a pair. Members sort by weight, then class keys, so the breakdown is
+ * deterministic whatever order the rows arrived in.
+ */
+export function aggregateCrossEdges(crossEdges) {
+  const byArrow = new Map();
+  for (const edge of crossEdges) {
+    const key = `${edge.from_type}/${edge.from_activity}|${edge.to_type}/${edge.to_activity}`;
+    if (!byArrow.has(key)) {
+      byArrow.set(key, {
+        from_type: edge.from_type,
+        from_activity: edge.from_activity,
+        to_type: edge.to_type,
+        to_activity: edge.to_activity,
+        successions: 0,
+        pairs: 0,
+        members: [],
+      });
+    }
+    const arrow = byArrow.get(key);
+    arrow.successions += edge.successions;
+    arrow.pairs += edge.pairs;
+    arrow.members.push(edge);
+  }
+  for (const arrow of byArrow.values()) {
+    arrow.members.sort(
+      (a, b) =>
+        b.successions - a.successions ||
+        `${a.link_qualifier}/${a.link_evidence}/${a.link_method}`.localeCompare(
+          `${b.link_qualifier}/${b.link_evidence}/${b.link_method}`,
+        ),
+    );
+  }
+  return [...byArrow.values()];
+}
+
+/**
  * The Process page's toggle vocabulary, derived from the loaded artifact the way the
  * sub-log sidebar derives its rows from the loaded graph — never from a fixed list.
  *
@@ -223,14 +262,43 @@ export function deriveDfgToggles(dfg) {
     }
   }
 
-  const counts = [...dfg.edges, ...dfg.cross_edges].map((e) => e.successions);
+  // The three link-class vocabularies, each row a summed succession count — the
+  // deriveQualifiers shape, over what the artifact actually carries.
+  const classGroup = (field) => {
+    const byValue = new Map();
+    for (const edge of dfg.cross_edges) {
+      const value = edge[field];
+      byValue.set(value, (byValue.get(value) ?? 0) + edge.successions);
+    }
+    return [...byValue.entries()]
+      .map(([key, successions]) => ({ key, successions }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  };
+  const linkEvidence = classGroup('link_evidence');
+  const linkQualifiers = classGroup('link_qualifier');
+  const linkMethods = classGroup('link_method');
+
+  // The range and the width scale live in ARROW units: the raw cross rows are per link
+  // class, but what is drawn, sized and sliced by count is the aggregate arrow.
+  const arrows = aggregateCrossEdges(dfg.cross_edges);
+  const counts = [...dfg.edges, ...arrows].map((e) => e.successions);
   const maxSuccessions = counts.length ? Math.max(...counts) : 0;
   const sorted = [...counts].sort((a, b) => a - b);
   const defaultRange = counts.length
     ? [sorted[Math.floor(0.1 * sorted.length)], maxSuccessions]
     : [1, 1];
 
-  return { lanes, pairs, activities, maxSuccessions, defaultRange };
+  return {
+    lanes,
+    pairs,
+    activities,
+    linkEvidence,
+    linkQualifiers,
+    linkMethods,
+    crossArrows: arrows.length,
+    maxSuccessions,
+    defaultRange,
+  };
 }
 
 /**
@@ -238,50 +306,68 @@ export function deriveDfgToggles(dfg) {
  * hiding something re-spreads what remains and an emptied lane collapses.
  *
  * A lane switched off removes its edges but keeps its nodes (the lane's shape stays as
- * context); a hidden activity removes its node and every succession touching it. The
- * counts returned are the readout's: `shown + hiddenByRange + hiddenByToggles` always
- * equals `total`, an edge failing both filters counting once, under toggles.
+ * context); a hidden activity removes its node and every succession touching it. Cross
+ * rows run a three-stage pipeline: the toggles (lane, pair, activity, AND the three
+ * link-class maps) filter the per-class rows, `aggregateCrossEdges` folds the survivors
+ * into one arrow each, and the count range then applies to each ARROW's total — the
+ * slider filters what is drawn, and what is drawn is aggregates.
+ *
+ * The counts are the readout's, in DRAWN-ARROW units: `shown + hiddenByRange +
+ * hiddenByToggles` always equals `total`, an arrow whose every class is toggled off
+ * counting once under toggles, and a partially filtered arrow counting as shown (its
+ * lower count is the hovercard's story). The returned `cross_edges` are the aggregates,
+ * members attached.
  */
 export function filterDfg(dfg, view = {}) {
   const laneOn = (type) => view.lanes?.[type] !== false;
   const hidden = view.hiddenActivities ?? new Set();
   const nodeOn = (type, activity) => !hidden.has(`${type}/${activity}`);
   const [min, max] = view.range ?? [-Infinity, Infinity];
+  const inRange = (edge) => edge.successions >= min && edge.successions <= max;
 
   let hiddenByToggles = 0;
   let hiddenByRange = 0;
-  const keep = (edge, togglePass) => {
+
+  const edges = dfg.edges.filter((edge) => {
+    const togglePass =
+      laneOn(edge.object_type) &&
+      nodeOn(edge.object_type, edge.from_activity) &&
+      nodeOn(edge.object_type, edge.to_activity);
     if (!togglePass) {
       hiddenByToggles += 1;
       return false;
     }
-    if (edge.successions < min || edge.successions > max) {
+    if (!inRange(edge)) {
       hiddenByRange += 1;
       return false;
     }
     return true;
-  };
+  });
 
-  const edges = dfg.edges.filter((edge) =>
-    keep(
-      edge,
-      laneOn(edge.object_type) &&
-        nodeOn(edge.object_type, edge.from_activity) &&
-        nodeOn(edge.object_type, edge.to_activity),
-    ),
-  );
-  const crossEdges = dfg.cross_edges.filter((edge) =>
-    keep(
-      edge,
+  // Stage 1: the toggles, per class row.
+  const survivingRows = dfg.cross_edges.filter(
+    (edge) =>
       laneOn(edge.from_type) &&
-        laneOn(edge.to_type) &&
-        view.pairs?.[dfgPairKey(edge.from_type, edge.to_type)] !== false &&
-        nodeOn(edge.from_type, edge.from_activity) &&
-        nodeOn(edge.to_type, edge.to_activity),
-    ),
+      laneOn(edge.to_type) &&
+      view.pairs?.[dfgPairKey(edge.from_type, edge.to_type)] !== false &&
+      nodeOn(edge.from_type, edge.from_activity) &&
+      nodeOn(edge.to_type, edge.to_activity) &&
+      view.linkEvidence?.[edge.link_evidence] !== false &&
+      view.linkQualifiers?.[edge.link_qualifier] !== false &&
+      view.linkMethods?.[edge.link_method] !== false,
   );
+  // Stages 2 and 3: aggregate, then range the aggregates.
+  const survivingArrows = aggregateCrossEdges(survivingRows);
+  const crossEdges = survivingArrows.filter((arrow) => {
+    if (!inRange(arrow)) {
+      hiddenByRange += 1;
+      return false;
+    }
+    return true;
+  });
+  hiddenByToggles += aggregateCrossEdges(dfg.cross_edges).length - survivingArrows.length;
 
-  const total = dfg.edges.length + dfg.cross_edges.length;
+  const total = dfg.edges.length + aggregateCrossEdges(dfg.cross_edges).length;
   return {
     dfg: {
       ...dfg,
