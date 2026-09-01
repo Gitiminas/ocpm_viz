@@ -162,7 +162,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 </style>
 </head>
 <body>
-<div style="display:flex;height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);overflow:hidden">
+<!-- position:relative because #tip positions against it: the hovercard serves every
+     page, so it lives at the root rather than inside one page's hidden subtree. -->
+<div id="app" style="position:relative;display:flex;height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);overflow:hidden">
 <aside style="width:300px;flex:0 0 auto;background:var(--color-surface);border-right:1px solid var(--color-neutral-800);display:flex;flex-direction:column;overflow-y:auto;padding:var(--space-6)">
 <div style="display:flex;gap:8px;padding-bottom:var(--space-6);margin-bottom:var(--space-6);border-bottom:1px solid var(--color-neutral-800)">
 <!-- The tab reads "Trace": the page shows one sub-log's trace, as a timeline or as a graph of
@@ -426,7 +428,6 @@ html,body{height:100%;margin:0;overflow:hidden}
      it stays put while the stale picture scrolls behind it, and BELOW #toast's z-index so
      a message can still be read over it. -->
 <div class="loadingOverlay" id="chartLoading"></div>
-<div id="tip"></div>
 <div id="toast" class="mono" style="display:none;position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:150;background:var(--color-surface);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:7px 14px;font-size:11.5px;color:var(--color-text)"></div>
 </div>
 <!--
@@ -502,6 +503,10 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div id="dfgMessage" style="display:none"></div>
 <div id="dfgContent" style="display:flex;flex-direction:column;gap:var(--space-4)"></div>
 </main>
+<!-- The hovercard, at the ROOT so it serves every page. It used to live inside
+     #timelinePage's #wrap, where the Process page's cards rendered into a hidden
+     subtree: content present, nothing visible — the wrong-picture-no-error shape. -->
+<div id="tip"></div>
 </div>
 <script type="module" src="./src/main.js"></script>
 </body>

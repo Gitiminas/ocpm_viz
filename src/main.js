@@ -81,7 +81,7 @@ const elements = {
   dfgCard: el('dfgCard'),
   sourceToggle: el('sourceToggle'),
   sourceNote: el('sourceNote'),
-  wrap: el('wrap'),
+  app: el('app'),
   tip: el('tip'),
   minimap: el('minimap'),
   actorCard: el('actorCard'),
@@ -162,7 +162,9 @@ const dfgLoadingOverlay = createLoadingOverlay({
 });
 
 const state = createState();
-const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.wrap });
+// wrapEl is the app ROOT: the card positions against the whole window, so it works
+// identically on every page rather than only inside the timeline's subtree.
+const tooltip = createTooltip({ tipEl: elements.tip, wrapEl: elements.app });
 const actorCard = createActorCard({
   element: elements.actorCard,
   // Hovering an activity row rings exactly that event's mark in the chart — through
