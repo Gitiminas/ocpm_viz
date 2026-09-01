@@ -275,7 +275,13 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   claims. Its pointer surfaces — count-label and thin-edge hovercards, click-to-focus dimming
   with the geometry pinned, the dual-handle count range, the lane/pair/activity toggles and the
   readout they drive — were each driven once in a live browser via the iframe probe
-  (2026-09-01); nothing re-runs that.
+  (2026-09-01); nothing re-runs that. A consistency sweep against the Trace page (2026-09-01)
+  fixed the gaps it found (scoped legends, the focus pill, edge strip labels and lane-coloured
+  cross edges, collapsible sections, the currently-displayed card, database-only sourcing, the
+  notice's refresh date) and left two facts as findings rather than defects: an empty artifact
+  (a repository with no rows) renders an empty box with a zero readout, and the DFG focus is
+  page-local — switching pages neither carries nor clears the other page's focus, matching how
+  Trace's own focus survives a trip to Stats.
 
 Checked since, one line each: a real sub-log renders and the PostgREST → `fetch()` → browser path
 works (2026-08-05); `rpc-check.mjs` probes the `web_anon` path, for one function only (2026-08-07);

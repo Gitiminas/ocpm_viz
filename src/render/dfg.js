@@ -18,7 +18,7 @@
 import { TYPE, typeColor, drawSymbol } from './theme.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
 import { DIM_OPACITY } from '../model/graph.js';
-import { escapeHtml } from './format.js';
+import { escapeHtml, formatDateYear } from './format.js';
 import { DFG_LOOP_RADIUS } from '../layout/dfg.js';
 
 const ARROW_SIZE = 7;
@@ -113,9 +113,14 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
         (counts.hiddenByRange ? ` ${counts.hiddenByRange} outside the count range.` : '') +
         (counts.hiddenByToggles ? ` ${counts.hiddenByToggles} switched off.` : '')
       : '';
+    // The artifact's own staleness is this page's largest caveat, so the notice dates
+    // it — the sub-log card labels its span the same way.
+    const refreshed = dfg.meta.source?.mv_refreshed
+      ? ` Data as refreshed ${formatDateYear(new Date(dfg.meta.source.mv_refreshed))} UTC.`
+      : '';
     notice.textContent =
       `The whole log of ${dfg.meta.repo}, computed server-side. Cross-type successions ` +
-      `are floors: they ride on the admitted links.${sample}${readout}`;
+      `are floors: they ride on the admitted links.${refreshed}${sample}${readout}`;
 
     const gBand = svg.append('g');
     const gLink = svg.append('g');
@@ -234,6 +239,9 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
         .attr('stroke', 'var(--color-bg)')
         .attr('stroke-width', 3)
         .attr('opacity', dim)
+        // The strip label the edge's hover target carries, so a number and its arrow
+        // say the same thing wherever the pointer lands.
+        .attr('data-tip', cross ? 'legend.dfg-cross-succession' : 'legend.dfg-succession')
         .style('cursor', 'pointer')
         .text(edge.successions.toLocaleString('en-US'));
       tooltip.bind(label, () => successionCard(edge, cross));
