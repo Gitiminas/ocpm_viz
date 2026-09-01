@@ -483,7 +483,9 @@ function redraw() {
   // "what is on screen" is read off the chart that was just rebuilt. Re-rendering fifteen
   // rows costs nothing, and replacing the nodes each time means the hover listeners go
   // with them rather than stacking.
-  renderLegend(elements.legend, legendKeysPresentIn(elements.chart));
+  // Each page's legend explains its own vocabulary: the Trace legend everything but
+  // the Process page's section, which lives in that page's own sidebar.
+  renderLegend(elements.legend, legendKeysPresentIn(elements.chart), { except: ['Process map'] });
   if (!current) return;
   updateSubLogCard();
   renderHiddenBanner({
@@ -1013,7 +1015,7 @@ function renderDfg() {
     maxSuccessions: currentDfgToggles.maxSuccessions,
   });
   dfgChart.render(currentDfg, layout, { counts: filtered, focus: dfgView.focus });
-  renderLegend(elements.dfgLegend, legendKeysPresentIn(elements.dfgContent));
+  renderLegend(elements.dfgLegend, legendKeysPresentIn(elements.dfgContent), { only: ['Process map'] });
 }
 
 for (const dashboard of [

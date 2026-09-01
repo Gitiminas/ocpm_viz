@@ -272,10 +272,20 @@ export function legendPresence(present = null) {
   });
 }
 
-export function renderLegend(container, present = null) {
+/**
+ * @param {HTMLElement} container
+ * @param {Set<string>|null} present  keys drawn right now; null = not known yet
+ * @param {{only?: string[], except?: string[]}} sections  section-title filter, so each
+ *   page's legend explains its own vocabulary — the Process page shows only its section,
+ *   the Trace legend everything but it. Within a shown section, absent rows still dim
+ *   rather than vanish; the filter is per PAGE, never per toggle.
+ */
+export function renderLegend(container, present = null, { only = null, except = null } = {}) {
   container.innerHTML = '';
 
   for (const section of legendPresence(present)) {
+    if (only && !only.includes(section.title)) continue;
+    if (except && except.includes(section.title)) continue;
     const heading = document.createElement('div');
     heading.className = 'mono';
     heading.style.cssText =
