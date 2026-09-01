@@ -484,8 +484,14 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
    */
   function previewActor(actorId) {
     layers.preview.selectAll('*').remove();
+    layers.preview.style('filter', null);
     const preview = context && actorPreview(actorId, state);
     if (!preview) return;
+    // The hover is a search aid — "where IS this actor?" — so it glows the way the
+    // legend hover does, in the actor's own colour, though softer: one shadow, not
+    // two. The glow lives on the preview layer alone, so clicking to pin drops back
+    // to the ordinary trail.
+    layers.preview.style('filter', `drop-shadow(0 0 5px ${context.actorColors.get(actorId)})`);
     renderActorTrails({
       gHalo: layers.preview,
       nodes: lastNodes,
