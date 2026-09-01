@@ -3,8 +3,8 @@
  *
  * One row per object type in lane order — the same top-to-bottom the timeline and the
  * Rows arrangement use, so the reader's map of "issues above pull requests above
- * commits" carries over. Within a row, activities sit in the vocabulary's own
- * declaration order (open before comment before close), which is deterministic and
+ * commits" carries over. Within a row, activities sit in the lifecycle READING_ORDER
+ * (open before comment before close; model/activities.js), which is deterministic and
  * needs no crossing minimisation at ten nodes.
  *
  * Edges within a row arc: FORWARD successions (toward the later-declared activity)
@@ -62,7 +62,7 @@ function activitiesOf(type) {
  *   `points` (from, apex/control, to — or the node alone for a loop), `width`, `loop`
  *   and `labelAt`; positions are finite and inside the box.
  */
-export function layoutDfg(dfg, { width = 960 } = {}) {
+export function layoutDfg(dfg, { width = 960, maxSuccessions = null } = {}) {
   // Only rows with something in them take space — an empty lane is a statement the
   // legend should not have to dim around.
   const lanes = LANE_TYPES.filter((type) => dfg.nodes.some((n) => n.object_type === type));
@@ -93,17 +93,18 @@ export function layoutDfg(dfg, { width = 960 } = {}) {
     });
   }
 
-  const maxSuccessions = Math.max(
-    0,
-    ...dfg.edges.map((e) => e.successions),
-    ...dfg.cross_edges.map((e) => e.successions),
-  );
+  // The width scale's ceiling. A caller filtering the artifact passes the UNFILTERED
+  // maximum, so a stroke means the same count at every filter setting — the same rule
+  // that stops toggling from ever recolouring an object.
+  const maxS =
+    maxSuccessions ??
+    Math.max(0, ...dfg.edges.map((e) => e.successions), ...dfg.cross_edges.map((e) => e.successions));
 
   const edges = dfg.edges.flatMap((edge) => {
     const from = nodeAt.get(`${edge.object_type}/${edge.from_activity}`);
     const to = nodeAt.get(`${edge.object_type}/${edge.to_activity}`);
     if (!from || !to) return []; // a node the payload named but did not carry
-    const strokeWidth = dfgEdgeWidth(edge.successions, maxSuccessions);
+    const strokeWidth = dfgEdgeWidth(edge.successions, maxS);
 
     if (from === to) {
       return [{
@@ -174,7 +175,7 @@ export function layoutDfg(dfg, { width = 960 } = {}) {
       return [{
         ...edge,
         loop: false,
-        width: dfgEdgeWidth(edge.successions, maxSuccessions),
+        width: dfgEdgeWidth(edge.successions, maxS),
         points: [{ x: from.x, y: from.y }, control, { x: to.x, y: to.y }],
         labelAt: { x: control.x, y: control.y - 8 },
       }];

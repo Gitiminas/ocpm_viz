@@ -150,3 +150,25 @@ describe('edges carry their reading: direction by side, frequency by width', () 
     assert.ok(heavy.width > light.width);
   });
 });
+
+describe('widths hold against the artifact’s own maximum, whatever is filtered', () => {
+  test('an override keeps a surviving edge’s width identical after filtering', () => {
+    const full = layoutDfg(dfg(), BOX);
+    const filtered = dfg();
+    filtered.edges = filtered.edges.filter((e) => e.successions !== 40000);
+    const stable = layoutDfg(filtered, { ...BOX, maxSuccessions: 40000 });
+    const widthOf = (layout) =>
+      layout.edges.find((e) => e.object_type === 'issue' && e.from_activity === 'IssueOpened').width;
+    assert.equal(widthOf(stable), widthOf(full), 'a stroke means the same count at every filter');
+  });
+
+  test('without the override the survivors fatten, which is what it exists to prevent', () => {
+    const filtered = dfg();
+    filtered.edges = filtered.edges.filter((e) => e.successions !== 40000);
+    const drifting = layoutDfg(filtered, BOX);
+    const full = layoutDfg(dfg(), BOX);
+    const widthOf = (layout) =>
+      layout.edges.find((e) => e.object_type === 'issue' && e.from_activity === 'IssueOpened').width;
+    assert.ok(widthOf(drifting) > widthOf(full));
+  });
+});
