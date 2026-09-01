@@ -10,7 +10,7 @@ server-side is in `DATA_LAYER.md`.
 Fixed stack: PostgreSQL → PostgREST → D3. No bundler, no framework, no TypeScript. Native ES
 modules loaded straight from `index.html`; D3 7.8.5 from a CDN as the global `d3`; `d3-force`
 3.0.0 vendored unmodified in `vendor/` because `layout/` must run in bare Node. `package.json`
-has no dependencies at all. Tests are `node --test` (`npm test`), 766 tests over 33 files.
+has no dependencies at all. Tests are `node --test` (`npm test`), 771 tests over 33 files.
 
 ```
 PostgreSQL  →  fe views  →  api.get_object_graph  →  PostgREST  →  loadObjectGraph
@@ -49,7 +49,7 @@ this table is the responsibility map.
 | `model/evidence.js` | 16 link methods → `validated` / `extracted`. |
 | `model/graph.js` | Adjacency and focus BFS (focus degree, max 2). |
 | `model/bursts.js` | Commits grouped by `push_id`, size ≥ 2. |
-| `model/commentBursts.js` | Runs of comments inside a window (default 1 day). |
+| `model/commentBursts.js` | Runs of comments inside a window (default 1 day), fenced so a run never crosses a close or a reopen. |
 | `model/commitGroups.js` | Commits grouped by the PR they reach; a commit is visible if any of its groups is. |
 | `state/state.js` | The `st` object, the derived toggle vocabulary, and every visibility predicate. |
 | `state/labels.js` | Type labels, so `state.js` derives toggle text without importing a renderer. |

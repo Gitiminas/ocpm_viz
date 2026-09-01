@@ -156,6 +156,15 @@ function layoutTemporal({
     });
   }
 
+  // A folded comment run's far edge, projected in absolute mode only. Discrete gives
+  // the run one rank, so an x for its end would be fiction; discrete states the span
+  // as text at render time instead.
+  if (mode === 'absolute') {
+    for (const node of nodes) {
+      if (node.isCommentBurst) node.spanEndX = scales.x(node.commentBurst.end);
+    }
+  }
+
   // ---- vertical position ----------------------------------------------------
   // Objects are passed in so a lane can allocate sub-lanes when two of its objects
   // overlap in time; without them the packer can only see nodes, and an object's *span*

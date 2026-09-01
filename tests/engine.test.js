@@ -197,6 +197,20 @@ describe('the layout the engine hands back is complete', () => {
     }
   });
 
+  test('a folded comment run carries its span end in absolute mode only', async () => {
+    // Absolute mode can project the run's last comment honestly; discrete gives the run
+    // one rank, so there the span is stated as text and no x is invented.
+    const context = await contextFor('F1');
+    const absolute = engineLayout(context, 'absolute');
+    const burst = absolute.nodes.find((node) => node.isCommentBurst);
+    assert.ok(burst, 'F1 folds a run at the default window');
+    assert.equal(burst.spanEndX, absolute.scales.x(burst.commentBurst.end));
+    assert.ok(burst.spanEndX >= burst.x, 'the run ends at or after its first comment');
+
+    const discrete = engineLayout(context, 'discrete');
+    assert.equal(discrete.nodes.find((node) => node.isCommentBurst).spanEndX, undefined);
+  });
+
   test('anchors resolve through the layout, not through the renderer', async () => {
     // The interface is `{x, y, xAt, clampToLifecycle, xOfTime}` — an endpoint resolver
     // keyed on `(anchorId, object)`, not a position lookup. Pinned here because the

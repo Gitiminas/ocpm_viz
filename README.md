@@ -115,7 +115,9 @@ times are UTC, labelled.
 | Legend | Sixteen rows, dimmed when absent from the current render; hover highlights every matching mark |
 
 Commits pushed together fold into one bulk-push mark, and runs of comments inside the folding
-window fold into one comment burst; click either to expand, and the `−` handle to fold it back.
+window fold into one comment burst — though a run never crosses a close or a reopen, so a
+late comment cannot masquerade as in-life traffic; a dashed underline shows the folded run's
+true span. Click either mark to expand, and the `−` handle to fold it back.
 Where more than six links land on the same point they stop fanning apart and declare a `×N`
 badge instead, because at 35 commits the fan draws one pull request as a cascade of diamonds.
 
@@ -145,7 +147,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 766 tests over 33 files, ~1 s, no browser
+npm test                  # 771 tests over 33 files, ~1 s, no browser
 npm run test:watch
 ```
 

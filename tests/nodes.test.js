@@ -580,6 +580,57 @@ describe('comments close together in time fold into one mark', () => {
   });
 });
 
+describe('a comment run never crosses a lifecycle boundary', () => {
+  // The mark sits at the run's first comment, so a run that straddled a close put a
+  // post-close comment inside the open interval. Runs break at every lifecycle-segment
+  // change, whatever the window says.
+  const at = (h) => new Date(Date.UTC(2025, 0, 1, h)).toISOString();
+  const derive = (intervals, commentHours, windowDays = 30) => {
+    const graph = normalizeGraph({
+      meta: { repo: 'r', seed: [{ id: 'issue:1', type: 'issue' }] },
+      objects: [
+        { id: 'actor:a', type: 'actor', label: '@a', repo: 'r', vmap: { login: 'a' }, intervals: [] },
+        { id: 'issue:1', type: 'issue', label: '#1', repo: 'r', intervals },
+      ],
+      events: commentHours.map((h, i) => ({
+        id: `c${i + 1}`, activity: 'IssueCommented', time: at(h), object_id: 'issue:1',
+        actor_id: 'actor:a', repo: 'r', comment: true,
+      })),
+      links: [],
+    });
+    return deriveCommentBursts(indexObjectGraph(graph), ['issue'], { windowDays });
+  };
+
+  test('post-close comments fold with each other, never with in-life ones', () => {
+    const bursts = derive([{ start: at(0), end: at(10) }], [1, 2, 20, 21]);
+    assert.equal(bursts.length, 2, 'one in-life burst, one after the close');
+    assert.deepEqual(bursts[0].eventIds, ['c1', 'c2']);
+    assert.deepEqual(bursts[1].eventIds, ['c3', 'c4']);
+  });
+
+  test('a reopen splits runs, and a comment in the closed gap joins neither side', () => {
+    const bursts = derive(
+      [{ start: at(0), end: at(5) }, { start: at(8), end: at(20) }],
+      [4, 4.5, 6, 9, 9.5],
+    );
+    assert.equal(bursts.length, 2, 'the gap comment is a run of one, so no third burst');
+    assert.deepEqual(bursts[0].eventIds, ['c1', 'c2'], 'first life');
+    assert.deepEqual(bursts[1].eventIds, ['c4', 'c5'], 'second life');
+  });
+
+  test('a still-open interval has no far edge, so its comments fold freely', () => {
+    const bursts = derive([{ start: at(0), end: null }], [1, 300]);
+    assert.equal(bursts.length, 1);
+    assert.equal(bursts[0].size, 2);
+  });
+
+  test('a comment at the closing instant folds with the life it closed', () => {
+    const bursts = derive([{ start: at(0), end: at(3) }], [1, 2, 3]);
+    assert.equal(bursts.length, 1);
+    assert.equal(bursts[0].size, 3, 'the interval end is inclusive');
+  });
+});
+
 describe('an unfolded comment run can be folded back', () => {
   const at = (h) => new Date(Date.UTC(2025, 0, 1, h)).toISOString();
   const setup = async (expanded) => {

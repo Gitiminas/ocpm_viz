@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**766 tests in 33 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
+**771 tests in 33 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
 database.
 
 ---
@@ -37,6 +37,7 @@ against stub objects instead of one.
 | Every drawn mark has a legend row and every row names something drawn (82); every control and mark has a help text, and every text a user (122) | `legend`, `tips` | F1; key table |
 | All times render UTC, labelled (9); every qualifier the live samples carry has a colour; an off-platform merge is its own outcome (123) | `timezone`, `qualifier-colour`, `offplatform` | F1; LIVE1/2; F14 |
 | The absolute axis anchors its left edge, so no mark sits left of every tick; no round label claims a day boundary its tick is not on; a gap marking's help-strip text states the exact span it hides, in UTC, with the length in parentheses; a multi-year span carries the year on the first tick and on each tick that begins a new year, in both modes | `axis` | k8s #118316 ticks + synthetic |
+| A comment run never crosses a close or a reopen (interval end inclusive, a null end open); the folded mark carries its span end in absolute mode only | `nodes`, `engine` | synthetic; F1 |
 | Fixtures are byte-reproducible from their build scripts; a `{repo, seed}` query resolves or fails loudly; seed search parses and ranks | `fixtures`, `selection` | `--check`; catalogue |
 | The seed box searches the text it is showing; an empty reference never becomes a database request, while a type word alone still does | `searchCombo` | stubs + fake transport |
 | A load under the delay is never announced; a slow one blurs the stale picture and blocks it; a failed load still restores it; no timer outlives the load | `loading` | stubs + fake clock |

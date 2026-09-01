@@ -88,7 +88,7 @@ export const TIPS = Object.freeze({
 
   // ---- folding ------------------------------------------------------------------
   'folding.pushes': 'Commits pushed together are drawn as one mark with a count. Click the mark to unfold it, and the minus above it to fold it back.',
-  'folding.commentWindow': 'Comments closer together than this are drawn as one mark. Slide to change how close counts as together.',
+  'folding.commentWindow': 'Comments closer together than this are drawn as one mark, though a run never crosses a close or a reopen. Slide to change how close counts as together.',
 
   // ---- actors -------------------------------------------------------------------
   'actors.search': 'Filter the list of actors by login.',
@@ -130,7 +130,7 @@ export const TIPS = Object.freeze({
   'legend.pull_request': 'A pull request. A diamond, in the PR colour.',
   'legend.commit': 'A commit, or a push of several commits shown as one square with a count.',
   'legend.comments': 'A comment on an issue or pull request. Its hovercard shows the opening lines of the text.',
-  'legend.comment-burst': 'Several comments close together in time, drawn as one hollow mark with a count.',
+  'legend.comment-burst': 'Several comments close together in time, drawn as one hollow mark with a count. A dashed underline reaches to the last comment in the run.',
   'legend.landmark': 'A solid ring marks the end of a lifecycle: a pull request merged or an issue closed.',
   'legend.landmark-heuristic': 'A dotted orange ring marks a merge done off GitHub: the PR was closed and its commits pushed within minutes. A heuristic, not a platform fact.',
   'legend.closed-unmerged': 'A dashed ring marks a pull request that was closed without being merged.',

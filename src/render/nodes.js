@@ -15,6 +15,7 @@ import { TYPE, COLORS, drawSymbol, typeColor } from './theme.js';
 import { objectOpacity } from '../model/graph.js';
 import { ROW_HEIGHT } from '../layout/packing.js';
 import { rowY } from '../layout/lanes.js';
+import { GAP_THRESHOLD_MS } from '../layout/scales.js';
 
 /** Commit labels are thinned so they never collide. */
 const COMMIT_LABEL_MIN_GAP_PX = 64;
@@ -312,7 +313,12 @@ export function renderNodes({
       continue;
     }
     if (node.isCommentBurst) {
-      drawCommentBurst(group, node, objectColors.get(node.objectId) || typeColor(node.lane));
+      drawCommentBurst(
+        group,
+        node,
+        objectColors.get(node.objectId) || typeColor(node.lane),
+        state.mode,
+      );
       continue;
     }
 
@@ -500,8 +506,25 @@ function repeatTooltipSpec(node, repeat, i, actorLogin) {
  * than a single comment glyph and carries a number, which is what separates "several"
  * from "one" without inventing a shape; a commit burst is a rounded square with a count
  * for the same reason, in its own lane's vocabulary.
+ *
+ * The mark sits at the run's FIRST comment, so alone it understates a wide run. In
+ * absolute mode a dashed underline reaches to the run's last comment (`spanEndX`, from
+ * the layout), in the comment-traffic dash so it reads as comment activity. Discrete
+ * mode has no honest x for the end — the run holds one rank — so a run wider than a day
+ * states its span as text instead, the way lifecycle bars state their duration there.
  */
-function drawCommentBurst(group, node, color) {
+function drawCommentBurst(group, node, color, mode) {
+  if (node.spanEndX != null) {
+    group
+      .append('path')
+      .attr('d', `M0,15 L${node.spanEndX - node.x},15`)
+      .attr('fill', 'none')
+      .attr('stroke', color)
+      .attr('stroke-width', 2)
+      .attr('stroke-linecap', 'round')
+      .attr('stroke-dasharray', '1 5')
+      .attr('opacity', 0.35);
+  }
   drawSymbol(group, TYPE[node.lane].shape, 11, 'var(--color-bg)', color, 2);
   group
     .append('text')
@@ -512,6 +535,17 @@ function drawCommentBurst(group, node, color) {
     .attr('fill', color)
     .attr('class', 'mono')
     .text(node.commentBurst.size);
+  const span = +node.commentBurst.end - +node.commentBurst.time;
+  if (mode === 'discrete' && span > GAP_THRESHOLD_MS) {
+    group
+      .append('text')
+      .attr('x', 16)
+      .attr('dominant-baseline', 'central')
+      .attr('font-size', 10)
+      .attr('class', 'mono')
+      .attr('fill', 'var(--color-neutral-400)')
+      .text(formatDuration(span));
+  }
 }
 
 function drawBurstNode(group, node) {
