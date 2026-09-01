@@ -257,6 +257,7 @@ case "${1:-restart}" in
   db)               do_db; do_stop; do_start; do_health
                     section "Acceptance gate"
                     node scripts/rpc-check.mjs || die "scripts/rpc-check.mjs failed"
+                    node scripts/dfg-check.mjs || die "scripts/dfg-check.mjs failed"
                     section "Ready"
                     info "app        http://localhost:$APP_PORT"
                     echo ;;

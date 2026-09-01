@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import {
   findDfgProblems,
@@ -118,5 +119,16 @@ describe('normalizeDfg parses the one timestamp and nothing else', () => {
     assert.equal(dfg.meta.generated_at.toISOString(), '2026-09-01T00:00:00.000Z');
     assert.equal(typeof raw.meta.generated_at, 'string', 'the shared input is never mutated');
     assert.equal(dfg.nodes, raw.nodes, 'counts need no parsing, so the arrays pass through');
+  });
+});
+
+describe('the pulled sample is a shape, never a count', () => {
+  // DFG1 is a live sample (scripts/pull-dfg.mjs): the validator must accept it, and no
+  // test may assert a number against it — the same rule the LIVE sub-logs live under.
+  test('DFG1 passes the validator', async () => {
+    const raw = JSON.parse(
+      await readFile(new URL('./fixtures/DFG1.json', import.meta.url), 'utf8'),
+    );
+    assert.deepEqual(findDfgProblems(raw), []);
   });
 });

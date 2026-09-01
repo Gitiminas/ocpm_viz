@@ -33,6 +33,12 @@ the source, not the data. F1 and the LIVE samples are still real microsoft/vscod
 payload's `meta.repo` says so, each catalogue seed carries a `synthetic` flag, and the tests
 assert the flag agrees with the payload.
 
+`DFG1.json` is the process map's sample — a snapshot of `api.get_dfg('microsoft/vscode')`
+pulled by `scripts/pull-dfg.mjs`, served by the fixtures source whatever repository the picker
+shows (the page displays the sample's own `meta.repo`). It is not in the catalogue, which maps
+seeds to sub-logs and a DFG has no seed; the only assertion against it is that it passes the
+validator — its shape, never a count.
+
 ### F2–F14 are synthetic — never cite them
 
 ```
