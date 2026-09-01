@@ -164,6 +164,73 @@ export function renderSubLogCard({ container, summary, total = summary, notes = 
 }
 
 /**
+ * The process map's twin of the card above: what the page currently draws, counted.
+ *
+ * Same tile contract, same "n / total when the filter hides something" honesty, same
+ * kicker — the two cards must read as one instrument, because they answer the same
+ * question on different pages. The counted items are the map's own: activities, and
+ * the two succession classes.
+ *
+ * @param {object} options
+ * @param {HTMLElement} options.container  emptied and refilled
+ * @param {{activities, perType, cross}|null} options.shown  what survived the filter,
+ *   or null before a DFG is loaded — the card stays, titled, and says so
+ * @param {{activities, perType, cross}} [options.total]  the whole artifact's counts
+ */
+export function renderProcessCard({ container, shown, total = shown }) {
+  container.innerHTML = '';
+  container.style.cssText = CARD;
+
+  const kicker = document.createElement('div');
+  kicker.style.cssText = KICKER;
+  if (!shown) {
+    kicker.textContent = 'Currently displayed';
+    container.appendChild(kicker);
+    const empty = document.createElement('div');
+    empty.style.cssText = EMPTY;
+    empty.textContent = 'No process map loaded yet.';
+    container.appendChild(empty);
+    return;
+  }
+
+  const anyHidden =
+    shown.activities !== total.activities ||
+    shown.perType !== total.perType ||
+    shown.cross !== total.cross;
+  kicker.innerHTML =
+    '<span>Currently displayed</span>' + (anyHidden ? '<span>of the whole log</span>' : '');
+  container.appendChild(kicker);
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:6px';
+  row.appendChild(
+    tile({
+      value: String(shown.activities),
+      of: total.activities,
+      label: total.activities === 1 ? 'Activity' : 'Activities',
+      tip: { key: 'dfg.card.activities' },
+    }),
+  );
+  row.appendChild(
+    tile({
+      value: String(shown.perType),
+      of: total.perType,
+      label: 'Within a type',
+      tip: { key: 'dfg.card.perType' },
+    }),
+  );
+  row.appendChild(
+    tile({
+      value: String(shown.cross),
+      of: total.cross,
+      label: 'Across links',
+      tip: { key: 'dfg.card.cross' },
+    }),
+  );
+  container.appendChild(row);
+}
+
+/**
  * One stat tile: optional glyph + value on the first line, label on the second. When a
  * total is given and differs from the value, the value reads "n / total" with the total
  * muted — the visible number stays the loud one, the payload's the reference. The tile

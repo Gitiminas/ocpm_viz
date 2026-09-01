@@ -38,7 +38,7 @@ import { createTooltip } from './render/tooltip.js';
 import { createMinimap } from './render/minimap.js';
 import { createActorCard } from './render/actorCard.js';
 import { createTimeline, MARGIN, STRUCTURAL_MARGIN } from './render/timeline.js';
-import { renderSubLogCard } from './render/subLogCard.js';
+import { renderSubLogCard, renderProcessCard } from './render/subLogCard.js';
 import { scrollToKeepAnchor } from './render/pan.js';
 import { bindHelpStrip } from './render/helpStrip.js';
 import { renderLegend, legendKeysPresentIn } from './render/legend.js';
@@ -78,6 +78,7 @@ const elements = {
   subLogQuery: el('subLogQuery'),
   dfgQueryNote: el('dfgQueryNote'),
   dfgFocusInfo: el('dfgFocusInfo'),
+  dfgCard: el('dfgCard'),
   sourceToggle: el('sourceToggle'),
   sourceNote: el('sourceNote'),
   wrap: el('wrap'),
@@ -108,6 +109,7 @@ const elements = {
 // The sub-log card is present from the first paint, titled and empty, so the sidebar has
 // its final shape before anything is loaded (`render/subLogCard.js`).
 renderSubLogCard({ container: elements.subLogCard, summary: null });
+renderProcessCard({ container: elements.dfgCard, shown: null });
 
 // The help strip: one delegated listener on the body, texts from help/tips.js. Removing
 // this one call switches the feature off; the data-tip attributes are inert without it.
@@ -1027,6 +1029,19 @@ function renderDfg() {
   });
   dfgChart.render(currentDfg, layout, { counts: filtered, focus: dfgView.focus });
   updateDfgFocusLabel();
+  renderProcessCard({
+    container: elements.dfgCard,
+    shown: {
+      activities: filtered.dfg.nodes.length,
+      perType: filtered.dfg.edges.length,
+      cross: filtered.dfg.cross_edges.length,
+    },
+    total: {
+      activities: currentDfg.nodes.length,
+      perType: currentDfg.edges.length,
+      cross: currentDfg.cross_edges.length,
+    },
+  });
   renderLegend(elements.dfgLegend, legendKeysPresentIn(elements.dfgContent), { only: ['Process map'] });
 }
 
@@ -1338,6 +1353,7 @@ function describeQuery(query) {
 function showSeedPrompt(repoName) {
   wireSelectors(repoName, null, null);
   renderSubLogCard({ container: elements.subLogCard, summary: null });
+renderProcessCard({ container: elements.dfgCard, shown: null });
   const html = messageHtml(
     `Choose something to start from${repoName ? ` in ${escapeForHtml(repoName)}` : ''}`,
     'A sub-log is a repository <em>and</em> an object to traverse out from, so there is ' +

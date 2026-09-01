@@ -223,7 +223,12 @@ html,body{height:100%;margin:0;overflow:hidden}
      render/subLogCard.js from summarizeSubLog(). -->
 <div id="subLogCard" data-tip="card"></div>
 </div>
-<div id="dfgQueryNote" data-tip="dfg.repoOnly" class="mono" style="display:none;font-size:10px;color:var(--color-neutral-500);line-height:1.5">The process map covers the repository's whole log. No seed: every object's events count.</div>
+<div id="dfgQueryNote" style="display:none">
+<div data-tip="dfg.repoOnly" class="mono" style="font-size:10px;color:var(--color-neutral-500);line-height:1.5">The process map covers the repository's whole log. No seed: every object's events count.</div>
+<!-- The sub-log card's twin: what the process map currently draws, counted, with the
+     whole-log total after a slash whenever the page's own filter hides something. -->
+<div id="dfgCard"></div>
+</div>
 </div>
 <div id="timelineSidebarSections" style="display:flex;flex-direction:column">
 <!--
