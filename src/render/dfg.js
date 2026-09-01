@@ -341,6 +341,33 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
         cross
           ? ['Linked pairs', edge.pairs.toLocaleString('en-US')]
           : ['Objects', edge.objects.toLocaleString('en-US')],
+        /*
+         * The link-class breakdown behind the aggregate. Members arrive filter-first,
+         * so a class toggled off in the sidebar is simply absent here — the card and
+         * the sidebar can never disagree about what is counted. One class renders as
+         * plain rows; several as a boxed group, the commit-observations treatment.
+         */
+        ...(cross && edge.members?.length === 1
+          ? [
+              ['Qualifier', escapeHtml(edge.members[0].link_qualifier)],
+              ['Link evidence', escapeHtml(edge.members[0].link_evidence)],
+              ['Method', escapeHtml(edge.members[0].link_method), 'mono'],
+            ]
+          : []),
+        ...(cross && edge.members?.length > 1
+          ? [
+              {
+                label: 'By link class',
+                value: `${edge.members.length} classes`,
+                items: edge.members.map((member) => ({
+                  primary:
+                    `${escapeHtml(member.link_qualifier)} · ` +
+                    member.successions.toLocaleString('en-US'),
+                  secondary: `${escapeHtml(member.link_evidence)} · via ${escapeHtml(member.link_method)}`,
+                })),
+              },
+            ]
+          : []),
       ],
       note: cross
         ? 'Counted in the interleaved sequences of linked pairs. A floor, never a point ' +
