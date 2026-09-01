@@ -137,17 +137,29 @@ Of the loosely-typed bags, the client reads little:
 
 The second payload: one whole-log directly-follows graph per repository, from
 `api.get_dfg(repo)` over `fe.dfg_mat` (`sql/fe_layer.sql` §12–§13, with the measurements).
-`meta.dfg_contract_version` is `1` — its own counter, not the ObjectGraph's `contract_version`,
+`meta.dfg_contract_version` is `2` — its own counter, not the ObjectGraph's `contract_version`,
 so the two payloads version independently.
 
 ```
-meta:        { repo, repo_id, repo_ambiguous, dfg_contract_version: 1, generated_at,
+meta:        { repo, repo_id, repo_ambiguous, dfg_contract_version: 2, generated_at,
                activity_scope, data_honesty: {succession, cross_edges, commit_time, truncation},
                source: {rpc, layer, mv_refreshed} }
 nodes:       [ { object_type, activity, events, objects, starts, ends } ]
 edges:       [ { object_type, from_activity, to_activity, successions, objects } ]
-cross_edges: [ { from_type, from_activity, to_type, to_activity, successions, pairs } ]
+cross_edges: [ { from_type, from_activity, to_type, to_activity, successions, pairs,
+                 link_qualifier, link_evidence, link_method } ]
 ```
+
+Cross rows come one per (directed edge, link class), and the frontend aggregates them back to
+ONE drawn arrow per edge (`aggregateCrossEdges`), keeping the classes as the hovercard's
+breakdown and the sidebar's evidence/qualifier/method filters. The class fields are
+**`link_`-prefixed** deliberately: a succession is an observation and carries no classification
+of its own — the class belongs to the link it rides on, and the validator enforces the prefix
+in both directions (bare `evidence`/`qualifier`/`method` refused on cross edges, `link_*`
+refused on per-type edges). The attribution needs no rule: **no (source, target) pair in
+`fe.link_mat` carries two links** (verified 2026-09-01; `scripts/dfg-check.mjs` asserts it on
+every run, so the day an `fe.link` change breaks the fact, the gate says so before a payload
+ships with silently mixed attributions).
 
 A **succession** is one event directly followed by another within one object's own sequence,
 ordered `(time, id)`; `starts`/`ends` count the objects whose sequence begins or ends with the
