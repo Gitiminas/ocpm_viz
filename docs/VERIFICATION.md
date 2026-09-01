@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**771 tests in 33 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
+**798 tests in 34 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
 database.
 
 ---
@@ -38,6 +38,7 @@ against stub objects instead of one.
 | All times render UTC, labelled (9); every qualifier the live samples carry has a colour; an off-platform merge is its own outcome (123) | `timezone`, `qualifier-colour`, `offplatform` | F1; LIVE1/2; F14 |
 | The absolute axis anchors its left edge, so no mark sits left of every tick; no round label claims a day boundary its tick is not on; a gap marking's help-strip text states the exact span it hides, in UTC, with the length in parentheses; a multi-year span carries the year on the first tick and on each tick that begins a new year, in both modes | `axis` | k8s #118316 ticks + synthetic |
 | A comment run never crosses a close or a reopen (interval end inclusive, a null end open); the folded mark carries its span end in absolute mode only | `nodes`, `engine` | synthetic; F1 |
+| The DFG validator enforces the closed vocabularies, nonnegative counts, cross-type-only cross edges, no evidence on a succession, and per-type conservation; the DFG arrangement is finite, boxed, deterministic, lane-ordered, forward arcs above and rework below, widths √-monotone and clamped; the transport fails before fetching without a repo (21) | `dfg`, `dfg-layout`, `api` | hand-built bundle; DFG1 shape only |
 | Fixtures are byte-reproducible from their build scripts; a `{repo, seed}` query resolves or fails loudly; seed search parses and ranks | `fixtures`, `selection` | `--check`; catalogue |
 | The seed box searches the text it is showing; an empty reference never becomes a database request, while a type word alone still does | `searchCombo` | stubs + fake transport |
 | A load under the delay is never announced; a slow one blurs the stale picture and blocks it; a failed load still restores it; no timer outlives the load | `loading` | stubs + fake clock |
@@ -132,6 +133,17 @@ then asserts in order:
 - One unauthenticated HTTP call to `api.list_repos` as `web_anon`. Everything above runs as the
   database owner and so cannot see a permissions regression; this can. Unreachable PostgREST is a
   **skip**, not a failure (`PGRST_URL`, `PGRST_SKIP`).
+
+`scripts/dfg-check.mjs` is the sibling gate for the DFG half (§12–§13), run by `./ocpm.sh db`
+beside the sub-log gate. It pulls `api.get_dfg` through psql and asserts: `findDfgProblems()`
+returns `[]`; per-node conservation (each node's events = starts + inbound successions = ends +
+outbound, per-type edges only — a cross succession is not part of either object's own sequence
+arithmetic); no `case` or `evidence` key anywhere in the raw text; the payload through `loadDfg`
+and `layoutDfg` with every coordinate finite, in-box and non-coincident; and one unauthenticated
+`web_anon` POST to `/rpc/get_dfg` — the only probe that catches the `SECURITY INVOKER` reset on
+the new function. PASS on microsoft/vscode and facebook/react, 2026-09-01. The §12 measurement
+block in `sql/fe_layer.sql` carries the build figures (attrs-subquery pruning verified by
+EXPLAIN, 24 s build, 286 rows, conservation on all nine partitions).
 
 The SQL's own diagnostics are separate and queried by hand: `fe.diag_sanity` (six checks — five must
 be 0, the sixth exactly 10 distinct activities), `fe.diag_link_staleness`,
@@ -248,6 +260,19 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   The removal rate differs by repository (vscode 71%, react 66%, kubernetes 32% of upstream
   `ref_match`), and that spread is real branching practice rather than a filter artifact. It is why
   raw link counts must never be compared across repositories as though they measured the same thing.
+
+- **The cross-edge undercount is unmeasured.** DFG cross successions ride on the admitted
+  links, so they are floors — but by how much is not known: measuring it would mean re-running
+  the pair interleaving over raw `ref_match`, which has not been done. Quote them as floors,
+  never as point estimates, and never compare them across repositories.
+- **DFG1 is a sample with two staleness axes.** Pulled 2026-09-01 against MVs refreshed
+  2026-08-02 and a `fe.dfg_mat` built the same day; its own `meta.source.pulled_at` and the
+  payload's `mv_refreshed` are the record. Nothing asserts a count against it, and nothing
+  re-pulls it automatically.
+- **The process map's rendering has no automated look.** Its layout is asserted DOM-free
+  (finite, boxed, ordered) and it was rendered and looked at against the live database and the
+  sample on 2026-09-01; like the rest of the tool, no check says the picture means what it
+  claims.
 
 Checked since, one line each: a real sub-log renders and the PostgREST → `fetch()` → browser path
 works (2026-08-05); `rpc-check.mjs` probes the `web_anon` path, for one function only (2026-08-07);

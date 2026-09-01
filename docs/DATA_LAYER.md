@@ -1,14 +1,14 @@
 # The data layer
 
 Everything between the shared upstream database and `loadObjectGraph()`. Two schemas in
-PostgreSQL, three RPCs over PostgREST, and one client-side adapter. Upstream is read-only and
+PostgreSQL, four RPCs over PostgREST, and two client-side adapters. Upstream is read-only and
 described in `DATA_CONTRACT.md`. The relation-by-relation inventory is `sql/fe_layer.sql` itself,
 which this document explains rather than repeats.
 
 ## Schemas
 
-`fe` holds the derivations: 15 views and materialized views, 8 diagnostic views, and five
-functions (`remap_activity`, `utc`, and the three refreshers). `api` holds three `SECURITY DEFINER` functions and nothing else. Both are owned by
+`fe` holds the derivations: 17 views and materialized views, 8 diagnostic views, and six
+functions (`remap_activity`, `utc`, and the four refreshers). `api` holds four `SECURITY DEFINER` functions and nothing else. Both are owned by
 `fe_owner`. PostgREST is configured with `db-schemas = "api"`, so `api` is the entire HTTP
 surface and the frontend never reads a view directly.
 
@@ -54,7 +54,8 @@ now exist.
 |---|---|
 | `fe.refresh_links()` | `fe.link_mat` |
 | `fe.refresh_search()` | `fe.seed_lookup` |
-| `fe.refresh_all()` | both, in dependency order |
+| `fe.refresh_dfg()` | `fe.dfg_mat` (after `fe.link_mat` — the cross-edge arm reads it) |
+| `fe.refresh_all()` | all three, in dependency order |
 
 `SELECT * FROM fe.diag_staleness` reports live rows, materialized rows and when each copy was
 last written. Row counts alone cannot prove freshness, so the last-written column is the useful
@@ -131,6 +132,40 @@ Of the loosely-typed bags, the client reads little:
 | `attrs.commit_count`, `.distinct_commit_count`, `.truncated` | nothing today |
 
 `meta.repo`, `meta.seed[]` and `meta.traversal_degree` are read; the rest of `meta` is not.
+
+## The DFG payload
+
+The second payload: one whole-log directly-follows graph per repository, from
+`api.get_dfg(repo)` over `fe.dfg_mat` (`sql/fe_layer.sql` §12–§13, with the measurements).
+`meta.dfg_contract_version` is `1` — its own counter, not the ObjectGraph's `contract_version`,
+so the two payloads version independently.
+
+```
+meta:        { repo, repo_id, repo_ambiguous, dfg_contract_version: 1, generated_at,
+               activity_scope, data_honesty: {succession, cross_edges, commit_time, truncation},
+               source: {rpc, layer, mv_refreshed} }
+nodes:       [ { object_type, activity, events, objects, starts, ends } ]
+edges:       [ { object_type, from_activity, to_activity, successions, objects } ]
+cross_edges: [ { from_type, from_activity, to_type, to_activity, successions, pairs } ]
+```
+
+A **succession** is one event directly followed by another within one object's own sequence,
+ordered `(time, id)`; `starts`/`ends` count the objects whose sequence begins or ends with the
+activity, so per type `Σ successions = Σ events − Σ starts` and `Σ starts = Σ ends` — the
+validator (`src/model/dfg.js`) enforces both, and `scripts/dfg-check.mjs` the stricter per-node
+conservation. **Cross edges** are counted in the interleaved sequences of linked pairs and are
+**floors**: they ride on the admitted links, which the two admission rules narrow. There is no
+evidence field anywhere — a succession is an observation, not a traceability claim — no actor
+partition (actors have no events of their own), and no case notion. Object types come from the
+object-id prefix, never `fe.activity_vocabulary`, because PR comments sit on `pr:` objects
+under an issue-named activity.
+
+Being computed server-side over data the client never loads, the DFG is the stated exception
+to the metrics-in-JS rule — and therefore cannot follow the sidebar toggles, which the Process
+page declares in a standing notice. `loadDfg` (`src/data/loadDfg.js`) is the client entry
+point: validate raw, normalize (only `generated_at` becomes a `Date`), attach the query. The
+fixtures source serves the pulled sample `tests/fixtures/DFG1.json` whatever repository is
+picked, and says so.
 
 ## Objects, activities, intervals
 
@@ -240,7 +275,7 @@ size), and what is kept only by `ref_match`. Run it rather than quoting the figu
 
 ## The RPCs
 
-All three are `POST /rpc/<name>` with a JSON body. The browser calls same-origin `/rpc/*`;
+All four are `POST /rpc/<name>` with a JSON body. The browser calls same-origin `/rpc/*`;
 `scripts/serve.mjs` proxies to PostgREST so the two share an origin, and answers 502 when
 PostgREST is unreachable.
 
@@ -293,6 +328,11 @@ alone ("pr") is a filter rather than nothing, and still queries.
 name, most seeds winning. `available` is computed from `fe.seed_lookup` rather than declared;
 `reason` is `'No issues, pull requests or commits in the window.'` when it is false.
 
+**`api.get_dfg(repo)`** returns the DFG payload above, read from `fe.dfg_mat` (0.43 s, 16 KB
+for vscode). The same name resolution and ambiguity report as `get_object_graph` — the two
+resolvers must never disagree about which repository a name means. It raises only on an unknown
+name; there is no seed to check and no degree to bound. Gate: `scripts/dfg-check.mjs`.
+
 Client-side errors are in `src/data/api.js`. A network failure becomes an `Error` naming the
 PostgREST URL, with `.unreachable = true`; a non-2xx becomes `body.message` plus `Hint:` and
 `Details:` lines, with `.status`, `.code` and `.hint` attached. A missing `repo` or `seed`, or a
@@ -331,7 +371,7 @@ upstream refresh.
 
 | View | What it tells you |
 |---|---|
-| `fe.diag_staleness` | Live vs materialized rows and last-written time for `fe.link_mat` and `fe.seed_lookup` |
+| `fe.diag_staleness` | Live vs materialized rows and last-written time for `fe.link_mat`, `fe.seed_lookup` and `fe.dfg_mat` (whose live count is honestly NULL — recomputing it is the whole build) |
 | `fe.diag_link_staleness` | Drift between `fe.link` and `fe.link_mat` alone |
 | `fe.diag_sanity` | Six checks, each with its expected value: dangling event objects, issue/PR objects with no events, actors named by an event with no actor object, pairs linked twice by the same qualifier, link endpoints that are not objects, and that exactly 10 distinct activities occur |
 | `fe.diag_dropped_activities` | What the vocabulary whitelist drops, with the remap already applied |

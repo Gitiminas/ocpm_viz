@@ -18,7 +18,7 @@ diff, so verification matters more than usual.
 |---|---|
 | `README.md` | Human entry point: run it, test it, extend it. Keep current |
 | `docs/ARCHITECTURE.md` | The frontend: folders, seams, data flow, layout traps |
-| `docs/DATA_LAYER.md` | Schemas `fe` and `api`, the three RPCs, the `ObjectGraph` payload, the adapter |
+| `docs/DATA_LAYER.md` | Schemas `fe` and `api`, the four RPCs, the `ObjectGraph` and DFG payloads, the adapters |
 | `docs/DATA_CONTRACT.md` | The written record of what exists upstream. The database itself is ground truth |
 | `docs/VERIFICATION.md` | What was checked and how. §5 is the not-verified list — read it before trusting a figure |
 
@@ -28,9 +28,9 @@ diff, so verification matters more than usual.
 |---|---|---|
 | `index.html` | App shell: markup, CSS, the one `<script type="module">` entry | Work here for anything structural in the page |
 | `src/` | The application, as ES modules | Work here. Keep `model/`, `layout/`, `state/` and `stats/` DOM-free |
-| `sql/fe_layer.sql` | The data layer: schema `fe` (15 views/MVs + 8 diagnostics) and the three `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
-| `scripts/rpc-check.mjs` | Acceptance gate: a real RPC payload through `loadObjectGraph`, then the layout pipeline, then one unauthenticated call as `web_anon` | Run after any change to `sql/`. `findGraphProblems()` must return `[]`. The HTTP probe skips if PostgREST is down |
-| `scripts/pull-sublog.mjs` | Snapshots RPC output to `tests/fixtures/LIVE*.json` | Samples, not fixtures — no test asserts a count against them |
+| `sql/fe_layer.sql` | The data layer: schema `fe` (17 views/MVs + 8 diagnostics) and the four `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
+| `scripts/rpc-check.mjs`, `dfg-check.mjs` | Acceptance gates: a real payload through the real loader and layout, then one unauthenticated call as `web_anon` | Run both after any change to `sql/`. The validators must return `[]`. The HTTP probes skip if PostgREST is down |
+| `scripts/pull-sublog.mjs`, `pull-dfg.mjs` | Snapshot RPC output to `tests/fixtures/LIVE*.json` / `DFG1.json` | Samples, not fixtures — no test asserts a count against them |
 | `scripts/shot.mjs` | Headless screenshot of the running app | Writes to `.shots/`, gitignored. Headless lays out ~90px shorter than `--window-size`: compare fill between shots, not against the box |
 | `scripts/build-f1.mjs`, `build-synthetic-fixtures.mjs`, `build-catalogue.mjs` | Build the fixtures and the seed catalogue | Re-runnable. `--check` fails when a committed file is stale |
 | `scripts/serve.mjs` | Zero-dependency static server and `/rpc/*` proxy (`npm start`) | Needed: ES modules and `fetch` are blocked on `file://` |
@@ -97,7 +97,7 @@ diff, so verification matters more than usual.
   `actor:<login>` survives **in the fixtures only**: `ocel-data.json` has no numeric actor id, while
   the live payload is already `actor:<actor_id>`.
 - **Modularity is a hard requirement.** Data access, layout, rendering and stats stay separable.
-  `loadObjectGraph(query) -> ObjectGraph` is the only data entry point.
+  `loadObjectGraph(query) -> ObjectGraph` and `loadDfg(query) -> DFG` are the only data entry points.
 - No bundler, framework or TypeScript. Native ES modules need no build step.
 - **Tests run with `npm test`** (`node --test`); `npm run test:watch` to watch. Files are
   `tests/*.test.js` and discovery is automatic, so do not pass a path.

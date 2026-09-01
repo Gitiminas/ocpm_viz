@@ -10,7 +10,7 @@ server-side is in `DATA_LAYER.md`.
 Fixed stack: PostgreSQL → PostgREST → D3. No bundler, no framework, no TypeScript. Native ES
 modules loaded straight from `index.html`; D3 7.8.5 from a CDN as the global `d3`; `d3-force`
 3.0.0 vendored unmodified in `vendor/` because `layout/` must run in bare Node. `package.json`
-has no dependencies at all. Tests are `node --test` (`npm test`), 771 tests over 33 files.
+has no dependencies at all. Tests are `node --test` (`npm test`), 798 tests over 34 files.
 
 ```
 PostgreSQL  →  fe views  →  api.get_object_graph  →  PostgREST  →  loadObjectGraph
@@ -22,10 +22,12 @@ PostgreSQL  →  fe views  →  api.get_object_graph  →  PostgREST  →  loadO
                                                      render (SVG layers)
 ```
 
-`loadObjectGraph(query) -> ObjectGraph` is the only data entry point. It takes a transport, so
-the same code path serves a local fixture and a live RPC; `data/source.js` picks which by
-`?source=`. Three RPCs exist (`get_object_graph`, `search_seeds`, `list_repos`); their shapes,
-the `fe` views, the two admission rules and the evidence mapping are all in `DATA_LAYER.md`.
+`loadObjectGraph(query) -> ObjectGraph` is the sub-log data entry point, and
+`loadDfg(query) -> DFG` (the whole-log directly-follows graph, for the Process page) is its one
+sibling — nothing else above the data layer may fetch. Both take a transport, so the same code
+path serves a local fixture and a live RPC; `data/source.js` picks which by `?source=`. Four
+RPCs exist (`get_object_graph`, `search_seeds`, `list_repos`, `get_dfg`); their shapes, the
+`fe` views, the two admission rules and the evidence mapping are all in `DATA_LAYER.md`.
 
 ## Folder map
 
@@ -44,6 +46,10 @@ this table is the responsibility map.
 | `data/fixtures.js` | Serve a `{repo, seed}` query from `tests/fixtures/` via `catalogue.json`. |
 | `data/source.js` | Fixtures or database behind one shape, chosen by `?source=`. Both async, so the branch never reaches `main.js`. |
 | `data/seedQuery.js` | Parse and rank what is typed into "Start from". Shared by both sources, so the two searches cannot disagree. |
+| `data/loadDfg.js` | The whole-log entry point: transport → `assertValidDfg` → `normalizeDfg`. No default transport — the source decides which. |
+| `model/dfg.js` | DFG validation (closed vocabularies, nonnegative counts, per-type conservation, no evidence on a succession) and its one-timestamp normalization. |
+| `layout/dfg.js` | The process map's arrangement: lane rows, lifecycle reading order, forward arcs above / rework below, loops, `dfgEdgeWidth` (√, clamped). |
+| `render/dfg.js` | The Process page's renderer: lane bands, activity marks, succession edges with widths and counts, hovercards, the whole-log notice. |
 | `model/objectGraph.js` | Shape validation (`findGraphProblems`), normalization, indexing. |
 | `model/activities.js` | The closed vocabulary: 4 object types, 10 activities, 3 landmarks. |
 | `model/evidence.js` | 16 link methods → `validated` / `extracted`. |
@@ -301,6 +307,14 @@ exist upstream in the `fe` views — see `DATA_LAYER.md`.
 control (marks use `data-legend`, which maps to `legend.<key>`) and the sentence to the table in
 `src/help/tips.js`. `tests/tips.test.js` fails when a key has no text or a text has no key. No
 browser `title=` attributes beside a tip.
+
+**A page.** (Stats predates this entry; the Process page is what wrote it.) A page needs: a
+`.pageTab` button with `data-page` and a `page.<name>` tip; a `<main>` sibling of the others,
+`position:relative`, holding its own loading overlay and a message surface that PRECEDES its
+content root as a sibling (`tests/shell.test.js` pins the ordering); a sidebar block beside
+`#timelineSidebarSections`; an entry in `main.js`'s `PAGES` map with an `onShow` that measures
+only once the page is visible (trap #8); the `?page=` whitelist in `queryFromUrl`; and a branch
+in the resize handler. `presetUrl` already writes any non-timeline page.
 
 **A mode or arrangement.** A temporal mode is a new branch in `layout/scales.js` plus an entry
 in `TEMPORAL_MODES`. A structural arrangement is a new module returning `{positions, waypoints,

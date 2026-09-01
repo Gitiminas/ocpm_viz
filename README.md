@@ -81,10 +81,16 @@ The sub-log card under the query states what is on screen: counts per object typ
 and the time span, shown as `n / total` whenever a toggle has hidden something. There is no
 "case" anywhere — the same event may belong to many sub-logs.
 
-**Two pages.** *Trace* is the drawing. *Stats* is a table of one row per object (open for, events,
+**Three pages.** *Trace* is the drawing. *Stats* is a table of one row per object (open for, events,
 comments, actors, links, longest gap, handoffs, outcome) with per-type aggregates, plus cards for
 link evidence, PR outcomes, commits, actors, lead times, idle gaps and landmarks. Every figure is
-computed in JavaScript over the visible sub-log, so it follows the toggles.
+computed in JavaScript over the visible sub-log, so it follows the toggles. *Process* is the
+object-centric directly-follows graph over the repository's **whole log**: one activity node per
+object type and activity, succession edges whose width grows (√) with how often one activity
+directly follows another within one object's events, and dashed cross-type edges counted through
+the links — floors, and labelled as such. It is pre-computed server-side (`fe.dfg_mat`,
+`api.get_dfg`), so it does not follow the toggles and says so; there is no seed on this page, the
+repository is the whole query. On the fixtures source it draws the pulled sample `DFG1`.
 
 **Modes** are a two-level control:
 
@@ -147,7 +153,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 771 tests over 33 files, ~1 s, no browser
+npm test                  # 798 tests over 34 files, ~1 s, no browser
 npm run test:watch
 ```
 
@@ -157,7 +163,8 @@ npm run test:watch
 ```
 npm run build:fixtures    # rebuild F1, F2–F14 and the catalogue
 node scripts/build-f1.mjs --check          # fails if the committed fixture is stale
-node scripts/rpc-check.mjs                 # the data-layer gate
+node scripts/rpc-check.mjs                 # the sub-log data-layer gate
+node scripts/dfg-check.mjs                 # the DFG data-layer gate
 node scripts/shot.mjs LIVE1                # headless screenshot → .shots/
 ```
 
@@ -189,7 +196,7 @@ compare fill between shots and never against the box.
 | `src/stats/metrics.js` | Durations, counts, gaps, outcomes as pure functions |
 | `src/help/tips.js` | Help texts as data: key → sentence |
 | `sql/` | `fe_layer.sql` (schema `fe` and the three RPCs), `postgrest_setup.sql` (roles and grants), and `matviews_scoped.sql` (the 23 upstream views the layer reads) |
-| `scripts/` | The dev server, fixture builders, `rpc-check.mjs`, `pull-sublog.mjs`, `shot.mjs` |
+| `scripts/` | The dev server, fixture builders, the two gates (`rpc-check.mjs`, `dfg-check.mjs`), the two pullers (`pull-sublog.mjs`, `pull-dfg.mjs`), `shot.mjs` |
 | `tests/` | `node --test` suites and `tests/fixtures/` (F1–F14, LIVE1–LIVE2, `catalogue.json`) |
 | `vendor/` | d3-force 3.0.0, unmodified, because there is no bundler to resolve a bare import |
 | `_ds/` | Nocturne design tokens. Consume via `var(--token)`; do not restyle |
