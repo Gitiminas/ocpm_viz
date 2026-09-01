@@ -860,6 +860,35 @@ export function renderDfgControls({ container, activitiesContainer, vocabulary, 
     return control.row;
   });
 
+  /*
+   * The link vocabulary, the Trace Relationships section's own groups: each row filters
+   * which links' successions count, and the aggregate arrows thin rather than multiply.
+   * They live inside the Across-links sub because per-type successions ride no links.
+   */
+  const classControls = [];
+  for (const [heading, rows, bag, tipKey] of [
+    ['link evidence', vocabulary.linkEvidence, view.linkEvidence, 'dfg.evidence'],
+    ['qualifiers', vocabulary.linkQualifiers, view.linkQualifiers, 'dfg.qualifier'],
+    ['detection methods', vocabulary.linkMethods, view.linkMethods, 'dfg.method'],
+  ]) {
+    if (!rows.length) continue;
+    pairChildren.push(sectionLabel(heading));
+    for (const entry of rows) {
+      const control = subRow({
+        label: entry.key,
+        checked: bag[entry.key] !== false,
+        count: entry.successions.toLocaleString('en-US'),
+        tip: { key: tipKey, arg: entry.key },
+        onChange: (checked) => {
+          bag[entry.key] = checked;
+          onChange();
+        },
+      });
+      classControls.push(control);
+      pairChildren.push(control.row);
+    }
+  }
+
   const pairSection = masterSection({
     label: 'Across links',
     open: true,
@@ -898,6 +927,15 @@ export function renderDfgControls({ container, activitiesContainer, vocabulary, 
       control.checkbox.disabled = !ok;
       control.row.style.opacity = ok ? 1 : 0.45;
       control.row.style.pointerEvents = ok ? 'auto' : 'none';
+    }
+
+    // The class rows filter cross successions, so with every pair off (or unavailable)
+    // there is nothing for them to filter — dimmed, the master-disables-children rule.
+    const anyCross = availablePairs.length > 0 && pairValues.some(Boolean);
+    for (const control of classControls) {
+      control.checkbox.disabled = !anyCross;
+      control.row.style.opacity = anyCross ? 1 : 0.45;
+      control.row.style.pointerEvents = anyCross ? 'auto' : 'none';
     }
   }
 
