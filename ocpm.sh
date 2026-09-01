@@ -221,9 +221,13 @@ do_db() {
   psql_run -q -f sql/postgrest_setup.sql >/dev/null || die "sql/postgrest_setup.sql failed"
   ok "postgrest_setup.sql applied — api functions are SECURITY DEFINER again"
 
-  # 3. the one materialization. It goes stale silently; nothing else will tell you.
+  # 3. the request-path materialization. It goes stale silently; nothing else will
+  #    tell you. Then the DFG, which READS it — this order or last week's pairs get
+  #    baked into a fresh-looking DFG. (fe.seed_lookup is rebuilt by the file itself.)
   psql_run -qtAc "SELECT fe.refresh_links()" >/dev/null || die "fe.refresh_links() failed"
   ok "fe.link_mat refreshed"
+  psql_run -qtAc "SELECT fe.refresh_dfg()" >/dev/null || die "fe.refresh_dfg() failed"
+  ok "fe.dfg_mat refreshed"
 
   # 4. does the layer agree with itself?
   local bad

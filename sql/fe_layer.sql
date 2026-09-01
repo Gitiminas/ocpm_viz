@@ -20,6 +20,8 @@
 --   §9  the RPC        api.search_seeds(...)
 --   §10 the RPC        api.list_repos()
 --   §11 refreshers     fe.refresh_all() and friends
+--   §12 the DFG        fe.dfg / fe.dfg_mat — the whole-log directly-follows graph
+--   §13 the RPC        api.get_dfg(repo)
 --
 -- Run:  psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql
 --
@@ -71,7 +73,7 @@ CREATE SCHEMA IF NOT EXISTS api;   -- the only schema PostgREST exposes
 COMMENT ON SCHEMA fe  IS
   'This project''s derivations over the frozen upstream. Plain views.';
 COMMENT ON SCHEMA api IS
-  'PostgREST surface. Three RPCs. The frontend never queries a view directly.';
+  'PostgREST surface. Four RPCs. The frontend never queries a view directly.';
 
 -- -------------------------------------------------------------------------------------
 -- Indexes on the UNDERLYING MVs.
@@ -1681,10 +1683,149 @@ $$;
 
 
 -- =====================================================================================
+-- §12 — fe.dfg: the object-centric directly-follows graph over the ENTIRE log
+--
+-- One artifact per repository, three kinds of row: activity NODES per object type
+-- (events, objects, starts, ends), per-type EDGES (how often one activity directly
+-- follows another within one object's own event sequence), and CROSS EDGES (successions
+-- between the two objects of a linked pair). There is no case notion anywhere in this:
+-- succession is counted per object, and across objects only through links.
+--
+-- ⚠️ **Object type comes from the object-id PREFIX, never fe.activity_vocabulary.**
+-- The vocabulary records IssueCommented as an issue activity, but PR comments are
+-- remapped into IssueCommented and sit on pr: objects (§4) — joining the vocabulary here
+-- would silently file the entire PR-comment stream under the wrong type.
+--
+-- ⚠️ **Cross-edge counts are FLOORS.** They are derived through fe.link_mat, which the
+-- two admission rules narrow (§5), so they undercount by an unmeasured amount. Quote
+-- them as floors, never point estimates.
+--
+-- MATERIALIZED, like fe.seed_lookup and for the same reason it is allowed to be: it
+-- depends only on what the whole log contains, never on a sub-log selection, so the rule
+-- against precomputing over a sub-log does not apply — and it aggregates data the
+-- frontend never loads, which is exactly the SQL exception CLAUDE.md's metrics rule
+-- names. The build is a full-log scan and could never be a request path.
+--
+-- Measurements, 2026-09-01 (MVs refreshed 2026-08-02):
+--   * fe.event key-column scan (repo_id, object_id, activity, time, id): 3,167,844 rows
+--     in 6.6 s. The planner PRUNES the two correlated attrs subqueries when attrs is not
+--     projected — verified by EXPLAIN (0 SubPlans key-only, 2 with attrs) — so this view
+--     reads fe.event directly and there is no second event definition to drift.
+--   * per-type pass 13.2 s → 33 node + 103 edge rows; cross pass 10.5 s → 150 rows,
+--     279,556 successions. Whole build ~24 s, output 286 rows.
+--   * conservation checked per (repo, type), all nine partitions:
+--     Σ successions = Σ events − Σ starts, and Σ starts = Σ ends; the commit partition's
+--     edges are CommitObserved → CommitObserved only (repeat observations); every
+--     object_id prefix resolves to a type (0 unknown).
+--   * api.get_dfg('microsoft/vscode') off the MV: 0.43 s end to end, 16,056 B payload.
+-- =====================================================================================
+
+CREATE OR REPLACE VIEW fe.dfg AS
+WITH typed AS (
+  -- Key columns ONLY: projecting attrs would drag the §4 comment-excerpt subqueries
+  -- through 3.2M rows (the 1 s vs 6.1 s warning there, at full-log scale).
+  SELECT e.repo_id, e.object_id,
+         CASE split_part(e.object_id, ':', 1)
+           WHEN 'issue'  THEN 'issue'
+           WHEN 'pr'     THEN 'pull_request'
+           WHEN 'commit' THEN 'commit'
+         END AS object_type,
+         e.activity, e.time, e.id
+  FROM fe.event e
+),
+seq AS (
+  -- Each object's own sequence. `id` breaks real ties: commit_obs events within one
+  -- push share created_at, and the payload's own ordering is (time, id) too (§6).
+  SELECT repo_id, object_type, object_id, activity,
+         LAG(activity)  OVER w AS prev_activity,
+         row_number()   OVER w AS rn,
+         count(*) OVER (PARTITION BY repo_id, object_id) AS n_events
+  FROM typed
+  WINDOW w AS (PARTITION BY repo_id, object_id ORDER BY time, id)
+),
+nodes AS (
+  SELECT repo_id, object_type, activity,
+         count(*)                              AS events,
+         count(DISTINCT object_id)             AS objects,
+         count(*) FILTER (WHERE rn = 1)        AS starts,
+         count(*) FILTER (WHERE rn = n_events) AS ends
+  FROM seq GROUP BY 1, 2, 3
+),
+edges AS (
+  SELECT repo_id, object_type, prev_activity AS from_activity, activity AS to_activity,
+         count(*)                  AS successions,
+         count(DISTINCT object_id) AS objects
+  FROM seq WHERE prev_activity IS NOT NULL
+  GROUP BY 1, 2, 3, 4
+),
+pair_events AS (
+  -- Both endpoints' events, tagged with the pair they belong to. Two equality joins
+  -- rather than `object_id IN (source, target)`, so each side can use an index path.
+  SELECT l.repo_id, l.source, l.target, t.object_id, t.object_type, t.activity, t.time, t.id
+  FROM fe.link_mat l JOIN typed t ON t.repo_id = l.repo_id AND t.object_id = l.source
+  UNION ALL
+  SELECT l.repo_id, l.source, l.target, t.object_id, t.object_type, t.activity, t.time, t.id
+  FROM fe.link_mat l JOIN typed t ON t.repo_id = l.repo_id AND t.object_id = l.target
+),
+merged AS (
+  -- The linked pair's two sequences interleaved by time. Only ADJACENT events that
+  -- cross from one object to the other count as a succession; a run of events on one
+  -- side contributes nothing until the other side speaks.
+  SELECT repo_id, source, target, object_id, object_type, activity,
+         LAG(object_id)   OVER w AS prev_object,
+         LAG(object_type) OVER w AS prev_type,
+         LAG(activity)    OVER w AS prev_activity
+  FROM pair_events
+  WINDOW w AS (PARTITION BY repo_id, source, target ORDER BY time, id)
+),
+cross_edges AS (
+  -- from_type <> to_type always: fe.link endpoints are cross-type by construction.
+  SELECT repo_id, prev_type AS from_type, prev_activity AS from_activity,
+         object_type AS to_type, activity AS to_activity,
+         count(*)                         AS successions,
+         count(DISTINCT (source, target)) AS pairs
+  FROM merged
+  WHERE prev_object IS NOT NULL AND prev_object <> object_id
+  GROUP BY 1, 2, 3, 4, 5
+)
+SELECT repo_id, 'node'::text AS kind, object_type, activity,
+       NULL::text AS from_activity, NULL::text AS to_activity, NULL::text AS to_type,
+       events, objects, starts, ends, NULL::bigint AS successions
+FROM nodes
+UNION ALL
+SELECT repo_id, 'edge', object_type, NULL, from_activity, to_activity, NULL,
+       NULL, objects, NULL, NULL, successions
+FROM edges
+UNION ALL
+-- Cross rows carry the pair count in `objects`: a pair is the unit a cross succession
+-- is counted within, the way an object is for a per-type edge.
+SELECT repo_id, 'cross_edge', from_type, NULL, from_activity, to_activity, to_type,
+       NULL, pairs, NULL, NULL, successions
+FROM cross_edges;
+
+DROP MATERIALIZED VIEW IF EXISTS fe.dfg_mat CASCADE;
+CREATE MATERIALIZED VIEW fe.dfg_mat AS SELECT * FROM fe.dfg WITH DATA;
+-- No index: 286 rows for the whole database. An index here would be a habit, not a
+-- finding (§0's own rule); the RPC's per-repo filter scans them faster than it could
+-- plan an index path.
+ANALYZE fe.dfg_mat;
+
+CREATE OR REPLACE FUNCTION fe.refresh_dfg() RETURNS void
+LANGUAGE sql AS $$
+  REFRESH MATERIALIZED VIEW fe.dfg_mat;
+$$;
+
+COMMENT ON MATERIALIZED VIEW fe.dfg_mat IS
+  'The whole-log directly-follows graph, per repository and object type. ~24 s to build. '
+  'Run fe.refresh_dfg() after any upstream MV refresh; fe.diag_staleness reports its age. '
+  'Cross-edge rows are floors: they are derived through fe.link_mat''s narrowed links.';
+
+
+-- =====================================================================================
 -- §11 — Refreshing this layer
 --
--- Two relations here are materialized — `fe.link_mat` (§5.1) and `fe.seed_lookup`
--- (§8) — and both go stale silently the moment any upstream MV is refreshed. Silently is
+-- Three relations here are materialized — `fe.link_mat` (§5.1), `fe.seed_lookup`
+-- (§8) and `fe.dfg_mat` (§12) — and all go stale silently the moment any upstream MV is refreshed. Silently is
 -- the problem: a stale link table does not error, it just quietly answers with last
 -- week's graph, and a stale search index simply cannot find objects that now exist.
 --
@@ -1704,6 +1845,9 @@ LANGUAGE plpgsql AS $$
 BEGIN
   REFRESH MATERIALIZED VIEW fe.link_mat;
   REFRESH MATERIALIZED VIEW fe.seed_lookup;
+  -- After link_mat: the cross-edge arm reads it, so a stale link table would bake last
+  -- week's pairs into a fresh-looking DFG.
+  REFRESH MATERIALIZED VIEW fe.dfg_mat;
 END;
 $$;
 
@@ -1724,7 +1868,14 @@ SELECT 'fe.seed_lookup',
        (SELECT count(*) FROM fe.object_issue) + (SELECT count(*) FROM fe.object_pull_request)
          + (SELECT count(*) FROM fe.object_commit),
        (SELECT count(*) FROM fe.seed_lookup),
-       (SELECT (pg_stat_file(pg_relation_filepath('fe.seed_lookup'))).modification);
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.seed_lookup'))).modification)
+UNION ALL
+-- live_rows is honestly NULL: counting fe.dfg live IS the ~24 s whole-log recomputation,
+-- which a diagnostic must not cost. last_written carries the weight here.
+SELECT 'fe.dfg_mat',
+       NULL::bigint,
+       (SELECT count(*) FROM fe.dfg_mat),
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.dfg_mat'))).modification);
 
 
 -- -------------------------------------------------------------------------------------
@@ -1864,6 +2015,101 @@ $$;
 COMMENT ON FUNCTION api.list_repos() IS
   'Repositories and whether anything can be seeded from them. Availability is computed '
   'from fe.seed_lookup, not declared.';
+
+
+-- =====================================================================================
+-- §13 — The DFG RPC
+--
+--   api.get_dfg(repo)
+--
+-- One whole-log directly-follows graph per repository, read from fe.dfg_mat (§12).
+-- No seed, no traversal: the query IS the repository. There is no case notion — the
+-- payload's own vocabulary is object type, activity, succession.
+-- =====================================================================================
+
+CREATE OR REPLACE FUNCTION api.get_dfg(
+  repo text
+) RETURNS jsonb
+LANGUAGE plpgsql STABLE AS $fn$
+DECLARE
+  _repo_id  bigint;
+  _repo_nm  text;
+  _n_named  integer;
+  _payload  jsonb;
+BEGIN
+  ------------------------------------------------------------------------------------
+  -- Resolve the repository BY NAME, exactly as get_object_graph does (§6): repo.name is
+  -- not unique, ties break on event volume, and the ambiguity is reported rather than
+  -- hidden. The two resolvers must never disagree about which repository a name means.
+  ------------------------------------------------------------------------------------
+  SELECT r.id, r.name, count(*) OVER ()
+    INTO _repo_id, _repo_nm, _n_named
+  FROM repo r
+  WHERE r.name = repo
+  ORDER BY (SELECT count(*) FROM event e WHERE e.repo_id = r.id) DESC, r.id
+  LIMIT 1;
+
+  IF _repo_id IS NULL THEN
+    RAISE EXCEPTION 'no repository named %', repo
+      USING HINT = 'SELECT name FROM repo — this database holds three with data.';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'meta', jsonb_build_object(
+       'repo',             _repo_nm,
+       'repo_id',          _repo_id,
+       'repo_ambiguous',   (_n_named > 1),
+       -- Its OWN counter, not the ObjectGraph's contract_version: the two payloads
+       -- change independently, and a consumer of one must not fail on the other's bump.
+       'dfg_contract_version', 1,
+       'generated_at',     fe.utc(now()),
+       'activity_scope',   'OCEL-strict + comments (reviews/dismissals/review-comments excluded)',
+       'data_honesty', jsonb_build_object(
+          'succession',    'Counted within each object''s own event sequence, over the '
+                        || 'whole log, no windowing. No evidence classes: a succession '
+                        || 'is an observation, not a traceability claim.',
+          'cross_edges',   'Derived through the admitted links, which two admission '
+                        || 'rules narrow. Every cross-edge count is a floor, never a '
+                        || 'point estimate.',
+          'commit_time',   'first-seen in PushEvent, NOT real git commit time',
+          'truncation',    'GH Archive caps PushEvent.commits at 20; commit sequences '
+                        || 'undercount pushes larger than that.'),
+       'source', jsonb_build_object(
+          'rpc',          'api.get_dfg',
+          'layer',        'sql/fe_layer.sql',
+          'mv_refreshed', '2026-08-02T19:45:00+00:00')
+    ),
+    'nodes', COALESCE((
+       SELECT jsonb_agg(jsonb_build_object(
+         'object_type', d.object_type, 'activity', d.activity,
+         'events', d.events, 'objects', d.objects,
+         'starts', d.starts, 'ends', d.ends)
+         ORDER BY d.object_type, d.activity)
+       FROM fe.dfg_mat d WHERE d.repo_id = _repo_id AND d.kind = 'node'), '[]'::jsonb),
+    'edges', COALESCE((
+       SELECT jsonb_agg(jsonb_build_object(
+         'object_type', d.object_type,
+         'from_activity', d.from_activity, 'to_activity', d.to_activity,
+         'successions', d.successions, 'objects', d.objects)
+         ORDER BY d.object_type, d.from_activity, d.to_activity)
+       FROM fe.dfg_mat d WHERE d.repo_id = _repo_id AND d.kind = 'edge'), '[]'::jsonb),
+    'cross_edges', COALESCE((
+       SELECT jsonb_agg(jsonb_build_object(
+         'from_type', d.object_type, 'from_activity', d.from_activity,
+         'to_type', d.to_type, 'to_activity', d.to_activity,
+         'successions', d.successions, 'pairs', d.objects)
+         ORDER BY d.object_type, d.from_activity, d.to_type, d.to_activity)
+       FROM fe.dfg_mat d WHERE d.repo_id = _repo_id AND d.kind = 'cross_edge'), '[]'::jsonb)
+  ) INTO _payload;
+
+  RETURN _payload;
+END;
+$fn$;
+
+COMMENT ON FUNCTION api.get_dfg(text) IS
+  'The whole-log directly-follows graph for one repository (docs/DATA_LAYER.md): activity '
+  'nodes and succession edges per object type, plus cross-type edges through links, which '
+  'are floors. Pre-computed in fe.dfg_mat. There is no case notion.';
 
 
 -- =====================================================================================
