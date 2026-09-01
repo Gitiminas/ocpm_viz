@@ -476,7 +476,12 @@ html,body{height:100%;margin:0;overflow:hidden}
 <!-- Its own overlay: a DFG load is independent of the sub-log load and must not blur
      the Trace page, nor be blurred by it. `position:relative` above anchors it. -->
 <div class="loadingOverlay" id="dfgLoading"></div>
-<h1 style="font-size:20px;margin:0 0 var(--space-6)">Process map</h1>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);margin:0 0 var(--space-6)">
+<h1 style="font-size:20px;margin:0">Process map</h1>
+<!-- The Trace header's focus pill, without the degree stepper: an activity's
+     neighbourhood is one hop by definition. -->
+<div class="mono" id="dfgFocusInfo" data-tip="dfg.focus" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
+</div>
 <!-- This page's message surface — a SIBLING of the content root, before it, for the
      same reason #statsMessage is: the renderer owns what is inside #dfgContent, and a
      message written there would destroy it. -->

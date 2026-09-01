@@ -13,7 +13,7 @@ import { createSource, resolveQuery } from './data/source.js';
 import { TRAVERSAL_DEGREE } from './data/api.js';
 import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
 import { indexObjectGraph } from './model/objectGraph.js';
-import { LANE_TYPES } from './model/activities.js';
+import { LANE_TYPES, activityShortLabel } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
 import { MODES, TEMPORAL_MODES, STRUCTURAL_LAYOUTS, isStructuralMode } from './layout/engine.js';
 import {
@@ -33,7 +33,7 @@ import { deriveBursts } from './model/bursts.js';
 import { deriveCommentBursts } from './model/commentBursts.js';
 import { applyState, decodePreset } from './state/presets.js';
 import { renderHiddenBanner, renderPresetPanel } from './render/controls.js';
-import { actorColor } from './render/theme.js';
+import { actorColor, TYPE } from './render/theme.js';
 import { createTooltip } from './render/tooltip.js';
 import { createMinimap } from './render/minimap.js';
 import { createActorCard } from './render/actorCard.js';
@@ -77,6 +77,7 @@ const elements = {
   dfgLegend: el('dfgLegend'),
   subLogQuery: el('subLogQuery'),
   dfgQueryNote: el('dfgQueryNote'),
+  dfgFocusInfo: el('dfgFocusInfo'),
   sourceToggle: el('sourceToggle'),
   sourceNote: el('sourceNote'),
   wrap: el('wrap'),
@@ -996,6 +997,16 @@ async function refreshDfg() {
   }
 }
 
+/** The Trace pill's twin: which activity is focused, or that none is. */
+function updateDfgFocusLabel() {
+  if (!dfgView.focus) {
+    elements.dfgFocusInfo.textContent = 'No focus';
+    return;
+  }
+  const [type, activity] = dfgView.focus.split('/');
+  elements.dfgFocusInfo.textContent = `Focus: ${TYPE[type].label} ${activityShortLabel(activity)}`;
+}
+
 /** Draw the loaded DFG: the page view filters BEFORE layout, so rows re-spread. */
 function renderDfg() {
   if (!currentDfg) return;
@@ -1015,6 +1026,7 @@ function renderDfg() {
     maxSuccessions: currentDfgToggles.maxSuccessions,
   });
   dfgChart.render(currentDfg, layout, { counts: filtered, focus: dfgView.focus });
+  updateDfgFocusLabel();
   renderLegend(elements.dfgLegend, legendKeysPresentIn(elements.dfgContent), { only: ['Process map'] });
 }
 

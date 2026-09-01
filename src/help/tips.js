@@ -110,6 +110,7 @@ export const TIPS = Object.freeze({
   'dfg.lane': (label) => `Show or hide the ${label} lane’s own successions. Cross pairs touching a hidden lane switch off with it.`,
   'dfg.pair': (label) => `Successions between linked ${label} objects, counted through the admitted links. A floor, never a point estimate.`,
   'dfg.activity': (label) => `Show or hide ${label}. Hiding an activity removes its node and every succession touching it.`,
+  'dfg.focus': 'Which activity is focused. Click a mark to focus it, click the background to clear it.',
   'dfg.range': 'Keep only successions whose count falls inside this range. The scale is logarithmic, and the rarest tenth of edges starts hidden.',
   'legend.dfg-activity': 'One activity, drawn as its lane’s shape. The number is how many events it has in the whole log.',
   'legend.dfg-succession': 'One activity directly followed by another within one object’s events. Wider means more often.',
