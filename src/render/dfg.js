@@ -103,6 +103,10 @@ export function createDfgView({ container, tooltip }) {
 
     const gBand = svg.append('g');
     const gLink = svg.append('g');
+    // The invisible hover targets, in their own layer above every stroke. Inside the
+    // per-edge groups they stacked in draw order, and with dozens of edges through the
+    // same corridors the topmost fat band answered for all of them.
+    const gHover = svg.append('g');
     const gNode = svg.append('g');
     const gLabel = svg.append('g');
 
@@ -139,6 +143,7 @@ export function createDfgView({ container, tooltip }) {
       ...(showPerType ? layout.edges.map((edge) => ({ edge, cross: false })) : []),
       ...(showCross ? layout.crossEdges.map((edge) => ({ edge, cross: true })) : []),
     ];
+    const hoverTargets = [];
 
     for (const { edge, cross } of edgeSets) {
       const color = cross ? COLORS.extracted : typeColor(edge.object_type);
@@ -176,7 +181,9 @@ export function createDfgView({ container, tooltip }) {
         .attr('opacity', cross ? 0.7 : 0.8);
       if (head) head.attr('opacity', cross ? 0.7 : 0.9);
 
-      gLabel
+      // The count label answers the pointer with the SAME card as its edge, so a number
+      // in a crowd can be interrogated without finding its arrow first.
+      const label = gLabel
         .append('text')
         .attr('x', edge.labelAt.x)
         .attr('y', edge.labelAt.y)
@@ -187,17 +194,29 @@ export function createDfgView({ container, tooltip }) {
         .attr('paint-order', 'stroke')
         .attr('stroke', 'var(--color-bg)')
         .attr('stroke-width', 3)
+        .style('cursor', 'pointer')
         .text(edge.successions.toLocaleString('en-US'));
+      tooltip.bind(label, () => successionCard(edge, cross));
 
-      // The fat invisible hover target, so a thin edge still answers the pointer —
-      // the same trick the structural renderer uses for dashed links.
-      const hover = group
+      hoverTargets.push({ d: path.attr('d'), edge, cross });
+    }
+
+    /*
+     * The fat invisible hover targets, drawn LAST and in successions-descending order,
+     * so the thinnest edges' targets sit topmost — a rare edge crossing a busy corridor
+     * still answers for itself rather than for whichever heavyweight was drawn after it.
+     * Width follows the stroke, so a hairline does not claim a 14px band over its
+     * neighbours.
+     */
+    hoverTargets.sort((a, b) => b.edge.successions - a.edge.successions);
+    for (const { d, edge, cross } of hoverTargets) {
+      const hover = gHover
         .append('path')
-        .attr('d', path.attr('d'))
+        .attr('d', d)
         .attr('fill', 'none')
         .attr('stroke', '#000')
         .attr('stroke-opacity', 0)
-        .attr('stroke-width', 14)
+        .attr('stroke-width', Math.max(8, edge.width + 4))
         .style('cursor', 'pointer');
       tooltip.bind(hover, () => successionCard(edge, cross));
     }
