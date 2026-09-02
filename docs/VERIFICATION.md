@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**821 tests in 34 files, 0 failures, ~1 s — run 2026-09-01.** None needs a browser, a network or a
+**824 tests in 34 files, 0 failures, ~1 s — run 2026-09-02.** None needs a browser, a network or a
 database.
 
 ---
@@ -38,7 +38,7 @@ against stub objects instead of one.
 | All times render UTC, labelled (9); every qualifier the live samples carry has a colour; an off-platform merge is its own outcome (123) | `timezone`, `qualifier-colour`, `offplatform` | F1; LIVE1/2; F14 |
 | The absolute axis anchors its left edge, so no mark sits left of every tick; no round label claims a day boundary its tick is not on; a gap marking's help-strip text states the exact span it hides, in UTC, with the length in parentheses; a multi-year span carries the year on the first tick and on each tick that begins a new year, in both modes | `axis` | k8s #118316 ticks + synthetic |
 | A comment run never crosses a close or a reopen (interval end inclusive, a null end open); the folded mark carries its span end in absolute mode only | `nodes`, `engine` | synthetic; F1 |
-| The DFG validator enforces the closed vocabularies, nonnegative counts, cross-type-only cross edges, the link_-prefix rule in both directions (a succession carries no bare evidence, a per-type edge no link class), and per-type conservation; link classes filter before aggregation, arrows sum their members deterministically, and the count range judges aggregates, with the shown + hidden = total invariant in drawn-arrow units; the arrangement is finite, boxed, deterministic, lane-ordered, forward arcs above and rework below, shared-pair cross bundles fanned; widths √-monotone, clamped, and stable under filtering via the unfiltered-maximum override; filterDfg's toggles and inclusive count range obey shown + hidden = total with a double failure counted once; the toggle vocabulary and log count scale round-trip (36) | `dfg`, `dfg-layout`, `api` | hand-built bundle; DFG1 shape only |
+| The DFG validator enforces the closed vocabularies, nonnegative counts, `events ≤ occurrences` per node, cross-type-only cross edges, the link_-prefix rule in both directions (a succession carries no bare evidence, a per-type edge no link class), and per-type conservation in occurrences (a push of several commits is one event, several occurrences); link classes filter before aggregation, arrows sum their members deterministically, and the count range judges aggregates, with the shown + hidden = total invariant in drawn-arrow units; the arrangement is finite, boxed, deterministic, lane-ordered, forward arcs above and rework below, shared-pair cross bundles fanned; widths √-monotone, clamped, and stable under filtering via the unfiltered-maximum override; filterDfg's toggles and inclusive count range obey shown + hidden = total with a double failure counted once; the toggle vocabulary and log count scale round-trip (39) | `dfg`, `dfg-layout`, `api` | hand-built bundle; DFG1 shape only |
 | Fixtures are byte-reproducible from their build scripts; a `{repo, seed}` query resolves or fails loudly; seed search parses and ranks | `fixtures`, `selection` | `--check`; catalogue |
 | The seed box searches the text it is showing; an empty reference never becomes a database request, while a type word alone still does | `searchCombo` | stubs + fake transport |
 | A load under the delay is never announced; a slow one blurs the stale picture and blocks it; a failed load still restores it; no timer outlives the load | `loading` | stubs + fake clock |
@@ -137,14 +137,19 @@ then asserts in order:
 `scripts/dfg-check.mjs` is the sibling gate for the DFG half (§12–§13), run by `./ocpm.sh db`
 beside the sub-log gate. It pulls `api.get_dfg` through psql and asserts: no `fe.link_mat`
 (source, target) pair carries two links — the fact the cross-edge class attribution leans on;
-`findDfgProblems()` returns `[]`; per-node conservation (each node's events = starts + inbound successions = ends +
-outbound, per-type edges only — a cross succession is not part of either object's own sequence
-arithmetic); no `case` or `evidence` key anywhere in the raw text; the payload through `loadDfg`
-and `layoutDfg` with every coordinate finite, in-box and non-coincident; and one unauthenticated
-`web_anon` POST to `/rpc/get_dfg` — the only probe that catches the `SECURITY INVOKER` reset on
-the new function. PASS on microsoft/vscode and facebook/react, 2026-09-01. The §12 measurement
-block in `sql/fe_layer.sql` carries the build figures (attrs-subquery pruning verified by
-EXPLAIN, 24 s build, 286 rows, conservation on all nine partitions).
+`findDfgProblems()` returns `[]`; per-node conservation (each node's occurrences = starts + inbound
+successions = ends + outbound, per-type edges only — a cross succession is not part of either
+object's own sequence arithmetic) and `events ≤ occurrences`; the commit lane's `Push`
+occurrences equal the repository's `CommitObserved` count in `fe.event`, so Trace and the map
+differ by name only; no `case` or `evidence` key anywhere in the raw text; the payload through
+`loadDfg` and `layoutDfg` with every coordinate finite, in-box and non-coincident; and one
+unauthenticated `web_anon` POST to `/rpc/get_dfg` — the only probe that catches the `SECURITY
+INVOKER` reset on the new function. PASS on microsoft/vscode and facebook/react, 2026-09-02. The
+§12 measurement block in `sql/fe_layer.sql` carries the build figures (attrs-subquery pruning
+verified by EXPLAIN through the E2O views, 45 s build, 637 rows, conservation on all nine
+partitions). The v3 payload was diffed against the v2 sample field by field: zero differences
+modulo the `CommitObserved` → `Push` rename, once the cross pass's tie order was stated
+explicitly — left to the id prefixes it had flipped 11,625 of vscode's 132,050 cross successions.
 
 The SQL's own diagnostics are separate and queried by hand: `fe.diag_sanity` (six checks — five must
 be 0, the sixth exactly 10 distinct activities), `fe.diag_link_staleness`,

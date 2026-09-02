@@ -7,7 +7,7 @@ which this document explains rather than repeats.
 
 ## Schemas
 
-`fe` holds the derivations: 17 views and materialized views, 8 diagnostic views, and six
+`fe` holds the derivations: 19 views and materialized views, 8 diagnostic views, and six
 functions (`remap_activity`, `utc`, and the four refreshers). `api` holds four `SECURITY DEFINER` functions and nothing else. Both are owned by
 `fe_owner`. PostgREST is configured with `db-schemas = "api"`, so `api` is the entire HTTP
 surface and the frontend never reads a view directly.
@@ -136,15 +136,15 @@ Of the loosely-typed bags, the client reads little:
 ## The DFG payload
 
 The second payload: one whole-log directly-follows graph per repository, from
-`api.get_dfg(repo)` over `fe.dfg_mat` (`sql/fe_layer.sql` §12–§13, with the measurements).
-`meta.dfg_contract_version` is `2` — its own counter, not the ObjectGraph's `contract_version`,
+`api.get_dfg(repo)` over `fe.dfg_mat` (`sql/fe_layer.sql` §12.0–§13, with the measurements).
+`meta.dfg_contract_version` is `3` — its own counter, not the ObjectGraph's `contract_version`,
 so the two payloads version independently.
 
 ```
-meta:        { repo, repo_id, repo_ambiguous, dfg_contract_version: 2, generated_at,
+meta:        { repo, repo_id, repo_ambiguous, dfg_contract_version: 3, generated_at,
                activity_scope, data_honesty: {succession, cross_edges, commit_time, truncation},
                source: {rpc, layer, mv_refreshed} }
-nodes:       [ { object_type, activity, events, objects, starts, ends } ]
+nodes:       [ { object_type, activity, events, occurrences, objects, starts, ends } ]
 edges:       [ { object_type, from_activity, to_activity, successions, objects } ]
 cross_edges: [ { from_type, from_activity, to_type, to_activity, successions, pairs,
                  link_qualifier, link_evidence, link_method } ]
@@ -161,16 +161,44 @@ refused on per-type edges). The attribution needs no rule: **no (source, target)
 every run, so the day an `fe.link` change breaks the fact, the gate says so before a payload
 ships with silently mixed attributions).
 
-A **succession** is one event directly followed by another within one object's own sequence,
-ordered `(time, id)`; `starts`/`ends` count the objects whose sequence begins or ends with the
-activity, so per type `Σ successions = Σ events − Σ starts` and `Σ starts = Σ ends` — the
-validator (`src/model/dfg.js`) enforces both, and `scripts/dfg-check.mjs` the stricter per-node
-conservation. **Cross edges** are counted in the interleaved sequences of linked pairs and are
-**floors**: they ride on the admitted links, which the two admission rules narrow. There is no
-evidence field anywhere — a succession is an observation, not a traceability claim — no actor
-partition (actors have no events of their own), and no case notion. Object types come from the
-object-id prefix, never `fe.activity_vocabulary`, because PR comments sit on `pr:` objects
-under an issue-named activity.
+### The E2O layer the map is counted over
+
+The map is built over an OCEL 2.0 event-to-object relation of its own (§12.0), read by nothing
+else: `fe.dfg_event` is one row per **real** event — the nine issue and pull-request activities
+straight from `fe.event`, plus `Push`, one per PushEvent from `mv_push_activities` — and
+`fe.dfg_e2o` is `(event_id, object_id, qualifier)`. `fe.event` carries one object per event and
+therefore takes a push apart into one synthetic `CommitObserved` per commit (§4); the map puts it
+back together, so a push of n commits is **one event with n occurrences**, one in each commit's
+sequence. `Push` is the map's only private activity: Trace never emits it, the map never emits
+`CommitObserved`, and `src/model/activities.js` carries both and says which page each belongs to.
+Trace and the map therefore differ by name on purpose — "commit observed" there, "push" here —
+and `scripts/dfg-check.mjs` asserts they differ by nothing else: the `Push` node's `occurrences`
+must equal the repository's `CommitObserved` count in `fe.event`.
+
+| qualifier | relates | to |
+|---|---|---|
+| `subject` | an issue or PR activity | the issue or pull request it is about |
+| `pushed_commit` | a `Push` | each commit the push carried |
+| `opener`, `closer`, `reopener`, `commenter`, `merger`, `pusher` | any event | its actor, under the role the activity gives them (`closer` for the off-platform merge, which is a close on GitHub) |
+
+The actor rows are there because the relation is E2O; the map drops them, since `actor` has no
+lane. `PullRequestMerged → merge commit` rows are deliberately absent: they would put a
+pull-request activity on the commit lane, a separate modelling decision.
+
+A **succession** is one occurrence directly followed by another within one object's own
+sequence, ordered `(time, id)`; `starts`/`ends` count the objects whose sequence begins or ends
+with the activity, so per type `Σ successions = Σ occurrences − Σ starts` and `Σ starts = Σ ends`
+— the validator (`src/model/dfg.js`) enforces both, plus `events ≤ occurrences` per node, and
+`scripts/dfg-check.mjs` the stricter per-node conservation. `events` is the distinct event count
+and falls below `occurrences` only on `Push` (vscode: 88,913 pushes, 210,196 occurrences, the
+same figure the `CommitObserved` lane had). **Cross edges** are counted in the interleaved
+sequences of linked pairs, ties broken as the Trace page ranks marks (time, lane, id) so the two
+pages agree on same-second order — which decides the direction of every closed-via-commit
+succession, since the push and the close share a second — and are **floors**: they ride on the
+admitted links, which the two admission rules narrow. There is no evidence field anywhere — a
+succession is an observation, not a traceability claim — no actor partition, and no case
+notion. Object types come from the object-id prefix, never `fe.activity_vocabulary`, because PR
+comments sit on `pr:` objects under an issue-named activity.
 
 Being computed server-side over data the client never loads, the DFG is the stated exception
 to the metrics-in-JS rule — and therefore cannot follow the sidebar toggles, which the Process
@@ -187,8 +215,9 @@ partition key upstream, with no lifecycle and no link reaching it, so it is carr
 `meta.repo`. Three get a lane; `actor` has no interval to draw and surfaces through the sidebar
 and the actor card.
 
-Ten activities, closed. The SQL vocabulary (`fe.activity_vocabulary`) and the JS one
-(`src/model/activities.js`) agree row for row.
+Ten activities, closed, plus one the process map alone emits. The SQL vocabulary
+(`fe.activity_vocabulary`) and the JS one (`src/model/activities.js`) agree row for row on the
+ten; `Push` is in the JS table for the map and never passes `fe.event`'s whitelist.
 
 | activity | object type | landmark | comment |
 |---|---|---|---|
@@ -202,6 +231,7 @@ Ten activities, closed. The SQL vocabulary (`fe.activity_vocabulary`) and the JS
 | `PullRequestClosed` | pull_request | | |
 | `PullRequestReopened` | pull_request | | |
 | `CommitObserved` | commit | | |
+| `Push` | commit | | DFG only (§12.0): one per PushEvent, one occurrence per commit it carried |
 
 `IssueCommented` is the one activity valid on two object types. GitHub models PR comments as
 issue comments, so `fe.remap_activity` turns `PullRequestCommented` into `IssueCommented` before
@@ -210,7 +240,8 @@ comments are dropped as unknown and nothing says so.
 
 Three upstream activities are dropped by design, and `fe.diag_dropped_activities` reports them:
 `CommitsPushed` (144,556 rows on 2026-08-04, whose facts ride on each `CommitObserved` event's
-`attrs` instead), `IssueComment_` (1) and `IssueLabeled` (1). An unmapped activity throws in JS
+`attrs` instead; the process map reads the same rows as `Push`, §12.0), `IssueComment_` (1) and
+`IssueLabeled` (1). An unmapped activity throws in JS
 rather than rendering a raw enum string.
 
 Intervals come from the events. `fe.interval_issue` opens on `IssueOpened`/`IssueReopened` and

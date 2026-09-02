@@ -88,7 +88,9 @@ computed in JavaScript over the visible sub-log, so it follows the toggles. *Pro
 object-centric directly-follows graph over the repository's **whole log**: one activity node per
 object type and activity, succession edges whose width grows (√) with how often one activity
 directly follows another within one object's events, and dashed cross-type edges counted through
-the links — floors, and labelled as such. It is pre-computed server-side (`fe.dfg_mat`,
+the links — floors, and labelled as such. On the commit lane the activity is *push*: one event
+per push and one occurrence per commit it carried, where the Trace page draws each commit
+observation on its own. It is pre-computed server-side (`fe.dfg_mat`,
 `api.get_dfg`), so the sub-log sidebar's toggles do not apply — the page carries its own:
 per-lane and per-type-pair succession masters, link evidence, qualifier and detection-method filters (cross arrows thin rather than multiply, and their hovercards break the count down by link class), per-activity hides, a logarithmic min–max count
 range that opens with the rarest tenth of edges hidden, and click-to-focus on an activity. The
@@ -157,7 +159,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 821 tests over 34 files, ~1 s, no browser
+npm test                  # 824 tests over 34 files, ~1 s, no browser
 npm run test:watch
 ```
 

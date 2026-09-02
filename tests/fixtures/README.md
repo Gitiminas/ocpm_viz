@@ -34,7 +34,7 @@ payload's `meta.repo` says so, each catalogue seed carries a `synthetic` flag, a
 assert the flag agrees with the payload.
 
 `DFG1.json` is the process map's sample — a snapshot of `api.get_dfg('microsoft/vscode')`
-pulled by `scripts/pull-dfg.mjs`. Test-only: the process map itself is database-only (the
+pulled by `scripts/pull-dfg.mjs` (contract v3, pulled 2026-09-02). Test-only: the process map itself is database-only (the
 fixtures source declares `dfgAvailable: false`), and the only assertion against the sample is
 that it passes the validator — its shape, never a count. Not in the catalogue, which maps seeds
 to sub-logs and a DFG has no seed.

@@ -28,7 +28,7 @@ diff, so verification matters more than usual.
 |---|---|---|
 | `index.html` | App shell: markup, CSS, the one `<script type="module">` entry | Work here for anything structural in the page |
 | `src/` | The application, as ES modules | Work here. Keep `model/`, `layout/`, `state/` and `stats/` DOM-free |
-| `sql/fe_layer.sql` | The data layer: schema `fe` (17 views/MVs + 8 diagnostics) and the four `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
+| `sql/fe_layer.sql` | The data layer: schema `fe` (19 views/MVs + 8 diagnostics) and the four `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
 | `scripts/rpc-check.mjs`, `dfg-check.mjs` | Acceptance gates: a real payload through the real loader and layout, then one unauthenticated call as `web_anon` | Run both after any change to `sql/`. The validators must return `[]`. The HTTP probes skip if PostgREST is down |
 | `scripts/pull-sublog.mjs`, `pull-dfg.mjs` | Snapshot RPC output to `tests/fixtures/LIVE*.json` / `DFG1.json` | Samples, not fixtures — no test asserts a count against them |
 | `scripts/shot.mjs` | Headless screenshot of the running app | Writes to `.shots/`, gitignored. Headless lays out ~90px shorter than `--window-size`: compare fill between shots, not against the box |
