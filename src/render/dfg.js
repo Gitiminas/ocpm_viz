@@ -320,6 +320,11 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
       title: escapeHtml(activityLabel(node.activity)),
       rows: [
         ['Events', node.events.toLocaleString('en-US')],
+        // A push touches every commit it carried: one event, several occurrences. The
+        // row appears only where the two differ, so the other lanes stay as they were.
+        ...(node.occurrences !== node.events
+          ? [['Event–object occurrences', node.occurrences.toLocaleString('en-US')]]
+          : []),
         ['Objects', node.objects.toLocaleString('en-US')],
         ['Sequence starts', node.starts.toLocaleString('en-US')],
         ['Sequence ends', node.ends.toLocaleString('en-US')],

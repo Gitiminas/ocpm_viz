@@ -13,19 +13,19 @@ function dfg() {
   return {
     meta: { repo: 'r', dfg_contract_version: 1, generated_at: '2026-09-01T00:00:00+00:00' },
     nodes: [
-      { object_type: 'issue', activity: 'IssueOpened', events: 2, objects: 2, starts: 2, ends: 0 },
-      { object_type: 'issue', activity: 'IssueCommented', events: 3, objects: 2, starts: 0, ends: 0 },
-      { object_type: 'issue', activity: 'IssueClosed', events: 2, objects: 2, starts: 0, ends: 2 },
-      { object_type: 'pull_request', activity: 'PullRequestOpened', events: 1, objects: 1, starts: 1, ends: 0 },
-      { object_type: 'pull_request', activity: 'PullRequestMerged', events: 1, objects: 1, starts: 0, ends: 1 },
-      { object_type: 'commit', activity: 'CommitObserved', events: 2, objects: 1, starts: 1, ends: 1 },
+      { object_type: 'issue', activity: 'IssueOpened', events: 2, occurrences: 2, objects: 2, starts: 2, ends: 0 },
+      { object_type: 'issue', activity: 'IssueCommented', events: 3, occurrences: 3, objects: 2, starts: 0, ends: 0 },
+      { object_type: 'issue', activity: 'IssueClosed', events: 2, occurrences: 2, objects: 2, starts: 0, ends: 2 },
+      { object_type: 'pull_request', activity: 'PullRequestOpened', events: 1, occurrences: 1, objects: 1, starts: 1, ends: 0 },
+      { object_type: 'pull_request', activity: 'PullRequestMerged', events: 1, occurrences: 1, objects: 1, starts: 0, ends: 1 },
+      { object_type: 'commit', activity: 'Push', events: 2, occurrences: 2, objects: 1, starts: 1, ends: 1 },
     ],
     edges: [
       { object_type: 'issue', from_activity: 'IssueOpened', to_activity: 'IssueCommented', successions: 2, objects: 2 },
       { object_type: 'issue', from_activity: 'IssueCommented', to_activity: 'IssueClosed', successions: 2, objects: 2 },
       { object_type: 'issue', from_activity: 'IssueClosed', to_activity: 'IssueCommented', successions: 1, objects: 1 },
       { object_type: 'pull_request', from_activity: 'PullRequestOpened', to_activity: 'PullRequestMerged', successions: 40000, objects: 1 },
-      { object_type: 'commit', from_activity: 'CommitObserved', to_activity: 'CommitObserved', successions: 1, objects: 1 },
+      { object_type: 'commit', from_activity: 'Push', to_activity: 'Push', successions: 1, objects: 1 },
     ],
     cross_edges: [
       { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body' },

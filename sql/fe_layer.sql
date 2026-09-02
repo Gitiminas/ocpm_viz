@@ -1783,10 +1783,15 @@ COMMENT ON VIEW fe.dfg_e2o IS
 -- §12 — fe.dfg: the object-centric directly-follows graph over the ENTIRE log
 --
 -- One artifact per repository, three kinds of row: activity NODES per object type
--- (events, objects, starts, ends), per-type EDGES (how often one activity directly
--- follows another within one object's own event sequence), and CROSS EDGES (successions
--- between the two objects of a linked pair). There is no case notion anywhere in this:
--- succession is counted per object, and across objects only through links.
+-- (events, occurrences, objects, starts, ends), per-type EDGES (how often one activity
+-- directly follows another within one object's own event sequence), and CROSS EDGES
+-- (successions between the two objects of a linked pair). There is no case notion
+-- anywhere in this: succession is counted per object, and across objects only through
+-- links.
+--
+-- Built over the E2O layer (§12.0), so the unit is the event–object OCCURRENCE: a push
+-- of n commits is one event with n occurrences, one in each commit's sequence. Nodes
+-- carry both counts; `events` (distinct) is below `occurrences` only on `Push`.
 --
 -- ⚠️ **Object type comes from the object-id PREFIX, never fe.activity_vocabulary.**
 -- The vocabulary records IssueCommented as an issue activity, but PR comments are
@@ -1803,18 +1808,19 @@ COMMENT ON VIEW fe.dfg_e2o IS
 -- frontend never loads, which is exactly the SQL exception CLAUDE.md's metrics rule
 -- names. The build is a full-log scan and could never be a request path.
 --
--- Measurements, 2026-09-01 (MVs refreshed 2026-08-02):
---   * fe.event key-column scan (repo_id, object_id, activity, time, id): 3,167,844 rows
---     in 6.6 s. The planner PRUNES the two correlated attrs subqueries when attrs is not
---     projected — verified by EXPLAIN (0 SubPlans key-only, 2 with attrs) — so this view
---     reads fe.event directly and there is no second event definition to drift.
---   * per-type pass 13.2 s → 33 node + 103 edge rows; cross pass 10.5 s → 150 rows,
---     279,556 successions. Whole build ~24 s, output 286 rows.
+-- Measurements, 2026-09-02 (MVs refreshed 2026-08-02):
+--   * `typed` = fe.dfg_e2o ⋈ fe.dfg_event, 3,167,844 rows — exactly fe.event's count,
+--     because every CommitObserved row became one `pushed_commit` occurrence. The §4
+--     attrs subqueries stay pruned through the views (0 SubPlans by EXPLAIN); the join
+--     costs 14.8 s against 6.6 s for the old key-only scan.
+--   * output 637 rows: 33 nodes, 103 per-type edges, 501 cross rows (one per link
+--     class since v2). Whole build 45 s (fe.refresh_dfg, 2026-09-02).
 --   * conservation checked per (repo, type), all nine partitions:
---     Σ successions = Σ events − Σ starts, and Σ starts = Σ ends; the commit partition's
---     edges are CommitObserved → CommitObserved only (repeat observations); every
---     object_id prefix resolves to a type (0 unknown).
---   * api.get_dfg('microsoft/vscode') off the MV: 0.43 s end to end, 16,056 B payload.
+--     Σ successions = Σ occurrences − Σ starts, and Σ starts = Σ ends; the commit
+--     partition's edges are Push → Push only (a commit carried by a later push);
+--     vscode's commit lane: 210,196 occurrences over 88,913 pushes, 94,907
+--     successions — the same figures the CommitObserved lane had, renamed.
+--   * api.get_dfg('microsoft/vscode') off the MV: ~0.8 s end to end, ~59 KB payload.
 -- =====================================================================================
 
 -- Dropped rather than replaced: the column list changed at v2 (the class columns), and
@@ -1822,21 +1828,26 @@ COMMENT ON VIEW fe.dfg_e2o IS
 DROP VIEW IF EXISTS fe.dfg CASCADE;
 CREATE VIEW fe.dfg AS
 WITH typed AS (
-  -- Key columns ONLY: projecting attrs would drag the §4 comment-excerpt subqueries
-  -- through 3.2M rows (the 1 s vs 6.1 s warning there, at full-log scale).
-  SELECT e.repo_id, e.object_id,
-         CASE split_part(e.object_id, ':', 1)
+  -- The E2O layer (§12.0), one row per event–object occurrence, typed by the object-id
+  -- PREFIX. Only actor rows resolve to no lane type and the WHERE drops them, so actors
+  -- stay out of the map as before. `push:` is an EVENT-id prefix and never reaches
+  -- this CASE. Key columns only, still: attrs is never projected (§12.0 measurement).
+  SELECT e.repo_id, o.object_id,
+         CASE split_part(o.object_id, ':', 1)
            WHEN 'issue'  THEN 'issue'
            WHEN 'pr'     THEN 'pull_request'
            WHEN 'commit' THEN 'commit'
          END AS object_type,
          e.activity, e.time, e.id
-  FROM fe.event e
+  FROM fe.dfg_e2o o
+  JOIN fe.dfg_event e ON e.id = o.event_id
+  WHERE split_part(o.object_id, ':', 1) IN ('issue', 'pr', 'commit')
 ),
 seq AS (
-  -- Each object's own sequence. `id` breaks real ties: commit_obs events within one
-  -- push share created_at, and the payload's own ordering is (time, id) too (§6).
-  SELECT repo_id, object_type, object_id, activity,
+  -- Each object's own sequence, one row per OCCURRENCE. `id` breaks real ties: the
+  -- commits of one push share its time and its event id, and the sub-log payload's own
+  -- ordering is (time, id) too (§6).
+  SELECT repo_id, object_type, object_id, activity, id,
          LAG(activity)  OVER w AS prev_activity,
          row_number()   OVER w AS rn,
          count(*) OVER (PARTITION BY repo_id, object_id) AS n_events
@@ -1845,7 +1856,8 @@ seq AS (
 ),
 nodes AS (
   SELECT repo_id, object_type, activity,
-         count(*)                              AS events,
+         count(*)                              AS occurrences,  -- E2O rows: the unit edges are in
+         count(DISTINCT id)                    AS events,       -- real events; below occurrences only on Push
          count(DISTINCT object_id)             AS objects,
          count(*) FILTER (WHERE rn = 1)        AS starts,
          count(*) FILTER (WHERE rn = n_events) AS ends
@@ -1886,8 +1898,13 @@ merged AS (
          LAG(object_type) OVER w AS prev_type,
          LAG(activity)    OVER w AS prev_activity
   FROM pair_events
+  -- Ties are broken the way the Trace page ranks marks (layout/nodes.js assignRanks:
+  -- time, then lane, then id), so the two pages agree on same-second order. Not a
+  -- nicety: a commit that closes an issue is pushed and closes it in the SAME second,
+  -- so the tie rule decides the direction of every closed-via-commit succession —
+  -- 11,625 of vscode's 132,050 cross successions flipped when the ids alone decided.
   WINDOW w AS (PARTITION BY repo_id, source, target, qualifier, evidence, method
-               ORDER BY time, id)
+               ORDER BY time, object_type, id)
 ),
 cross_edges AS (
   -- from_type <> to_type always: fe.link endpoints are cross-type by construction.
@@ -1904,12 +1921,12 @@ cross_edges AS (
 )
 SELECT repo_id, 'node'::text AS kind, object_type, activity,
        NULL::text AS from_activity, NULL::text AS to_activity, NULL::text AS to_type,
-       events, objects, starts, ends, NULL::bigint AS successions,
+       events, occurrences, objects, starts, ends, NULL::bigint AS successions,
        NULL::text AS link_qualifier, NULL::text AS link_evidence, NULL::text AS link_method
 FROM nodes
 UNION ALL
 SELECT repo_id, 'edge', object_type, NULL, from_activity, to_activity, NULL,
-       NULL, objects, NULL, NULL, successions,
+       NULL, NULL, objects, NULL, NULL, successions,
        NULL, NULL, NULL
 FROM edges
 UNION ALL
@@ -1918,13 +1935,13 @@ UNION ALL
 -- link_-prefixed: the classification belongs to the LINK a succession rides on, never
 -- to the succession itself, which remains an observation.
 SELECT repo_id, 'cross_edge', from_type, NULL, from_activity, to_activity, to_type,
-       NULL, pairs, NULL, NULL, successions,
+       NULL, NULL, pairs, NULL, NULL, successions,
        qualifier, evidence, method
 FROM cross_edges;
 
 DROP MATERIALIZED VIEW IF EXISTS fe.dfg_mat CASCADE;
 CREATE MATERIALIZED VIEW fe.dfg_mat AS SELECT * FROM fe.dfg WITH DATA;
--- No index: 286 rows for the whole database. An index here would be a habit, not a
+-- No index: 637 rows for the whole database. An index here would be a habit, not a
 -- finding (§0's own rule); the RPC's per-repo filter scans them faster than it could
 -- plan an index path.
 ANALYZE fe.dfg_mat;
@@ -1935,7 +1952,8 @@ LANGUAGE sql AS $$
 $$;
 
 COMMENT ON MATERIALIZED VIEW fe.dfg_mat IS
-  'The whole-log directly-follows graph, per repository and object type. ~24 s to build. '
+  'The whole-log directly-follows graph, per repository and object type, over the E2O '
+  'layer (§12.0). ~45 s to build. '
   'Run fe.refresh_dfg() after any upstream MV refresh; fe.diag_staleness reports its age. '
   'Cross-edge rows are floors: they are derived through fe.link_mat''s narrowed links.';
 
@@ -1989,7 +2007,7 @@ SELECT 'fe.seed_lookup',
        (SELECT count(*) FROM fe.seed_lookup),
        (SELECT (pg_stat_file(pg_relation_filepath('fe.seed_lookup'))).modification)
 UNION ALL
--- live_rows is honestly NULL: counting fe.dfg live IS the ~24 s whole-log recomputation,
+-- live_rows is honestly NULL: counting fe.dfg live IS the whole-log recomputation,
 -- which a diagnostic must not cost. last_written carries the weight here.
 SELECT 'fe.dfg_mat',
        NULL::bigint,
@@ -2180,12 +2198,14 @@ BEGIN
        'repo_ambiguous',   (_n_named > 1),
        -- Its OWN counter, not the ObjectGraph's contract_version: the two payloads
        -- change independently, and a consumer of one must not fail on the other's bump.
-       'dfg_contract_version', 2,
+       'dfg_contract_version', 3,
        'generated_at',     fe.utc(now()),
        'activity_scope',   'OCEL-strict + comments (reviews/dismissals/review-comments excluded)',
        'data_honesty', jsonb_build_object(
           'succession',    'Counted within each object''s own event sequence, over the '
-                        || 'whole log, no windowing. A succession is an observation, '
+                        || 'whole log, no windowing — per event–object occurrence, so a '
+                        || 'push of n commits is one event with n occurrences, one in '
+                        || 'each commit''s sequence. A succession is an observation, '
                         || 'not a traceability claim.',
           'cross_edges',   'Derived through the admitted links, which two admission '
                         || 'rules narrow. Every cross-edge count is a floor, never a '
@@ -2203,7 +2223,7 @@ BEGIN
     'nodes', COALESCE((
        SELECT jsonb_agg(jsonb_build_object(
          'object_type', d.object_type, 'activity', d.activity,
-         'events', d.events, 'objects', d.objects,
+         'events', d.events, 'occurrences', d.occurrences, 'objects', d.objects,
          'starts', d.starts, 'ends', d.ends)
          ORDER BY d.object_type, d.activity)
        FROM fe.dfg_mat d WHERE d.repo_id = _repo_id AND d.kind = 'node'), '[]'::jsonb),
@@ -2236,7 +2256,8 @@ COMMENT ON FUNCTION api.get_dfg(text) IS
   'The whole-log directly-follows graph for one repository (docs/DATA_LAYER.md): activity '
   'nodes and succession edges per object type, plus cross-type edges through links, which '
   'are floors and carry their link''s class (link_qualifier, link_evidence, link_method), '
-  'one row per class. Pre-computed in fe.dfg_mat. There is no case notion.';
+  'one row per class. Counted over the E2O layer (§12.0): nodes carry events and '
+  'occurrences. Pre-computed in fe.dfg_mat. There is no case notion.';
 
 
 -- =====================================================================================

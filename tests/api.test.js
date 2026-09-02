@@ -22,6 +22,7 @@ import {
 } from '../src/data/api.js';
 import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
 import { loadDfg } from '../src/data/loadDfg.js';
+import { DFG_CONTRACT_VERSION } from '../src/model/dfg.js';
 import { resolveQuery } from '../src/data/source.js';
 
 /** A fetch stub that records the request and replays a canned response. */
@@ -358,7 +359,7 @@ describe('an unreachable database says so, and says what to do', () => {
 
 describe('the DFG transport asks for one repository and nothing else', () => {
   const MINIMAL_DFG = {
-    meta: { repo: 'microsoft/vscode', dfg_contract_version: 2, generated_at: '2026-09-01T00:00:00+00:00' },
+    meta: { repo: 'microsoft/vscode', dfg_contract_version: DFG_CONTRACT_VERSION, generated_at: '2026-09-01T00:00:00+00:00' },
     nodes: [],
     edges: [],
     cross_edges: [],

@@ -9,9 +9,11 @@
  *   PGRST_URL=http://localhost:3000 node scripts/dfg-check.mjs
  *
  * What it proves, in order: the payload passes the validator; the per-node conservation
- * the validator's per-type totals cannot see (each node's events = starts + inbound
+ * the validator's per-type totals cannot see (each node's occurrences = starts + inbound
  * successions = ends + outbound, per-type edges only — a cross succession is not part
- * of either object's own sequence arithmetic); the vocabulary rules hold in the raw
+ * of either object's own sequence arithmetic); that the commit lane's Push occurrences
+ * equal the CommitObserved events Trace draws for the repository, so the two pages
+ * agree modulo naming; the vocabulary rules hold in the raw
  * JSON text; `loadDfg` accepts it; `layoutDfg` places it finitely inside its box; and
  * one unauthenticated HTTP call reaches `api.get_dfg` as `web_anon` — the only step
  * that would catch the SECURITY INVOKER reset for the NEW function, which the
@@ -77,18 +79,46 @@ for (const type of LANE_TYPES) {
     const outbound = raw.edges
       .filter((e) => e.object_type === type && e.from_activity === node.activity)
       .reduce((s, e) => s + e.successions, 0);
-    if (node.events !== node.starts + inbound) {
+    if (node.occurrences !== node.starts + inbound) {
       fail.push(
-        `${type}/${node.activity}: ${node.events} events but ${node.starts} starts + ` +
+        `${type}/${node.activity}: ${node.occurrences} occurrences but ${node.starts} starts + ` +
           `${inbound} inbound successions`,
       );
     }
-    if (node.events !== node.ends + outbound) {
+    if (node.occurrences !== node.ends + outbound) {
       fail.push(
-        `${type}/${node.activity}: ${node.events} events but ${node.ends} ends + ` +
+        `${type}/${node.activity}: ${node.occurrences} occurrences but ${node.ends} ends + ` +
           `${outbound} outbound successions`,
       );
     }
+    if (node.events > node.occurrences) {
+      fail.push(`${type}/${node.activity}: ${node.events} events over ${node.occurrences} occurrences`);
+    }
+  }
+}
+
+// Trace and the map agree on the commit lane modulo naming: each CommitObserved event
+// Trace draws is one pushed_commit occurrence here. fe.dfg_e2o carries no repo_id (an
+// E2O row is not partitioned), so the per-repository figure is read off the payload —
+// which also proves the materialization, not only the view.
+const push = raw.nodes.find((n) => n.object_type === 'commit' && n.activity === 'Push');
+if (push) {
+  const observed = execFileSync(
+    'psql',
+    [
+      '-d',
+      DB,
+      '-Atc',
+      `SELECT count(*) FROM fe.event WHERE repo_id = ${Number(raw.meta.repo_id)} ` +
+        `AND activity = 'CommitObserved'`,
+    ],
+    { encoding: 'utf8' },
+  ).trim();
+  if (String(push.occurrences) !== observed) {
+    fail.push(
+      `commit/Push has ${push.occurrences} occurrences but Trace holds ${observed} ` +
+        `CommitObserved events for repo ${raw.meta.repo_id}`,
+    );
   }
 }
 
@@ -108,7 +138,7 @@ if (fail.length) {
   for (const line of fail.slice(0, 40)) console.error(`  - ${line}`);
   process.exit(1);
 }
-console.log('gate    validator, per-node conservation, vocabulary   ✓');
+console.log('gate    validator, per-node conservation, Push = CommitObserved, vocabulary   ✓');
 
 // ---- through the real loader and the real layout -------------------------------------
 const dfg = await loadDfg({ repo }, { transport: async () => raw });

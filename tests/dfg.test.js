@@ -16,9 +16,11 @@ import {
 /*
  * The hand-built bundle is the primary fixture, the way the fold suites build synthetic
  * graphs: two issues (open → comments → close), one merged pull request, one commit
- * observed twice, and one cross edge. Its counts satisfy the conservation the validator
- * demands — every object one start and one end, successions = events − starts per type —
- * so any assertion failure below is about the validator, never about the arithmetic.
+ * pushed twice, and one cross edge. Its counts satisfy the conservation the validator
+ * demands — every object one start and one end, successions = occurrences − starts per
+ * type — so any assertion failure below is about the validator, never about the
+ * arithmetic. Occurrences equal events everywhere here; only a push of several commits
+ * separates them, and the push tests below build that shape on purpose.
  */
 function validDfg() {
   return {
@@ -30,19 +32,19 @@ function validDfg() {
       generated_at: '2026-09-01T00:00:00+00:00',
     },
     nodes: [
-      { object_type: 'issue', activity: 'IssueOpened', events: 2, objects: 2, starts: 2, ends: 0 },
-      { object_type: 'issue', activity: 'IssueCommented', events: 3, objects: 2, starts: 0, ends: 0 },
-      { object_type: 'issue', activity: 'IssueClosed', events: 2, objects: 2, starts: 0, ends: 2 },
-      { object_type: 'pull_request', activity: 'PullRequestOpened', events: 1, objects: 1, starts: 1, ends: 0 },
-      { object_type: 'pull_request', activity: 'PullRequestMerged', events: 1, objects: 1, starts: 0, ends: 1 },
-      { object_type: 'commit', activity: 'CommitObserved', events: 2, objects: 1, starts: 1, ends: 1 },
+      { object_type: 'issue', activity: 'IssueOpened', events: 2, occurrences: 2, objects: 2, starts: 2, ends: 0 },
+      { object_type: 'issue', activity: 'IssueCommented', events: 3, occurrences: 3, objects: 2, starts: 0, ends: 0 },
+      { object_type: 'issue', activity: 'IssueClosed', events: 2, occurrences: 2, objects: 2, starts: 0, ends: 2 },
+      { object_type: 'pull_request', activity: 'PullRequestOpened', events: 1, occurrences: 1, objects: 1, starts: 1, ends: 0 },
+      { object_type: 'pull_request', activity: 'PullRequestMerged', events: 1, occurrences: 1, objects: 1, starts: 0, ends: 1 },
+      { object_type: 'commit', activity: 'Push', events: 2, occurrences: 2, objects: 1, starts: 1, ends: 1 },
     ],
     edges: [
       { object_type: 'issue', from_activity: 'IssueOpened', to_activity: 'IssueCommented', successions: 2, objects: 2 },
       { object_type: 'issue', from_activity: 'IssueCommented', to_activity: 'IssueCommented', successions: 1, objects: 1 },
       { object_type: 'issue', from_activity: 'IssueCommented', to_activity: 'IssueClosed', successions: 2, objects: 2 },
       { object_type: 'pull_request', from_activity: 'PullRequestOpened', to_activity: 'PullRequestMerged', successions: 1, objects: 1 },
-      { object_type: 'commit', from_activity: 'CommitObserved', to_activity: 'CommitObserved', successions: 1, objects: 1 },
+      { object_type: 'commit', from_activity: 'Push', to_activity: 'Push', successions: 1, objects: 1 },
     ],
     cross_edges: [
       { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body' },
@@ -130,10 +132,33 @@ describe('the DFG validator accepts an honest bundle and names every fault', () 
     assert.match(findDfgProblems(unknown).join('\n'), /unknown link_method "crystal_ball"/);
   });
 
+  test('a node without occurrences is refused by name', () => {
+    const dfg = validDfg();
+    delete dfg.nodes[5].occurrences;
+    assert.match(findDfgProblems(dfg).join('\n'), /commit\/Push has a bad occurrences count/);
+  });
+
+  test('more events than occurrences is impossible, and is said so', () => {
+    const dfg = validDfg();
+    dfg.nodes[5].events = 3;
+    assert.match(
+      findDfgProblems(dfg).join('\n'),
+      /commit\/Push has 3 events but 2 occurrences; every event relates to at least one object/,
+    );
+  });
+
+  test('a push of several commits is one event with several occurrences, conserved per occurrence', () => {
+    // One push carrying two commits: two sequences of length one, no succession.
+    const dfg = validDfg();
+    dfg.nodes[5] = { object_type: 'commit', activity: 'Push', events: 1, occurrences: 2, objects: 2, starts: 2, ends: 2 };
+    dfg.edges = dfg.edges.filter((e) => e.object_type !== 'commit');
+    assert.deepEqual(findDfgProblems(dfg), []);
+  });
+
   test('broken conservation is a counting fault, and says which type', () => {
     const dfg = validDfg();
     dfg.edges[0].successions = 5;
-    assert.match(findDfgProblems(dfg).join('\n'), /issue: 8 successions but 7 events/);
+    assert.match(findDfgProblems(dfg).join('\n'), /issue: 8 successions but 7 occurrences/);
   });
 
   test('assertValidDfg throws with every problem listed', () => {
@@ -235,7 +260,7 @@ describe('filterDfg runs the page view before layout, and counts what it hides',
   });
 
   test('hiding all of a type‘s activities empties its nodes, the layout-collapse precondition', () => {
-    const out = filterDfg(validDfg(), { hiddenActivities: new Set(['commit/CommitObserved']) });
+    const out = filterDfg(validDfg(), { hiddenActivities: new Set(['commit/Push']) });
     assert.equal(out.dfg.nodes.filter((n) => n.object_type === 'commit').length, 0);
   });
 
@@ -260,7 +285,7 @@ describe('filterDfg runs the page view before layout, and counts what it hides',
   test('the input is never mutated', () => {
     const dfg = validDfg();
     const before = JSON.stringify(dfg);
-    filterDfg(dfg, { lanes: { issue: false }, range: [2, 2], hiddenActivities: new Set(['commit/CommitObserved']) });
+    filterDfg(dfg, { lanes: { issue: false }, range: [2, 2], hiddenActivities: new Set(['commit/Push']) });
     assert.equal(JSON.stringify(dfg), before);
   });
 });
@@ -294,7 +319,7 @@ describe('link classes filter, then aggregate to one arrow, then the range appli
     dfg.cross_edges = [
       { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 3, pairs: 2, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body' },
       { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'extracted', link_method: 'commit_message' },
-      { from_type: 'commit', from_activity: 'CommitObserved', to_type: 'issue', to_activity: 'IssueOpened', successions: 1, pairs: 1, link_qualifier: 'references_issue', link_evidence: 'extracted', link_method: 'commit_message' },
+      { from_type: 'commit', from_activity: 'Push', to_type: 'issue', to_activity: 'IssueOpened', successions: 1, pairs: 1, link_qualifier: 'references_issue', link_evidence: 'extracted', link_method: 'commit_message' },
     ];
     return dfg;
   }

@@ -25,7 +25,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DB = process.env.PGDATABASE || 'gharchive_ocpm_viz_wsl';
 
 // vscode by default: the repository with the widest activity coverage — every one of
-// the ten activities occurs, including the off-platform merge.
+// the map's ten activities occurs (nine plus Push), including the off-platform merge.
 const [id = 'DFG1', repo = 'microsoft/vscode'] = process.argv.slice(2);
 
 const sql = `SELECT api.get_dfg('${repo.replace(/'/g, "''")}')`;

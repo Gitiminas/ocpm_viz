@@ -107,9 +107,10 @@ for (const o of raw.objects) {
   }
 }
 
-// The vocabulary must be the nine closed activities — and a subset is fine (a small sub-log
-// need not exhibit all nine), an extra is not.
+// The vocabulary must be the ten closed activities — and a subset is fine (a small sub-log
+// need not exhibit all ten), an extra is not. `Push` is the process map's alone.
 const known = new Set(Object.keys(ACTIVITIES));
+known.delete('Push');
 for (const a of new Set(raw.events.map((e) => e.activity))) {
   if (!known.has(a)) fail.push(`activity "${a}" is outside the closed vocabulary`);
 }

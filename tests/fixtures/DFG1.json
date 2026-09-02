@@ -7,28 +7,28 @@
       "mv_refreshed": "2026-08-02T19:45:00+00:00",
       "sample": "DFG1",
       "built_by": "scripts/pull-dfg.mjs",
-      "pulled_at": "2026-09-01T13:54:50.118Z",
+      "pulled_at": "2026-09-02T00:21:10.278Z",
       "note": "DFG SAMPLE, not a fixture. A snapshot of api.get_dfg output, for looking at the process map. Only its shape is asserted; re-pull rather than edit it."
     },
     "repo_id": 41881900,
     "data_honesty": {
-      "succession": "Counted within each object's own event sequence, over the whole log, no windowing. A succession is an observation, not a traceability claim.",
+      "succession": "Counted within each object's own event sequence, over the whole log, no windowing — per event–object occurrence, so a push of n commits is one event with n occurrences, one in each commit's sequence. A succession is an observation, not a traceability claim.",
       "truncation": "GH Archive caps PushEvent.commits at 20; commit sequences undercount pushes larger than that.",
       "commit_time": "first-seen in PushEvent, NOT real git commit time",
       "cross_edges": "Derived through the admitted links, which two admission rules narrow. Every cross-edge count is a floor, never a point estimate. One row per link class, link_-prefixed: the classification belongs to the link a succession rides on, never to the succession itself."
     },
-    "generated_at": "2026-09-01T13:54:49+00:00",
+    "generated_at": "2026-09-02T00:21:09+00:00",
     "activity_scope": "OCEL-strict + comments (reviews/dismissals/review-comments excluded)",
     "repo_ambiguous": false,
-    "dfg_contract_version": 2
+    "dfg_contract_version": 3
   },
   "edges": [
     {
       "objects": 45684,
       "object_type": "commit",
       "successions": 94907,
-      "to_activity": "CommitObserved",
-      "from_activity": "CommitObserved"
+      "to_activity": "Push",
+      "from_activity": "Push"
     },
     {
       "objects": 491,
@@ -293,11 +293,12 @@
   "nodes": [
     {
       "ends": 115289,
-      "events": 210196,
+      "events": 88913,
       "starts": 115289,
       "objects": 115289,
-      "activity": "CommitObserved",
-      "object_type": "commit"
+      "activity": "Push",
+      "object_type": "commit",
+      "occurrences": 210196
     },
     {
       "ends": 79018,
@@ -305,7 +306,8 @@
       "starts": 2575,
       "objects": 121412,
       "activity": "IssueClosed",
-      "object_type": "issue"
+      "object_type": "issue",
+      "occurrences": 127935
     },
     {
       "ends": 60410,
@@ -313,7 +315,8 @@
       "starts": 12459,
       "objects": 129159,
       "activity": "IssueCommented",
-      "object_type": "issue"
+      "object_type": "issue",
+      "occurrences": 503275
     },
     {
       "ends": 6861,
@@ -321,7 +324,8 @@
       "starts": 131563,
       "objects": 131631,
       "activity": "IssueOpened",
-      "object_type": "issue"
+      "object_type": "issue",
+      "occurrences": 131632
     },
     {
       "ends": 365,
@@ -329,7 +333,8 @@
       "starts": 57,
       "objects": 6659,
       "activity": "IssueReopened",
-      "object_type": "issue"
+      "object_type": "issue",
+      "occurrences": 7333
     },
     {
       "ends": 3639,
@@ -337,7 +342,8 @@
       "starts": 473,
       "objects": 8317,
       "activity": "IssueCommented",
-      "object_type": "pull_request"
+      "object_type": "pull_request",
+      "occurrences": 25971
     },
     {
       "ends": 2603,
@@ -345,7 +351,8 @@
       "starts": 234,
       "objects": 3582,
       "activity": "PullRequestClosed",
-      "object_type": "pull_request"
+      "object_type": "pull_request",
+      "occurrences": 3716
     },
     {
       "ends": 14158,
@@ -353,7 +360,8 @@
       "starts": 1154,
       "objects": 16299,
       "activity": "PullRequestMerged",
-      "object_type": "pull_request"
+      "object_type": "pull_request",
+      "occurrences": 16303
     },
     {
       "ends": 4,
@@ -361,7 +369,8 @@
       "starts": 0,
       "objects": 10,
       "activity": "PullRequestMergedOffPlatform",
-      "object_type": "pull_request"
+      "object_type": "pull_request",
+      "occurrences": 10
     },
     {
       "ends": 1473,
@@ -369,7 +378,8 @@
       "starts": 20033,
       "objects": 20036,
       "activity": "PullRequestOpened",
-      "object_type": "pull_request"
+      "object_type": "pull_request",
+      "occurrences": 20036
     },
     {
       "ends": 22,
@@ -377,7 +387,8 @@
       "starts": 5,
       "objects": 392,
       "activity": "PullRequestReopened",
-      "object_type": "pull_request"
+      "object_type": "pull_request",
+      "occurrences": 424
     }
   ],
   "cross_edges": [
@@ -388,7 +399,7 @@
       "link_method": "commit_message",
       "successions": 11378,
       "to_activity": "IssueClosed",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "references_issue"
     },
@@ -399,7 +410,7 @@
       "link_method": "commit_message",
       "successions": 6898,
       "to_activity": "IssueCommented",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "references_issue"
     },
@@ -410,7 +421,7 @@
       "link_method": "commit_message",
       "successions": 7,
       "to_activity": "IssueOpened",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "references_issue"
     },
@@ -421,7 +432,7 @@
       "link_method": "commit_message",
       "successions": 353,
       "to_activity": "IssueReopened",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "references_issue"
     },
@@ -432,7 +443,7 @@
       "link_method": "head_sha",
       "successions": 1664,
       "to_activity": "IssueCommented",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
     },
@@ -443,7 +454,7 @@
       "link_method": "ref_match",
       "successions": 4418,
       "to_activity": "IssueCommented",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
     },
@@ -454,7 +465,7 @@
       "link_method": "merge_commit_sha",
       "successions": 1492,
       "to_activity": "IssueCommented",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "validated",
       "link_qualifier": "merge_commit"
     },
@@ -465,7 +476,7 @@
       "link_method": "head_sha",
       "successions": 203,
       "to_activity": "PullRequestClosed",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
     },
@@ -476,7 +487,7 @@
       "link_method": "ref_match",
       "successions": 502,
       "to_activity": "PullRequestClosed",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
     },
@@ -487,7 +498,7 @@
       "link_method": "head_sha",
       "successions": 2997,
       "to_activity": "PullRequestMerged",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
     },
@@ -498,7 +509,7 @@
       "link_method": "ref_match",
       "successions": 6129,
       "to_activity": "PullRequestMerged",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
     },
@@ -509,7 +520,7 @@
       "link_method": "merge_commit_sha",
       "successions": 1571,
       "to_activity": "PullRequestMerged",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "validated",
       "link_qualifier": "merge_commit"
     },
@@ -520,7 +531,7 @@
       "link_method": "head_sha",
       "successions": 1846,
       "to_activity": "PullRequestOpened",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
     },
@@ -531,7 +542,7 @@
       "link_method": "ref_match",
       "successions": 4805,
       "to_activity": "PullRequestOpened",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
     },
@@ -542,7 +553,7 @@
       "link_method": "merge_commit_sha",
       "successions": 5,
       "to_activity": "PullRequestOpened",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "validated",
       "link_qualifier": "merge_commit"
     },
@@ -553,7 +564,7 @@
       "link_method": "head_sha",
       "successions": 10,
       "to_activity": "PullRequestReopened",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
     },
@@ -564,7 +575,7 @@
       "link_method": "ref_match",
       "successions": 2,
       "to_activity": "PullRequestReopened",
-      "from_activity": "CommitObserved",
+      "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
     },
@@ -574,7 +585,7 @@
       "from_type": "issue",
       "link_method": "commit_message",
       "successions": 13021,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "IssueClosed",
       "link_evidence": "extracted",
       "link_qualifier": "references_issue"
@@ -838,7 +849,7 @@
       "from_type": "issue",
       "link_method": "commit_message",
       "successions": 10399,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "IssueCommented",
       "link_evidence": "extracted",
       "link_qualifier": "references_issue"
@@ -1212,7 +1223,7 @@
       "from_type": "issue",
       "link_method": "commit_message",
       "successions": 4427,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "IssueOpened",
       "link_evidence": "extracted",
       "link_qualifier": "references_issue"
@@ -1454,7 +1465,7 @@
       "from_type": "issue",
       "link_method": "commit_message",
       "successions": 539,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "IssueReopened",
       "link_evidence": "extracted",
       "link_qualifier": "references_issue"
@@ -1630,7 +1641,7 @@
       "from_type": "pull_request",
       "link_method": "head_sha",
       "successions": 1909,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "IssueCommented",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
@@ -1641,7 +1652,7 @@
       "from_type": "pull_request",
       "link_method": "ref_match",
       "successions": 3970,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "IssueCommented",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
@@ -1652,7 +1663,7 @@
       "from_type": "pull_request",
       "link_method": "merge_commit_sha",
       "successions": 1315,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "IssueCommented",
       "link_evidence": "validated",
       "link_qualifier": "merge_commit"
@@ -1905,7 +1916,7 @@
       "from_type": "pull_request",
       "link_method": "head_sha",
       "successions": 39,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestClosed",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
@@ -1916,7 +1927,7 @@
       "from_type": "pull_request",
       "link_method": "ref_match",
       "successions": 106,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestClosed",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
@@ -1927,7 +1938,7 @@
       "from_type": "pull_request",
       "link_method": "merge_commit_sha",
       "successions": 1,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestClosed",
       "link_evidence": "validated",
       "link_qualifier": "merge_commit"
@@ -2092,7 +2103,7 @@
       "from_type": "pull_request",
       "link_method": "head_sha",
       "successions": 6241,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestMerged",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
@@ -2103,7 +2114,7 @@
       "from_type": "pull_request",
       "link_method": "ref_match",
       "successions": 4675,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestMerged",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
@@ -2114,7 +2125,7 @@
       "from_type": "pull_request",
       "link_method": "merge_commit_sha",
       "successions": 13755,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestMerged",
       "link_evidence": "validated",
       "link_qualifier": "merge_commit"
@@ -2378,7 +2389,7 @@
       "from_type": "pull_request",
       "link_method": "head_sha",
       "successions": 2637,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestOpened",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
@@ -2389,7 +2400,7 @@
       "from_type": "pull_request",
       "link_method": "ref_match",
       "successions": 7974,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestOpened",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
@@ -2400,7 +2411,7 @@
       "from_type": "pull_request",
       "link_method": "merge_commit_sha",
       "successions": 1223,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestOpened",
       "link_evidence": "validated",
       "link_qualifier": "merge_commit"
@@ -2620,7 +2631,7 @@
       "from_type": "pull_request",
       "link_method": "head_sha",
       "successions": 23,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestReopened",
       "link_evidence": "validated",
       "link_qualifier": "contains_commit"
@@ -2631,7 +2642,7 @@
       "from_type": "pull_request",
       "link_method": "ref_match",
       "successions": 29,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestReopened",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
@@ -2642,7 +2653,7 @@
       "from_type": "pull_request",
       "link_method": "merge_commit_sha",
       "successions": 12,
-      "to_activity": "CommitObserved",
+      "to_activity": "Push",
       "from_activity": "PullRequestReopened",
       "link_evidence": "validated",
       "link_qualifier": "merge_commit"

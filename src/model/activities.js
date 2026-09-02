@@ -132,6 +132,20 @@ export const ACTIVITIES = {
     objectTypes: ['commit'],
     landmark: false,
   },
+  /*
+   * The process map's commit-lane activity, and the map's only private one. Trace never
+   * emits it — fe.event's whitelist stays at ten and takes a push apart into one
+   * CommitObserved per commit — and the map never emits CommitObserved: its E2O layer
+   * (sql/fe_layer.sql §12.0) keeps one real event per push, related to every commit it
+   * carried, so a push of n commits is one event with n occurrences. Upstream calls it
+   * CommitsPushed. It IS a GitHub action, hence the verb.
+   */
+  Push: {
+    label: 'Push',
+    short: 'push',
+    objectTypes: ['commit'],
+    landmark: false,
+  },
 };
 
 /**
@@ -164,6 +178,7 @@ export const READING_ORDER = [
   'IssueReopened',
   'PullRequestReopened',
   'CommitObserved',
+  'Push',
 ];
 for (const activity of Object.keys(ACTIVITIES)) {
   if (!READING_ORDER.includes(activity)) {

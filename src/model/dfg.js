@@ -25,7 +25,7 @@
 import { LANE_TYPES, ACTIVITIES, READING_ORDER, isKnownActivity } from './activities.js';
 import { EVIDENCE, isKnownMethod } from './evidence.js';
 
-export const DFG_CONTRACT_VERSION = 2;
+export const DFG_CONTRACT_VERSION = 3;
 
 const LANE_TYPE_SET = new Set(LANE_TYPES);
 
@@ -74,8 +74,16 @@ export function findDfgProblems(dfg) {
     } else {
       checkActivityOnType(problems, where, node.activity, node.object_type);
     }
-    for (const field of ['events', 'objects', 'starts', 'ends']) {
+    for (const field of ['events', 'occurrences', 'objects', 'starts', 'ends']) {
       if (badCount(node[field])) problems.push(`${where} has a bad ${field} count`);
+    }
+    // An occurrence is one event–object pair, so an event with no object is not here at
+    // all and every event counted has at least one occurrence. Below-equal only on Push.
+    if (!badCount(node.events) && !badCount(node.occurrences) && node.events > node.occurrences) {
+      problems.push(
+        `${where} has ${node.events} events but ${node.occurrences} occurrences; every ` +
+          `event relates to at least one object`,
+      );
     }
   }
 
@@ -149,14 +157,15 @@ export function findDfgProblems(dfg) {
 
   /*
    * Per-type conservation, which holds for any honestly-counted payload: every object
-   * contributes exactly one start and one end, and every event that is not a sequence
-   * start follows something. A payload that breaks this is not merely unusual data —
-   * the counting itself went wrong.
+   * contributes exactly one start and one end, and every occurrence that is not a
+   * sequence start follows something. In OCCURRENCES, not events: a push of n commits
+   * sits in n sequences, once each. A payload that breaks this is not merely unusual
+   * data — the counting itself went wrong.
    */
   for (const type of LANE_TYPES) {
     const nodes = dfg.nodes.filter((n) => n.object_type === type);
     if (!nodes.length) continue;
-    const events = nodes.reduce((s, n) => s + n.events, 0);
+    const occurrences = nodes.reduce((s, n) => s + n.occurrences, 0);
     const starts = nodes.reduce((s, n) => s + n.starts, 0);
     const ends = nodes.reduce((s, n) => s + n.ends, 0);
     const successions = dfg.edges
@@ -165,10 +174,10 @@ export function findDfgProblems(dfg) {
     if (starts !== ends) {
       problems.push(`${type}: ${starts} sequence starts but ${ends} ends`);
     }
-    if (successions !== events - starts) {
+    if (successions !== occurrences - starts) {
       problems.push(
-        `${type}: ${successions} successions but ${events} events over ${starts} sequences ` +
-          `demand ${events - starts}`,
+        `${type}: ${successions} successions but ${occurrences} occurrences over ${starts} ` +
+          `sequences demand ${occurrences - starts}`,
       );
     }
   }
