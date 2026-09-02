@@ -9,7 +9,7 @@
 --
 -- Layout:
 --   §0  schema, indexes, measurements
---   §1  activity vocabulary + the remap          (10 activities)
+--   §1  activity vocabulary + the remap          (10 activities; §12.0 adds Push for the DFG only)
 --   §2  objects        fe.object_{issue,pull_request,commit,actor}
 --   §3  intervals      fe.interval_{issue,pull_request}
 --   §4  events         fe.event
@@ -20,6 +20,7 @@
 --   §9  the RPC        api.search_seeds(...)
 --   §10 the RPC        api.list_repos()
 --   §11 refreshers     fe.refresh_all() and friends
+--   §12.0 DFG events   fe.dfg_event / fe.dfg_e2o — the map's OCEL 2.0 E2O layer
 --   §12 the DFG        fe.dfg / fe.dfg_mat — the whole-log directly-follows graph
 --   §13 the RPC        api.get_dfg(repo)
 --
@@ -1681,6 +1682,102 @@ LANGUAGE sql AS $$
   REFRESH MATERIALIZED VIEW fe.seed_lookup;
 $$;
 
+
+-- =====================================================================================
+-- §12.0 — The DFG's event layer, in OCEL 2.0 E2O shape: fe.dfg_event and fe.dfg_e2o
+--
+-- Read ONLY by fe.dfg (§12). Trace's fe.event, fe.link and api.get_object_graph are
+-- untouched, and so is every fixture.
+--
+-- fe.event carries ONE object per event, so §4 takes a push apart into one synthetic
+-- CommitObserved per commit row and drops the real `CommitsPushed` activity at the
+-- whitelist (§7.1 counts them: 144,556). That is the OCEL 2.0 E2O relation flattened to
+-- arity one. For the process map the push is put back together:
+--
+--   fe.dfg_event   one row per REAL event — the nine issue/PR activities straight from
+--                  fe.event, plus `Push`, one per mv_push_activities row (upstream's
+--                  name is CommitsPushed). Keyed `push:<activity_id>`: activity_id is the
+--                  PushEvent id and unique (144,556 rows); push_id has one duplicate and
+--                  is not a key.
+--   fe.dfg_e2o     (event_id, object_id, qualifier) — every event to its SUBJECT (the
+--                  issue or pull request it is about), to its actor under the role the
+--                  activity gives them, and a push to every commit it carried
+--                  (`pushed_commit`) and to its pusher. A push of n commits is ONE event
+--                  with n commit occurrences — the shape §12 counts in.
+--
+-- ⚠️ `Push` is the map's only private activity. fe.activity_vocabulary (§1) stays at ten
+-- and fe.event never emits it; the map in turn never emits CommitObserved. The JS
+-- ACTIVITIES table carries both, one per page, and says so.
+--
+-- Measured 2026-09-02 (MVs refreshed 2026-08-02):
+--   * (event_id, commit_sha) is unique in mv_push_commits_full, 0 NULL shas, so
+--     fe.dfg_e2o is a set. On every joined row created_at = activity_timestamp,
+--     actor_id = actor_user_id and repo_id agree (0 mismatches each), so the commit
+--     lane keeps its order and its pusher. actor_user_id is never NULL.
+--   * 416 pushes (387 in vscode) carry no commit row: events with only a `pusher` E2O
+--     row, which §12 drops with the actors. No fe.event id and no fe.link_mat endpoint
+--     starts with `push:`.
+--   * fe.event is scanned ONCE per view, key columns only — the §12 attrs pruning
+--     survives the UNION ALL and the join (0 SubPlans by EXPLAIN). dfg_e2o ⋈ dfg_event
+--     returns 3,167,844 rows (exactly fe.event's count) in 14.8 s; §12's `typed` CTE
+--     is referenced three times and so computed once per build.
+--
+-- NOT here: PullRequestMerged → merge-commit rows (85.5% of merges resolve to a commit
+-- object). That would put a PR activity on the commit lane; a separate modelling decision.
+-- =====================================================================================
+
+DROP VIEW IF EXISTS fe.dfg_event CASCADE;
+CREATE VIEW fe.dfg_event AS
+SELECT e.id, e.activity, e.time, e.actor_id, e.actor_num, e.repo_id
+FROM fe.event e
+WHERE e.activity <> 'CommitObserved'
+UNION ALL
+SELECT 'push:' || p.activity_id::text,
+       'Push'::text,
+       p.activity_timestamp AT TIME ZONE 'UTC',     -- naive upstream, lifted here (header)
+       'actor:' || p.actor_user_id::text,
+       p.actor_user_id,
+       p.repo_id
+FROM mv_push_activities p;
+
+COMMENT ON VIEW fe.dfg_event IS
+  'One row per real event, for the process map only: fe.event''s issue and PR activities '
+  'plus Push, one per PushEvent (mv_push_activities). Trace does not read this.';
+
+DROP VIEW IF EXISTS fe.dfg_e2o CASCADE;
+CREATE VIEW fe.dfg_e2o AS
+-- One fe.event scan yields both the subject and the actor row — a LATERAL VALUES, not a
+-- second UNION ALL branch, which would read the 2.8M-row view a third time per build.
+SELECT e.id AS event_id, v.object_id, v.qualifier
+FROM fe.event e
+CROSS JOIN LATERAL (VALUES
+  (e.object_id, 'subject'::text),
+  (e.actor_id, CASE e.activity
+     WHEN 'IssueOpened'                  THEN 'opener'
+     WHEN 'PullRequestOpened'            THEN 'opener'
+     WHEN 'IssueClosed'                  THEN 'closer'
+     WHEN 'PullRequestClosed'            THEN 'closer'
+     -- the off-platform merge is a close on GitHub; its actor is whoever closed
+     WHEN 'PullRequestMergedOffPlatform' THEN 'closer'
+     WHEN 'IssueReopened'                THEN 'reopener'
+     WHEN 'PullRequestReopened'          THEN 'reopener'
+     WHEN 'IssueCommented'               THEN 'commenter'
+     WHEN 'PullRequestMerged'            THEN 'merger'
+   END)) AS v(object_id, qualifier)
+WHERE e.activity <> 'CommitObserved'
+  AND v.object_id IS NOT NULL                       -- an actor-less event (§4) has no actor row
+UNION ALL
+SELECT 'push:' || pc.event_id::text, 'commit:' || pc.commit_sha, 'pushed_commit'::text
+FROM mv_push_commits_full pc
+WHERE pc.commit_sha IS NOT NULL
+UNION ALL
+SELECT 'push:' || p.activity_id::text, 'actor:' || p.actor_user_id::text, 'pusher'::text
+FROM mv_push_activities p;
+
+COMMENT ON VIEW fe.dfg_e2o IS
+  'OCEL 2.0 event-to-object relation for the process map: (event_id, object_id, qualifier). '
+  'Qualifiers: subject, pushed_commit, and the actor roles opener, closer, reopener, '
+  'commenter, merger, pusher. Read only by fe.dfg.';
 
 -- =====================================================================================
 -- §12 — fe.dfg: the object-centric directly-follows graph over the ENTIRE log
