@@ -1073,7 +1073,7 @@ function renderDfg() {
 }
 
 for (const dashboard of [
-  ['statsCard', 'Per-object statistics'],
+  ['statsCard', 'Per-artifact statistics'],
   ['landmarksCard', 'Landmarks'],
 ]) {
   const row = document.createElement('label');
@@ -1207,7 +1207,7 @@ const source = createSource();
 function renderSourceToggle() {
   const OPTIONS = [
     { id: 'fixtures', label: 'Fixtures', tip: 'source.fixtures', note: 'Pre-built test sub-logs. No database.' },
-    { id: 'database', label: 'Database', tip: 'source.database', note: 'Live via PostgREST. Seed from any object.' },
+    { id: 'database', label: 'Database', tip: 'source.database', note: 'Live via PostgREST. Seed from any artifact.' },
   ];
 
   // The process map is whole-log and the fixtures hold sub-logs, so on that page the
@@ -1389,7 +1389,7 @@ function showSeedPrompt(repoName) {
 renderProcessCard({ container: elements.dfgCard, shown: null });
   const html = messageHtml(
     `Choose something to start from${repoName ? ` in ${escapeForHtml(repoName)}` : ''}`,
-    'A sub-log is a repository <em>and</em> an object to traverse out from, so there is ' +
+    'A sub-log is a repository <em>and</em> an artifact to traverse out from, so there is ' +
       'nothing to draw yet.<br>Use <strong>Start from</strong> — an issue or PR number ' +
       '(<span class="mono">102358</span>), a commit SHA (<span class="mono">48fd5cb</span>), ' +
       'or free text (<span class="mono">mcp server</span>).',
@@ -1470,7 +1470,7 @@ function updateSubLogCard() {
   if (graph.links.length === 0) {
     notes.push(
       'No links from this seed — nothing upstream connects it, so there is nothing to ' +
-        'traverse to. The object itself is shown.',
+        'traverse to. The artifact itself is shown.',
     );
   }
   renderSubLogCard({

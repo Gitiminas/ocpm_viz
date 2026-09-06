@@ -83,7 +83,7 @@ const hollow = (shape) => {
 
 export const LEGEND_SECTIONS = [
   {
-    title: 'Objects',
+    title: 'Artifacts',
     rows: Object.entries(TYPE).map(([type, spec]) => ({
       key: type,
       label: spec.label,
@@ -213,7 +213,7 @@ export const LEGEND_SECTIONS = [
   {
     title: 'Lines',
     rows: [
-      { key: 'sequence', label: "one object's own history", swatch: stroke('stroke-width="2"') },
+      { key: 'sequence', label: "one artifact's own history", swatch: stroke('stroke-width="2"') },
       {
         key: 'comments',
         label: 'comment traffic',

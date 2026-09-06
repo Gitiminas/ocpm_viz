@@ -15,10 +15,6 @@ import { escapeHtml } from './format.js';
 import { qualifierColor, typeColor, evidenceStyle, COLORS } from './theme.js';
 import { isLinkVisible } from '../state/state.js';
 
-const EXTRACTED_NOTE =
-  'Parsed from an unenforced convention — a branch-ref or commit-message match, ' +
-  'not something the platform asserts. Weak evidence.';
-
 function evidenceBadge(evidence) {
   const color = evidence === 'validated' ? 'var(--color-accent-300)' : COLORS.extracted;
   return (
@@ -304,10 +300,8 @@ export function renderLinks({
         link.n_methods > 1 ? ['Methods agreeing', String(link.n_methods)] : null,
       ],
       note: folded
-        ? 'Standing in for every folded commit’s link to this object. Expand the push to see them individually.'
-        : isExtracted
-          ? EXTRACTED_NOTE
-          : '',
+        ? 'Standing in for every folded commit’s link to this artifact. Expand the push to see them individually.'
+        : '',
     });
 
     tooltip.bind(

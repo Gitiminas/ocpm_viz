@@ -329,7 +329,7 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
         ['Sequence starts', node.starts.toLocaleString('en-US')],
         ['Sequence ends', node.ends.toLocaleString('en-US')],
       ],
-      note: 'Whole-log figures for this repository, not the loaded sub-log.',
+      note: '',
     };
   }
 
@@ -374,11 +374,7 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
             ]
           : []),
       ],
-      note: cross
-        ? 'Counted in the interleaved sequences of linked pairs. A floor, never a point ' +
-          'estimate: the admission rules narrow the links this rides on.'
-        : 'How often the first activity was directly followed by the second within one ' +
-          'object’s own events, across the whole log.',
+      note: '',
     };
   }
 

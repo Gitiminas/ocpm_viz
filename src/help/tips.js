@@ -36,14 +36,14 @@ const plural = (word, n) => (n === 1 ? word : `${word}s`);
 export const TIPS = Object.freeze({
   // ---- pages ----------------------------------------------------------------------
   'page.trace': 'The trace page: the sub-log drawn over time, or as a graph of relationships.',
-  'page.stats': 'The statistics page: durations, counts and gaps for each object. Computed from what is currently shown.',
+  'page.stats': 'The statistics page: durations, counts and gaps for each artifact. Computed from what is currently shown.',
 
   // ---- the query ------------------------------------------------------------------
   'source.fixtures': 'Synthetic data (pre-built test sub-logs) for trying things out. No database needed.',
   'source.database': 'Live data from the database through PostgREST. Any issue, pull request or commit can be the starting point.',
   'query.repo': 'The repository the sub-log is taken from. Type to search.',
   'query.seed': 'The artifact to start from: an issue or PR number, a commit SHA, or some words from a title. The sub-log is everything reached from it.',
-  'query.degree': 'How many hops to follow from the starting artifact. 0 is the object alone, 1 adds what it touches directly, 2 adds what those touch.',
+  'query.degree': 'How many hops to follow from the starting artifact. 0 is the artifact alone, 1 adds what it touches directly, 2 adds what those touch.',
   'query.degree.fixed': 'Pre-built sub-logs were built at a fixed number of hops. Use the database source to change it.',
   // The one entry whose argument IS the text: a search result's row truncates its title,
   // so the strip shows the whole thing — "issue #47532 — the full title".
@@ -52,13 +52,13 @@ export const TIPS = Object.freeze({
   // ---- the sub-log card -----------------------------------------------------------
   card: 'What is currently shown, counted. When something is hidden by a toggle, the total follows after a slash.',
   'card.type': (type) => `How many ${plural(typeName(type), 2)} are shown, against how many the sub-log holds.`,
-  'card.links': 'Links between objects that are shown. A link joins two objects, such as a PR and the issue it closes.',
-  'card.events': 'Events that are shown. An event is one thing that happened to one object, such as an issue being opened.',
+  'card.links': 'Links between artifacts that are shown. A link joins two artifacts, such as a PR and the issue it closes.',
+  'card.events': 'Artifacts that are shown: every event on an issue or pull request, and every commit as it was observed in a push.',
   'card.span': 'From the first shown event to the last, in UTC.',
 
   // ---- sidebar sections ----------------------------------------------------------
   'section.views': 'Saved combinations of toggles. Apply one, save the current one, or copy a link that reproduces this screen.',
-  'section.lanes': 'Show or hide whole object types, their comments, and single objects.',
+  'section.lanes': 'Show or hide whole artifact types, their comments, and single artifacts.',
   'section.relationships': 'Show or hide links by how trustworthy they are, what they mean, and how they were found.',
   'section.folding': 'How marks that belong together are folded into one: pushes by push id, comments by time.',
   'section.actors': 'Everyone who did something in this sub-log. Hover to preview their trail, click to pin it.',
@@ -74,9 +74,9 @@ export const TIPS = Object.freeze({
   'views.delete': 'Delete this saved view.',
 
   // ---- lanes --------------------------------------------------------------------
-  lane: (type) => `Show or hide every ${typeName(type)}. Open the row to toggle comments or single objects.`,
+  lane: (type) => `Show or hide every ${typeName(type)}. Open the row to toggle comments or single artifacts.`,
   'lane.comments': (type) => `Show or hide the comments on ${plural(typeName(type), 2)}. Hiding them changes the gap figures on the statistics page.`,
-  'lane.object': 'Show or hide this one object.',
+  'lane.object': 'Show or hide this one artifact and everything drawn for it: its events, its links, its comments.',
   'lane.group': 'Commits grouped by the pull request they reached. Hide a group to hide its commits.',
 
   // ---- relationships ------------------------------------------------------------
@@ -99,7 +99,7 @@ export const TIPS = Object.freeze({
   'actors.entry': 'One thing this actor did. Hovering rings it in the picture, clicking copies it.',
 
   // ---- mode and view controls ---------------------------------------------------
-  'mode.time': 'Position means time. Each object has a lane, and marks sit where their events happened.',
+  'mode.time': 'Position means time. Each artifact has a lane, and marks sit where their events happened.',
   'mode.relationships': 'Position means relationships. Objects that are linked sit near each other, and the time axis is released.',
   'mode.absolute': 'The time axis is linear. A long quiet stretch takes as much room as a busy one.',
   'mode.discrete': 'Events are spaced evenly in order. Long gaps are marked on the axis instead of taking room.',
@@ -107,22 +107,22 @@ export const TIPS = Object.freeze({
   // ---- the process-map page ------------------------------------------------------
   'page.dfg': 'The process map: how often each activity directly follows another, over the repository’s whole log.',
   'dfg.repoOnly': 'The process map covers the whole log, so there is no seed and no traversal. Pick a repository and everything counts.',
-  'dfg.showPerType': 'Successions within each object type’s own sequences. Each child row switches one lane’s edges.',
-  'dfg.showCross': 'Successions between linked objects, one row per type pair. Every count here is a floor.',
+  'dfg.showPerType': 'Successions within each artifact type’s own sequences. Each child row switches one lane’s edges.',
+  'dfg.showCross': 'Successions between linked artifacts, one row per type pair. Every count here is a floor.',
   'dfg.lane': (label) => `Show or hide the ${label} lane’s own successions. Cross pairs touching a hidden lane switch off with it.`,
-  'dfg.pair': (label) => `Successions between linked ${label} objects, counted through the admitted links. A floor, never a point estimate.`,
+  'dfg.pair': (label) => `Successions between linked ${label} artifacts, counted through the admitted links. A floor, never a point estimate.`,
   'dfg.evidence': (label) => `Count only cross successions riding ${label} links. Per-type successions ride no links and are untouched.`,
   'dfg.qualifier': (label) => `Count only cross successions whose link means ${label}. Each arrow keeps one aggregate count.`,
   'dfg.method': (label) => `Count only cross successions whose link was detected by ${label}. A floor, like every cross count.`,
   'dfg.activity': (label) => `Show or hide ${label}. Hiding an activity removes its node and every succession touching it.`,
   'dfg.card.activities': 'How many activities are drawn, against how many the whole log holds.',
-  'dfg.card.perType': 'Successions within one object type that are drawn, against the whole log’s count.',
+  'dfg.card.perType': 'Successions within one artifact type that are drawn, against the whole log’s count.',
   'dfg.card.cross': 'Successions across links that are drawn, against the whole log’s count. Floors either way.',
   'dfg.focus': 'Which activity is focused. Click a mark to focus it, click the background to clear it.',
   'dfg.range': 'Keep only successions whose count falls inside this range. The scale is logarithmic, and the rarest tenth of edges starts hidden.',
   'legend.dfg-activity': 'One activity, drawn as its lane’s shape. The number is how many events it has in the whole log.',
-  'legend.dfg-succession': 'One activity directly followed by another within one object’s events. Wider means more often.',
-  'legend.dfg-cross-succession': 'A succession between the two objects of a linked pair, dashed and coloured by the side it leaves. A floor, because the links it rides on are narrowed.',
+  'legend.dfg-succession': 'One activity directly followed by another within one artifact’s events. Wider means more often.',
+  'legend.dfg-cross-succession': 'A succession between the two artifacts of a linked pair, dashed and coloured by the side it leaves. A floor, because the links it rides on are narrowed.',
   'rel.arrow.validated':
     'A link the platform itself asserts. The arrowhead points at the end that came later in time.',
   'rel.arrow.extracted':
@@ -136,15 +136,15 @@ export const TIPS = Object.freeze({
   'zoom.in': 'Zoom in. In relationships mode the wheel zooms too, around the pointer.',
   'zoom.out': 'Zoom out.',
   'zoom.reset': 'Put the view back: the zoom, any marks you dragged, and the time range.',
-  'focus.info': 'Which object is focused. Click a mark to focus it, click the background to clear it.',
-  'focus.degree': 'How far the focus reaches: the object alone, what it touches, or one hop further.',
+  'focus.info': 'Which artifact is focused. Click a mark to focus it, click the background to clear it.',
+  'focus.degree': 'How far the focus reaches: the artifact alone, what it touches, or one hop further.',
   brush: 'The time range that is lit. Drag a handle to dim everything outside it.',
   minimap: 'The whole time span in one strip. Drag the window to move, drag its edge to zoom.',
   'hidden.banner': 'Everything currently hidden by a toggle, so a sparse picture is never mistaken for sparse data.',
   'hidden.chip': 'Something that is hidden. Click to show it again.',
   'hidden.restoreAll': 'Show everything again.',
   'stats.dashboard': (name) => `Show or hide the ${name || 'dashboard'} below.`,
-  'stats.group': 'One object type, summarised. Click the row to show or hide its individual objects.',
+  'stats.group': 'One artifact type, summarised. Click the row to show or hide its individual artifacts.',
   'fold.handle': 'Fold these commits back into one push mark.',
 
   // ---- marks and legend rows (legend.<key>, shared by the rows and the marks) -----
@@ -162,7 +162,7 @@ export const TIPS = Object.freeze({
   'legend.link-extracted': 'A link parsed from a convention, such as a number in a commit message. Dashed line with a question mark.',
   'legend.link-crowded': 'More links meet here than can be drawn apart. The number says how many.',
   'legend.precedence-arrow': 'The arrowhead points at the end that came later in time.',
-  'legend.sequence': 'The line that joins one object’s own events in order.',
+  'legend.sequence': 'The line that joins one artifact’s own events in order.',
   'legend.actor-trail': 'The path of the selected actor through everything they touched. A dashed ring marks a folded mark they share with other actors.',
 });
 

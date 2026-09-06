@@ -87,7 +87,7 @@ function buildTable(groups, onRerender, objectColors = new Map()) {
   table.style.cssText = 'width:100%;border-collapse:collapse;font-size:12px';
 
   const columns = [
-    { key: 'label', label: 'Object', align: 'left' },
+    { key: 'label', label: 'Artifact', align: 'left' },
     { key: 'lifetime', label: 'Open for', align: 'right' },
     { key: 'events', label: 'Events', align: 'right' },
     { key: 'comments', label: 'Comments', align: 'right' },
@@ -268,7 +268,8 @@ function buildSubLogSummary(graph, index) {
         'Lead times',
         lead.map((entry) => `${escapeHtml(entry.label)} · ${dash(entry.value)}`).join('<br>'),
         'Earliest to earliest. With several issues or PRs there is no single such interval, ' +
-          'so these describe the sub-log’s overall shape; the table is the per-object truth.',
+          'so these describe the sub-log’s overall shape; the table is the per-artifact truth. An event ' +
+          'counts once, under the artifact it is closest related to (a PR’s merge is not also an issue’s).',
       ),
     );
   }

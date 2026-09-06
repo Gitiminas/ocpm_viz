@@ -731,7 +731,7 @@ export function renderCommentBurstHandles({
         ['From', formatInstant(run.burst.time), 'time'],
         ['To', formatInstant(run.burst.end), 'time'],
       ],
-      note: 'Click to fold this run back into one mark.',
+      note: '',
     }));
 
     handle
@@ -768,9 +768,7 @@ export function nodeTooltipSpec(node, actorLogin) {
         ['To', formatInstant(burst.end), 'time'],
         ['On', escapeHtml(node.object.label)],
       ],
-      note:
-        'Comments close together in time, folded into one mark. Click to expand. Folding ' +
-        'is a display choice — every one of them still counts in the statistics.',
+      note: '',
     };
   }
 

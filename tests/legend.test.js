@@ -177,7 +177,7 @@ describe('the legend dims what is not in the picture', () => {
     const links = sections.find((s) => s.title === 'Links');
     assert.equal(links.present, true);
     assert.equal(links.rows.filter((r) => r.present).length, 1);
-    assert.equal(sections.find((s) => s.title === 'Objects').present, false);
+    assert.equal(sections.find((s) => s.title === 'Artifacts').present, false);
   });
 
   test('presence never changes the rows themselves — dimming is not filtering', () => {

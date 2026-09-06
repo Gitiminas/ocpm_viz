@@ -164,7 +164,7 @@ export function renderLaneRows({
         }
       }
     } else if (objects.length) {
-      children.push(sectionLabel(`${objects.length} object${objects.length === 1 ? '' : 's'}`));
+      children.push(sectionLabel(`${objects.length} artifact${objects.length === 1 ? '' : 's'}`));
       for (const object of objects) {
         const { row, checkbox } = subRow({
           label: object.label || object.id,

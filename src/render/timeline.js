@@ -578,7 +578,7 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
     if (objects.length === 1 && laneType !== 'commit') {
       return visible.length === 1 ? objects[0].label : `${objects[0].label} · hidden`;
     }
-    const noun = `object${objects.length === 1 ? '' : 's'}`;
+    const noun = `artifact${objects.length === 1 ? '' : 's'}`;
     return visible.length === objects.length
       ? `${objects.length} ${noun}`
       : `${visible.length} of ${objects.length} ${noun}`;

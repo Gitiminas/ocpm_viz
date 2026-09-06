@@ -328,11 +328,7 @@ function edgeCard(group, source, target, heading) {
     kicker: 'Link',
     title: `${escapeHtml(source.title)} ↔ ${escapeHtml(target.title)}`,
     rows,
-    note:
-      edge.evidence === 'validated'
-        ? "The platform's own data asserts this link."
-        : 'Parsed from a convention nobody enforces — the arrow shows which came first, ' +
-          'not which caused which.',
+    note: '',
   };
 }
 
@@ -937,8 +933,6 @@ export function nodeCard(node, actorLogin = (id) => id) {
     kicker: `${type.label} · entire lifecycle`,
     title: escapeHtml(node.title),
     rows,
-    note:
-      'One mark, the whole object. In the time-based modes this object is drawn once per ' +
-      'event; here its lifecycle is collapsed and listed above.',
+    note: '',
   };
 }

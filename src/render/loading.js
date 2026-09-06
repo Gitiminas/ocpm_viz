@@ -62,7 +62,7 @@ export function loadingHtml(description = '', { patient = false } = {}) {
       : '') +
     (patient
       ? '<div class="loadingPatience">Still working. A busy seed at a higher traversal ' +
-        'degree reaches more objects, and the whole sub-log arrives in one query.</div>'
+        'degree reaches more artifacts, and the whole sub-log arrives in one query.</div>'
       : '') +
     '</div>' +
     '</div>'
