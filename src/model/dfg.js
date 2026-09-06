@@ -2,8 +2,8 @@
  * DFG payload validation and normalization.
  *
  * The whole-log directly-follows graph is the second payload this tool consumes, beside
- * the `ObjectGraph` sub-log; its contract is in `docs/DATA_LAYER.md`. The same bargain as
- * `objectGraph.js`: fail loudly on a malformed bundle rather than letting a bad count
+ * the `SubLog` payload; its contract is in `docs/DATA_LAYER.md`. The same bargain as
+ * `subLog.js`: fail loudly on a malformed bundle rather than letting a bad count
  * surface later as a wrong picture, and collect every problem rather than the first.
  *
  * A DFG carries counts, not instants and not traceability links, so two things that look

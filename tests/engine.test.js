@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph, collectInstants } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog, collectInstants } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { deriveCommentBursts } from '../src/model/commentBursts.js';
 import { LANE_TYPES } from '../src/model/activities.js';
@@ -40,8 +40,8 @@ const MARGIN = { top: 32, right: 120, bottom: 150, left: 180 };
 const PLOT_WIDTH = 1100;
 
 async function contextFor(fixture) {
-  const graph = await loadObjectGraph({ fixture }, { transport: fileTransport });
-  const index = indexObjectGraph(graph);
+  const graph = await loadSubLog({ fixture }, { transport: fileTransport });
+  const index = indexSubLog(graph);
   return {
     graph,
     index,

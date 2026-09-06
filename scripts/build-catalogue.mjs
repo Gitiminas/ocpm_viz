@@ -59,7 +59,7 @@ function build() {
   /*
    * Fixtures first, then any LIVE samples.
    *
-   * `LIVE*.json` is a snapshot of real `api.get_object_graph` output written by
+   * `LIVE*.json` is a snapshot of real `api.get_sublog` output written by
    * `scripts/pull-sublog.mjs`, so the picture can be looked at before the app is wired to
    * PostgREST in pass 2. It is listed here because a sub-log that cannot be selected
    * cannot be rendered — but it is kept a separate name class from `F\d+` on purpose:

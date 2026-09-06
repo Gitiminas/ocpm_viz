@@ -28,8 +28,8 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { loadObjectGraph, describeSubLog } from '../src/data/loadObjectGraph.js';
-import { findGraphProblems, indexObjectGraph, collectInstants } from '../src/model/objectGraph.js';
+import { loadSubLog, describeSubLog } from '../src/data/loadSubLog.js';
+import { findGraphProblems, indexSubLog, collectInstants } from '../src/model/subLog.js';
 import { ACTIVITIES } from '../src/model/activities.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { buildNodes, assignRanks } from '../src/layout/nodes.js';
@@ -47,7 +47,7 @@ const [repo = 'microsoft/vscode', seed = 'issue:2902032454', degree = '2'] =
 
 /** The RPC transport. One function — the whole of the transport swap. */
 function rpcTransport(query) {
-  const sql = `SELECT api.get_object_graph(
+  const sql = `SELECT api.get_sublog(
                  ${quote(query.repo)}, ${quote(query.seed)}, ${Number(query.traversalDegree)})`;
   const out = execFileSync('psql', ['-d', DB, '-Atc', sql], {
     encoding: 'utf8',
@@ -69,7 +69,7 @@ const fetchMs = Date.now() - started;
 // ---- the gate -----------------------------------------------------------------------
 const problems = findGraphProblems(raw);
 
-console.log(`RPC     api.get_object_graph(${repo}, ${seed}, ${degree})`);
+console.log(`RPC     api.get_sublog(${repo}, ${seed}, ${degree})`);
 console.log(`payload ${JSON.stringify(raw).length.toLocaleString()} bytes in ${fetchMs} ms`);
 console.log(
   `counts  ${raw.objects.length} objects · ${raw.events.length} events · ${raw.links.length} links`,
@@ -149,7 +149,7 @@ if (fail.length) {
 console.log('gate    contract extras (version, times, qualifiers, methods)   ✓');
 
 // ---- and it must survive the loader, not just the validator ---------------------------
-const graph = await loadObjectGraph(query, { transport: rpcTransport });
+const graph = await loadSubLog(query, { transport: rpcTransport });
 console.log(`loader  ${describeSubLog(graph)}`);
 
 // ---- and it must LAY OUT, which is where real data breaks first ----------------------
@@ -165,7 +165,7 @@ const PLOT_WIDTH = 1100;
 const layoutFail = [];
 
 for (const mode of TEMPORAL_MODES) {
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
   const nodes = buildNodes({ graph, index, bursts, mode, laneTypes: LANES });
   const { rankTimes, rankMax } = assignRanks(nodes);
@@ -283,7 +283,7 @@ for (const mode of TEMPORAL_MODES) {
 // each other, an edge whose end resolves to nothing, or a cluster sitting inside another's
 // footprint — none of which is a NaN, all of which the fixture suites pass.
 {
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
   const margin = { top: 16, right: 16, bottom: 16, left: 16 };
   const box = { plotWidth: PLOT_WIDTH, plotHeight: 620 };

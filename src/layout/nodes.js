@@ -29,8 +29,8 @@ import {
  * Build the node list for one render pass.
  *
  * @param {object} options
- * @param {object} options.graph            the normalized ObjectGraph
- * @param {object} options.index            from `indexObjectGraph`
+ * @param {object} options.graph            the normalized SubLog
+ * @param {object} options.index            from `indexSubLog`
  * @param {Array}  options.bursts           from `deriveBursts`
  * @param {Set}    options.expandedBursts   burst ids the user has unfolded
  * @param {string[]} options.laneTypes      lane-bearing object types, in order

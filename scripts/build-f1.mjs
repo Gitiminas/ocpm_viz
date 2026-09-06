@@ -5,7 +5,7 @@
  *   node scripts/build-f1.mjs --check    # verifies the committed fixture is current
  *
  * F1 is the regression baseline: the vscode sub-log the mockup was built around
- * (issue #242864 → PR #243221 → its commits), reshaped into the `ObjectGraph`
+ * (issue #242864 → PR #243221 → its commits), reshaped into the `SubLog`
  * contract described in `docs/DATA_LAYER.md`.
  *
  * Two rules govern this script:
@@ -149,7 +149,7 @@ function convertLink(source) {
 // it. Three reasons, in order of weight:
 //   1. Nothing upstream produces that prose. A field only this fixture could populate would
 //      make F1 an unfaithful model of a real sub-log — the opposite of a regression baseline.
-//   2. `ObjectGraph` has no prose field, and the prose becomes an enum.
+//   2. `SubLog` has no prose field, and the prose becomes an enum.
 //   3. The prose embeds the retired word `inferred` and restates the evidence class, so
 //      keeping it would either violate the evidence rule or require rewording it — and
 //      rewording is exactly the undetectable freehand edit this script exists to avoid.

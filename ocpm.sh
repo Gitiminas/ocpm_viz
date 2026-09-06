@@ -9,7 +9,7 @@
 #
 # Two processes are involved and they are easy to confuse:
 #
-#   PostgREST      serves api.get_object_graph over HTTP   (port from postgrest.conf)
+#   PostgREST      serves api.get_sublog over HTTP   (port from postgrest.conf)
 #   serve.mjs      serves the app AND proxies /rpc/* to PostgREST   (port 8000)
 #
 # The app talks only to serve.mjs; serve.mjs forwards to PostgREST so the two share an

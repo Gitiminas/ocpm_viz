@@ -2,15 +2,15 @@
  * The PostgREST transport: one sub-log, fetched over HTTP.
  *
  * The transport swap is a one-function change. Nothing above the data layer knows
- * this file exists — `loadObjectGraph(query,
+ * this file exists — `loadSubLog(query,
  * { transport })` takes it, validates what comes back, and the renderer cannot tell
  * a fixture from a live payload. That is the whole point of the seam, and it is why
  * this file is small.
  *
- *   import { loadObjectGraph } from './loadObjectGraph.js';
+ *   import { loadSubLog } from './loadSubLog.js';
  *   import { rpcTransport } from './api.js';
  *
- *   const graph = await loadObjectGraph(
+ *   const graph = await loadSubLog(
  *     { repo: 'microsoft/vscode', seed: 'pr:448781946', traversalDegree: 2 },
  *     { transport: rpcTransport },
  *   );
@@ -42,7 +42,7 @@ export const DEFAULT_BASE_URL = '';
  * project's own RAISE EXCEPTION guidance lands — "seeds are prefixed database ids,
  * here is the query that resolves a number" — and dropping it would throw away the
  * most useful half of the failure. `PGRST*` codes are the API's own (bad function
- * signature, schema cache stale); `P0001` is ours, raised by `api.get_object_graph`.
+ * signature, schema cache stale); `P0001` is ours, raised by `api.get_sublog`.
  */
 /**
  * Wrap a transport-level failure so it names the likely cause.
@@ -112,10 +112,10 @@ async function postRpc(path, body, { baseUrl, fetchImpl }) {
 }
 
 /**
- * How far `get_object_graph` may expand from the seed, and how far it does by default.
+ * How far `get_sublog` may expand from the seed, and how far it does by default.
  *
  * ⚠️ **One place for both numbers.** The stepper in the sidebar, this transport's
- * default and its validation all read these; the SQL guard in `api.get_object_graph`
+ * default and its validation all read these; the SQL guard in `api.get_sublog`
  * (`sql/fe_layer.sql`) enforces the same range server-side. Change them together.
  *
  * `max` is 2: a step is steep and non-obvious — on vscode PR #116416 the sub-log runs
@@ -163,7 +163,7 @@ export function createRpcTransport({
     // the overload by name, and a typo is a 404 "could not find the function",
     // not a 400.
     return postRpc(
-      '/rpc/get_object_graph',
+      '/rpc/get_sublog',
       JSON.stringify({ repo, seed, traversal_degree: Number(traversalDegree) }),
       { baseUrl, fetchImpl },
     );

@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { LANE_TYPES } from '../src/model/activities.js';
 import {
@@ -34,8 +34,8 @@ const fileTransport = async (query) => {
 };
 
 async function structuralFor(fixture, { expandedBursts = new Set() } = {}) {
-  const graph = await loadObjectGraph({ fixture }, { transport: fileTransport });
-  const index = indexObjectGraph(graph);
+  const graph = await loadSubLog({ fixture }, { transport: fileTransport });
+  const index = indexSubLog(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
   const nodes = buildStructuralNodes({ index, bursts, expandedBursts, laneTypes: LANE_TYPES });
   const edges = buildStructuralEdges(graph.links, nodes);
@@ -574,18 +574,18 @@ describe('the relationships hovercard leads with a real timestamp, once', async 
 
 describe('relationships-mode marks carry their actors for the trail', async () => {
   const { readFile } = await import('node:fs/promises');
-  const { loadObjectGraph } = await import('../src/data/loadObjectGraph.js');
-  const { indexObjectGraph } = await import('../src/model/objectGraph.js');
+  const { loadSubLog } = await import('../src/data/loadSubLog.js');
+  const { indexSubLog } = await import('../src/model/subLog.js');
   const { deriveBursts } = await import('../src/model/bursts.js');
   const { LANE_TYPES } = await import('../src/model/activities.js');
   const { buildStructuralNodes } = await import('../src/layout/structural.js');
   const { actorPoints } = await import('../src/render/nodes.js');
 
-  const graph = await loadObjectGraph(
+  const graph = await loadSubLog(
     { fixture: 'F10' },
     { transport: async () => JSON.parse(await readFile(new URL('./fixtures/F10.json', import.meta.url), 'utf8')) },
   );
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
   const nodes = buildStructuralNodes({
     index,
     bursts: deriveBursts(index.objectsOfType('commit')),

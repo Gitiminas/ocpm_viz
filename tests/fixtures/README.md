@@ -1,7 +1,7 @@
 # Fixtures
 
-Every fixture is a complete `ObjectGraph` (`docs/DATA_LAYER.md`) that can be loaded
-through `loadObjectGraph()` exactly as a real sub-log would be. "The mockup", where it is
+Every fixture is a complete `SubLog` (`docs/DATA_LAYER.md`) that can be loaded
+through `loadSubLog()` exactly as a real sub-log would be. "The mockup", where it is
 named below, is the superseded hand-built prototype this tool replaced.
 
 | ID | Sub-log | Property it exists to exhibit | Status |

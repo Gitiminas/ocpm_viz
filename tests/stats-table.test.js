@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog } from '../src/model/subLog.js';
 import { deriveCommitGroups } from '../src/model/commitGroups.js';
 import {
   createState,
@@ -29,11 +29,11 @@ import {
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture}.json`, import.meta.url), 'utf8'));
-const load = (fixture) => loadObjectGraph({ fixture }, { transport: fileTransport });
+const load = (fixture) => loadSubLog({ fixture }, { transport: fileTransport });
 
 async function context(fixture) {
   const graph = await load(fixture);
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
   const { groupsByCommit } = deriveCommitGroups(
     index.objectsOfType('commit'),
     graph.links,

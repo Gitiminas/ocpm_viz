@@ -7,7 +7,7 @@
  * ⚠️ **What this writes is a SAMPLE, not a fixture, and the two must not be confused.**
  * A fixture is a small, hand-shaped sub-log that exists to exercise one property and is
  * committed as a stable test input (`tests/fixtures/README.md`). A sample is a snapshot
- * of whatever `api.get_object_graph` returned on the day it was run, against MVs that
+ * of whatever `api.get_sublog` returned on the day it was run, against MVs that
  * were last refreshed 2026-08-02. It is here so the picture can be LOOKED AT — `npm test`
  * covers the arithmetic and cannot see the picture — and for no other reason. Nothing
  * asserts against it, and it is `LIVE*`-named so `scripts/build-f1.mjs --check` and the
@@ -37,7 +37,7 @@ const DB = process.env.PGDATABASE || 'gharchive_ocpm_viz_wsl';
 const [id = 'LIVE1', repo = 'microsoft/vscode', seed = 'pr:571599565', degree = '2'] =
   process.argv.slice(2);
 
-const sql = `SELECT api.get_object_graph('${repo.replace(/'/g, "''")}', '${seed.replace(/'/g, "''")}', ${Number(degree)})`;
+const sql = `SELECT api.get_sublog('${repo.replace(/'/g, "''")}', '${seed.replace(/'/g, "''")}', ${Number(degree)})`;
 const graph = JSON.parse(
   execFileSync('psql', ['-d', DB, '-Atc', sql], {
     encoding: 'utf8',
@@ -56,7 +56,7 @@ graph.meta.source = {
   built_by: 'scripts/pull-sublog.mjs',
   pulled_at: new Date().toISOString(),
   note:
-    'LIVE SAMPLE, not a fixture. A snapshot of api.get_object_graph output, for looking ' +
+    'LIVE SAMPLE, not a fixture. A snapshot of api.get_sublog output, for looking ' +
     'at the picture. Nothing asserts against it; re-pull rather than edit it.',
 };
 

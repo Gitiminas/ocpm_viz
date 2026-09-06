@@ -115,14 +115,14 @@ asserts a count.
 ## 4. The data-layer gate
 
 `scripts/rpc-check.mjs` is the acceptance check for `sql/fe_layer.sql`; run it after any change
-there. It pulls one real payload with `psql -Atc "SELECT api.get_object_graph(repo, seed, degree)"`,
+there. It pulls one real payload with `psql -Atc "SELECT api.get_sublog(repo, seed, degree)"`,
 then asserts in order:
 
 - `findGraphProblems()` returns `[]` — the same validator every fixture passes.
 - The contract facts it has no opinion on: `contract_version === 2`; every event time and interval
   bound parseable by `Date.parse`; activities inside the closed vocabulary; qualifiers among the closed four; `link_methods` an array containing `method`; no `repo`-typed object; no
   `is_bot`; no `CommitsPushed` event.
-- The same payload through `loadObjectGraph`, so the loader is exercised and not only the validator.
+- The same payload through `loadSubLog`, so the loader is exercised and not only the validator.
 - Both temporal modes through the real layout pipeline: finite x and y, every issue and PR in a band
   resolving to a finite y, one interval per commit, forward-going lifecycle extents, every link
   endpoint anchoring to finite coordinates.
@@ -232,7 +232,7 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   3 and 4, which WSL interop does not pass to a Windows binary; and under
   `--virtual-time-budget` the clock **pauses while a fetch is pending**, so the overlay's own
   200 ms delay can never elapse during the request it exists to report. The same-origin iframe probe
-  confirmed the reload fires (a second `get_object_graph` in the resource timings) but could not see
+  confirmed the reload fires (a second `get_sublog` in the resource timings) but could not see
   the overlay for that last reason. Verify by hand, or from a browser on the Windows side.
 - ⚠️ **Seed symmetry is checked for one triple, and only by URL.** `facebook/react` commit
   `0005d1e`, PR #14576 and issue #14578 were loaded at degree 2 by all three routes — direct RPC,

@@ -19,8 +19,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph, collectInstants } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog, collectInstants } from '../src/model/subLog.js';
 import { deriveBursts, indexBurstsByCommit } from '../src/model/bursts.js';
 import { buildNodes, assignRanks } from '../src/layout/nodes.js';
 import { createScales } from '../src/layout/scales.js';
@@ -30,7 +30,7 @@ import { createAnchors } from '../src/layout/anchors.js';
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture}.json`, import.meta.url), 'utf8'));
-const load = (fixture) => loadObjectGraph({ fixture }, { transport: fileTransport });
+const load = (fixture) => loadSubLog({ fixture }, { transport: fileTransport });
 
 const MARGIN = { top: 32, bottom: 150 };
 const MARGIN_LEFT = 180;
@@ -44,7 +44,7 @@ const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11',
  */
 async function layout(fixture, { mode = 'absolute' } = {}) {
   const graph = await load(fixture);
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
   const nodes = buildNodes({ graph, index, bursts, mode, laneTypes: LANES });
   const { rankTimes, rankMax } = assignRanks(nodes);

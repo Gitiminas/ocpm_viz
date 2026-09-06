@@ -5,7 +5,7 @@
  * like the real thing rather than like a file picker. A query names **a repository
  * and a seed object**; what comes back is the sub-log reached by traversing
  * outwards from that seed. Swapping to PostgREST means writing a sibling transport
- * that answers the same query against `get_object_graph` — nothing above the data
+ * that answers the same query against `get_sublog` — nothing above the data
  * layer changes.
  *
  * ⚠️ The honest limitation: there is no traversal here. A fixture is a sub-log that
@@ -101,7 +101,7 @@ export function resolveSeed(catalogue, query) {
   if (!seed) {
     throw new Error(
       `No sub-log has been built from seed "${query?.seed}" in ${repo.name}. ` +
-        `Seeding from an arbitrary object needs the get_object_graph RPC; until then ` +
+        `Seeding from an arbitrary object needs the get_sublog RPC; until then ` +
         `only these are servable: ${repo.seeds.map((entry) => entry.id).join(', ')}`,
     );
   }

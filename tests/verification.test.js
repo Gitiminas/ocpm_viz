@@ -11,8 +11,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph, collectInstants, findGraphProblems } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog, collectInstants, findGraphProblems } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { deriveCommitGroups } from '../src/model/commitGroups.js';
 import { buildNodes, assignRanks, filterNodes } from '../src/layout/nodes.js';
@@ -36,7 +36,7 @@ const ALL_FIXTURES = [
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture}.json`, import.meta.url), 'utf8'));
-const load = (fixture) => loadObjectGraph({ fixture }, { transport: fileTransport });
+const load = (fixture) => loadSubLog({ fixture }, { transport: fileTransport });
 
 const LANES = ['issue', 'pull_request', 'commit'];
 const MARGIN_LEFT = 180;
@@ -44,7 +44,7 @@ const PLOT_WIDTH = 1100;
 
 async function pipeline(fixture, { mode = 'absolute', state } = {}) {
   const graph = await load(fixture);
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
   const { groupsByCommit } = deriveCommitGroups(
     index.objectsOfType('commit'),
@@ -80,7 +80,7 @@ async function pipeline(fixture, { mode = 'absolute', state } = {}) {
   return { graph, index, state: activeState, groupsByCommit, nodes, rankOrder, geometry, objectRow, scales };
 }
 
-describe('every fixture is a valid ObjectGraph', () => {
+describe('every fixture is a valid SubLog', () => {
   for (const fixture of ALL_FIXTURES) {
     test(`${fixture} passes shape validation`, async () => {
       const raw = await fileTransport({ fixture });
@@ -273,7 +273,7 @@ describe('the large sub-log behaves (F10)', () => {
 
   test('folding reduces the drawn commit count substantially', async () => {
     const graph = await load('F10');
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const bursts = deriveBursts(index.objectsOfType('commit'));
     const folded = buildNodes({ graph, index, bursts, expandedBursts: new Set(), laneTypes: LANES });
     const expanded = buildNodes({

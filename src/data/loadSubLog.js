@@ -12,7 +12,7 @@
  * which is how a picture is reproduced.
  */
 
-import { assertValidGraph, normalizeGraph } from '../model/objectGraph.js';
+import { assertValidGraph, normalizeGraph } from '../model/subLog.js';
 import { fixtureTransport } from './fixtures.js';
 
 /**
@@ -25,9 +25,9 @@ import { fixtureTransport } from './fixtures.js';
  * @param {object} query               what to select
  * @param {{transport?: Function}} options  injectable transport, for tests and for
  *                                          the later PostgREST swap
- * @returns {Promise<object>} a validated, normalized `ObjectGraph`
+ * @returns {Promise<object>} a validated, normalized `SubLog`
  */
-export async function loadObjectGraph(query = {}, { transport = fixtureTransport } = {}) {
+export async function loadSubLog(query = {}, { transport = fixtureTransport } = {}) {
   const raw = await transport(query);
   assertValidGraph(raw);
   const graph = normalizeGraph(raw);

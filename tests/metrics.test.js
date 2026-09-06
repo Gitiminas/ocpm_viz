@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { normalizeGraph } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { normalizeGraph } from '../src/model/subLog.js';
 import {
   objectLifetime,
   aggregateDuration,
@@ -19,7 +19,7 @@ import { formatDuration, formatApproxDuration } from '../src/render/format.js';
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture || 'F1'}.json`, import.meta.url), 'utf8'));
-const loadF1 = () => loadObjectGraph({ fixture: 'F1' }, { transport: fileTransport });
+const loadF1 = () => loadSubLog({ fixture: 'F1' }, { transport: fileTransport });
 
 const HOUR = 3600000;
 const DAY = 24 * HOUR;

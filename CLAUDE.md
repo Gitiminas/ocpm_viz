@@ -18,7 +18,7 @@ diff, so verification matters more than usual.
 |---|---|
 | `README.md` | Human entry point: run it, test it, extend it. Keep current |
 | `docs/ARCHITECTURE.md` | The frontend: folders, seams, data flow, layout traps |
-| `docs/DATA_LAYER.md` | Schemas `fe` and `api`, the four RPCs, the `ObjectGraph` and DFG payloads, the adapters |
+| `docs/DATA_LAYER.md` | Schemas `fe` and `api`, the four RPCs, the `SubLog` and DFG payloads, the adapters |
 | `docs/DATA_CONTRACT.md` | The written record of what exists upstream. The database itself is ground truth |
 | `docs/VERIFICATION.md` | What was checked and how. §5 is the not-verified list — read it before trusting a figure |
 
@@ -56,7 +56,7 @@ diff, so verification matters more than usual.
     history, or rewrite it from a description that still cites it. The fix is on the document.
 - **There is no "case".** OCPM removes the case notion: an event relates to several objects, none
   privileged. Never use `case` in names, comments, SQL or UI labels; the vocabulary is
-  `objectGraph` / `subLog` and the RPC is `get_object_graph`.
+  `subLog` (`SubLog` for the payload) and the RPC is `get_sublog`.
 - **Never modify the shared upstream's data or definitions.** No `UPDATE`, `DELETE`, `DROP`,
   `TRUNCATE`, no refreshes, no altering a view. The relations are shared and read-only. Indexes on
   them are the exception: they belong to this project, and `sql/fe_layer.sql` §0 creates 19 with
@@ -98,7 +98,7 @@ diff, so verification matters more than usual.
   `actor:<login>` survives **in the fixtures only**: `ocel-data.json` has no numeric actor id, while
   the live payload is already `actor:<actor_id>`.
 - **Modularity is a hard requirement.** Data access, layout, rendering and stats stay separable.
-  `loadObjectGraph(query) -> ObjectGraph` and `loadDfg(query) -> DFG` are the only data entry points.
+  `loadSubLog(query) -> SubLog` and `loadDfg(query) -> DFG` are the only data entry points.
 - No bundler, framework or TypeScript. Native ES modules need no build step.
 - **Tests run with `npm test`** (`node --test`); `npm run test:watch` to watch. Files are
   `tests/*.test.js` and discovery is automatic, so do not pass a path.

@@ -24,7 +24,7 @@
  * server is down would be worse than one that starts on fixtures and says so.
  */
 
-import { loadObjectGraph } from './loadObjectGraph.js';
+import { loadSubLog } from './loadSubLog.js';
 import { loadDfg } from './loadDfg.js';
 import {
   loadCatalogue,
@@ -66,7 +66,7 @@ function fixtureSource() {
       return searchFixtureSeeds(await catalogue(), repo, text, options);
     },
     loadSubLog(query) {
-      return loadObjectGraph(query, { transport: fixtureTransport });
+      return loadSubLog(query, { transport: fixtureTransport });
     },
     // The process map is whole-log and the fixtures hold sub-logs; the capability flag
     // is what the page reads, the traversalEditable pattern.
@@ -96,14 +96,14 @@ function fixtureSource() {
   };
 }
 
-/** The database source: PostgREST in front of `api.get_object_graph`. */
+/** The database source: PostgREST in front of `api.get_sublog`. */
 function databaseSource() {
   return {
     name: 'database',
     listRepos: listDbRepos,
     searchSeeds: searchDatabaseSeeds,
     loadSubLog(query) {
-      return loadObjectGraph(query, { transport: rpcTransport });
+      return loadSubLog(query, { transport: rpcTransport });
     },
     dfgAvailable: true,
     loadDfg(repo) {

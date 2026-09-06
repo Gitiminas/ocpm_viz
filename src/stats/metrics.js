@@ -5,7 +5,7 @@
  * That is deliberate: metrics must respond to toggles. Hiding comments has to
  * recompute gaps, and a server-side precomputation would silently answer "no".
  *
- * Pure functions over an `ObjectGraph` — no DOM, no fetching — so they can be
+ * Pure functions over an `SubLog` — no DOM, no fetching — so they can be
  * checked directly against fixtures.
  *
  * The Stats page presents these as a per-object table that aggregates on demand.

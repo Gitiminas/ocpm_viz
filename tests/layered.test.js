@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { LANE_TYPES } from '../src/model/activities.js';
 import { buildStructuralNodes, buildStructuralEdges } from '../src/layout/structural.js';
@@ -35,8 +35,8 @@ const fileTransport = async (query) =>
 const BOX = { width: 1100, height: 620, padding: 60 };
 
 async function layeredFor(fixture, { expandedBursts = new Set() } = {}) {
-  const graph = await loadObjectGraph({ fixture }, { transport: fileTransport });
-  const index = indexObjectGraph(graph);
+  const graph = await loadSubLog({ fixture }, { transport: fileTransport });
+  const index = indexSubLog(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
   const nodes = buildStructuralNodes({ index, bursts, expandedBursts, laneTypes: LANE_TYPES });
   const edges = buildStructuralEdges(graph.links, nodes);

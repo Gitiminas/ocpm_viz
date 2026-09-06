@@ -20,7 +20,7 @@ import {
   DEFAULT_BASE_URL,
   TRAVERSAL_DEGREE,
 } from '../src/data/api.js';
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
 import { loadDfg } from '../src/data/loadDfg.js';
 import { DFG_CONTRACT_VERSION } from '../src/model/dfg.js';
 import { resolveQuery } from '../src/data/source.js';
@@ -50,14 +50,14 @@ const MINIMAL_GRAPH = {
 };
 
 describe('the RPC transport asks for the right thing', () => {
-  test('posts to /rpc/get_object_graph with SQL parameter names', async () => {
+  test('posts to /rpc/get_sublog with SQL parameter names', async () => {
     const { fetchImpl, calls } = stubFetch({ status: 200, body: MINIMAL_GRAPH });
     const transport = createRpcTransport({ fetchImpl });
 
     await transport({ repo: 'microsoft/vscode', seed: 'pr:1', traversalDegree: 2 });
 
     assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, `${DEFAULT_BASE_URL}/rpc/get_object_graph`);
+    assert.equal(calls[0].url, `${DEFAULT_BASE_URL}/rpc/get_sublog`);
     assert.equal(calls[0].init.method, 'POST');
     // PostgREST resolves the overload by ARGUMENT NAME, so these must match the SQL
     // exactly. A typo here is a 404 "could not find the function", not a 400 — which
@@ -111,13 +111,13 @@ describe('the RPC transport asks for the right thing', () => {
       repo: 'r',
       seed: 's',
     });
-    assert.equal(calls[0].url, 'https://example.test/api/rpc/get_object_graph');
+    assert.equal(calls[0].url, 'https://example.test/api/rpc/get_sublog');
   });
 });
 
 describe('failures arrive as something a person can act on', () => {
   test("the RPC's own hint survives into the error message", async () => {
-    // This is the shape api.get_object_graph really returns for a display number
+    // This is the shape api.get_sublog really returns for a display number
     // typed where a database id belongs — the single most likely user error.
     const { fetchImpl } = stubFetch({
       status: 400,
@@ -152,9 +152,9 @@ describe('failures arrive as something a person can act on', () => {
 });
 
 describe('the transport is a drop-in for the fixture transport', () => {
-  test('loadObjectGraph validates an RPC payload the same way it validates a fixture', async () => {
+  test('loadSubLog validates an RPC payload the same way it validates a fixture', async () => {
     const { fetchImpl } = stubFetch({ status: 200, body: MINIMAL_GRAPH });
-    const graph = await loadObjectGraph(
+    const graph = await loadSubLog(
       { repo: 'microsoft/vscode', seed: 'pr:1', traversalDegree: 2 },
       { transport: createRpcTransport({ fetchImpl }) },
     );
@@ -178,7 +178,7 @@ describe('the transport is a drop-in for the fixture transport', () => {
 
     await assert.rejects(
       () =>
-        loadObjectGraph(
+        loadSubLog(
           { repo: 'r', seed: 's' },
           { transport: createRpcTransport({ fetchImpl }) },
         ),

@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph, normalizeGraph } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog, normalizeGraph } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { deriveCommentBursts } from '../src/model/commentBursts.js';
 import { isUnmergedClose } from '../src/model/activities.js';
@@ -21,11 +21,11 @@ import {
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture || 'F1'}.json`, import.meta.url), 'utf8'));
-const loadF1 = () => loadObjectGraph({ fixture: 'F1' }, { transport: fileTransport });
+const loadF1 = () => loadSubLog({ fixture: 'F1' }, { transport: fileTransport });
 
 async function f1Context({ mode = 'absolute', expandedBursts = new Set() } = {}) {
   const graph = await loadF1();
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
   const nodes = buildNodes({ graph, index, bursts, expandedBursts, mode });
   return { graph, index, bursts, nodes };
@@ -114,7 +114,7 @@ describe('multiple issues and PRs all render — the singleton bug', () => {
 
   test('both issues and both PRs contribute nodes', () => {
     const graph = twoOfEach();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const nodes = buildNodes({ graph, index, bursts: [] });
 
     const issueObjects = new Set(nodes.filter((n) => n.lane === 'issue').map((n) => n.objectId));
@@ -127,7 +127,7 @@ describe('multiple issues and PRs all render — the singleton bug', () => {
 
   test('a sub-log with no commits produces no commit nodes and does not throw', () => {
     const graph = twoOfEach();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const nodes = buildNodes({ graph, index, bursts: [] });
     assert.equal(nodes.filter((n) => n.lane === 'commit').length, 0);
   });
@@ -139,7 +139,7 @@ describe('multiple issues and PRs all render — the singleton bug', () => {
       events: [{ id: 'e1', activity: 'PullRequestOpened', time: '2025-01-01T00:00:00Z', object_id: 'pr:9' }],
       links: [],
     });
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const nodes = buildNodes({ graph, index, bursts: [] });
     assert.equal(nodes.length, 1);
     assert.equal(nodes[0].lane, 'pull_request');
@@ -195,7 +195,7 @@ describe('ranking and filtering', () => {
 describe('relationship toggles are derived, not enumerated', () => {
   test('F1 yields the four evidence × type-pair combinations', async () => {
     const graph = await loadF1();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const groups = deriveRelGroups(graph.links, index.byId);
 
     const summary = groups.map((g) => [g.key, g.pairs.map((p) => p.label).sort()]);
@@ -207,7 +207,7 @@ describe('relationship toggles are derived, not enumerated', () => {
 
   test('every derived pair starts visible', async () => {
     const graph = await loadF1();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const groups = deriveRelGroups(graph.links, index.byId);
     const state = resetToggles(createState(), { relGroups: groups });
     assert.equal(Object.keys(state.relPairs).length, 4);
@@ -216,7 +216,7 @@ describe('relationship toggles are derived, not enumerated', () => {
 
   test('every link resolves to a toggle key', async () => {
     const graph = await loadF1();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const groups = deriveRelGroups(graph.links, index.byId);
     const state = resetToggles(createState(), { relGroups: groups });
     // No exemption: every link in the bundle is object→object, so every one of them
@@ -230,7 +230,7 @@ describe('relationship toggles are derived, not enumerated', () => {
 
   test('retired vocabulary does not appear in any toggle key', async () => {
     const graph = await loadF1();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const groups = deriveRelGroups(graph.links, index.byId);
     assert.doesNotMatch(JSON.stringify(groups), /inferred/);
   });
@@ -287,7 +287,7 @@ function repeatedCommitGraph() {
 describe('a commit observed in several pushes', () => {
   const build = () => {
     const graph = repeatedCommitGraph();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     return buildNodes({ graph, index, bursts: [] }).filter((n) => n.lane === 'commit');
   };
 
@@ -349,7 +349,7 @@ describe('a commit observed in several pushes', () => {
 describe('repeat observations get their own row, and pushes are attributed per push', () => {
   const context = () => {
     const graph = repeatedCommitGraph();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const nodes = buildNodes({ graph, index, bursts: [] });
     for (const node of nodes) node.x = 0;
     return { graph, index, nodes };
@@ -365,7 +365,7 @@ describe('repeat observations get their own row, and pushes are attributed per p
 
   test('no row is reserved when nothing repeats', async () => {
     const graph = await loadF1();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const nodes = buildNodes({ graph, index, bursts: deriveBursts(index.objectsOfType('commit')) });
     const { repeatRow } = packRows(nodes, ['commit'], {});
     assert.equal(repeatRow, null, 'F1 has no repeated commit, so the lane must not grow');
@@ -375,7 +375,7 @@ describe('repeat observations get their own row, and pushes are attributed per p
     // Events are supplied out of order on purpose: the last one written is the
     // 15-stable push, the earliest is 15.6-dev. Overwriting would pick the wrong one.
     const graph = repeatedCommitGraph();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const commit = index.objectsOfType('commit')[0];
     const first = index.eventsOf(commit.id)[0];
     assert.equal(index.pusherByCommit.get(commit.id), first.actor_id);
@@ -395,7 +395,7 @@ describe('repeat observations get their own row, and pushes are attributed per p
 describe('discrete mode gives every drawn mark its own slot', () => {
   test('repeat observations are ranked, in time order, alongside the nodes', () => {
     const graph = repeatedCommitGraph();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const nodes = buildNodes({ graph, index, bursts: [] });
     const { rankOrder, rankMax, rankTimes } = assignRanks(nodes);
 
@@ -527,7 +527,7 @@ describe('comments close together in time fold into one mark', () => {
       ],
       links: [],
     });
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const commentBursts = deriveCommentBursts(index, ['issue', 'pull_request'], { windowDays });
     const nodes = buildNodes({
       graph, index, bursts: [], commentBursts, expandedCommentBursts: expanded,
@@ -598,7 +598,7 @@ describe('a comment run never crosses a lifecycle boundary', () => {
       })),
       links: [],
     });
-    return deriveCommentBursts(indexObjectGraph(graph), ['issue'], { windowDays });
+    return deriveCommentBursts(indexSubLog(graph), ['issue'], { windowDays });
   };
 
   test('post-close comments fold with each other, never with in-life ones', () => {
@@ -649,7 +649,7 @@ describe('an unfolded comment run can be folded back', () => {
       ],
       links: [],
     });
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const commentBursts = deriveCommentBursts(index, ['issue', 'pull_request'], { windowDays: 1 });
     const nodes = buildNodes({ graph, index, bursts: [], commentBursts, expandedCommentBursts: expanded });
     nodes.forEach((n, i) => { n.x = i * 50; n.y = 40; });
@@ -707,15 +707,15 @@ describe('the actor trail passes through folded marks', () => {
   test('a folded run of comments knows who wrote it', async () => {
     // Derived, not stored: the run's events carry the actors. Window wide enough that
     // F1's comments certainly fold.
-    const { loadObjectGraph } = await import('../src/data/loadObjectGraph.js');
-    const { indexObjectGraph } = await import('../src/model/objectGraph.js');
+    const { loadSubLog } = await import('../src/data/loadSubLog.js');
+    const { indexSubLog } = await import('../src/model/subLog.js');
     const { deriveCommentBursts } = await import('../src/model/commentBursts.js');
     const { readFile } = await import('node:fs/promises');
-    const graph = await loadObjectGraph(
+    const graph = await loadSubLog(
       { fixture: 'F1' },
       { transport: async () => JSON.parse(await readFile(new URL('./fixtures/F1.json', import.meta.url), 'utf8')) },
     );
-    const bursts = deriveCommentBursts(indexObjectGraph(graph), ['issue', 'pull_request'], { windowDays: 365 });
+    const bursts = deriveCommentBursts(indexSubLog(graph), ['issue', 'pull_request'], { windowDays: 365 });
     assert.ok(bursts.length > 0, 'F1 must fold at least one run at a year-wide window');
     for (const burst of bursts) {
       assert.ok(burst.actorIds.length > 0, `${burst.id} names no actors`);

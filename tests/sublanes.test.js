@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph, collectInstants, normalizeGraph } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog, collectInstants, normalizeGraph } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { buildNodes, assignRanks } from '../src/layout/nodes.js';
 import { createScales } from '../src/layout/scales.js';
@@ -59,7 +59,7 @@ function fakeSelection(recorded) {
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture}.json`, import.meta.url), 'utf8'));
-const load = (fixture) => loadObjectGraph({ fixture }, { transport: fileTransport });
+const load = (fixture) => loadSubLog({ fixture }, { transport: fileTransport });
 
 const MARGIN_LEFT = 180;
 const PLOT_WIDTH = 1100;
@@ -68,7 +68,7 @@ const LANES = ['issue', 'pull_request', 'commit'];
 /** Run the real layout pipeline over a fixture, exactly as the renderer does. */
 async function layout(fixture, { mode = 'absolute' } = {}) {
   const graph = await load(fixture);
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
   const nodes = buildNodes({ graph, index, bursts, mode, laneTypes: LANES });
   const { rankTimes, rankMax } = assignRanks(nodes);
@@ -145,7 +145,7 @@ describe('fixtures exhibit the properties they claim', () => {
 
   test('F7 really does have two pushes above the burst threshold', async () => {
     const graph = await load('F7');
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const bursts = deriveBursts(index.objectsOfType('commit'));
     assert.equal(bursts.length, 2, 'F7 must produce exactly two bursts');
     assert.ok(bursts.every((b) => b.size === 8));
@@ -171,7 +171,7 @@ describe('fixtures exhibit the properties they claim', () => {
     assert.equal(graph.objects.filter((o) => o.type === 'pull_request').length, 3);
     // Pushes of varying size, so some fold and some do not — a fixture where every
     // push folded would not exercise the mixed case.
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const bursts = deriveBursts(index.objectsOfType('commit'));
     assert.ok(bursts.length >= 3, 'several pushes must exceed the threshold');
     assert.ok(
@@ -372,7 +372,7 @@ describe('links that would coincide are fanned apart', () => {
 
   test('two links from one commit into the same column are separated', async () => {
     const graph = await load('F5');
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const drawn = [];
     const gLink = fakeSelection(drawn);
 
@@ -426,7 +426,7 @@ describe('links that would coincide are fanned apart', () => {
       method: 'head_sha', link_methods: ['head_sha'], n_methods: 1,
     }));
     const graph = normalizeGraph({ meta: {}, objects, events: [], links });
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const drawn = [];
 
     renderLinks({
@@ -465,7 +465,7 @@ describe('links that would coincide are fanned apart', () => {
     // would find only one of the two, which is why this asks about either end.
     const commitId = 'commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3';
     const graph = await load('F1');
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const touching = graph.links.filter((l) => l.source === commitId || l.target === commitId);
     assert.equal(touching.length, 2);
 
@@ -485,7 +485,7 @@ describe('links that would coincide are fanned apart', () => {
      * tool exists to show goes with it.
      */
     const graph = await load('F5');
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const commit = graph.objects.find((o) => o.type === 'commit');
     const into = graph.links.filter((l) => l.target === commit.id);
     assert.equal(into.length, 2, 'F5 must have one commit reached by two PRs');

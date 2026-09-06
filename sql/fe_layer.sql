@@ -1,7 +1,7 @@
 -- =====================================================================================
 -- fe_layer.sql — the PostgREST data layer
 --
--- Produces the frontend's `ObjectGraph` JSON (docs/DATA_LAYER.md) from the upstream
+-- Produces the frontend's `SubLog` JSON (docs/DATA_LAYER.md) from the upstream
 -- relations it reads: three base tables, two identity views and twelve mv_* views
 -- (docs/DATA_CONTRACT.md §3). Nothing here reads an `ocel_*`
 -- view; nothing here modifies anything upstream except by adding indexes, which this
@@ -14,7 +14,7 @@
 --   §3  intervals      fe.interval_{issue,pull_request}
 --   §4  events         fe.event
 --   §5  links          fe.link
---   §6  the RPC        api.get_object_graph(repo, seed, traversal_degree)
+--   §6  the RPC        api.get_sublog(repo, seed, traversal_degree)
 --   §7  diagnostics    the drop counts these views are obliged to report
 --   §8  seed search    fe.seed_lookup
 --   §9  the RPC        api.search_seeds(...)
@@ -1145,7 +1145,7 @@ SELECT (SELECT count(*) FROM fe.link)     AS live_rows,
 -- =====================================================================================
 -- §6 — The RPC
 --
---   api.get_object_graph(repo, seed, traversal_degree)
+--   api.get_sublog(repo, seed, traversal_degree)
 --
 -- Never `get_case`. There is no case notion (CLAUDE.md): the API returns a
 -- SUB-LOG described by the query that produced it, not identified by a key.
@@ -1156,7 +1156,12 @@ SELECT (SELECT count(*) FROM fe.link)     AS live_rows,
 -- names these two as the pair never to conflate.
 -- =====================================================================================
 
-CREATE OR REPLACE FUNCTION api.get_object_graph(
+-- The function was named api.get_object_graph until 2026-09-06. CREATE OR REPLACE under
+-- the new name would leave the old one in place, still granted to web_anon by the
+-- schema-wide loop in postgrest_setup.sql, so it is dropped explicitly.
+DROP FUNCTION IF EXISTS api.get_object_graph(text, text, integer);
+
+CREATE OR REPLACE FUNCTION api.get_sublog(
   repo             text,
   seed             text,
   traversal_degree integer DEFAULT 1
@@ -1406,7 +1411,7 @@ BEGIN
                           || 'NOT joined to any GitHub account. The actor on '
                           || 'a CommitObserved event is the PUSHER.'),
        'source', jsonb_build_object(
-          'rpc',          'api.get_object_graph',
+          'rpc',          'api.get_sublog',
           'layer',        'sql/fe_layer.sql',
           'mv_refreshed', '2026-08-02T19:45:00+00:00')
     ),
@@ -1438,8 +1443,8 @@ BEGIN
 END;
 $fn$;
 
-COMMENT ON FUNCTION api.get_object_graph(text, text, integer) IS
-  'Returns one ObjectGraph sub-log (docs/DATA_LAYER.md). Seed is a prefixed object '
+COMMENT ON FUNCTION api.get_sublog(text, text, integer) IS
+  'Returns one sub-log as a SubLog payload (docs/DATA_LAYER.md). Seed is a prefixed object '
   'id: issue:<id>, pr:<id>, commit:<sha>. traversal_degree is SERVER-SIDE expansion, 0..2, '
   'default 1, and is unrelated to MAX_FOCUS_DEGREE. There is no case notion.';
 
@@ -1686,7 +1691,7 @@ $$;
 -- =====================================================================================
 -- §12.0 — The DFG's event layer, in OCEL 2.0 E2O shape: fe.dfg_event and fe.dfg_e2o
 --
--- Read ONLY by fe.dfg (§12). Trace's fe.event, fe.link and api.get_object_graph are
+-- Read ONLY by fe.dfg (§12). Trace's fe.event, fe.link and api.get_sublog are
 -- untouched, and so is every fixture.
 --
 -- fe.event carries ONE object per event, so §4 takes a push apart into one synthetic
@@ -2069,7 +2074,7 @@ BEGIN
     RAISE EXCEPTION 'max_results must be between 1 and 200, got %', max_results;
   END IF;
 
-  -- Same deterministic name resolution as get_object_graph: repo.name is not unique in
+  -- Same deterministic name resolution as get_sublog: repo.name is not unique in
   -- this database, so ties break on event volume rather than on whichever row came back.
   SELECT r.id INTO _repo_id
   FROM repo r
@@ -2131,7 +2136,7 @@ CREATE OR REPLACE FUNCTION api.list_repos()
 RETURNS TABLE (name text, repo_id bigint, available boolean, reason text, seeds bigint)
 LANGUAGE sql STABLE AS $$
   -- ONE row per name: the row with the most seeds, id as the tie-break — the same rule
-  -- get_object_graph resolves an ambiguous name by, so the picker offers exactly what
+  -- get_sublog resolves an ambiguous name by, so the picker offers exactly what
   -- the RPC would pick. The duplicate `kubernetes/kubernetes` stub (a recreated repo,
   -- 1 event, no seeds) is hidden rather than listed as a "no data" row: a picker row
   -- that cannot be chosen demonstrates nothing to a reader, and the ambiguity is
@@ -2175,7 +2180,7 @@ DECLARE
   _payload  jsonb;
 BEGIN
   ------------------------------------------------------------------------------------
-  -- Resolve the repository BY NAME, exactly as get_object_graph does (§6): repo.name is
+  -- Resolve the repository BY NAME, exactly as get_sublog does (§6): repo.name is
   -- not unique, ties break on event volume, and the ambiguity is reported rather than
   -- hidden. The two resolvers must never disagree about which repository a name means.
   ------------------------------------------------------------------------------------
@@ -2196,7 +2201,7 @@ BEGIN
        'repo',             _repo_nm,
        'repo_id',          _repo_id,
        'repo_ambiguous',   (_n_named > 1),
-       -- Its OWN counter, not the ObjectGraph's contract_version: the two payloads
+       -- Its OWN counter, not the SubLog's contract_version: the two payloads
        -- change independently, and a consumer of one must not fail on the other's bump.
        'dfg_contract_version', 3,
        'generated_at',     fe.utc(now()),

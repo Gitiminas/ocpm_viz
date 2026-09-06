@@ -72,8 +72,8 @@ export function isStructuralMode(mode) {
  *
  * @param {object} options
  * @param {string} options.mode
- * @param {object} options.graph                 the normalized ObjectGraph
- * @param {object} options.index                 from `indexObjectGraph`
+ * @param {object} options.graph                 the normalized SubLog
+ * @param {object} options.index                 from `indexSubLog`
  * @param {string[]} options.laneTypes            lane-bearing object types, in order
  * @param {string[]} options.visibleLanes         those the user has left switched on
  * @param {Array}  options.bursts

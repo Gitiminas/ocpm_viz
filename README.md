@@ -195,7 +195,7 @@ compare fill between shots and never against the box.
 | Path | What |
 |---|---|
 | `index.html` | The app shell: markup, CSS, one `<script type="module">` |
-| `src/data/` | `loadObjectGraph`, the two transports, source selection, seed parsing |
+| `src/data/` | `loadSubLog`, the two transports, source selection, seed parsing |
 | `src/model/` | Object graph validation and indexing, the closed vocabulary, evidence, bursts, groups |
 | `src/state/` | The `st` object, every visibility predicate, presets |
 | `src/layout/` | Scales, packing, lanes, anchors; the two structural arrangements. DOM-free |

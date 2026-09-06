@@ -2,7 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
 import { landmarks } from '../src/stats/metrics.js';
 import { formatInstant, formatDateMinute } from '../src/render/format.js';
 
@@ -29,7 +29,7 @@ describe('all times render in UTC, labelled', () => {
   test('the rendering is independent of the machine timezone', async () => {
     // Every formatter must give the same answer whatever TZ the viewer has set;
     // that is the whole point — a quoted instant must reproduce across machines.
-    const graph = await loadObjectGraph({ fixture: 'F1' }, { transport: fileTransport });
+    const graph = await loadSubLog({ fixture: 'F1' }, { transport: fileTransport });
     const rendered = landmarks(graph).map((entry) => formatInstant(entry.time));
     assert.ok(rendered.length > 0);
     assert.ok(rendered.every((text) => text.endsWith(' UTC')));

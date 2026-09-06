@@ -2,15 +2,15 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { collectInstants } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { collectInstants } from '../src/model/subLog.js';
 import { createScales, findLargeGaps, GAP_THRESHOLD_MS, MODES } from '../src/layout/scales.js';
 import { packRows, collisionThreshold, ROW_HEIGHT } from '../src/layout/packing.js';
 import { computeLaneGeometry, rowY } from '../src/layout/lanes.js';
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture || 'F1'}.json`, import.meta.url), 'utf8'));
-const loadF1 = () => loadObjectGraph({ fixture: 'F1' }, { transport: fileTransport });
+const loadF1 = () => loadSubLog({ fixture: 'F1' }, { transport: fileTransport });
 
 const MARGIN_LEFT = 180;
 const PLOT_WIDTH = 1100;

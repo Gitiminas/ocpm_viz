@@ -1,6 +1,6 @@
 # Architecture
 
-The tool draws one sub-log — an `objectGraph` of issues, pull requests, commits and actors pulled
+The tool draws one sub-log — an `subLog` of issues, pull requests, commits and actors pulled
 around a seed — as a timeline or as a relationship picture. This file covers the frontend: the
 folders, the seams between them, how data moves, and the traps in the layout code. Everything
 server-side is in `DATA_LAYER.md`.
@@ -13,7 +13,7 @@ modules loaded straight from `index.html`; D3 7.8.5 from a CDN as the global `d3
 has no dependencies at all. Tests are `node --test` (`npm test`), 824 tests over 34 files.
 
 ```
-PostgreSQL  →  fe views  →  api.get_object_graph  →  PostgREST  →  loadObjectGraph
+PostgreSQL  →  fe views  →  api.get_sublog  →  PostgREST  →  loadSubLog
                                                                         ↓
                                             model (index, bursts, groups) + state
                                                                         ↓
@@ -22,11 +22,11 @@ PostgreSQL  →  fe views  →  api.get_object_graph  →  PostgREST  →  loadO
                                                      render (SVG layers)
 ```
 
-`loadObjectGraph(query) -> ObjectGraph` is the sub-log data entry point, and
+`loadSubLog(query) -> SubLog` is the sub-log data entry point, and
 `loadDfg(query) -> DFG` (the whole-log directly-follows graph, for the Process page) is its one
 sibling — nothing else above the data layer may fetch. Both take a transport, so the same code
 path serves a local fixture and a live RPC; `data/source.js` picks which by `?source=`. Four
-RPCs exist (`get_object_graph`, `search_seeds`, `list_repos`, `get_dfg`); their shapes, the
+RPCs exist (`get_sublog`, `search_seeds`, `list_repos`, `get_dfg`); their shapes, the
 `fe` views, the two admission rules and the evidence mapping are all in `DATA_LAYER.md`.
 
 ## Folder map
@@ -41,7 +41,7 @@ this table is the responsibility map.
 | Module | Responsibility |
 |---|---|
 | `main.js` | Boot, control binding, `load` / `redraw` / `refreshStats`. Wiring only. |
-| `data/loadObjectGraph.js` | The one entry point: transport → validate → normalize. Also `describeSubLog`, `summarizeSubLog`, `seedObjects`. |
+| `data/loadSubLog.js` | The one entry point: transport → validate → normalize. Also `describeSubLog`, `summarizeSubLog`, `seedObjects`. |
 | `data/api.js` | PostgREST transports: the RPC, seed search, repo list. `TRAVERSAL_DEGREE` 0–2, default 1. |
 | `data/fixtures.js` | Serve a `{repo, seed}` query from `tests/fixtures/` via `catalogue.json`. |
 | `data/source.js` | Fixtures or database behind one shape, chosen by `?source=`. Both async, so the branch never reaches `main.js`. |
@@ -50,7 +50,7 @@ this table is the responsibility map.
 | `model/dfg.js` | DFG validation (closed vocabularies, nonnegative counts, `events ≤ occurrences`, per-type conservation in occurrences, no evidence on a succession), one-timestamp normalization, and the Process page's derivations: `deriveDfgToggles`, `filterDfg`, `dfgRangeScale`. |
 | `layout/dfg.js` | The process map's arrangement: lane rows, lifecycle reading order, forward arcs above / rework below, loops, fanned cross bundles, `dfgEdgeWidth` (√, clamped, pinned to the unfiltered maximum via the `maxSuccessions` override). |
 | `render/dfg.js` | The Process page's renderer: lane bands, activity marks, succession edges with widths and counts, hovercards (labels bound to the same card, hover targets in their own layer, thinnest topmost), focus dimming, and the notice carrying the filter's own arithmetic. |
-| `model/objectGraph.js` | Shape validation (`findGraphProblems`), normalization, indexing. |
+| `model/subLog.js` | Shape validation (`findGraphProblems`), normalization, indexing. |
 | `model/activities.js` | The closed vocabulary: 4 object types, 10 activities, 3 landmarks — plus `Push`, the process map's alone. |
 | `model/evidence.js` | 16 link methods → `validated` / `extracted`. |
 | `model/graph.js` | Adjacency and focus BFS (focus degree, max 2). |
@@ -82,7 +82,7 @@ this table is the responsibility map.
 | `render/format.js` | The one place a timestamp becomes text. All UTC. |
 | `render/tooltip.js` `message.js` `helpStrip.js` | Tooltips, the "why it cannot draw" surface, the header help strip. |
 | `help/tips.js` | Help texts as data: key → sentence. |
-| `stats/metrics.js` | Durations, counts, gaps, outcomes. Pure functions over an `ObjectGraph`. |
+| `stats/metrics.js` | Durations, counts, gaps, outcomes. Pure functions over an `SubLog`. |
 
 `render/` has no lane module for `actor`: an actor is an object without a lane, so it is drawn
 by the sidebar, the actor card and its trail, never by `layout/lanes.js`. It is the only such
@@ -97,7 +97,7 @@ headers, page tabs. Read the URL (`queryFromUrl()`) and apply `mode`, `layout`, 
 `focusDegree` and `brush` *before* the first load. Create the source from `?source=`. Debounce
 `resize` to `measure()` + `render()`. Then `listRepos()` → `reload(initialQuery)`.
 
-**Load** (`load(query)`). `source.loadSubLog(query)` → `indexObjectGraph` → assign actor
+**Load** (`load(query)`). `source.loadSubLog(query)` → `indexSubLog` → assign actor
 colours → derive relationship groups, qualifiers, methods and commit groups → `resetToggles` →
 apply `?preset` if present → clear focus, expanded bursts, nudges and brush (not on first load)
 → `timeline.setGraph` → render the sidebar → `measure()` → `redraw()` → `refreshStats()`.
@@ -281,7 +281,7 @@ likely fix is the burst-collapse treatment commits already have.
 
 Every metric is computed in JS over `selectVisible(graph, state, groupsByCommit)`, so hiding
 comments changes the gap figures, and hiding a lane changes the counts.
-`stats/metrics.js` is pure functions over an `ObjectGraph`; `render/stats.js` only presents them.
+`stats/metrics.js` is pure functions over an `SubLog`; `render/stats.js` only presents them.
 SQL is reserved for figures spanning data that is *not* loaded, such as link coverage per
 repository. Precomputing sub-log metrics server-side would answer "comments hidden → gaps
 unchanged" silently, which is the failure the rule exists to prevent.

@@ -1,7 +1,7 @@
 /**
  * The selection model: a repository, and a seed object to traverse out from.
  *
- * This is the `get_object_graph` contract expressed in the UI. The tests below
+ * This is the `get_sublog` contract expressed in the UI. The tests below
  * check the two things that matter: that a query resolves to the sub-log it should,
  * and that a query which *cannot* be honoured fails loudly instead of quietly
  * returning something else.
@@ -21,7 +21,7 @@ import {
   scoreSeedRef,
   describeSeedRef,
 } from '../src/data/seedQuery.js';
-import { loadObjectGraph, describeSubLog, seedObjects } from '../src/data/loadObjectGraph.js';
+import { loadSubLog, describeSubLog, seedObjects } from '../src/data/loadSubLog.js';
 
 const run = promisify(execFile);
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -113,7 +113,7 @@ describe('the catalogue describes what can be asked for', () => {
 
 describe('a query resolves to the sub-log it names', () => {
   test('repo plus seed loads that seed’s sub-log', async () => {
-    const graph = await loadObjectGraph(
+    const graph = await loadSubLog(
       { repo: 'synthetic/fixture', seed: 'issue:242864' },
       { transport },
     );
@@ -123,7 +123,7 @@ describe('a query resolves to the sub-log it names', () => {
 
   test('a seed can be an object of any type, not only an issue', async () => {
     // "commit #123 — a single object" from the intended interaction.
-    const graph = await loadObjectGraph(
+    const graph = await loadSubLog(
       { repo: 'synthetic/fixture', seed: 'commit:aaaa111bbbb222ccc' },
       { transport },
     );
@@ -134,11 +134,11 @@ describe('a query resolves to the sub-log it names', () => {
   });
 
   test('two seeds in one repository give two different sub-logs', async () => {
-    const first = await loadObjectGraph(
+    const first = await loadSubLog(
       { repo: 'synthetic/fixture', seed: 'issue:1' },
       { transport },
     );
-    const second = await loadObjectGraph(
+    const second = await loadSubLog(
       { repo: 'synthetic/fixture', seed: 'issue:100' },
       { transport },
     );
@@ -146,12 +146,12 @@ describe('a query resolves to the sub-log it names', () => {
   });
 
   test('omitting the seed falls back to the repository’s first servable one', async () => {
-    const graph = await loadObjectGraph({ repo: 'synthetic/fixture' }, { transport });
+    const graph = await loadSubLog({ repo: 'synthetic/fixture' }, { transport });
     assert.equal(seedObjects(graph)[0].id, 'issue:242864');
   });
 
   test('the breadcrumb states the query: repo, seed, degree, and what came back', async () => {
-    const graph = await loadObjectGraph(
+    const graph = await loadSubLog(
       { repo: 'synthetic/fixture', seed: 'issue:242864' },
       { transport },
     );
@@ -178,7 +178,7 @@ describe('a query that cannot be honoured fails loudly', () => {
     // object cannot be seeded from. Returning some other sub-log would be worse.
     assert.throws(
       () => resolveSeed(cat, { repo: 'synthetic/fixture', seed: 'commit:deadbeef' }),
-      /No sub-log has been built from seed .*get_object_graph RPC/s,
+      /No sub-log has been built from seed .*get_sublog RPC/s,
     );
   });
 

@@ -2,7 +2,7 @@
  * `loadDfg(query, { transport }) -> DFG` — the data entry point for the whole-log
  * directly-follows graph, the second of the tool's two payloads.
  *
- * The same three steps as `loadObjectGraph`, in the same order and for the same reason:
+ * The same three steps as `loadSubLog`, in the same order and for the same reason:
  * the transport fetches, the validator runs on the RAW bundle so errors quote what
  * actually arrived, and normalization parses on a copy. The query is attached to `meta`
  * for reproducibility; it is not an identity — there is no case notion.

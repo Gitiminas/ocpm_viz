@@ -17,7 +17,7 @@
 
 /* global d3 */
 
-import { collectInstants } from '../model/objectGraph.js';
+import { collectInstants } from '../model/subLog.js';
 import { deriveBursts, indexBurstsByCommit } from '../model/bursts.js';
 import { deriveCommentBursts } from '../model/commentBursts.js';
 import { buildAdjacency, focusSet } from '../model/graph.js';

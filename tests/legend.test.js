@@ -5,8 +5,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import { LEGEND_SECTIONS, LEGEND_KEYS, legendPresence } from '../src/render/legend.js';
 import { legendKeyFor } from '../src/render/nodes.js';
 import { TYPE } from '../src/render/theme.js';
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { buildNodes } from '../src/layout/nodes.js';
 
@@ -60,8 +60,8 @@ async function legendKeysFromNodes() {
     JSON.parse(
       await readFile(new URL(`./fixtures/${query.fixture}.json`, import.meta.url), 'utf8'),
     );
-  const graph = await loadObjectGraph({ fixture: 'F1' }, { transport });
-  const index = indexObjectGraph(graph);
+  const graph = await loadSubLog({ fixture: 'F1' }, { transport });
+  const index = indexSubLog(graph);
   const bursts = deriveBursts(index.objectsOfType('commit'));
 
   const keys = new Set();

@@ -60,7 +60,7 @@ export function burstRadius(size) {
  * Build the relationships-mode nodes: one per visible object, plus one per collapsed burst.
  *
  * @param {object}   options
- * @param {object}   options.index            from `indexObjectGraph`
+ * @param {object}   options.index            from `indexSubLog`
  * @param {Array}    options.bursts           from `deriveBursts`
  * @param {Set}      options.expandedBursts   burst ids the user has unfolded
  * @param {string[]} options.laneTypes        lane-bearing object types

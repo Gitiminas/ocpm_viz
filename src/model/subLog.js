@@ -1,5 +1,5 @@
 /**
- * `ObjectGraph` shape validation and indexing.
+ * `SubLog` shape validation and indexing.
  *
  * The contract is in `docs/DATA_LAYER.md`. This module fails loudly on a
  * malformed bundle rather than letting a missing field surface later as an empty
@@ -116,7 +116,7 @@ export function assertValidGraph(graph) {
   const problems = findGraphProblems(graph);
   if (problems.length) {
     throw new Error(
-      `Malformed ObjectGraph (${problems.length} problem${problems.length === 1 ? '' : 's'}):\n` +
+      `Malformed SubLog (${problems.length} problem${problems.length === 1 ? '' : 's'}):\n` +
         problems.map((p) => `  - ${p}`).join('\n'),
     );
   }
@@ -155,7 +155,7 @@ export function normalizeGraph(graph) {
  * issue and the PR and silently discarded the rest; nothing in this module may
  * privilege a single object of a type.
  */
-export function indexObjectGraph(graph) {
+export function indexSubLog(graph) {
   const byId = new Map();
   for (const object of graph.objects) byId.set(object.id, object);
 

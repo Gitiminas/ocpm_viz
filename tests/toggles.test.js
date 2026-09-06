@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph } from '../src/model/objectGraph.js';
+import { loadSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog } from '../src/model/subLog.js';
 import { deriveCommitGroups, isCommitInVisibleGroup, UNLINKED_GROUP } from '../src/model/commitGroups.js';
 import {
   createState,
@@ -19,7 +19,7 @@ import {
   selectVisible,
   nudgesFor,
 } from '../src/state/state.js';
-import { summarizeSubLog } from '../src/data/loadObjectGraph.js';
+import { summarizeSubLog } from '../src/data/loadSubLog.js';
 import {
   serializeState,
   applyState,
@@ -31,12 +31,12 @@ import {
 
 const fileTransport = async (query) =>
   JSON.parse(await readFile(new URL(`./fixtures/${query.fixture}.json`, import.meta.url), 'utf8'));
-const load = (fixture) => loadObjectGraph({ fixture }, { transport: fileTransport });
+const load = (fixture) => loadSubLog({ fixture }, { transport: fileTransport });
 
 /** Load a fixture and wire up the full toggle vocabulary, as main.js does. */
 async function context(fixture) {
   const graph = await load(fixture);
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
   const relGroups = deriveRelGroups(graph.links, index.byId);
   const qualifiers = deriveQualifiers(graph.links);
   const methods = deriveMethods(graph.links);

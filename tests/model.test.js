@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { loadObjectGraph, describeSubLog, summarizeSubLog } from '../src/data/loadObjectGraph.js';
-import { indexObjectGraph, findGraphProblems, collectInstants } from '../src/model/objectGraph.js';
+import { loadSubLog, describeSubLog, summarizeSubLog } from '../src/data/loadSubLog.js';
+import { indexSubLog, findGraphProblems, collectInstants } from '../src/model/subLog.js';
 import { deriveBursts, indexBurstsByCommit, MIN_BURST } from '../src/model/bursts.js';
 import {
   buildAdjacency,
@@ -33,7 +33,7 @@ const fileTransport = async (query) => {
   return JSON.parse(await readFile(url, 'utf8'));
 };
 
-const loadF1 = () => loadObjectGraph({ fixture: 'F1' }, { transport: fileTransport });
+const loadF1 = () => loadSubLog({ fixture: 'F1' }, { transport: fileTransport });
 
 const commitsOf = (graph) => graph.objects.filter((o) => o.type === 'commit');
 
@@ -59,7 +59,7 @@ describe('F1 loads and validates', () => {
    */
   test('every actor is still reachable, from the events alone', async () => {
     const graph = await loadF1();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const attributed = graph.events.filter((event) => event.actor_id);
 
     assert.equal(attributed.length, 42, 'all 42 events must still name their actor');
@@ -96,7 +96,7 @@ describe('F1 loads and validates', () => {
       captured = await fileTransport(query);
       return captured;
     };
-    await loadObjectGraph({ fixture: 'F1' }, { transport: spy });
+    await loadSubLog({ fixture: 'F1' }, { transport: spy });
     // If normalizeGraph mutated in place, this would already be a Date.
     assert.equal(typeof captured.events[0].time, 'string');
   });
@@ -104,7 +104,7 @@ describe('F1 loads and validates', () => {
   test('the sub-log is described by its query, with no case notion', async () => {
     const graph = await loadF1();
     const description = describeSubLog(graph);
-    // The query is repo + seed + traversal degree — exactly what get_object_graph
+    // The query is repo + seed + traversal degree — exactly what get_sublog
     // is asked, and what a reader needs to reproduce the selection.
     assert.match(description, /microsoft\/vscode/);
     assert.match(description, /from issue #242864/);
@@ -445,7 +445,7 @@ describe('activity vocabulary is closed', () => {
 describe('indexing exposes collections, never a privileged first object', () => {
   test('objects are grouped by type', async () => {
     const graph = await loadF1();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     assert.equal(index.objectsOfType('issue').length, 1);
     assert.equal(index.objectsOfType('pull_request').length, 1);
     assert.equal(index.objectsOfType('commit').length, 32);
@@ -461,7 +461,7 @@ describe('indexing exposes collections, never a privileged first object', () => 
 
   test('events are grouped per object and sorted in time', async () => {
     const graph = await loadF1();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const events = index.eventsOf('issue:242864');
     assert.ok(events.length > 1);
     for (let i = 1; i < events.length; i++) {
@@ -602,7 +602,7 @@ describe('focus fades with distance, where it is asked to', () => {
 
   test('it grades a real focus set from the graph', async () => {
     const graph = await loadF1();
-    const index = indexObjectGraph(graph);
+    const index = indexSubLog(graph);
     const adjacency = buildAdjacency(graph.links, deriveBursts(index.objectsOfType('commit')));
     const seed = graph.objects.find((object) => object.type === 'pull_request').id;
     const set = focusSet(adjacency, seed, 2);

@@ -1,6 +1,6 @@
 # The data layer
 
-Everything between the shared upstream database and `loadObjectGraph()`. Two schemas in
+Everything between the shared upstream database and `loadSubLog()`. Two schemas in
 PostgreSQL, four RPCs over PostgREST, and two client-side adapters. Upstream is read-only and
 described in `DATA_CONTRACT.md`. The relation-by-relation inventory is `sql/fe_layer.sql` itself,
 which this document explains rather than repeats.
@@ -63,7 +63,7 @@ now exist.
 last written. Row counts alone cannot prove freshness, so the last-written column is the useful
 one: compare it against the upstream refresh.
 
-## The ObjectGraph payload
+## The SubLog payload
 
 One RPC returns one bundle. `meta.contract_version` is `2`; a consumer that does not understand
 it should fail rather than render something subtly wrong.
@@ -108,7 +108,7 @@ than no field.
 
 ### What the client does with it
 
-`loadObjectGraph(query, {transport})` is the only data entry point. It calls the transport,
+`loadSubLog(query, {transport})` is the only data entry point. It calls the transport,
 validates the raw bundle with `findGraphProblems` (before normalising, so errors quote what
 arrived), parses every timestamp into `Date` on a copy of the bundle, and adds `meta.query`. That
 is all. The renderer cannot tell a fixture from a live payload.
@@ -139,7 +139,7 @@ Of the loosely-typed bags, the client reads little:
 
 The second payload: one whole-log directly-follows graph per repository, from
 `api.get_dfg(repo)` over `fe.dfg_mat` (`sql/fe_layer.sql` §12.0–§13, with the measurements).
-`meta.dfg_contract_version` is `3` — its own counter, not the ObjectGraph's `contract_version`,
+`meta.dfg_contract_version` is `3` — its own counter, not the SubLog's `contract_version`,
 so the two payloads version independently.
 
 ```
@@ -326,7 +326,7 @@ All four are `POST /rpc/<name>` with a JSON body. The browser calls same-origin 
 `scripts/serve.mjs` proxies to PostgREST so the two share an origin, and answers 502 when
 PostgREST is unreachable.
 
-**`api.get_object_graph(repo text, seed text, traversal_degree int DEFAULT 1) RETURNS jsonb`.**
+**`api.get_sublog(repo text, seed text, traversal_degree int DEFAULT 1) RETURNS jsonb`.**
 Returns the payload above. Raises on a degree outside 0..2, a repository name it cannot find, a
 seed that is not an issue, pull request or commit in that repository, and a traversal that returns
 nothing. The degree range mirrors `TRAVERSAL_DEGREE` in `src/data/api.js`; change them together.
@@ -376,7 +376,7 @@ name, most seeds winning. `available` is computed from `fe.seed_lookup` rather t
 `reason` is `'No issues, pull requests or commits in the window.'` when it is false.
 
 **`api.get_dfg(repo)`** returns the DFG payload above, read from `fe.dfg_mat` (0.5 s, 59 KB
-for vscode on 2026-09-06). The same name resolution and ambiguity report as `get_object_graph` —
+for vscode on 2026-09-06). The same name resolution and ambiguity report as `get_sublog` —
 the two resolvers must never disagree about which repository a name means. It raises only on an unknown
 name; there is no seed to check and no degree to bound. Gate: `scripts/dfg-check.mjs`.
 

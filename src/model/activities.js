@@ -267,7 +267,7 @@ export function findActivityProblems(events, objectsById) {
       continue;
     }
     const object = objectsById[event.object_id];
-    if (!object) continue; // reported separately by objectGraph validation
+    if (!object) continue; // reported separately by subLog validation
     const allowed = ACTIVITIES[event.activity].objectTypes;
     if (!allowed.includes(object.type)) {
       mismatched.add(`${event.activity} on a ${object.type} object (allowed: ${allowed.join(', ')})`);

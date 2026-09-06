@@ -51,7 +51,7 @@ function lifecycleSegment(intervals, time) {
 /**
  * Group each object's comments into runs no more than `windowDays` apart.
  *
- * @param {object}   index       from `indexObjectGraph`
+ * @param {object}   index       from `indexSubLog`
  * @param {string[]} laneTypes   lane-bearing types whose comments can fold (never commit)
  * @param {{windowDays?: number}} options
  * @returns {Array} bursts, each `{id, objectId, lane, eventIds, actorIds, time, end, size}`
@@ -64,7 +64,7 @@ export function deriveCommentBursts(index, laneTypes = ['issue', 'pull_request']
   for (const laneType of laneTypes) {
     if (laneType === 'commit') continue;
     for (const object of index.objectsOfType(laneType)) {
-      // `eventsOf` is already sorted by time (`indexObjectGraph`), so a single pass
+      // `eventsOf` is already sorted by time (`indexSubLog`), so a single pass
       // chains each run; re-sorting here would be a second opinion about order.
       const comments = index.eventsOf(object.id).filter((event) => event.comment);
       let run = [];

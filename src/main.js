@@ -8,11 +8,11 @@
 
 /* global d3 */
 
-import { summarizeSubLog, seedObjects } from './data/loadObjectGraph.js';
+import { summarizeSubLog, seedObjects } from './data/loadSubLog.js';
 import { createSource, resolveQuery } from './data/source.js';
 import { TRAVERSAL_DEGREE } from './data/api.js';
 import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
-import { indexObjectGraph } from './model/objectGraph.js';
+import { indexSubLog } from './model/subLog.js';
 import { LANE_TYPES, activityShortLabel } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
 import { MODES, TEMPORAL_MODES, STRUCTURAL_LAYOUTS, isStructuralMode } from './layout/engine.js';
@@ -299,7 +299,7 @@ const timeline = createTimeline({
 
 async function load(query) {
   const graph = await source.loadSubLog(query);
-  const index = indexObjectGraph(graph);
+  const index = indexSubLog(graph);
 
   const actors = index.objectsOfType('actor');
   const actorColors = new Map(actors.map((actor, i) => [actor.id, actorColor(i)]));
@@ -1099,7 +1099,7 @@ for (const dashboard of [
 
 /**
  * The selection is a **query**: a repository, and a seed object to traverse out
- * from. That is the `get_object_graph` contract, and the UI now names it rather
+ * from. That is the `get_sublog` contract, and the UI now names it rather
  * than picking a file.
  *
  * `?repo=` and `?seed=` make a selection reproducible by link. `?fixture=` is kept
@@ -1423,7 +1423,7 @@ function updateTraversalInfo(graph) {
    *
    * On a fixture the degree was fixed when the fixture was built, so a stepper would be
    * a control that silently did nothing — the thing this project forbids.
-   * `get_object_graph` takes the degree as a parameter, so against the database the
+   * `get_sublog` takes the degree as a parameter, so against the database the
    * control is real. On fixtures it stays text.
    *
    * ⚠️ The range is 0–2 and the default 1 (`TRAVERSAL_DEGREE` in `data/api.js`).
