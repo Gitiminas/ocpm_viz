@@ -152,7 +152,7 @@ modulo the `CommitObserved` → `Push` rename, once the cross pass's tie order w
 explicitly — left to the id prefixes it had flipped 11,625 of vscode's 132,050 cross successions.
 
 The SQL's own diagnostics are separate and queried by hand: `fe.diag_sanity` (six checks — five must
-be 0, the sixth exactly 10 distinct activities), `fe.diag_link_staleness`,
+be 0, the sixth exactly 11 distinct activities), `fe.diag_link_staleness`,
 `fe.diag_ref_match_narrowing`, `fe.diag_link_methods`. See `DATA_LAYER.md`.
 
 ### The seed box, driven in a browser, 2026-09-01 — not re-run since

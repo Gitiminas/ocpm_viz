@@ -35,8 +35,7 @@ describe('node construction over F1', () => {
   test('every issue and PR event becomes a node', async () => {
     const { nodes } = await f1Context();
     // Issue lane: opened + closed + 2 comments. PR lane: opened + merged + closed
-    // + 3 comments. GitHub models PR comments as IssueCommented events attached to
-    // the PR object, which is why the PR lane carries more comment nodes.
+    // + 3 comments, which is why the PR lane carries more comment nodes.
     assert.equal(nodes.filter((n) => n.lane === 'issue').length, 4);
     assert.equal(nodes.filter((n) => n.lane === 'pull_request').length, 6);
     // 4 + 6 event nodes, plus 32 commits, accounts for every event in the sub-log.

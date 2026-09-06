@@ -7,7 +7,7 @@
       "mv_refreshed": "2026-08-02T19:45:00+00:00",
       "sample": "DFG1",
       "built_by": "scripts/pull-dfg.mjs",
-      "pulled_at": "2026-09-02T00:21:10.278Z",
+      "pulled_at": "2026-09-06T19:05:18.812Z",
       "note": "DFG SAMPLE, not a fixture. A snapshot of api.get_dfg output, for looking at the process map. Only its shape is asserted; re-pull rather than edit it."
     },
     "repo_id": 41881900,
@@ -17,7 +17,7 @@
       "commit_time": "first-seen in PushEvent, NOT real git commit time",
       "cross_edges": "Derived through the admitted links, which two admission rules narrow. Every cross-edge count is a floor, never a point estimate. One row per link class, link_-prefixed: the classification belongs to the link a succession rides on, never to the succession itself."
     },
-    "generated_at": "2026-09-02T00:21:09+00:00",
+    "generated_at": "2026-09-06T19:05:18+00:00",
     "activity_scope": "OCEL-strict + comments (reviews/dismissals/review-comments excluded)",
     "repo_ambiguous": false,
     "dfg_contract_version": 3
@@ -136,59 +136,17 @@
       "from_activity": "IssueReopened"
     },
     {
-      "objects": 4412,
+      "objects": 5,
       "object_type": "pull_request",
-      "successions": 15638,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented"
-    },
-    {
-      "objects": 2427,
-      "object_type": "pull_request",
-      "successions": 2487,
+      "successions": 5,
       "to_activity": "PullRequestClosed",
-      "from_activity": "IssueCommented"
-    },
-    {
-      "objects": 4137,
-      "object_type": "pull_request",
-      "successions": 4137,
-      "to_activity": "PullRequestMerged",
-      "from_activity": "IssueCommented"
-    },
-    {
-      "objects": 8,
-      "object_type": "pull_request",
-      "successions": 8,
-      "to_activity": "PullRequestMergedOffPlatform",
-      "from_activity": "IssueCommented"
-    },
-    {
-      "objects": 3,
-      "object_type": "pull_request",
-      "successions": 3,
-      "to_activity": "PullRequestOpened",
-      "from_activity": "IssueCommented"
-    },
-    {
-      "objects": 58,
-      "object_type": "pull_request",
-      "successions": 59,
-      "to_activity": "PullRequestReopened",
-      "from_activity": "IssueCommented"
+      "from_activity": "PullRequestClosed"
     },
     {
       "objects": 749,
       "object_type": "pull_request",
       "successions": 756,
-      "to_activity": "IssueCommented",
-      "from_activity": "PullRequestClosed"
-    },
-    {
-      "objects": 5,
-      "object_type": "pull_request",
-      "successions": 5,
-      "to_activity": "PullRequestClosed",
+      "to_activity": "PullRequestCommented",
       "from_activity": "PullRequestClosed"
     },
     {
@@ -206,10 +164,52 @@
       "from_activity": "PullRequestClosed"
     },
     {
+      "objects": 2427,
+      "object_type": "pull_request",
+      "successions": 2487,
+      "to_activity": "PullRequestClosed",
+      "from_activity": "PullRequestCommented"
+    },
+    {
+      "objects": 4412,
+      "object_type": "pull_request",
+      "successions": 15638,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "PullRequestCommented"
+    },
+    {
+      "objects": 4137,
+      "object_type": "pull_request",
+      "successions": 4137,
+      "to_activity": "PullRequestMerged",
+      "from_activity": "PullRequestCommented"
+    },
+    {
+      "objects": 8,
+      "object_type": "pull_request",
+      "successions": 8,
+      "to_activity": "PullRequestMergedOffPlatform",
+      "from_activity": "PullRequestCommented"
+    },
+    {
+      "objects": 3,
+      "object_type": "pull_request",
+      "successions": 3,
+      "to_activity": "PullRequestOpened",
+      "from_activity": "PullRequestCommented"
+    },
+    {
+      "objects": 58,
+      "object_type": "pull_request",
+      "successions": 59,
+      "to_activity": "PullRequestReopened",
+      "from_activity": "PullRequestCommented"
+    },
+    {
       "objects": 2141,
       "object_type": "pull_request",
       "successions": 2141,
-      "to_activity": "IssueCommented",
+      "to_activity": "PullRequestCommented",
       "from_activity": "PullRequestMerged"
     },
     {
@@ -223,21 +223,21 @@
       "objects": 6,
       "object_type": "pull_request",
       "successions": 6,
-      "to_activity": "IssueCommented",
+      "to_activity": "PullRequestCommented",
       "from_activity": "PullRequestMergedOffPlatform"
-    },
-    {
-      "objects": 6787,
-      "object_type": "pull_request",
-      "successions": 6787,
-      "to_activity": "IssueCommented",
-      "from_activity": "PullRequestOpened"
     },
     {
       "objects": 930,
       "object_type": "pull_request",
       "successions": 930,
       "to_activity": "PullRequestClosed",
+      "from_activity": "PullRequestOpened"
+    },
+    {
+      "objects": 6787,
+      "object_type": "pull_request",
+      "successions": 6787,
+      "to_activity": "PullRequestCommented",
       "from_activity": "PullRequestOpened"
     },
     {
@@ -262,17 +262,17 @@
       "from_activity": "PullRequestOpened"
     },
     {
-      "objects": 159,
-      "object_type": "pull_request",
-      "successions": 170,
-      "to_activity": "IssueCommented",
-      "from_activity": "PullRequestReopened"
-    },
-    {
       "objects": 52,
       "object_type": "pull_request",
       "successions": 60,
       "to_activity": "PullRequestClosed",
+      "from_activity": "PullRequestReopened"
+    },
+    {
+      "objects": 159,
+      "object_type": "pull_request",
+      "successions": 170,
+      "to_activity": "PullRequestCommented",
       "from_activity": "PullRequestReopened"
     },
     {
@@ -337,15 +337,6 @@
       "occurrences": 7333
     },
     {
-      "ends": 3639,
-      "events": 25971,
-      "starts": 473,
-      "objects": 8317,
-      "activity": "IssueCommented",
-      "object_type": "pull_request",
-      "occurrences": 25971
-    },
-    {
       "ends": 2603,
       "events": 3716,
       "starts": 234,
@@ -353,6 +344,15 @@
       "activity": "PullRequestClosed",
       "object_type": "pull_request",
       "occurrences": 3716
+    },
+    {
+      "ends": 3639,
+      "events": 25971,
+      "starts": 473,
+      "objects": 8317,
+      "activity": "PullRequestCommented",
+      "object_type": "pull_request",
+      "occurrences": 25971
     },
     {
       "ends": 14158,
@@ -437,39 +437,6 @@
       "link_qualifier": "references_issue"
     },
     {
-      "pairs": 1530,
-      "to_type": "pull_request",
-      "from_type": "commit",
-      "link_method": "head_sha",
-      "successions": 1664,
-      "to_activity": "IssueCommented",
-      "from_activity": "Push",
-      "link_evidence": "validated",
-      "link_qualifier": "contains_commit"
-    },
-    {
-      "pairs": 4147,
-      "to_type": "pull_request",
-      "from_type": "commit",
-      "link_method": "ref_match",
-      "successions": 4418,
-      "to_activity": "IssueCommented",
-      "from_activity": "Push",
-      "link_evidence": "extracted",
-      "link_qualifier": "contains_commit"
-    },
-    {
-      "pairs": 1420,
-      "to_type": "pull_request",
-      "from_type": "commit",
-      "link_method": "merge_commit_sha",
-      "successions": 1492,
-      "to_activity": "IssueCommented",
-      "from_activity": "Push",
-      "link_evidence": "validated",
-      "link_qualifier": "merge_commit"
-    },
-    {
       "pairs": 203,
       "to_type": "pull_request",
       "from_type": "commit",
@@ -490,6 +457,39 @@
       "from_activity": "Push",
       "link_evidence": "extracted",
       "link_qualifier": "contains_commit"
+    },
+    {
+      "pairs": 1530,
+      "to_type": "pull_request",
+      "from_type": "commit",
+      "link_method": "head_sha",
+      "successions": 1664,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "Push",
+      "link_evidence": "validated",
+      "link_qualifier": "contains_commit"
+    },
+    {
+      "pairs": 4147,
+      "to_type": "pull_request",
+      "from_type": "commit",
+      "link_method": "ref_match",
+      "successions": 4418,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "Push",
+      "link_evidence": "extracted",
+      "link_qualifier": "contains_commit"
+    },
+    {
+      "pairs": 1420,
+      "to_type": "pull_request",
+      "from_type": "commit",
+      "link_method": "merge_commit_sha",
+      "successions": 1492,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "Push",
+      "link_evidence": "validated",
+      "link_qualifier": "merge_commit"
     },
     {
       "pairs": 2997,
@@ -591,83 +591,6 @@
       "link_qualifier": "references_issue"
     },
     {
-      "pairs": 62,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "commit_message",
-      "successions": 63,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueClosed",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 1,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "issue_comment",
-      "successions": 1,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueClosed",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 140,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_body",
-      "successions": 141,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueClosed",
-      "link_evidence": "validated",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 3,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_body_refs",
-      "successions": 3,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueClosed",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 94,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_title",
-      "successions": 95,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueClosed",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 3,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_title_for",
-      "successions": 3,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueClosed",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 35,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "proximity",
-      "successions": 35,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueClosed",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
       "pairs": 7,
       "to_type": "pull_request",
       "from_type": "issue",
@@ -707,6 +630,83 @@
       "link_method": "pr_title",
       "successions": 4,
       "to_activity": "PullRequestClosed",
+      "from_activity": "IssueClosed",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 62,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "commit_message",
+      "successions": 63,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueClosed",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 1,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "issue_comment",
+      "successions": 1,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueClosed",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 140,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_body",
+      "successions": 141,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueClosed",
+      "link_evidence": "validated",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 3,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_body_refs",
+      "successions": 3,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueClosed",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 94,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_title",
+      "successions": 95,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueClosed",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 3,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_title_for",
+      "successions": 3,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueClosed",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 35,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "proximity",
+      "successions": 35,
+      "to_activity": "PullRequestCommented",
       "from_activity": "IssueClosed",
       "link_evidence": "extracted",
       "link_qualifier": "resolves"
@@ -855,94 +855,6 @@
       "link_qualifier": "references_issue"
     },
     {
-      "pairs": 6,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "branch_name",
-      "successions": 6,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 128,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "commit_message",
-      "successions": 147,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 297,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_body",
-      "successions": 376,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "validated",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 3,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_body_refs",
-      "successions": 3,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 134,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_title",
-      "successions": 167,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 7,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_title_for",
-      "successions": 9,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 4,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_title_symfony",
-      "successions": 5,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 50,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "proximity",
-      "successions": 58,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
       "pairs": 9,
       "to_type": "pull_request",
       "from_type": "issue",
@@ -993,6 +905,94 @@
       "link_method": "pr_title_for",
       "successions": 2,
       "to_activity": "PullRequestClosed",
+      "from_activity": "IssueCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 6,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "branch_name",
+      "successions": 6,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 128,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "commit_message",
+      "successions": 147,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 297,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_body",
+      "successions": 376,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueCommented",
+      "link_evidence": "validated",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 3,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_body_refs",
+      "successions": 3,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 134,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_title",
+      "successions": 167,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 7,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_title_for",
+      "successions": 9,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 4,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_title_symfony",
+      "successions": 5,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 50,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "proximity",
+      "successions": 58,
+      "to_activity": "PullRequestCommented",
       "from_activity": "IssueCommented",
       "link_evidence": "extracted",
       "link_qualifier": "resolves"
@@ -1229,50 +1229,6 @@
       "link_qualifier": "references_issue"
     },
     {
-      "pairs": 4,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "commit_message",
-      "successions": 4,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueOpened",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 4,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_body",
-      "successions": 4,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueOpened",
-      "link_evidence": "validated",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 4,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_title",
-      "successions": 4,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueOpened",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 33,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "proximity",
-      "successions": 33,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueOpened",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
       "pairs": 2,
       "to_type": "pull_request",
       "from_type": "issue",
@@ -1301,6 +1257,50 @@
       "link_method": "proximity",
       "successions": 1,
       "to_activity": "PullRequestClosed",
+      "from_activity": "IssueOpened",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 4,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "commit_message",
+      "successions": 4,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueOpened",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 4,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_body",
+      "successions": 4,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueOpened",
+      "link_evidence": "validated",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 4,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_title",
+      "successions": 4,
+      "to_activity": "PullRequestCommented",
+      "from_activity": "IssueOpened",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 33,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "proximity",
+      "successions": 33,
+      "to_activity": "PullRequestCommented",
       "from_activity": "IssueOpened",
       "link_evidence": "extracted",
       "link_qualifier": "resolves"
@@ -1471,12 +1471,45 @@
       "link_qualifier": "references_issue"
     },
     {
+      "pairs": 1,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "commit_message",
+      "successions": 1,
+      "to_activity": "PullRequestClosed",
+      "from_activity": "IssueReopened",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 1,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_body",
+      "successions": 1,
+      "to_activity": "PullRequestClosed",
+      "from_activity": "IssueReopened",
+      "link_evidence": "validated",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 1,
+      "to_type": "pull_request",
+      "from_type": "issue",
+      "link_method": "pr_title",
+      "successions": 1,
+      "to_activity": "PullRequestClosed",
+      "from_activity": "IssueReopened",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
       "pairs": 4,
       "to_type": "pull_request",
       "from_type": "issue",
       "link_method": "commit_message",
       "successions": 4,
-      "to_activity": "IssueCommented",
+      "to_activity": "PullRequestCommented",
       "from_activity": "IssueReopened",
       "link_evidence": "extracted",
       "link_qualifier": "resolves"
@@ -1487,7 +1520,7 @@
       "from_type": "issue",
       "link_method": "pr_body",
       "successions": 8,
-      "to_activity": "IssueCommented",
+      "to_activity": "PullRequestCommented",
       "from_activity": "IssueReopened",
       "link_evidence": "validated",
       "link_qualifier": "resolves"
@@ -1498,7 +1531,7 @@
       "from_type": "issue",
       "link_method": "pr_body_refs",
       "successions": 1,
-      "to_activity": "IssueCommented",
+      "to_activity": "PullRequestCommented",
       "from_activity": "IssueReopened",
       "link_evidence": "extracted",
       "link_qualifier": "resolves"
@@ -1509,40 +1542,7 @@
       "from_type": "issue",
       "link_method": "pr_title",
       "successions": 12,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueReopened",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 1,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "commit_message",
-      "successions": 1,
-      "to_activity": "PullRequestClosed",
-      "from_activity": "IssueReopened",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 1,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_body",
-      "successions": 1,
-      "to_activity": "PullRequestClosed",
-      "from_activity": "IssueReopened",
-      "link_evidence": "validated",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 1,
-      "to_type": "pull_request",
-      "from_type": "issue",
-      "link_method": "pr_title",
-      "successions": 1,
-      "to_activity": "PullRequestClosed",
+      "to_activity": "PullRequestCommented",
       "from_activity": "IssueReopened",
       "link_evidence": "extracted",
       "link_qualifier": "resolves"
@@ -1632,281 +1632,6 @@
       "successions": 1,
       "to_activity": "PullRequestReopened",
       "from_activity": "IssueReopened",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 1790,
-      "to_type": "commit",
-      "from_type": "pull_request",
-      "link_method": "head_sha",
-      "successions": 1909,
-      "to_activity": "Push",
-      "from_activity": "IssueCommented",
-      "link_evidence": "validated",
-      "link_qualifier": "contains_commit"
-    },
-    {
-      "pairs": 3804,
-      "to_type": "commit",
-      "from_type": "pull_request",
-      "link_method": "ref_match",
-      "successions": 3970,
-      "to_activity": "Push",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "contains_commit"
-    },
-    {
-      "pairs": 1254,
-      "to_type": "commit",
-      "from_type": "pull_request",
-      "link_method": "merge_commit_sha",
-      "successions": 1315,
-      "to_activity": "Push",
-      "from_activity": "IssueCommented",
-      "link_evidence": "validated",
-      "link_qualifier": "merge_commit"
-    },
-    {
-      "pairs": 4,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "branch_name",
-      "successions": 4,
-      "to_activity": "IssueClosed",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 341,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "commit_message",
-      "successions": 341,
-      "to_activity": "IssueClosed",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 1,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "issue_comment",
-      "successions": 1,
-      "to_activity": "IssueClosed",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 100,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_body",
-      "successions": 100,
-      "to_activity": "IssueClosed",
-      "from_activity": "IssueCommented",
-      "link_evidence": "validated",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 2,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_body_refs",
-      "successions": 2,
-      "to_activity": "IssueClosed",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 172,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_title",
-      "successions": 172,
-      "to_activity": "IssueClosed",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 5,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_title_for",
-      "successions": 5,
-      "to_activity": "IssueClosed",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 1,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_title_symfony",
-      "successions": 1,
-      "to_activity": "IssueClosed",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 33,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "proximity",
-      "successions": 33,
-      "to_activity": "IssueClosed",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 146,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "commit_message",
-      "successions": 162,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 3,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "issue_comment",
-      "successions": 3,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 296,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_body",
-      "successions": 403,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "validated",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 2,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_body_refs",
-      "successions": 2,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 136,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_title",
-      "successions": 173,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 15,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_title_for",
-      "successions": 21,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 2,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_title_symfony",
-      "successions": 5,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 86,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "proximity",
-      "successions": 94,
-      "to_activity": "IssueCommented",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 75,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "proximity",
-      "successions": 75,
-      "to_activity": "IssueOpened",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 8,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "commit_message",
-      "successions": 8,
-      "to_activity": "IssueReopened",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 7,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_body",
-      "successions": 7,
-      "to_activity": "IssueReopened",
-      "from_activity": "IssueCommented",
-      "link_evidence": "validated",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 6,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "pr_title",
-      "successions": 7,
-      "to_activity": "IssueReopened",
-      "from_activity": "IssueCommented",
-      "link_evidence": "extracted",
-      "link_qualifier": "resolves"
-    },
-    {
-      "pairs": 1,
-      "to_type": "issue",
-      "from_type": "pull_request",
-      "link_method": "proximity",
-      "successions": 1,
-      "to_activity": "IssueReopened",
-      "from_activity": "IssueCommented",
       "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
@@ -2095,6 +1820,281 @@
       "to_activity": "IssueReopened",
       "from_activity": "PullRequestClosed",
       "link_evidence": "validated",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 1790,
+      "to_type": "commit",
+      "from_type": "pull_request",
+      "link_method": "head_sha",
+      "successions": 1909,
+      "to_activity": "Push",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "validated",
+      "link_qualifier": "contains_commit"
+    },
+    {
+      "pairs": 3804,
+      "to_type": "commit",
+      "from_type": "pull_request",
+      "link_method": "ref_match",
+      "successions": 3970,
+      "to_activity": "Push",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "contains_commit"
+    },
+    {
+      "pairs": 1254,
+      "to_type": "commit",
+      "from_type": "pull_request",
+      "link_method": "merge_commit_sha",
+      "successions": 1315,
+      "to_activity": "Push",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "validated",
+      "link_qualifier": "merge_commit"
+    },
+    {
+      "pairs": 4,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "branch_name",
+      "successions": 4,
+      "to_activity": "IssueClosed",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 341,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "commit_message",
+      "successions": 341,
+      "to_activity": "IssueClosed",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 1,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "issue_comment",
+      "successions": 1,
+      "to_activity": "IssueClosed",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 100,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_body",
+      "successions": 100,
+      "to_activity": "IssueClosed",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "validated",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 2,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_body_refs",
+      "successions": 2,
+      "to_activity": "IssueClosed",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 172,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_title",
+      "successions": 172,
+      "to_activity": "IssueClosed",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 5,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_title_for",
+      "successions": 5,
+      "to_activity": "IssueClosed",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 1,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_title_symfony",
+      "successions": 1,
+      "to_activity": "IssueClosed",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 33,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "proximity",
+      "successions": 33,
+      "to_activity": "IssueClosed",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 146,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "commit_message",
+      "successions": 162,
+      "to_activity": "IssueCommented",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 3,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "issue_comment",
+      "successions": 3,
+      "to_activity": "IssueCommented",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 296,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_body",
+      "successions": 403,
+      "to_activity": "IssueCommented",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "validated",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 2,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_body_refs",
+      "successions": 2,
+      "to_activity": "IssueCommented",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 136,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_title",
+      "successions": 173,
+      "to_activity": "IssueCommented",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 15,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_title_for",
+      "successions": 21,
+      "to_activity": "IssueCommented",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 2,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_title_symfony",
+      "successions": 5,
+      "to_activity": "IssueCommented",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 86,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "proximity",
+      "successions": 94,
+      "to_activity": "IssueCommented",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 75,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "proximity",
+      "successions": 75,
+      "to_activity": "IssueOpened",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 8,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "commit_message",
+      "successions": 8,
+      "to_activity": "IssueReopened",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 7,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_body",
+      "successions": 7,
+      "to_activity": "IssueReopened",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "validated",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 6,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "pr_title",
+      "successions": 7,
+      "to_activity": "IssueReopened",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
+      "link_qualifier": "resolves"
+    },
+    {
+      "pairs": 1,
+      "to_type": "issue",
+      "from_type": "pull_request",
+      "link_method": "proximity",
+      "successions": 1,
+      "to_activity": "IssueReopened",
+      "from_activity": "PullRequestCommented",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {

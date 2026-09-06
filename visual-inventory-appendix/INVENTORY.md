@@ -86,7 +86,7 @@ Rounded rect, `rx 2`. `data-legend="commit"`.
 
 ![Comment mark](shots/A04-comment-mark.png)
 
-**Where:** issue and pull_request lanes. **Encodes:** an `IssueCommented` event. Same shape
+**Where:** issue and pull_request lanes. **Encodes:** an `IssueCommented` or `PullRequestCommented` event. Same shape
 as its lane, but hollow — `fill: var(--color-bg)`, stroke 2.5, size 6 against 8 for a
 normal mark. Hollow is the comment's own cue, which is why the abandoned PR and the repeat
 observation had to find other devices. `data-legend="comments"`.

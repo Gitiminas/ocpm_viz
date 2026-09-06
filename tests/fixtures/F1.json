@@ -909,7 +909,7 @@
     },
     {
       "id": "e8",
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "time": "2025-03-11T17:25:52Z",
       "object_id": "pr:243221",
       "actor_id": "actor:connor4312",
@@ -921,7 +921,7 @@
     },
     {
       "id": "e9",
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "time": "2025-03-11T17:34:47Z",
       "object_id": "pr:243221",
       "actor_id": "actor:connor4312",
@@ -933,7 +933,7 @@
     },
     {
       "id": "e25",
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "time": "2025-03-19T06:55:11Z",
       "object_id": "pr:243221",
       "actor_id": "actor:iwangbowen",

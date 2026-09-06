@@ -224,11 +224,21 @@ function build() {
   return {
     meta: buildMeta(source.meta, objects, kept),
     objects,
-    // Events pass through untouched: they already match the contract. They also
-    // carry `actor_id`, which is now the only statement of who did what.
-    events: source.events,
+    // Events carry `actor_id`, the only statement of who did what. The frozen blob
+    // names every comment `IssueCommented`; the contract names a comment after the
+    // object it is on, so a comment on a pull request becomes `PullRequestCommented`.
+    events: source.events.map((event) => convertEvent(event, objects)),
     links: kept.map(convertLink),
   };
+}
+
+/** A comment on a pull request is `PullRequestCommented`; everything else passes through. */
+function convertEvent(event, objects) {
+  const type = objects.find((object) => object.id === event.object_id)?.type;
+  if (event.activity === 'IssueCommented' && type === 'pull_request') {
+    return { ...event, activity: 'PullRequestCommented' };
+  }
+  return event;
 }
 
 /**

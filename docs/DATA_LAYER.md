@@ -7,8 +7,8 @@ which this document explains rather than repeats.
 
 ## Schemas
 
-`fe` holds the derivations: 19 views and materialized views, 8 diagnostic views, and six
-functions (`remap_activity`, `utc`, and the four refreshers). `api` holds four `SECURITY DEFINER` functions and nothing else. Both are owned by
+`fe` holds the derivations: 19 views and materialized views, 8 diagnostic views, and five
+functions (`utc` and the four refreshers). `api` holds four `SECURITY DEFINER` functions and nothing else. Both are owned by
 `fe_owner`. PostgREST is configured with `db-schemas = "api"`, so `api` is the entire HTTP
 surface and the frontend never reads a view directly.
 
@@ -166,7 +166,7 @@ ships with silently mixed attributions).
 ### The E2O layer the map is counted over
 
 The map is built over an OCEL 2.0 event-to-object relation of its own (§12.0), read by nothing
-else: `fe.dfg_event` is one row per **real** event — the nine issue and pull-request activities
+else: `fe.dfg_event` is one row per **real** event — the ten issue and pull-request activities
 straight from `fe.event`, plus `Push`, one per PushEvent from `mv_push_activities` — and
 `fe.dfg_e2o` is `(event_id, object_id, qualifier)`. `fe.event` carries one object per event and
 therefore takes a push apart into one synthetic `CommitObserved` per commit (§4); the map puts it
@@ -217,17 +217,19 @@ partition key upstream, with no lifecycle and no link reaching it, so it is carr
 `meta.repo`. Three get a lane; `actor` has no interval to draw and surfaces through the sidebar
 and the actor card.
 
-Ten activities, closed, plus one the process map alone emits. The SQL vocabulary
+Eleven activities, closed, plus one the process map alone emits. The SQL vocabulary
 (`fe.activity_vocabulary`) and the JS one (`src/model/activities.js`) agree row for row on the
-ten; `Push` is in the JS table for the map and never passes `fe.event`'s whitelist.
+eleven; `Push` is in the JS table for the map and never passes `fe.event`'s whitelist. Every
+activity names the object type it belongs to.
 
 | activity | object type | landmark | comment |
 |---|---|---|---|
 | `IssueOpened` | issue | | |
 | `IssueClosed` | issue | yes | |
 | `IssueReopened` | issue | | |
-| `IssueCommented` | issue (JS: also pull_request) | | yes |
+| `IssueCommented` | issue | | yes |
 | `PullRequestOpened` | pull_request | | |
+| `PullRequestCommented` | pull_request | | yes |
 | `PullRequestMerged` | pull_request | yes | |
 | `PullRequestMergedOffPlatform` | pull_request | yes, heuristic | |
 | `PullRequestClosed` | pull_request | | |
@@ -235,10 +237,9 @@ ten; `Push` is in the JS table for the map and never passes `fe.event`'s whiteli
 | `CommitObserved` | commit | | |
 | `Push` | commit | | DFG only (§12.0): one per PushEvent, one occurrence per commit it carried |
 
-`IssueCommented` is the one activity valid on two object types. GitHub models PR comments as
-issue comments, so `fe.remap_activity` turns `PullRequestCommented` into `IssueCommented` before
-the vocabulary whitelist runs. **Remap first, whitelist second.** Reversed, all 1,343,232 PR
-comments are dropped as unknown and nothing says so.
+The two comment activities are the same act on GitHub, an `IssueCommentEvent`, and the tool
+treats them alike wherever a comment is folded, counted or toggled; they are kept apart in
+the vocabulary because the comment belongs to one object, and the activity names it.
 
 Three upstream activities are dropped by design, and `fe.diag_dropped_activities` reports them:
 `CommitsPushed` (144,556 rows on 2026-08-04, whose facts ride on each `CommitObserved` event's
@@ -421,7 +422,7 @@ upstream refresh.
 | `fe.diag_staleness` | Live vs materialized rows and last-written time for `fe.link_mat`, `fe.seed_lookup` and `fe.dfg_mat` (whose live count is honestly NULL — recomputing it is the whole build) |
 | `fe.diag_link_staleness` | Drift between `fe.link` and `fe.link_mat` alone |
 | `fe.diag_sanity` | Six checks, each with its expected value: dangling event objects, issue/PR objects with no events, actors named by an event with no actor object, pairs linked twice by the same qualifier, link endpoints that are not objects, and that exactly 10 distinct activities occur |
-| `fe.diag_dropped_activities` | What the vocabulary whitelist drops, with the remap already applied |
+| `fe.diag_dropped_activities` | What the vocabulary whitelist drops |
 | `fe.diag_unresolvable_pr_comments` | PR comment events and PRs discarded because no numeric PR id exists for them |
 | `fe.diag_time_semantics` | How many issue and PR objects needed the first-seen fallback, per repository |
 | `fe.diag_link_methods` | Link counts grouped by `(repo, method, qualifier, evidence)`. Group by method **and** qualifier: `commit_message` is one technique covering two relationships |

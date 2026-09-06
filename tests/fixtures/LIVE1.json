@@ -14,7 +14,7 @@
       "sample": "LIVE1",
       "built_by": "scripts/pull-sublog.mjs",
       "pulled_at": "2026-08-04T19:18:37.017Z",
-      "note": "LIVE SAMPLE, not a fixture. A snapshot of api.get_object_graph output, for looking at the picture. Nothing asserts against it; re-pull rather than edit it."
+      "note": "LIVE SAMPLE, not a fixture. A snapshot of api.get_object_graph output, for looking at the picture. Nothing asserts against it; re-pull rather than edit it. Edited 2026-09-06: comments on pull requests renamed IssueCommented → PullRequestCommented when the vocabulary stopped folding the two; nothing else changed."
     },
     "repo_id": 41881900,
     "data_honesty": {
@@ -345,7 +345,7 @@
       "time": "2020-07-14T13:06:20+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:22350",
       "object_id": "pr:448781946"
     },

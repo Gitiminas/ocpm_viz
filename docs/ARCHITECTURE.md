@@ -51,7 +51,7 @@ this table is the responsibility map.
 | `layout/dfg.js` | The process map's arrangement: lane rows, lifecycle reading order, forward arcs above / rework below, loops, fanned cross bundles, `dfgEdgeWidth` (√, clamped, pinned to the unfiltered maximum via the `maxSuccessions` override). |
 | `render/dfg.js` | The Process page's renderer: lane bands, activity marks, succession edges with widths and counts, hovercards (labels bound to the same card, hover targets in their own layer, thinnest topmost), focus dimming, and the notice carrying the filter's own arithmetic. |
 | `model/subLog.js` | Shape validation (`findGraphProblems`), normalization, indexing. |
-| `model/activities.js` | The closed vocabulary: 4 object types, 10 activities, 3 landmarks — plus `Push`, the process map's alone. |
+| `model/activities.js` | The closed vocabulary: 4 object types, 11 activities, 3 landmarks — plus `Push`, the process map's alone. |
 | `model/evidence.js` | 16 link methods → `validated` / `extracted`. |
 | `model/graph.js` | Adjacency and focus BFS (focus degree, max 2). |
 | `model/bursts.js` | Commits grouped by `push_id`, size ≥ 2. |

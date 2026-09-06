@@ -14,7 +14,7 @@
       "sample": "LIVE2",
       "built_by": "scripts/pull-sublog.mjs",
       "pulled_at": "2026-08-04T23:45:17.489Z",
-      "note": "LIVE SAMPLE, not a fixture. A snapshot of api.get_object_graph output, for looking at the picture. Nothing asserts against it; re-pull rather than edit it."
+      "note": "LIVE SAMPLE, not a fixture. A snapshot of api.get_object_graph output, for looking at the picture. Nothing asserts against it; re-pull rather than edit it. Edited 2026-09-06: comments on pull requests renamed IssueCommented → PullRequestCommented when the vocabulary stopped folding the two; nothing else changed."
     },
     "repo_id": 41881900,
     "data_honesty": {
@@ -3341,7 +3341,7 @@
       "time": "2021-02-10T20:16:51+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2193314",
       "object_id": "pr:570227066"
     },
@@ -3533,7 +3533,7 @@
       "time": "2021-02-11T12:36:47+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2193314",
       "object_id": "pr:571782511"
     },
@@ -3591,7 +3591,7 @@
       "time": "2021-02-12T02:01:50+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:323878",
       "object_id": "pr:571599565"
     },
@@ -3803,7 +3803,7 @@
       "time": "2021-02-12T14:45:28+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1794099",
       "object_id": "pr:571599565"
     },
@@ -3813,7 +3813,7 @@
       "time": "2021-02-12T18:38:06+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:323878",
       "object_id": "pr:571599565"
     },
@@ -3887,7 +3887,7 @@
       "time": "2021-02-16T03:27:02+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:323878",
       "object_id": "pr:571599565"
     },
@@ -3897,7 +3897,7 @@
       "time": "2021-02-16T19:08:50+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2193314",
       "object_id": "pr:571367946"
     },
@@ -3907,7 +3907,7 @@
       "time": "2021-02-16T23:04:56+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:323878",
       "object_id": "pr:571599565"
     },
@@ -3917,7 +3917,7 @@
       "time": "2021-02-17T04:24:48+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:876920",
       "object_id": "pr:571599565"
     },
@@ -3927,7 +3927,7 @@
       "time": "2021-02-17T09:42:19+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1794099",
       "object_id": "pr:571599565"
     },
@@ -3937,7 +3937,7 @@
       "time": "2021-02-17T16:45:01+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:876920",
       "object_id": "pr:571599565"
     },
@@ -3947,7 +3947,7 @@
       "time": "2021-02-17T19:00:30+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:323878",
       "object_id": "pr:571599565"
     },
@@ -4021,7 +4021,7 @@
       "time": "2021-02-18T12:47:06+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2193314",
       "object_id": "pr:571367946"
     },
@@ -4711,7 +4711,7 @@
       "time": "2021-02-19T20:47:06+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2644648",
       "object_id": "pr:576055378"
     },
@@ -4901,7 +4901,7 @@
       "time": "2021-02-22T17:17:58+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:964386",
       "object_id": "pr:576055378"
     },
@@ -4991,7 +4991,7 @@
       "time": "2021-02-23T20:01:08+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2644648",
       "object_id": "pr:576055378"
     },
@@ -6151,7 +6151,7 @@
       "time": "2021-03-06T01:48:19+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2193314",
       "object_id": "pr:585832793"
     },
@@ -7357,7 +7357,7 @@
       "time": "2021-03-11T09:07:11+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:22350",
       "object_id": "pr:576055378"
     },
@@ -7367,7 +7367,7 @@
       "time": "2021-03-11T14:14:08+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:6461412",
       "object_id": "pr:589986464"
     },
@@ -7403,7 +7403,7 @@
       "time": "2021-03-11T14:31:13+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1794099",
       "object_id": "pr:590907072"
     },
@@ -7519,7 +7519,7 @@
       "time": "2021-03-11T22:20:31+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:6461412",
       "object_id": "pr:589986464"
     },
@@ -7619,7 +7619,7 @@
       "time": "2021-03-12T01:27:35+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:12821956",
       "object_id": "pr:585987751"
     },
@@ -7649,7 +7649,7 @@
       "time": "2021-03-12T06:06:15+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:876920",
       "object_id": "pr:590907072"
     },
@@ -8029,7 +8029,7 @@
       "time": "2021-03-15T09:11:55+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:22350",
       "object_id": "pr:587099475"
     },
@@ -8629,7 +8629,7 @@
       "time": "2021-03-16T14:12:07+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:900690",
       "object_id": "pr:593820553"
     },
@@ -8655,7 +8655,7 @@
       "time": "2021-03-16T14:16:08+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -8713,7 +8713,7 @@
       "time": "2021-03-16T14:32:47+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -8723,7 +8723,7 @@
       "time": "2021-03-16T14:54:01+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1794099",
       "object_id": "pr:590907072"
     },
@@ -8733,7 +8733,7 @@
       "time": "2021-03-16T14:58:31+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:900690",
       "object_id": "pr:593820553"
     },
@@ -8743,7 +8743,7 @@
       "time": "2021-03-16T16:51:31+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1389808",
       "object_id": "pr:593820553"
     },
@@ -8753,7 +8753,7 @@
       "time": "2021-03-16T17:06:17+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -8763,7 +8763,7 @@
       "time": "2021-03-16T17:38:30+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:323878",
       "object_id": "pr:571599565"
     },
@@ -8773,7 +8773,7 @@
       "time": "2021-03-16T18:14:25+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1389808",
       "object_id": "pr:593820553"
     },
@@ -8783,7 +8783,7 @@
       "time": "2021-03-16T18:24:56+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -8793,7 +8793,7 @@
       "time": "2021-03-16T18:47:58+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -8803,7 +8803,7 @@
       "time": "2021-03-16T18:52:40+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1389808",
       "object_id": "pr:593820553"
     },
@@ -8829,7 +8829,7 @@
       "time": "2021-03-16T19:04:01+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -8839,7 +8839,7 @@
       "time": "2021-03-16T19:13:56+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -8849,7 +8849,7 @@
       "time": "2021-03-16T19:34:07+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -8859,7 +8859,7 @@
       "time": "2021-03-16T19:36:47+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1389808",
       "object_id": "pr:593820553"
     },
@@ -8869,7 +8869,7 @@
       "time": "2021-03-16T19:49:05+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -8895,7 +8895,7 @@
       "time": "2021-03-16T20:02:41+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:876920",
       "object_id": "pr:590907072"
     },
@@ -8905,7 +8905,7 @@
       "time": "2021-03-16T20:12:00+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1389808",
       "object_id": "pr:593820553"
     },
@@ -9069,7 +9069,7 @@
       "time": "2021-03-16T23:23:52+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:323878",
       "object_id": "pr:571599565"
     },
@@ -9099,7 +9099,7 @@
       "time": "2021-03-17T06:00:58+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:900690",
       "object_id": "pr:593820553"
     },
@@ -9109,7 +9109,7 @@
       "time": "2021-03-17T08:10:31+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -9119,7 +9119,7 @@
       "time": "2021-03-17T10:22:21+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:900690",
       "object_id": "pr:593820553"
     },
@@ -9129,7 +9129,7 @@
       "time": "2021-03-17T10:30:24+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -9139,7 +9139,7 @@
       "time": "2021-03-17T10:36:31+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1935696",
       "object_id": "pr:591363658"
     },
@@ -9149,7 +9149,7 @@
       "time": "2021-03-17T10:38:10+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2193314",
       "object_id": "pr:591363658"
     },
@@ -9159,7 +9159,7 @@
       "time": "2021-03-17T16:31:57+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -9169,7 +9169,7 @@
       "time": "2021-03-17T16:37:44+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1389808",
       "object_id": "pr:593820553"
     },
@@ -9211,7 +9211,7 @@
       "time": "2021-03-18T00:04:30+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:323878",
       "object_id": "pr:571599565"
     },
@@ -9237,7 +9237,7 @@
       "time": "2021-03-18T13:15:36+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:1926584",
       "object_id": "pr:593820553"
     },
@@ -9553,7 +9553,7 @@
       "time": "2021-03-18T22:40:31+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:29464607",
       "object_id": "pr:595778396"
     },
@@ -9589,7 +9589,7 @@
       "time": "2021-03-19T00:13:21+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:6561887",
       "object_id": "pr:596050867"
     },
@@ -9757,7 +9757,7 @@
       "time": "2021-03-19T18:12:17+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2193314",
       "object_id": "pr:591363658"
     },
@@ -9767,7 +9767,7 @@
       "time": "2021-03-19T18:20:21+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:6561887",
       "object_id": "pr:596050867"
     },
@@ -9819,7 +9819,7 @@
       "time": "2021-03-19T20:12:27+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:4544166",
       "object_id": "pr:595847801"
     },
@@ -10085,7 +10085,7 @@
       "time": "2021-03-20T01:14:11+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:2193314",
       "object_id": "pr:596603068"
     },
@@ -10137,7 +10137,7 @@
       "time": "2021-03-20T03:34:22+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:29464607",
       "object_id": "pr:596809697"
     },
@@ -10179,7 +10179,7 @@
       "time": "2021-03-20T04:03:11+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:29464607",
       "object_id": "pr:596809697"
     },
@@ -10189,7 +10189,7 @@
       "time": "2021-03-20T04:06:57+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:29464607",
       "object_id": "pr:596809697"
     },
@@ -10199,7 +10199,7 @@
       "time": "2021-03-20T13:37:57+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:4544166",
       "object_id": "pr:595847801"
     },
@@ -10209,7 +10209,7 @@
       "time": "2021-03-21T10:57:24+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:900690",
       "object_id": "pr:595847801"
     },
@@ -10267,7 +10267,7 @@
       "time": "2021-03-22T13:36:39+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:4544166",
       "object_id": "pr:595847801"
     },
@@ -10277,7 +10277,7 @@
       "time": "2021-03-22T16:13:50+00:00",
       "attrs": {},
       "comment": true,
-      "activity": "IssueCommented",
+      "activity": "PullRequestCommented",
       "actor_id": "actor:900690",
       "object_id": "pr:595847801"
     },

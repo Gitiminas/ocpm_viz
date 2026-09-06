@@ -9,7 +9,7 @@
 --
 -- Layout:
 --   §0  schema, indexes, measurements
---   §1  activity vocabulary + the remap          (10 activities; §12.0 adds Push for the DFG only)
+--   §1  activity vocabulary                     (11 activities; §12.0 adds Push for the DFG only)
 --   §2  objects        fe.object_{issue,pull_request,commit,actor}
 --   §3  intervals      fe.interval_{issue,pull_request}
 --   §4  events         fe.event
@@ -43,10 +43,6 @@
 --     Measured 2026-08-04: 8 issue_ids equal a pull_request_id, 11 equal an actor id, 76
 --     pull_request_ids equal an actor id. Unprefixed, a sub-log holding such a pair either
 --     trips `duplicate object id` or silently merges two objects into one.
---
---   * REMAP FIRST, WHITELIST SECOND (§4). Reversed, `PullRequestCommented` is dropped as
---     unknown before it can become `IssueCommented`, and all 1,343,232 PR comments — the
---     single largest activity stream in the database — vanish without a word.
 --
 --   * EVERY EVENT AND LINK ENDPOINT RESOLVES AGAINST fe.object_* (§4, §5), never against
 --     issues_identity / prs_identity. Those carry only objects with an 'opened' event, so
@@ -188,10 +184,10 @@ ANALYZE mv_commit_message_issue_links_all;
 
 
 -- =====================================================================================
--- §1 — The activity vocabulary, and the remap
+-- §1 — The activity vocabulary
 -- =====================================================================================
 
--- Exactly the TEN frozen activities. This whitelist and the frontend's ACTIVITIES
+-- Exactly the ELEVEN frozen activities. This whitelist and the frontend's ACTIVITIES
 -- (src/model/activities.js) must be the same set or one of them is decorative:
 -- an activity that reaches the renderer unmapped throws in activities.js `lookup`.
 DROP VIEW IF EXISTS fe.activity_vocabulary CASCADE;
@@ -203,9 +199,9 @@ SELECT * FROM (VALUES
   ('IssueReopened',        'issue',        false, false),
   ('IssueCommented',       'issue',        false, true ),
   ('PullRequestOpened',    'pull_request', false, false),
+  ('PullRequestCommented', 'pull_request', false, true ),
   ('PullRequestMerged',    'pull_request', true,  false),
   -- A landmark, and a merge of a different kind; the frontend rings it as a heuristic.
-  -- Not remapped — see below.
   ('PullRequestMergedOffPlatform', 'pull_request', true, false),
   ('PullRequestClosed',    'pull_request', false, false),
   ('PullRequestReopened',  'pull_request', false, false),
@@ -213,12 +209,10 @@ SELECT * FROM (VALUES
 ) AS t(activity, object_type, landmark, is_comment);
 
 COMMENT ON VIEW fe.activity_vocabulary IS
-  'The 10 activities this layer admits. Landmarks are IssueClosed, PullRequestMerged and '
+  'The 11 activities this layer admits. Landmarks are IssueClosed, PullRequestMerged and '
   'PullRequestMergedOffPlatform. CommitObserved is synthetic — no upstream MV emits it.';
 
--- The one remap. Applied BEFORE the whitelist join, so a remapped row survives it.
--- PullRequestMergedOffPlatform is NOT remapped: those 31 rows pass through unchanged
--- and the vocabulary view admits them. Verified against the live
+-- The upstream activity names are admitted as they are. Verified against the live
 -- vocabularies (2026-08-04):
 --   mv_issue_and_issuecomment_activities_full   IssueCommented 953,293 · IssueOpened 176,362
 --                                               IssueClosed 175,370 · IssueReopened 10,626
@@ -226,14 +220,8 @@ COMMENT ON VIEW fe.activity_vocabulary IS
 --   mv_pull_request_and_comment_activities_full PullRequestCommented 1,343,232 · Opened 90,262
 --                                               Merged 67,216 · Closed 26,366 · Reopened 4,325
 --                                               PullRequestMergedOffPlatform 31
-CREATE OR REPLACE FUNCTION fe.remap_activity(raw text) RETURNS text
-LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
-  SELECT CASE raw
-    -- GitHub models PR comments as issue comments; so does this tool
-    WHEN 'PullRequestCommented'         THEN 'IssueCommented'
-    ELSE raw
-  END;
-$$;
+-- Retired helper; dropped so a database that has it matches this file.
+DROP FUNCTION IF EXISTS fe.remap_activity(text);
 
 -- Render one UTC instant the way the frontend can parse it.
 -- `+00:00`, never bare `+00`: `new Date('...T22:47:49+00')` is Invalid Date, and
@@ -344,7 +332,7 @@ WITH observed AS (
   -- Gating on the activities MV is the non-circular way to say "has events": §4 branch 2
   -- resolves PR events by joining that MV on (repo_id, pr_number), so this set and the set
   -- of PRs with events are the same set by construction. Every PR activity_type survives
-  -- the remap and the whitelist, so nothing is lost between here and there.
+  -- the whitelist, so nothing is lost between here and there.
   SELECT DISTINCT repo_id, pr_number
   FROM mv_pull_request_and_comment_activities_full
   WHERE pr_number IS NOT NULL
@@ -605,7 +593,7 @@ LEFT JOIN closes c
 -- =====================================================================================
 -- §4 — Events
 --
--- Normalises three row shapes into one, remapped then whitelisted.
+-- Normalises three row shapes into one, then whitelists them.
 -- Three branches, not six: reviews and commit comments are out of scope and their MVs
 -- do not exist in this database anyway; `CommitsPushed` is not an activity — the push's
 -- facts ride on each CommitObserved event's attrs instead.
@@ -629,7 +617,7 @@ raw AS (
   --    are excluded; they would dangle.
   ---------------------------------------------------------------------------------------
   SELECT 'issue_act:' || a.event_id::text          AS id,
-         fe.remap_activity(a.activity_type)        AS activity,
+         a.activity_type                           AS activity,
          a.activity_timestamp AT TIME ZONE 'UTC'   AS time,
          'issue:' || a.issue_id::text              AS object_id,
          'actor:' || a.actor_id::text              AS actor_id,
@@ -676,7 +664,7 @@ raw AS (
   --       drifting apart the next time someone edits this.
   ---------------------------------------------------------------------------------------
   SELECT 'pr_act:' || a.event_id::text,
-         fe.remap_activity(a.activity_type),
+         a.activity_type,
          a.activity_timestamp AT TIME ZONE 'UTC',
          o.id,
          'actor:' || a.actor_id::text,
@@ -735,9 +723,8 @@ SELECT r.id,
        v.landmark,
        r.attrs
 FROM raw r
--- THE WHITELIST. Runs AFTER fe.remap_activity, which is the whole point: reversed, every
--- PullRequestCommented row is dropped as unknown before it can become IssueCommented.
--- §7.1 reports what this drops.
+-- THE WHITELIST. Every activity outside fe.activity_vocabulary is dropped here, and
+-- §7.1 reports what that costs.
 JOIN fe.activity_vocabulary v ON v.activity = r.activity;
 
 
@@ -1457,9 +1444,7 @@ COMMENT ON FUNCTION api.get_sublog(text, text, integer) IS
 -- every upstream refresh.
 -- =====================================================================================
 
--- §7.1 — what the vocabulary whitelist drops, WITH the remap already applied.
--- Without the remap this reports PullRequestCommented as "not covered" when it is in fact
--- kept, which is the misreading that makes someone "fix" it in the wrong direction.
+-- §7.1 — what the vocabulary whitelist drops.
 --
 -- Reading it, as of 2026-08-04. Three rows, and only one of them is large:
 --
@@ -1471,18 +1456,18 @@ COMMENT ON FUNCTION api.get_sublog(text, text, integer) IS
 --   IssueComment_         1   Upstream's name built with an empty action. Genuinely dropped.
 --   IssueLabeled          1   Out of scope. Genuinely dropped.
 --
--- Note what is NOT here: PullRequestCommented (1,343,232), because the remap ran first
--- and it survived it, and PullRequestMergedOffPlatform (31), because it is in the
--- vocabulary. Their absence from this list is the evidence that the
--- ordering, and the vocabulary, are right.
-CREATE OR REPLACE VIEW fe.diag_dropped_activities AS
-SELECT fe.remap_activity(activity_type) AS activity_after_remap, count(*) AS dropped
+-- Note what is NOT here: PullRequestCommented (1,343,232) and
+-- PullRequestMergedOffPlatform (31), because both are in the vocabulary. Their absence
+-- from this list is the evidence that the vocabulary is right.
+DROP VIEW IF EXISTS fe.diag_dropped_activities;
+CREATE VIEW fe.diag_dropped_activities AS
+SELECT activity_type AS activity, count(*) AS dropped
 FROM (
   SELECT activity_type FROM mv_issue_and_issuecomment_activities_full
   UNION ALL SELECT activity_type FROM mv_pull_request_and_comment_activities_full
   UNION ALL SELECT activity_type FROM mv_push_activities
 ) s
-WHERE fe.remap_activity(activity_type) NOT IN (SELECT activity FROM fe.activity_vocabulary)
+WHERE activity_type NOT IN (SELECT activity FROM fe.activity_vocabulary)
 GROUP BY 1 ORDER BY 2 DESC;
 
 -- §7.2 — PR comment events with no resolvable pull request (§2's 1,999 comment-only PRs).
@@ -1608,8 +1593,8 @@ SELECT 'link endpoints that are not objects',
          WHERE NOT EXISTS (SELECT 1 FROM all_objects o WHERE o.id = l.source)
             OR NOT EXISTS (SELECT 1 FROM all_objects o WHERE o.id = l.target)), 0
 UNION ALL
-SELECT 'distinct activities (must be exactly 10)',
-       (SELECT count(DISTINCT activity) FROM fe.event), 10;
+SELECT 'distinct activities (must be exactly 11)',
+       (SELECT count(DISTINCT activity) FROM fe.event), 11;
 
 
 -- =====================================================================================
@@ -1699,7 +1684,7 @@ $$;
 -- whitelist (§7.1 counts them: 144,556). That is the OCEL 2.0 E2O relation flattened to
 -- arity one. For the process map the push is put back together:
 --
---   fe.dfg_event   one row per REAL event — the nine issue/PR activities straight from
+--   fe.dfg_event   one row per REAL event — the ten issue/PR activities straight from
 --                  fe.event, plus `Push`, one per mv_push_activities row (upstream's
 --                  name is CommitsPushed). Keyed `push:<activity_id>`: activity_id is the
 --                  PushEvent id and unique (144,556 rows); push_id has one duplicate and
@@ -1710,7 +1695,7 @@ $$;
 --                  (`pushed_commit`) and to its pusher. A push of n commits is ONE event
 --                  with n commit occurrences — the shape §12 counts in.
 --
--- ⚠️ `Push` is the map's only private activity. fe.activity_vocabulary (§1) stays at ten
+-- ⚠️ `Push` is the map's only private activity. fe.activity_vocabulary (§1) stays at eleven
 -- and fe.event never emits it; the map in turn never emits CommitObserved. The JS
 -- ACTIVITIES table carries both, one per page, and says so.
 --
@@ -1767,6 +1752,7 @@ CROSS JOIN LATERAL (VALUES
      WHEN 'IssueReopened'                THEN 'reopener'
      WHEN 'PullRequestReopened'          THEN 'reopener'
      WHEN 'IssueCommented'               THEN 'commenter'
+     WHEN 'PullRequestCommented'         THEN 'commenter'
      WHEN 'PullRequestMerged'            THEN 'merger'
    END)) AS v(object_id, qualifier)
 WHERE e.activity <> 'CommitObserved'
@@ -1798,10 +1784,8 @@ COMMENT ON VIEW fe.dfg_e2o IS
 -- of n commits is one event with n occurrences, one in each commit's sequence. Nodes
 -- carry both counts; `events` (distinct) is below `occurrences` only on `Push`.
 --
--- ⚠️ **Object type comes from the object-id PREFIX, never fe.activity_vocabulary.**
--- The vocabulary records IssueCommented as an issue activity, but PR comments are
--- remapped into IssueCommented and sit on pr: objects (§4) — joining the vocabulary here
--- would silently file the entire PR-comment stream under the wrong type.
+-- Object type comes from the object-id PREFIX: the E2O rows carry ids, not types, and
+-- the prefix is the one statement of type every id already makes.
 --
 -- ⚠️ **Cross-edge counts are FLOORS.** They are derived through fe.link_mat, which the
 -- two admission rules narrow (§5), so they undercount by an unmeasured amount. Quote

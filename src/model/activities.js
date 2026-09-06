@@ -34,13 +34,7 @@ export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
  *
  * `label` is the full form used in tooltips; `short` is the inline form drawn next
  * to a node. `objectTypes` lists which object types the activity may legitimately
- * attach to.
- *
- * Note `IssueCommented` on a `pull_request`: that is not a bug. GitHub models PR
- * comments as issue comments — upstream, `mv_pull_request_comments_full` is
- * literally "IssueCommentEvent payloads where the target is a PR" — so the activity
- * legitimately attaches to both. Do not "fix" this into two activities without
- * treating it as the event-log semantics change that it is.
+ * attach to. Every activity names its object type, so each attaches to exactly one.
  */
 /*
  * ⚠️ **The keys are the frozen activity vocabulary and do not change here.** They are
@@ -83,12 +77,18 @@ export const ACTIVITIES = {
   IssueCommented: {
     label: 'Comment',
     short: 'comment',
-    objectTypes: ['issue', 'pull_request'],
+    objectTypes: ['issue'],
     landmark: false,
   },
   PullRequestOpened: {
     label: 'Open',
     short: 'open',
+    objectTypes: ['pull_request'],
+    landmark: false,
+  },
+  PullRequestCommented: {
+    label: 'Comment',
+    short: 'comment',
     objectTypes: ['pull_request'],
     landmark: false,
   },
@@ -171,6 +171,7 @@ export const READING_ORDER = [
   'IssueOpened',
   'PullRequestOpened',
   'IssueCommented',
+  'PullRequestCommented',
   'PullRequestMerged',
   'PullRequestMergedOffPlatform',
   'IssueClosed',
