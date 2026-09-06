@@ -262,7 +262,7 @@ repo and method, 2026-08-04:
 |---|---|---|---|---|
 | 10270250 react | 5,983 / 47 | 2,110 / 27 | 3,934 / 279 | 97.1% |
 | 20580498 kubernetes | 35,853 / 26 | 42,618 / 230 | 2,895 / 4,472 | 94.5% |
-| 41881900 vscode | 15,017 / 513 | 10,720 / 226 | 71,470 / 26,199 | 78.5% |
+| 41881900 vscode | 15,017 / 513 | 10,720 / 226 | 71,470 / 26,199 | 78.3% |
 
 ⚠️ **Do not read the per-repo spread as a process difference.** The `ref_match` share — 7% of
 kubernetes' commit links against 79% of vscode's — is a contribution-model artifact, not a detection
@@ -276,7 +276,9 @@ branch and propagates that narrowing to the issue↔PR links derived from it —
 divergences from upstream in this layer. The view itself is untouched: the predicate lives in
 `fe.link`, and `fe.diag_ref_match_narrowing` reports what it removes. **Our commit→PR link counts
 are therefore deliberately lower than this view yields**, by an amount that differs per repository —
-`ref_match` pairs go vscode 71,470 → 32,262, kubernetes 2,895 → 2,037, react 3,934 → 2,152.
+`ref_match` pairs go vscode 71,470 → 20,846, kubernetes 2,895 → 1,981, react 3,934 → 1,343
+(`fe.diag_ref_match_narrowing`, 2026-09-06; the earlier rule, since replaced, kept 32,262 /
+2,037 / 2,152).
 Cite the narrowing beside any such number and report it as a range, with raw `ref_match` as the
 ceiling.
 
@@ -318,7 +320,7 @@ upstream relations, with the measurements that justify them in §0.1. Two cautio
 
 Roles and grants for the HTTP surface are created by `sql/postgrest_setup.sql`, applied after
 `fe_layer.sql`: `fe_owner` owns the `fe` and `api` objects and holds `SELECT` on `public`;
-`web_anon` may only `EXECUTE` the three `api` functions; `authenticator` is the `NOINHERIT` login
+`web_anon` may only `EXECUTE` the four `api` functions; `authenticator` is the `NOINHERIT` login
 role PostgREST connects as.
 
 ---

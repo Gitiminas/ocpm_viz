@@ -1,5 +1,5 @@
 /**
- * Build the synthesized property fixtures F2–F9.
+ * Build the synthesized property fixtures F2–F14.
  *
  *   node scripts/build-synthetic-fixtures.mjs
  *   node scripts/build-synthetic-fixtures.mjs --check

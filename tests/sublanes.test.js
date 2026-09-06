@@ -405,9 +405,9 @@ describe('links that would coincide are fanned apart', () => {
 
   test('a bundle too crowded to fan is drawn coincident and declares its size', async () => {
     /*
-     * The defect this pins: PR #116416 contains 85 commits pushed in the same hour, so
-     * 85 links land in one bundle. Fanned at 5px each that smears the shared endpoint
-     * across 425px, and the lane caption then says one pull request while the picture
+     * The defect this pins: PR #116416 contains 35 commits pushed in the same hour, so
+     * 35 links land in one bundle. Fanned at 5px each that smears the shared endpoint
+     * across 175px, and the lane caption then says one pull request while the picture
      * shows a wall of arrival points. Past MAX_FANNED_LINKS the bundle collapses to one
      * visible line carrying a count.
      */

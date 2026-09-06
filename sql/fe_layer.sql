@@ -1095,8 +1095,8 @@ WHERE c.ref_scope = 'same_repo';
 --   whole request, no indexes at all                        19.4 s
 --   + indexes on the underlying MVs (§0)                     ~16 s
 --   + repo's links built once instead of twice                ~15 s
---   + fe.object_actor from the actor base table                7.0 s
---   + traversal reduced to typed key arrays (§6 step 1)        4.3 s
+--   + fe.object_actor from the actor base table                6.8 s
+--   + traversal reduced to typed key arrays (§6 step 1)        4.2 s
 --   + fe.link_mat (this view)                                  1.7 s   <- 2.5x, and the
 --                                                                         reason it stays
 --
@@ -1108,7 +1108,7 @@ WHERE c.ref_scope = 'same_repo';
 -- predicate that makes it smaller, so the only lever left is precomputation.
 --
 -- What it costs, stated plainly rather than buried:
---   * 231,291 rows for the whole database — small, unlike the MVs underneath it.
+--   * 171,817 rows for the whole database (2026-09-06; 231,291 before the narrowing) — small.
 --   * A REFRESH OBLIGATION. It is stale from the moment any upstream MV refreshes until
 --     `SELECT fe.refresh_links()` runs. `fe.diag_link_staleness` below reports the drift
 --     rather than leaving it to be discovered in a figure.
@@ -1356,7 +1356,7 @@ BEGIN
     SELECT o.id, o.t0, o.t0
       FROM obj o WHERE o.type = 'commit' AND o.t0 IS NOT NULL
     -- Actors get NO intervals. They have no lane, so a span would draw
-    -- nothing; `[]` is the honest value and is what all 13 fixtures carry.
+    -- nothing; `[]` is the honest value and is what all 14 fixtures carry.
   ),
   all_obj AS MATERIALIZED (
     SELECT id, type, label, vmap, time_semantics FROM obj
@@ -1515,7 +1515,7 @@ SELECT l.repo_id, l.method, l.qualifier, l.evidence, count(*) AS links
 FROM fe.link l
 GROUP BY 1,2,3,4 ORDER BY 1,5 DESC;
 
--- §7.6 — what the `ref_match` narrowing removes, and what it saves.
+-- §7.5 — what the `ref_match` narrowing removes, and what it saves.
 --
 -- Reported because the narrowing is the one place we diverge from the upstream
 -- `admitted` rule, and a divergence nobody can measure is a divergence nobody can argue
@@ -1569,7 +1569,7 @@ LEFT JOIN fe.pr_head_ref h
   ON h.repo_id = rm.repo_id AND h.pull_request_id = rm.pull_request_id
 GROUP BY 1 ORDER BY 2 DESC;
 
--- §7.5 — the four sanity checks that catch the SILENT failures. Every one must be 0.
+-- §7.6 — the six sanity checks that catch the SILENT failures. Every one must equal `expected`.
 CREATE OR REPLACE VIEW fe.diag_sanity AS
 WITH all_objects AS (
   SELECT id FROM fe.object_issue

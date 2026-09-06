@@ -6,7 +6,7 @@
  * is internally consistent; this proves the payload satisfies the *frontend's* contract
  * — the closed activity vocabulary, the four object types, the two evidence classes, the
  * known link methods, and the both-endpoints-are-objects rule — which is
- * the same gate all 13 fixtures pass.
+ * the same gate all 14 fixtures pass.
  *
  * The transport shells out to `psql` rather than speaking to PostgREST, deliberately: the
  * point is to validate the SQL underneath the HTTP layer, and a payload proved correct

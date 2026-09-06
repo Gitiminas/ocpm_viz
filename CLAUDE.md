@@ -82,10 +82,11 @@ diff, so verification matters more than usual.
   SQL is only for figures spanning data that is not loaded, such as link coverage per repository.
   Precomputing them there would silently answer "comments hidden → gaps unchanged".
 - Derived relations live in **this project's own schemas**, never the shared namespace: `fe` for
-  the views, `api` for the RPCs. Plain `VIEW` by default; two materializations, each with its
+  the views, `api` for the RPCs. Plain `VIEW` by default; three materializations, each with its
   measurement beside it — `fe.link_mat`, because the traversal needs a whole repository's adjacency,
-  and `fe.seed_lookup` behind the seed box. **Both go stale silently: run `SELECT fe.refresh_all()`
-  after any upstream refresh**, and read `fe.diag_staleness` for last-written times.
+  `fe.seed_lookup` behind the seed box, and `fe.dfg_mat`, the whole-log process map. **All three
+  go stale silently: run `SELECT fe.refresh_all()` after any upstream refresh**, and read
+  `fe.diag_staleness` for last-written times.
 - **Two admission rules belong to this project, not upstream**; both narrow `ref_match`.
   Every commit-link and issue↔PR figure is therefore a **floor**, never a point
   estimate. Say so.
@@ -107,7 +108,8 @@ diff, so verification matters more than usual.
   inventing parallel mechanisms. Never reintroduce a hardcoded relationship-group enumeration.
 - **Every control, row and mark gets a help text.** Controls carry `data-tip="<key>"`,
   marks carry `data-legend` mapping to `legend.<key>`; the texts are the table in `src/help/tips.js`,
-  and `tests/tips.test.js` fails when a key has no text or a text has no key. No `title=` tooltips.
+  and `tests/tips.test.js` fails when a key has no text or a text has no key. No `title=` tooltips,
+  except the two native ones that say why a row is inert (a dimmed legend row, a disabled repository).
 - Two notions of degree, kept named apart: **traversal degree** (server-side, what is *in* the
   sub-log) and **focus degree** (client-side BFS, what is *highlighted*).
 

@@ -271,7 +271,7 @@ Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
   links, so they are floors — but by how much is not known: measuring it would mean re-running
   the pair interleaving over raw `ref_match`, which has not been done. Quote them as floors,
   never as point estimates, and never compare them across repositories.
-- **DFG1 is a sample with two staleness axes.** Pulled 2026-09-01 against MVs refreshed
+- **DFG1 is a sample with two staleness axes.** Pulled 2026-09-02 against MVs refreshed
   2026-08-02 and a `fe.dfg_mat` built the same day; its own `meta.source.pulled_at` and the
   payload's `mv_refreshed` are the record. Nothing asserts a count against it, and nothing
   re-pulls it automatically.

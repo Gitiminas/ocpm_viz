@@ -67,8 +67,8 @@ export const CHARGE = { issue: -400, pull_request: -400, commit: -35 };
  * How long each kind of link wants to be, in pixels.
  *
  * ⚠️ **Every kind in the data model is named here, and the fallback exists only to be
- * unreachable.** The link vocabulary is four qualifiers over three lane pairs (decision
- * 43), so an unnamed kind would be one nobody decided about, quietly taking whatever the
+ * unreachable.** The link vocabulary is four qualifiers over three lane pairs, so an
+ * unnamed kind would be one nobody decided about, quietly taking whatever the
  * library happens to use. `commit ↔ issue` is the level-skipping one — `references_issue`,
  * a commit naming an issue directly — and it is long on purpose: measured earlier, a short
  * rest length there hauls commits out of their fan and up into the pull-request ring.

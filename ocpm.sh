@@ -13,7 +13,7 @@
 #   serve.mjs      serves the app AND proxies /rpc/* to PostgREST   (port 8000)
 #
 # The app talks only to serve.mjs; serve.mjs forwards to PostgREST so the two share an
-# origin (decision 73). So PostgREST must be up first, and "the app loads but every query
+# origin. So PostgREST must be up first, and "the app loads but every query
 # fails" is what a half-start looks like.
 #
 # Ports are the source of truth for what is running, not process names: a stale PostgREST

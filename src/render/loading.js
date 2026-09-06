@@ -1,8 +1,8 @@
 /**
  * The loading overlay: what a page says while a sub-log is on its way.
  *
- * A sub-log arrives in one RPC call and that call is slow — 2.4 s to 3.3 s warm against
- * the live database, 7.4 s cold — during which nothing on screen changed at all. The
+ * A sub-log arrives in one RPC call and that call is slow — 3.5 s to 3.9 s warm against
+ * the live database on 2026-09-06, 7.4 s cold — during which nothing on screen changed at all. The
  * previous sub-log stayed up, fully interactive, so a reader could toggle a lane, drag a
  * mark or click the degree stepper again on a picture that was about to be replaced, and
  * had no way to tell a slow query from a dead tool. `main.js` already worried about

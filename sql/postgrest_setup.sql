@@ -18,7 +18,7 @@
 --                   role switch fails closed instead of running with everything.
 --   web_anon        NOLOGIN. What an unauthenticated request runs as. Its entire
 --                   privilege set is: USAGE on schema `api`, EXECUTE on the functions
---                   there (currently `get_object_graph` and `search_seeds`), nothing more.
+--                   there (every function in `api`, four today), nothing more.
 --   fe_owner        NOLOGIN. Owns schemas `fe` and `api` and everything in them, and is
 --                   what the RPC runs as via SECURITY DEFINER.
 --

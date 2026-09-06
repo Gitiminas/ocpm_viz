@@ -1,5 +1,9 @@
 # Visual inventory — every mark ocpm-viz can draw
 
+> Captured 2026-08-23, before the Process page. Its marks — activity nodes, succession arcs and
+> loops, dashed cross arrows, count labels, the process card, the Successions and Activities
+> sections and the legend's Process map section — are not inventoried here.
+
 A catalogue of the tool's visual vocabulary, from the single glyph to the whole canvas.
 Captured **2026-08-23** from the working tree, running `npm start` on `http://localhost:8000`
 against the **fixtures** source (plus three shots from the live database, marked `DB*`).
@@ -61,14 +65,14 @@ because it corrects two fixture attributions.
 Filled circle in the object's shade; the ring at the right is the `IssueClosed` landmark,
 and the hollow circle below is a comment. The horizontal band is the lifecycle bar, the
 dotted curve the comment connector.
-`data-legend="issue"` · `TYPE.issue.shape = 'circle'` (`src/render/theme.js:22`).
+`data-legend="issue"` · `TYPE.issue.shape = 'circle'` (`src/render/theme.js:21`).
 
 ### A2 · Pull request mark — diamond
 
 ![PR mark](shots/A02-pr-mark.png)
 
 **Where:** pull_request lane. **Encodes:** one event on one PR. Drawn by `drawSymbol` as a
-path `M0 -s L s 0 L 0 s L -s 0 Z` with `s = size × 1.2` (`theme.js:205`).
+path `M0 -s L s 0 L 0 s L -s 0 Z` with `s = size × 1.2` (`theme.js:203`).
 `data-legend="pull_request"`.
 
 ### A3 · Commit mark — square
@@ -101,7 +105,7 @@ colour, so a one-issue-one-PR sub-log renders as it did before shades existed.
 ![PR shades](shots/A10-shades-pr.png)
 
 Base orange, gold, deep red-orange, saturated amber, muted brown-orange, pale yellow-green,
-then repeat. `OBJECT_SHADES` (`theme.js:78`); `shadeCount('issue') = 6`,
+then repeat. `OBJECT_SHADES` (`theme.js:72`); `shadeCount('issue') = 6`,
 `shadeCount('pull_request') = 6`, `shadeCount('commit') = 1` — commits are one node each
 and never need separating from a sibling. No fixture holds six or more issues, so the two
 remaining issue shades are not capturable; they are pinned to the accent's blurple at
@@ -179,7 +183,7 @@ folds it back:
 **Encodes:** the individual commits, laid out on their own rows. Expanding F1's burst also
 brings the `×N` crowded badge into existence — 20 new links to one PR exceed what can be
 fanned. Handle carries `data-tip="fold.handle"`; `renderBurstHandles`
-(`src/render/nodes.js:555`).
+(`src/render/nodes.js:588`).
 
 ### B3 · Comment burst and its handle
 
@@ -194,7 +198,7 @@ Expanded, with the `−` fold-back handle above the run:
 ![Comment burst expanded](shots/B03b-comment-burst-expanded.png)
 
 Both the folded glyph and the fold-back handle carry `data-legend="comment-burst"` — the
-handle *replaces* the glyph rather than adding to it (`nodes.js:661`).
+handle *replaces* the glyph rather than adding to it (`nodes.js:694`).
 
 ### B4 · Burst node in relationships mode
 
@@ -215,7 +219,7 @@ drawn as a square.
 **Where:** bg layer, issue and pull_request lanes only — commits are points, not spans.
 **Encodes:** one bar per interval. F9's reopened issue therefore draws **two** bars on one
 row: opened→closed, then reopened→closed. Height 6, `rx 3`, the object's shade at 0.18
-opacity. `renderLifecycleBars` (`src/render/nodes.js:22`).
+opacity. `renderLifecycleBars` (`src/render/nodes.js:23`).
 
 ### C2 · Lifecycle bar in discrete mode
 
@@ -239,7 +243,7 @@ comment traffic is visible as texture without competing with the events.
 
 **Where:** link layer, every mode. **Encodes:** how much the link can be trusted.
 Validated is solid, width 2.6, opacity 1; extracted is dashed `6 6`, width 1.6, opacity
-0.7 (`EVIDENCE_STYLE`, `theme.js:143`). F12 puts both classes on the *same* commit↔PR pair,
+0.7 (`EVIDENCE_STYLE`, `theme.js:142`). F12 puts both classes on the *same* commit↔PR pair,
 which is the solid line with a dashed line running alongside it at left. This is the visual
 answer to shortcoming S8: solid means the platform asserted it, dashed means we parsed a
 convention nobody enforces.
@@ -268,7 +272,7 @@ worked through in `docs/LINK_FANNING.md`.
 
 **Encodes:** *what the link reaches*, not what it leaves. `resolves` and `references_issue`
 take the issue colour; `contains_commit` and `merge_commit` take the commit colour
-(`QUALIFIER`, `theme.js:49`). Each qualifier has exactly one direction in the data, so
+(`QUALIFIER`, `theme.js:45`). Each qualifier has exactly one direction in the data, so
 "what it reaches" is a property of the qualifier rather than something the renderer works
 out per edge.
 
@@ -309,7 +313,7 @@ Degree 2 — the commits behind the PR come back:
 
 ![Focus degree 2](shots/C10b-focus-degree2.png)
 
-**Encodes:** a client-side BFS neighbourhood (`focusSet`, `src/model/graph.js:64`), with
+**Encodes:** a client-side BFS neighbourhood (`focusSet`, `src/model/graph.js:63`), with
 graded falloff `FOCUS_FALLOFF = [1, 0.8, 0.55]`. This is **focus degree**, not traversal
 degree: it changes what is highlighted, never what was fetched.
 
@@ -541,7 +545,9 @@ button. Hovering a row previews that actor's trail; clicking pins it.
 
 ![Legend](shots/F07-legend-section.png)
 
-All 16 keys in five sections — Objects, Marks, Links, Relationships mode, Lines. Rows for
+All 16 Trace keys in five sections — Objects, Marks, Links, Relationships mode, Lines — 17 rows,
+`comments` appearing under both Marks and Lines; the Process map section (3 keys) is dimmed on the
+Trace page and lives in the Process page's own legend. Rows for
 keys absent from the current render drop to 0.32 opacity rather than disappearing, because
 a row that vanishes cannot say whether the mark is missing from the data or missing from
 the mode. In F1's absolute view the dimmed rows are `landmark-heuristic`,
@@ -724,8 +730,8 @@ changed.
    every fixture on load. It is the only legend key that no data can produce on its own.
 
 2. **F10 has no repeat observations.** The task list attributed the `repeatRow` to F10;
-   probing all 13 fixtures for rendered `data-legend` keys shows `repeat-observation` only
-   in LIVE1 and LIVE2. F10's 300 commits are spread over 8 pushes, but none is pushed
+   probing all 14 fixtures for rendered `data-legend` keys shows `repeat-observation` only
+   in LIVE1 and LIVE2. F10's 300 commits are spread over 24 pushes, but none is pushed
    twice. D6 was captured from LIVE1.
 
 3. **LIVE2 has no *Not linked to a PR* group.** All 24 of its commit groups are PR groups;
@@ -737,14 +743,14 @@ changed.
 
 5. **A URL-supplied `focusDegree` applies to the render but the stepper stays hidden.**
    `updateDegreeStepper()` is called only from `showDegreeStepper()` — which needs pointer
-   coordinates — and from the ± handlers (`src/main.js:514, 531, 539`). With
+   coordinates — and from the ± handlers (`src/main.js:563, 580, 588`). With
    `?focus=…&focusDegree=2` the dimming is correct and `state.focusDegree` is 2, while the
    never-shown `#degVal` still reads its markup default of 1. Not visible to a user, but it
    means E5 had to be captured by clicking a mark, not from a URL.
 
 6. **Copy link falls back to `window.prompt`.** When `navigator.clipboard.writeText`
    rejects — as it does in a headless browser without clipboard permission —
-   `src/render/controls.js:243` opens a prompt instead of toasting. I3 was therefore
+   `src/render/controls.js:242` opens a prompt instead of toasting. I3 was therefore
    captured from *Save current view*, whose toast does not depend on the clipboard.
 
 7. **Cluster layout overlaps badly at LIVE2's size.** Marks and labels overprint in D4's
@@ -819,7 +825,7 @@ changed.
 - [x] Relationships: masters, pairs, qualifiers, methods, counts — F4
 - [x] Folding: push label and comment window slider — F5
 - [x] Actors: search and rows — F6
-- [x] Legend: 16 rows, dimmed absent rows, hover highlight — F7
+- [x] Legend: 17 rows, dimmed absent rows, hover highlight — F7
 - [x] Hidden banner with chips and Show everything — F8
 - [x] Help strip, default and resolved — F9, D1
 

@@ -15,8 +15,9 @@ surface and the frontend never reads a view directly.
 Views are plain by default. The frontend asks for one sub-log at a time, so a
 plain view lets the seed filter reach the underlying upstream MVs; the first lever for speed is
 an index on those MVs, not a copy of them. `fe_layer.sql` §0 creates 19 such indexes and
-`ANALYZE`s 13 of them, with the measurements that justified each. Two relations are
-materialized, both with a measurement recorded beside them: `fe.link_mat` and `fe.seed_lookup`.
+`ANALYZE`s 13 of them, with the measurements that justified each. Three relations are
+materialized, each with a measurement recorded beside it: `fe.link_mat`, `fe.seed_lookup` and
+`fe.dfg_mat`.
 
 ### Applying it
 
@@ -34,9 +35,10 @@ as the owner and never travels the `web_anon` path that broke. `fe_layer.sql` en
 block that warns when any `api` function is `SECURITY INVOKER`.
 
 Prefer `./ocpm.sh db` to running the files by hand. It applies both, runs
-`fe.refresh_links()`, checks `fe.diag_sanity`, restarts PostgREST (otherwise it serves the old
-schema from its cache) and then runs the acceptance gate. Note that it refreshes only
-`fe.link_mat`; after an upstream refresh, run `fe.refresh_all()` yourself.
+`fe.refresh_links()` and `fe.refresh_dfg()`, checks `fe.diag_sanity`, restarts PostgREST
+(otherwise it serves the old schema from its cache) and then runs both acceptance gates.
+`fe.seed_lookup` is rebuilt because re-applying the file recreates it. After an upstream refresh,
+run `fe.refresh_all()` yourself.
 
 ### Refreshing
 
@@ -293,8 +295,9 @@ a long-lived branch re-enumerates every incoming commit and attributes all of th
 `fe.commit_pr_link` therefore admits an `mv_commit_pr_links` row only when the method
 is `head_sha` or `merge_commit_sha` (identity matches, untouched) **or** the commit was flagged
 new by GitHub on that PR's own head branch — `fe.commit_born_ref` tested against
-`fe.pr_head_ref`. On vscode PR #116416 it admits 36 of the 217 `ref_match` commits upstream; the
-rest were born on other branches.
+`fe.pr_head_ref`. On vscode PR #116416 it admits 36 of the 217 `ref_match` commits upstream: the
+previous rule had already dropped 130 first seen on trunk, and this one drops 52 more that were
+born on other people's branches.
 
 **Issue ↔ PR.** `mv_issue_pr_links_commit_message` is itself derived from commit→PR
 attribution, so it carries the wide attribution into the issue↔PR links. Branch A re-tests each
@@ -372,9 +375,9 @@ alone ("pr") is a filter rather than nothing, and still queries.
 name, most seeds winning. `available` is computed from `fe.seed_lookup` rather than declared;
 `reason` is `'No issues, pull requests or commits in the window.'` when it is false.
 
-**`api.get_dfg(repo)`** returns the DFG payload above, read from `fe.dfg_mat` (0.43 s, 16 KB
-for vscode). The same name resolution and ambiguity report as `get_object_graph` — the two
-resolvers must never disagree about which repository a name means. It raises only on an unknown
+**`api.get_dfg(repo)`** returns the DFG payload above, read from `fe.dfg_mat` (0.5 s, 59 KB
+for vscode on 2026-09-06). The same name resolution and ambiguity report as `get_object_graph` —
+the two resolvers must never disagree about which repository a name means. It raises only on an unknown
 name; there is no seed to check and no degree to bound. Gate: `scripts/dfg-check.mjs`.
 
 Client-side errors are in `src/data/api.js`. A network failure becomes an `Error` naming the

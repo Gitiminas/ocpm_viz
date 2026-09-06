@@ -114,9 +114,9 @@ function computeLinkOffsets(entries) {
      *
      * The fan exists so a link hidden underneath another is still visible, and
      * it was designed against F5's two coincident links. It scales badly: a
-     * pull request containing 85 commits pushed in the same hour puts 85
+     * pull request containing 35 commits pushed in the same hour puts 35
      * links in one bundle, and spreading them 5px apart smears the shared endpoint
-     * across 425px. The lane caption then says *one* pull request while the picture
+     * across 175px. The lane caption then says *one* pull request while the picture
      * shows a wall of arrival points — which reads as many. That is a wrong picture
      * with no error, and it is worst exactly where a PR carries the most work.
      *

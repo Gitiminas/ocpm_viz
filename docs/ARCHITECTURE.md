@@ -268,9 +268,9 @@ link as a strict sub-segment of the further one, and the buried link — the **e
 dashed with its `?` badge — disappears under a solid stroke, so a viewer sees one confident
 connection where there are two. Fixture F5 holds that shape. The offset grows linearly with
 bundle size, so it also needs a cap: unbounded, a vscode PR with 35 commits pushed in an hour
-smears its shared endpoint across 425 px and the picture implies 85 pull requests where the
+smears its shared endpoint across 175 px and the picture implies 35 pull requests where the
 caption says one. `MAX_FANNED_LINKS = 6` is the cap, and a larger bundle draws as one coincident
-line carrying a `×N` badge (`data-legend="link-crowded"`). Nothing visible is lost: at 85 no
+line carrying a `×N` badge (`data-legend="link-crowded"`). Nothing visible is lost: at 35 no
 single line is distinguishable anyway, and every commit is drawn in the commit lane regardless.
 Declaring the count follows the standing rule that anything hidden is declared. **Still
 unresolved:** event glyphs stack without bound, and a kubernetes issue with 288 comments in a

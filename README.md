@@ -72,9 +72,9 @@ reads "fixed by the query". Do not confuse it with **focus degree**: clicking a 
 object and dims everything more than one hop away, with a floating stepper to reach two. Focus
 changes what is *highlighted*, never what is loaded.
 
-A sub-log arrives in one query and that query is slow — 2.4 s to 3.3 s warm against the live
-database, 7.4 s cold — so changing the repository, the seed or the degree blurs the picture behind
-a loading card naming what is being fetched, and the stale picture stops taking clicks until the
+A sub-log arrives in one query and that query is slow — 3.5 s to 3.9 s warm against the live
+database on 2026-09-06, 2.4 s to 3.3 s a month earlier, 7.4 s cold — so changing the repository,
+the seed or the degree blurs the picture behind a loading card naming what is being fetched, and the stale picture stops taking clicks until the
 new one arrives. Nothing appears for loads under 200 ms, which is every load on the fixture source.
 
 The sub-log card under the query states what is on screen: counts per object type, links, events
@@ -94,9 +94,10 @@ observation on its own. It is pre-computed server-side (`fe.dfg_mat`,
 `api.get_dfg`), so the sub-log sidebar's toggles do not apply — the page carries its own:
 per-lane and per-type-pair succession masters, link evidence, qualifier and detection-method filters (cross arrows thin rather than multiply, and their hovercards break the count down by link class), per-activity hides, a logarithmic min–max count
 range that opens with the rarest tenth of edges hidden, and click-to-focus on an activity. The
-notice always states the filter's arithmetic ("Showing 86 of 94 successions"), so nothing
-disappears quietly; there is no seed on this page, the repository is the whole query. On the
-fixtures source it draws the pulled sample `DFG1`.
+notice always states the filter's arithmetic ("Showing 86 of 94 succession arrows"), so nothing
+disappears quietly; there is no seed on this page, the repository is the whole query. The page
+needs the database source: fixtures hold sub-logs, not a whole log, so on fixtures it says so and
+links to `?source=database&page=dfg`. The pulled sample `DFG1` is used only by the tests.
 
 **Modes** are a two-level control:
 
@@ -124,7 +125,7 @@ times are UTC, labelled.
 | Relationships | Validated and Extracted masters with type-pair children, qualifiers, detection methods, with counts |
 | Folding | Push folding (fixed, by `push_id`) and a comment-folding window of 0–30 days |
 | Actors | One row per actor with colour, login and event count; hover previews the trail, click pins it |
-| Legend | Sixteen rows, dimmed when absent from the current render; hover highlights every matching mark |
+| Legend | Seventeen rows in five sections, dimmed when absent from the current render; hover highlights every matching mark |
 
 Commits pushed together fold into one bulk-push mark, and runs of comments inside the folding
 window fold into one comment burst — though a run never crosses a close or a reopen, so a
@@ -149,7 +150,7 @@ where hovering a row rings the corresponding mark.
 | `fixture` | direct fixture address, e.g. `F13` — instead of `repo` + `seed` |
 | `degree` | traversal degree, 0–2 |
 | `preset` | a whole configuration, base64url |
-| `page` | `stats` |
+| `page` | `stats` or `dfg` |
 | `mode` | `absolute`, `discrete` or `relationships` |
 | `layout` | `layered` or `cluster` |
 | `brush` | two fractions of the time extent, e.g. `0.6,1` |
@@ -201,7 +202,7 @@ compare fill between shots and never against the box.
 | `src/render/` | The SVG renderers, sidebar, tooltips, stats page, theme |
 | `src/stats/metrics.js` | Durations, counts, gaps, outcomes as pure functions |
 | `src/help/tips.js` | Help texts as data: key → sentence |
-| `sql/` | `fe_layer.sql` (schema `fe` and the three RPCs), `postgrest_setup.sql` (roles and grants), and `matviews_scoped.sql` (the 23 upstream views the layer reads) |
+| `sql/` | `fe_layer.sql` (schema `fe` and the four RPCs), `postgrest_setup.sql` (roles and grants), and `matviews_scoped.sql` (the 23 upstream views, 14 of which the layer reads) |
 | `scripts/` | The dev server, fixture builders, the two gates (`rpc-check.mjs`, `dfg-check.mjs`), the two pullers (`pull-sublog.mjs`, `pull-dfg.mjs`), `shot.mjs` |
 | `tests/` | `node --test` suites and `tests/fixtures/` (F1–F14, LIVE1–LIVE2, `catalogue.json`) |
 | `vendor/` | d3-force 3.0.0, unmodified, because there is no bundler to resolve a bare import |
@@ -239,5 +240,6 @@ compare fill between shots and never against the box.
 - **Fixtures key actors by `actor:<login>`**, because `ocel-data.json` carries no numeric actor
   id. The live payload uses `actor:<actor_id>`. A renamed account splits into two actors in the
   fixtures only; note it if fixture actor counts are reported.
-- **Nothing is deployed beyond localhost**, and interaction has no automated coverage: tooltips,
-  drag, minimap and hover paths were checked by eye.
+- **Nothing is deployed beyond localhost**, and most interaction has no automated coverage:
+  drag-to-pan and minimap placement are unit-tested against stubs, while tooltips, the minimap's
+  zoom grips, hover paths and the actor card were checked by eye.
