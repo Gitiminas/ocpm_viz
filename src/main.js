@@ -420,8 +420,12 @@ function renderSidebar() {
     state,
     onChange: redraw,
     // Hover draws a throwaway trail straight onto the last render; it never touches
-    // `state.actors`, so nothing a hover does can outlive the pointer.
-    onPreview: (actorId) => timeline.previewActor(actorId),
+    // `state.actors`, so nothing a hover does can outlive the pointer. The card counts
+    // the previewed trail the same way, and drops it on leave (`actorId` null).
+    onPreview: (actorId) => {
+      timeline.previewActor(actorId);
+      updateSubLogCard({ previewActor: actorId });
+    },
     onProfile: (actor, anchor) =>
       actorCard.open(actor, anchor, { graph, index, color: actorColors.get(actor.id) }),
   });
@@ -1464,7 +1468,7 @@ function updateTraversalInfo(graph) {
  * the numbers, and each tile shows "n / total" where they differ. Called from `redraw()`
  * beside the hidden-state banner, which is the other place that says what is hidden.
  */
-function updateSubLogCard() {
+function updateSubLogCard({ previewActor = null } = {}) {
   if (!current) return;
   const { graph, groupsByCommit } = current;
   const notes = [];
@@ -1479,7 +1483,7 @@ function updateSubLogCard() {
     container: elements.subLogCard,
     // An actor is drawn only when pinned, and the relationships mode folds events into
     // one mark per object; `summaryForMode` counts what is actually on screen.
-    summary: summaryForMode(summarizeSubLog(visible), visible, state),
+    summary: summaryForMode(summarizeSubLog(visible), visible, state, { previewActor }),
     total: summarizeSubLog(graph),
     notes,
   });

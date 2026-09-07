@@ -538,6 +538,16 @@ describe('the sub-log card counts what is drawn: pinned actors, and marks in the
     c.state.actors.add('actor:not-in-this-sub-log');
     const stray = summaryForMode(summarizeSubLog(visible), visible, c.state);
     assert.equal(stray.counts.get('actor'), 1, 'a pin outside the selection does not count');
+
+    // Hovering previews a trail; the card counts it while the pointer stays, once even if
+    // the previewed actor is already pinned, and not at all when the pointer leaves.
+    const another = visible.objects.filter((o) => o.type === 'actor').find((o) => o.id !== anActor.id);
+    const hover = summaryForMode(summarizeSubLog(visible), visible, c.state, { previewActor: another.id });
+    assert.equal(hover.counts.get('actor'), 2, 'a previewed trail counts like a pin');
+    const hoverPinned = summaryForMode(summarizeSubLog(visible), visible, c.state, { previewActor: anActor.id });
+    assert.equal(hoverPinned.counts.get('actor'), 1, 'previewing a pinned actor does not double it');
+    const left = summaryForMode(summarizeSubLog(visible), visible, c.state, { previewActor: null });
+    assert.equal(left.counts.get('actor'), 1);
   });
 
   test('hiding a lane in the relationships mode drops its marks from the artifact count', async () => {

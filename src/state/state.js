@@ -340,18 +340,26 @@ export function actorPreview(actorId, state) {
  * marks (the visible issue, PR and commit objects). Counting events there would declare
  * marks that are not on screen, which is exactly what the card exists to not do.
  *
+ * A hovered actor row previews its trail without touching `state.actors`, so the card
+ * takes the previewed id separately and counts it like a pin for as long as the pointer
+ * stays — the number and the canvas then say the same thing.
+ *
  * Pure and DOM-free: takes the summary and the visible graph, returns a new summary.
  *
  * @param {object} summary        `summarizeSubLog` over the visible selection
  * @param {object} visible        the visible selection itself (for the actor ids in it)
  * @param {object} state          `st` — reads `mode` and `actors`
+ * @param {object} [options]
+ * @param {string|null} [options.previewActor]  the actor whose trail is previewed on hover
  */
-export function summaryForMode(summary, visible, state) {
+export function summaryForMode(summary, visible, state, { previewActor = null } = {}) {
   const counts = new Map(summary.counts);
   const visibleActors = new Set(
     visible.objects.filter((object) => object.type === 'actor').map((object) => object.id),
   );
-  counts.set('actor', [...state.actors].filter((id) => visibleActors.has(id)).length);
+  const drawn = new Set(state.actors);
+  if (previewActor) drawn.add(previewActor);
+  counts.set('actor', [...drawn].filter((id) => visibleActors.has(id)).length);
   const events =
     state.mode === 'relationships'
       ? LANE_TYPES.reduce((n, type) => n + (counts.get(type) ?? 0), 0)
