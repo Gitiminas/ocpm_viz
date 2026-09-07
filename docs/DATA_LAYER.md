@@ -131,6 +131,7 @@ Of the loosely-typed bags, the client reads little:
 |---|---|
 | `vmap.commit_sha`, `.commit_message`, `.commit_author_name`, `.ref`, `.push_id` | commit tooltip, burst derivation, unique-author count |
 | `vmap.login` | actor card, sidebar, actor trails |
+| `vmap.title`, `.body_excerpt`, `.body_truncated` (issue, PR) | the Title row and the Description block on the issue and PR cards, timeline and structural. Title and body come from the object's `opened` row when there is one, else its earliest surviving event; the body is capped at 500 characters server-side like a comment excerpt (2026-09-07) |
 | `vmap.in_burst` | not read; `bursts.js` derives bursts from `push_id` |
 | `attrs.ref`, `attrs.push_id` | `layout/nodes.js`, for a repeatedly observed commit |
 | `attrs.comment_excerpt`, `attrs.comment_truncated` | the comment card |

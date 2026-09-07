@@ -280,6 +280,32 @@ day, a second open-ended interval from there — the archive's event order is ke
 that is the residual for the 26 late-stamped objects of 2019-08-27..29. Not verified: which of the
 three new validated links owe their admission to the time shift.
 
+### Title and description on the issue and PR cards, 2026-09-07
+
+`fe.object_issue` and `fe.object_pull_request` carry `vmap.title`, `body_excerpt` (500 chars) and
+`body_truncated`; the cards show a Title row and a Description block through the comment
+excerpt's own `excerptHtml`, which now takes a heading. One new index, announced here as
+`CLAUDE.md` asks: `ix_issues_full_repo_issue` on `mv_issues_full (repo_id, issue_id)`, because the
+issue lookup is a correlated subquery and that view had an index on `(repo_id, actor_id)` only.
+The first draft put the lookup inside the view's `DISTINCT ON`, where the planner ran it for every
+candidate row before the Unique — 293,308 index searches and 4.7 s for a two-object request on
+vscode, `rpc-check` at 6.7–7.6 s. Moved outside, it runs per surviving row: 2 index searches,
+367 ms for the same request. The same profiling showed the derived openings (branches 4–5 of
+`fe.event`) in their aggregate form running in full on every request — 1.2–1.5 s of the event
+CTE — so they went back to one indexed lookup per identity row (second announced index,
+`ix_icomments_repo_issue` on `mv_issue_comments_full (repo_id, issue_id)`), and the event CTE is
+at 268 ms for a two-object request. **Latency after all of today's changes: `api.get_sublog` 3.3 s
+at degree 0 and 3.8 s at degree 2 on vscode, measured in psql, against 1.7–3.4 s on 2026-08-04.**
+The fixed part is per-repository work the object filter cannot reach: both interval views
+(0.57 s + 0.38 s, now sorting the identity rows too), the object views' `DISTINCT ON` over the
+whole repository (0.12 s + 0.28 s, run once more by the seed check), and about a second not yet
+attributed. All of it is static between refreshes; materializing the object and interval views,
+with a measurement beside them like the three existing materializations, is the next lever and
+was not pulled today. Checked after: both gates pass, `npm test` 836 / 0 (four new tests in
+`tests/excerpt.test.js`: the rows appear when the payload carries them, the comment mark keeps
+the comment text, nothing is emitted when vmap has neither, the heading is per row). Not verified
+in a browser: the Description block's clamp and fade on a real card.
+
 ---
 
 ## 5. Not verified
