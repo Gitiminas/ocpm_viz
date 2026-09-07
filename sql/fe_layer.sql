@@ -338,10 +338,16 @@ WITH observed AS (
   WHERE pr_number IS NOT NULL
 ),
 from_identity AS (
+  -- prs_identity has two kinds of row since 2026-09-07 (its banner in matviews_scoped.sql):
+  -- one from the PR's 'opened' event, and a fallback from any later PullRequestEvent whose
+  -- payload carries the PR's created_at, for PRs whose opening the corpus lacks. Both give
+  -- the real creation time; the semantics label says which, because only the first also
+  -- means "the opening is in the log".
   SELECT i.repo_id, i.pull_request_id, i.pr_number,
          i.pr_created_at AT TIME ZONE 'UTC' AS t0,
          0 AS priority,
-         'created_at(opened)'::text AS time_semantics
+         CASE WHEN i.pr_creation_event_id IS NULL THEN 'created_at(payload)'
+              ELSE 'created_at(opened)' END::text AS time_semantics
   FROM prs_identity i
   JOIN observed o ON o.repo_id = i.repo_id AND o.pr_number = i.pr_number
   WHERE i.pull_request_id IS NOT NULL
@@ -358,11 +364,12 @@ first_seen AS (
   GROUP BY p.repo_id, p.pull_request_id
 ),
 refs AS (
+  -- The 'opened' row when there is one, else the earliest surviving event: same fallback
+  -- as prs_identity, so a PR the corpus never saw opened still gets its title and refs.
   SELECT DISTINCT ON (pull_request_id)
          pull_request_id, head_ref, base_ref, pr_title
   FROM mv_pull_request_events_full
-  WHERE action = 'opened'
-  ORDER BY pull_request_id, event_created_at
+  ORDER BY pull_request_id, (action = 'opened') DESC, event_created_at
 )
 SELECT DISTINCT ON (u.repo_id, u.pull_request_id)
        'pr:' || u.pull_request_id::text AS id,
