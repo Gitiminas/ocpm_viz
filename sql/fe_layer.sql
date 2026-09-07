@@ -532,6 +532,14 @@ WITH lifecycle AS (
   FROM mv_issue_and_issuecomment_activities_full
   WHERE activity_type IN ('IssueOpened','IssueReopened','IssueClosed')
     AND issue_id IS NOT NULL
+  UNION ALL
+  -- The issue's creation time as an opening — same rule and same reasons as
+  -- fe.interval_pull_request below. Measured 2026-09-07: 10,607 vscode, 3,796 kubernetes,
+  -- 1,100 react issues had a close and no open and drew no bar.
+  SELECT i.repo_id, i.issue_id, 0::bigint AS event_id,
+         i.issue_created_at AT TIME ZONE 'UTC' AS t, 1 AS is_open
+  FROM issues_identity i
+  WHERE i.issue_id IS NOT NULL
 ),
 edges AS (
   SELECT *, lag(is_open) OVER w AS prev_open
@@ -574,6 +582,21 @@ WITH lifecycle AS (
   WHERE activity_type IN ('PullRequestOpened','PullRequestReopened','PullRequestMerged',
                           'PullRequestMergedOffPlatform','PullRequestClosed')
     AND pull_request_id IS NOT NULL
+  UNION ALL
+  -- The PR's creation time as an opening (2026-09-07). prs_identity knows it for every PR
+  -- — from the 'opened' event, or from a later event's payload when the corpus lacks the
+  -- opening. Sorted first at its instant (event_id 0), so where the opening IS in the log
+  -- it is the same state at the same time and collapses into it: every existing interval
+  -- is unchanged. Where it is not, the PR gets its interval from creation to the first
+  -- observed close instead of none — measured 2026-09-07: 4,342 kubernetes, 1,826 vscode,
+  -- 858 react PRs had a close and no open, and drew no bar; their commit links then
+  -- anchored at the left edge of the axis (kubernetes #47532, PRs #65509 and #65539).
+  -- A PR with no lifecycle event at all now reads [creation, null): created, never seen
+  -- closed — the same meaning `end = null` already has.
+  SELECT i.repo_id, i.pull_request_id, 0::bigint AS event_id,
+         i.pr_created_at AT TIME ZONE 'UTC' AS t, 1 AS is_open
+  FROM prs_identity i
+  WHERE i.pull_request_id IS NOT NULL
 ),
 edges AS (
   SELECT *, lag(is_open) OVER w AS prev_open
