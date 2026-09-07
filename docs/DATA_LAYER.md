@@ -407,8 +407,10 @@ rather than hiding it. `api.search_seeds` resolves names the same way, and `api.
 returns one row per name by the same rule, so the picker offers what the RPC would pick.
 
 **`api.search_seeds(repo, seed_type, number_query, sha_prefix, text_query, max_results)`** returns
-`(id, type, label, number, sha, title)` from `fe.seed_lookup`, ordered `type, number DESC NULLS
-LAST, id` and capped at `max_results` (1..200, default 20). It takes an **already-parsed**
+`(id, type, label, number, sha, title)` from `fe.seed_lookup`, ordered exact number first, then
+`number DESC NULLS LAST, type, id`, and capped at `max_results` (1..200, default 20). The order
+only decides what survives the cap, but it must let an exact match survive it: PR #8 was once cut
+behind thousands of higher numbers containing an 8. It takes an **already-parsed**
 reference. `parseSeedRef` in `src/data/seedQuery.js` turns "pr #243221" into `{type, number,
 shaPrefix, text}`, and a second parser in SQL would give the two transports something to disagree
 about. So: **SQL filters, JavaScript ranks.** The function returns a permissive superset;

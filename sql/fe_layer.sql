@@ -2224,8 +2224,14 @@ BEGIN
       OR (number_query IS NULL AND sha_prefix IS NULL AND text_query IS NULL)
     )
   -- A stable order before the cap, so the same query returns the same candidates. The
-  -- client ranks properly; this only decides which ones survive the limit.
-  ORDER BY s.type, s.number DESC NULLS LAST, s.id
+  -- client ranks properly; this only decides which ones survive the limit — and that is
+  -- where it has to agree with the ranker on one point. An exact number goes first,
+  -- because `number DESC` alone kept the 200 highest numbers containing the digits and
+  -- cut PR #8 out of a repository with 4,000 higher ones. Type is not a leading key for
+  -- the same reason: an untyped number would otherwise fill the cap with one type and
+  -- starve the other.
+  ORDER BY (number_query IS NOT NULL AND s.number::text = number_query) DESC,
+           s.number DESC NULLS LAST, s.type, s.id
   LIMIT max_results;
 END;
 $fn$;
