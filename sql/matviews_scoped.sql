@@ -2,10 +2,11 @@
 -- matviews_scoped.sql  —  the 23 views the OCPM viz tool needs. RUNNABLE AS-IS.
 --
 -- What this file is: the subset of a larger 49-view upstream dump that this tool
--- actually reads, already filtered, dependency-ordered, and with three hand patches:
+-- actually reads, already filtered, dependency-ordered, and with four hand patches:
 -- two to mv_commit_pr_links (it used to read ocel_events, which is off-limits; and a
--- fourth detection method, push_order, added 2026-09-07) and one to prs_identity (a
--- fallback for PRs whose 'opened' event the corpus lacks, 2026-09-07) — each in its banner.
+-- fourth detection method, push_order, added 2026-09-07) and one each to prs_identity and
+-- issues_identity (a fallback for objects whose 'opened' event the corpus lacks,
+-- 2026-09-07) — each in its banner.
 --
 -- The view selection is settled. Excluded on purpose: all ocel_* views, reviews,
 -- labels, branches, forks, commit comments, and the ocel_events analytics views.
@@ -30,7 +31,26 @@
 
 
 -- ---- issues_identity ----
--- issue identity: one row per issue, from its 'opened' event
+-- issue identity: one row per issue, from its 'opened' event when the corpus has it, else
+-- from any other IssuesEvent, else from an IssueCommentEvent on the issue.
+--
+-- PATCHED 2026-09-07, the same fallback as prs_identity (see its banner): the original read
+-- the 'opened' event and nothing else, so an issue whose opening fell into an ingestion gap
+-- had no identity row although its later events carry the same `issue` payload — id,
+-- number and created_at. Measured before patching: issues seen in mv_issues_full with no
+-- identity row react 1,144, kubernetes 4,054, vscode 11,304; seen in the issue-or-comment
+-- activities MV 1,684 / 5,700 / 15,023. Priority: the 'opened' row (unchanged: same
+-- issue_creation_event_id, same issue_created_at = the event's own time), then the earliest
+-- other IssuesEvent, then the earliest IssueCommentEvent whose issue is not a pull request.
+-- Fallback rows carry issue_creation_event_id NULL and the payload's created_at as naive
+-- UTC; the two comment-stream conditions (not a PR, created_at present) exist because
+-- IssueCommentEvent also fires on pull requests and a few old rows lack the field.
+-- Measured after refresh (2026-09-07, this database): fallback rows react 1,684,
+-- kubernetes 5,700, vscode 15,023 — exactly the activities MV's gap; validated issue↔PR
+-- links 19,238 → 21,863 (+13.6%: every link view resolves the issue through this relation,
+-- and a link to an issue with no identity row was dropped as missing_issue); fe.link_mat
+-- 191,519 → 193,245; fe.diag_time_semantics: every former first_seen(activity) issue is
+-- now created_at(payload).
 --
 
 CREATE MATERIALIZED VIEW public.issues_identity AS
@@ -42,11 +62,23 @@ CREATE MATERIALIZED VIEW public.issues_identity AS
    FROM ( SELECT event.repo_id,
             (((event.payload -> 'issue'::text) ->> 'id'::text))::bigint AS issue_id,
             (((event.payload -> 'issue'::text) ->> 'number'::text))::integer AS issue_number,
-            event.id AS issue_creation_event_id,
-            event.created_at AS issue_created_at
+                CASE
+                    WHEN ((event.type = 'IssuesEvent'::public.event_type) AND ((event.payload ->> 'action'::text) = 'opened'::text)) THEN event.id
+                    ELSE NULL::bigint
+                END AS issue_creation_event_id,
+                CASE
+                    WHEN ((event.type = 'IssuesEvent'::public.event_type) AND ((event.payload ->> 'action'::text) = 'opened'::text)) THEN event.created_at
+                    ELSE ((((event.payload -> 'issue'::text) ->> 'created_at'::text))::timestamp with time zone AT TIME ZONE 'UTC'::text)
+                END AS issue_created_at,
+                CASE
+                    WHEN ((event.type = 'IssuesEvent'::public.event_type) AND ((event.payload ->> 'action'::text) = 'opened'::text)) THEN 0
+                    WHEN (event.type = 'IssuesEvent'::public.event_type) THEN 1
+                    ELSE 2
+                END AS priority,
+            event.created_at AS event_created_at
            FROM public.event
-          WHERE ((event.type = 'IssuesEvent'::public.event_type) AND ((event.payload ->> 'action'::text) = 'opened'::text))) s
-  ORDER BY repo_id, issue_id, issue_created_at
+          WHERE ((event.type = 'IssuesEvent'::public.event_type) OR ((event.type = 'IssueCommentEvent'::public.event_type) AND (((event.payload -> 'issue'::text) ->> 'created_at'::text) IS NOT NULL) AND (((event.payload -> 'issue'::text) -> 'pull_request'::text) IS NULL)))) s
+  ORDER BY repo_id, issue_id, priority, event_created_at
   WITH NO DATA;
 
 --
