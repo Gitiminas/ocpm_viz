@@ -741,6 +741,95 @@ raw AS (
   FROM mv_push_commits_full pc
   LEFT JOIN push_facts pf ON pf.activity_id = pc.event_id
   WHERE pc.commit_sha IS NOT NULL
+
+  UNION ALL
+  ---------------------------------------------------------------------------------------
+  -- 4. PullRequestOpened DERIVED from a later event's payload (2026-09-07).
+  --
+  --    GitHub embeds the whole pull request in every PullRequestEvent, so when the corpus
+  --    lacks the 'opened' event (prs_identity.pr_creation_event_id IS NULL, see its banner)
+  --    the earliest surviving event still states created_at and the opener verbatim. This
+  --    branch emits that opening as an event: the time and actor are GitHub's own record,
+  --    read, not estimated. What is derived is only that an event stands for them, and
+  --    attrs says so — `source: 'payload'` and `derived_from`, the event whose payload
+  --    supplied it — so a mark can show a dotted ring and a count can exclude it.
+  --    Measured before applying: 7,235 PRs, every one with an author in the payload.
+  --
+  --    ⚠️ One pass over the events MV, DISTINCT ON, hash-joined to the fallback identity
+  --    rows — NOT a LATERAL lookup per PR. The first draft did that, and the issue twin
+  --    below had no (repo, issue) index on the 2.3M-row comment MV to lean on: fe.dfg_mat
+  --    took >10 minutes to build instead of ~1 and was cancelled.
+  ---------------------------------------------------------------------------------------
+  --
+  --    ⚠️ The actor is named only if the `actor` base table has the account. 239 PR
+  --    authors and 3,525 issue creators named by these payloads performed no event in the
+  --    corpus and have no `actor` row, so no actor OBJECT can exist for them, and the
+  --    sanity check "actors named by an event with no actor object" is a contract this
+  --    layer keeps. For those the event carries actor NULL and says who in attrs
+  --    (`opened_by`, `opened_by_id`), so the fact is not lost, only the object.
+  ---------------------------------------------------------------------------------------
+  SELECT 'pr_open_payload:' || i.pull_request_id::text,
+         'PullRequestOpened'::text,
+         i.pr_created_at AT TIME ZONE 'UTC',
+         'pr:' || i.pull_request_id::text,
+         CASE WHEN ka.id IS NOT NULL THEN 'actor:' || src.author_id::text END,
+         ka.id,
+         i.repo_id,
+         jsonb_strip_nulls(jsonb_build_object(
+           'source',        'payload',
+           'derived_from',  src.event_id,
+           'opened_by',     CASE WHEN ka.id IS NULL THEN src.author_login END,
+           'opened_by_id',  CASE WHEN ka.id IS NULL THEN src.author_id END))
+  FROM prs_identity i
+  JOIN (
+    SELECT DISTINCT ON (e.repo_id, e.pull_request_id)
+           e.repo_id, e.pull_request_id, e.event_id, e.author_id, e.author_login
+    FROM mv_pull_request_events_full e
+    ORDER BY e.repo_id, e.pull_request_id, e.event_created_at, e.event_id) src
+    ON src.repo_id = i.repo_id AND src.pull_request_id = i.pull_request_id
+  LEFT JOIN actor ka ON ka.id = src.author_id
+  WHERE i.pr_creation_event_id IS NULL
+    AND i.pull_request_id IS NOT NULL
+
+  UNION ALL
+  ---------------------------------------------------------------------------------------
+  -- 5. IssueOpened DERIVED from a later event's payload — the same rule as branch 4.
+  --    The creator comes from the earliest surviving IssuesEvent (mv_issues_full). An
+  --    issue known only from comments has no creator in the comment payload: its opening
+  --    is emitted with NO actor, and derived_from names the earliest comment event. The
+  --    layer already tolerates a NULL actor (the sanity check skips it, the DFG emits no
+  --    actor row, the layout carries null); the handoff metric was taught to as well.
+  --    Same single-pass shape as branch 4; the comment MV is aggregated once.
+  ---------------------------------------------------------------------------------------
+  SELECT 'issue_open_payload:' || i.issue_id::text,
+         'IssueOpened'::text,
+         i.issue_created_at AT TIME ZONE 'UTC',
+         'issue:' || i.issue_id::text,
+         CASE WHEN ka.id IS NOT NULL THEN 'actor:' || ie.issue_creator_id::text END,
+         ka.id,
+         i.repo_id,
+         jsonb_strip_nulls(jsonb_build_object(
+           'source',        'payload',
+           'derived_from',  COALESCE(ie.event_id, ic.first_event_id),
+           'opened_by',     CASE WHEN ka.id IS NULL THEN ie.issue_creator_login END,
+           'opened_by_id',  CASE WHEN ka.id IS NULL THEN ie.issue_creator_id END))
+  FROM issues_identity i
+  LEFT JOIN (
+    SELECT DISTINCT ON (f.repo_id, f.issue_id)
+           f.repo_id, f.issue_id, f.event_id, f.issue_creator_id, f.issue_creator_login
+    FROM mv_issues_full f
+    WHERE f.issue_id IS NOT NULL
+    ORDER BY f.repo_id, f.issue_id, f.event_created_at, f.event_id) ie
+    ON ie.repo_id = i.repo_id AND ie.issue_id = i.issue_id
+  LEFT JOIN actor ka ON ka.id = ie.issue_creator_id
+  LEFT JOIN (
+    SELECT c.repo_id, c.issue_id, min(c.event_id) AS first_event_id
+    FROM mv_issue_comments_full c
+    WHERE c.issue_id IS NOT NULL
+    GROUP BY c.repo_id, c.issue_id) ic
+    ON ic.repo_id = i.repo_id AND ic.issue_id = i.issue_id
+  WHERE i.issue_creation_event_id IS NULL
+    AND i.issue_id IS NOT NULL
 )
 SELECT r.id,
        r.activity,
@@ -1433,7 +1522,12 @@ BEGIN
                           || 'than are drawn.',
           'commit_authorship', 'vmap.commit_author_name is a git identity string and is '
                           || 'NOT joined to any GitHub account. The actor on '
-                          || 'a CommitObserved event is the PUSHER.'),
+                          || 'a CommitObserved event is the PUSHER.',
+          'derived_openings', 'An IssueOpened or PullRequestOpened with attrs.source = '
+                          || '''payload'' was never recorded as an event: its time and '
+                          || 'actor are read from a later event''s payload '
+                          || '(attrs.derived_from). actor_id is null when the account '
+                          || 'has no actor record; attrs.opened_by then names it.'),
        'source', jsonb_build_object(
           'rpc',          'api.get_sublog',
           'layer',        'sql/fe_layer.sql',
