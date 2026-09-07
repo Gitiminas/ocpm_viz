@@ -2,9 +2,10 @@
 -- matviews_scoped.sql  —  the 23 views the OCPM viz tool needs. RUNNABLE AS-IS.
 --
 -- What this file is: the subset of a larger 49-view upstream dump that this tool
--- actually reads, already filtered, dependency-ordered, and with two hand patches to
--- mv_commit_pr_links (it used to read ocel_events, which is off-limits; and a fourth
--- detection method, push_order, was added 2026-09-07 — both in its banner).
+-- actually reads, already filtered, dependency-ordered, and with three hand patches:
+-- two to mv_commit_pr_links (it used to read ocel_events, which is off-limits; and a
+-- fourth detection method, push_order, added 2026-09-07) and one to prs_identity (a
+-- fallback for PRs whose 'opened' event the corpus lacks, 2026-09-07) — each in its banner.
 --
 -- The view selection is settled. Excluded on purpose: all ocel_* views, reviews,
 -- labels, branches, forks, commit comments, and the ocel_events analytics views.
@@ -64,7 +65,28 @@ CREATE MATERIALIZED VIEW public.issues_identity AS
 
 
 -- ---- prs_identity ----
--- PR identity: one row per PR, from its 'opened' event
+-- PR identity: one row per PR, from its 'opened' event when the corpus has it, else from
+-- any other PullRequestEvent row of that PR.
+--
+-- PATCHED 2026-09-07: the original read the 'opened' event and nothing else, so a pull
+-- request whose opening fell into one of the corpus's ingestion gaps (facebook/react
+-- #27024, id 1413026032: only its close, a review and a review comment survive; react has
+-- no PullRequestEvent at all 2023-06-26..07-03) had no identity row although its later
+-- events carry the same `pull_request` payload — id, number and created_at. Measured
+-- before patching: 7,179 such PRs (react 760, kubernetes 4,556, vscode 1,863), every one
+-- with created_at available from a later event. Ten link views join this relation; the
+-- issue-comment detector inner-joins it and lost those PRs outright, the others left-join
+-- it for pr_created_at and admitted 2,059 of 19,259 validated issue↔PR links without the
+-- issue_created_after_pr test. Rows that HAVE an opened event are unchanged: same
+-- pr_creation_event_id, same pr_created_at (the event's own time). Fallback rows carry
+-- pr_creation_event_id NULL and the payload's created_at as naive UTC, so a consumer can
+-- tell the two apart. Measured after refresh (2026-09-07, this database): fallback rows
+-- react 777, kubernetes 4,595, vscode 1,863 (the raw table holds a few PRs the events MV's
+-- window does not); validated issue↔PR links 19,259 → 19,238, the 21 leavers now failing
+-- a plausibility test they could not be given before; links still lacking pr_created_at
+-- 2,059 → 1,457, all of them proximity rows, which never carry it; issue-comment links
+-- 83 → 84; fe.diag_time_semantics: every former first_seen(activity) PR is now
+-- created_at(payload).
 --
 
 CREATE MATERIALIZED VIEW public.prs_identity AS
@@ -76,11 +98,19 @@ CREATE MATERIALIZED VIEW public.prs_identity AS
    FROM ( SELECT event.repo_id,
             (((event.payload -> 'pull_request'::text) ->> 'id'::text))::bigint AS pull_request_id,
             (((event.payload -> 'pull_request'::text) ->> 'number'::text))::integer AS pr_number,
-            event.id AS pr_creation_event_id,
-            event.created_at AS pr_created_at
+                CASE
+                    WHEN ((event.payload ->> 'action'::text) = 'opened'::text) THEN event.id
+                    ELSE NULL::bigint
+                END AS pr_creation_event_id,
+                CASE
+                    WHEN ((event.payload ->> 'action'::text) = 'opened'::text) THEN event.created_at
+                    ELSE ((((event.payload -> 'pull_request'::text) ->> 'created_at'::text))::timestamp with time zone AT TIME ZONE 'UTC'::text)
+                END AS pr_created_at,
+            ((event.payload ->> 'action'::text) = 'opened'::text) AS is_opened,
+            event.created_at AS event_created_at
            FROM public.event
-          WHERE ((event.type = 'PullRequestEvent'::public.event_type) AND ((event.payload ->> 'action'::text) = 'opened'::text))) s
-  ORDER BY repo_id, pull_request_id, pr_created_at
+          WHERE (event.type = 'PullRequestEvent'::public.event_type)) s
+  ORDER BY repo_id, pull_request_id, is_opened DESC, event_created_at
   WITH NO DATA;
 
 --
