@@ -2,9 +2,9 @@
 -- matviews_scoped.sql  —  the 23 views the OCPM viz tool needs. RUNNABLE AS-IS.
 --
 -- What this file is: the subset of a larger 49-view upstream dump that this tool
--- actually reads, already filtered, dependency-ordered, and with the one problem
--- fixed (mv_commit_pr_links used to read ocel_events, which is off-limits —
--- patched inline, see its banner).
+-- actually reads, already filtered, dependency-ordered, and with two hand patches to
+-- mv_commit_pr_links (it used to read ocel_events, which is off-limits; and a fourth
+-- detection method, push_order, was added 2026-09-07 — both in its banner).
 --
 -- The view selection is settled. Excluded on purpose: all ocel_* views, reviews,
 -- labels, branches, forks, commit comments, and the ocel_events analytics views.
@@ -939,7 +939,24 @@ CREATE MATERIALIZED VIEW public.mv_pull_request_and_comment_activities_full AS
 
 
 -- ---- mv_commit_pr_links ----
--- commit<->PR links (merge_commit_sha / head_sha / ref_match). PATCHED: ocel_events dependency replaced - see banner
+-- commit<->PR links (merge_commit_sha / head_sha / ref_match / push_order). PATCHED: ocel_events dependency replaced - see banner
+--
+-- PATCHED 2026-09-07: fourth method `push_order`. head_sha and merge_commit_sha name
+-- only the branch tip and the merge commit; ref_match needs a push to the PR's branch
+-- in the SAME repo and so never fires for fork-based PRs (kubernetes: 0.8% same-repo).
+-- The commits BEHIND the tip therefore had no method at all when the branch lived on a
+-- fork, although the merge push to the base branch enumerates them, oldest first,
+-- immediately before the tip. `push_order` reads that enumeration: in a push where the
+-- PR's head_sha sits at index h and its merge_commit_sha at h+1, every commit with index
+-- in (previous merge commit in the push, h) is the PR's. The lower bound handles batched
+-- merges (several PRs in one push); any commit whose message starts with "Merge " also
+-- bounds, so a trunk merge inside the span cannot pull trunk commits in. A floor by
+-- design: squash merges (the head never reaches the base branch), non-adjacent pairs, and
+-- pushes truncated at 20 commits yield nothing. The `admitted` rule below applies to it
+-- unchanged. Measured after refresh (2026-09-07, this database): push_order rows
+-- admitted / not admitted — kubernetes 13,516 / 223 on 6,580 PRs, vscode 9,994 / 934 on
+-- 2,478, react 417 / 0 on 101; fe.link_mat grew 171,817 → 191,540. Some of those rows
+-- also carry head_sha (an earlier event's head) or ref_match; fe.link aggregates them.
 --
 
 CREATE MATERIALIZED VIEW public.mv_commit_pr_links AS
@@ -960,6 +977,36 @@ CREATE MATERIALIZED VIEW public.mv_commit_pr_links AS
            FROM public.mv_pull_request_events_full
           WHERE (mv_pull_request_events_full.action = 'opened'::text)
           ORDER BY mv_pull_request_events_full.pull_request_id, mv_pull_request_events_full.event_created_at
+        ), merge_tips AS (
+         SELECT DISTINCT pv.repo_id,
+            pv.event_id,
+            pr.pull_request_id,
+            pr.pr_number,
+            pv.commit_index AS head_idx
+           FROM ((public.mv_push_commits_full pv
+             JOIN public.mv_pull_request_events_full pr ON (((pr.repo_id = pv.repo_id) AND (pr.head_sha = pv.commit_sha) AND (pr.action = 'closed'::text) AND (COALESCE(pr.pr_is_merged, false) = true) AND (pr.merge_commit_sha IS NOT NULL))))
+             JOIN public.mv_push_commits_full pm ON (((pm.repo_id = pv.repo_id) AND (pm.event_id = pv.event_id) AND (pm.commit_index = (pv.commit_index + 1)) AND (pm.commit_sha = pr.merge_commit_sha))))
+        ), merge_walk AS (
+         SELECT pc.repo_id,
+            pc.event_id,
+            pc.commit_sha,
+            pc.commit_index,
+            pc.commit_message,
+            t.pull_request_id AS pr_at_head,
+            max(
+                CASE
+                    WHEN (pc.commit_message ~~ 'Merge %'::text) THEN pc.commit_index
+                    ELSE NULL::integer
+                END) OVER (PARTITION BY pc.event_id ORDER BY pc.commit_index ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_merge,
+            min(
+                CASE
+                    WHEN (t.pull_request_id IS NOT NULL) THEN pc.commit_index
+                    ELSE NULL::integer
+                END) OVER (PARTITION BY pc.event_id ORDER BY pc.commit_index DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS next_head
+           FROM ((public.mv_push_commits_full pc
+             JOIN ( SELECT DISTINCT merge_tips.event_id
+                   FROM merge_tips) e ON ((e.event_id = pc.event_id)))
+             LEFT JOIN merge_tips t ON (((t.event_id = pc.event_id) AND (t.head_idx = pc.commit_index))))
         ), candidates AS (
          SELECT DISTINCT pv.commit_sha,
             pr.pull_request_id,
@@ -987,6 +1034,15 @@ CREATE MATERIALIZED VIEW public.mv_commit_pr_links AS
              JOIN pr_opened po ON (((pv.repo_id = po.repo_id) AND (pv.ref = ('refs/heads/'::text || po.head_ref)) AND (po.head_repo_id = po.repo_id))))
              JOIN pr_meta pm ON (((pm.repo_id = po.repo_id) AND (pm.pull_request_id = po.pull_request_id))))
           WHERE ((pv.created_at >= (pm.pr_created_at - '7 days'::interval)) AND (pv.created_at <= COALESCE(pm.pr_ended_at, '2025-10-01 02:00:00+02'::timestamp with time zone)))
+        UNION
+         SELECT DISTINCT w.commit_sha,
+            h.pull_request_id,
+            h.pr_number,
+            w.repo_id,
+            'push_order'::text AS text
+           FROM (merge_walk w
+             JOIN merge_tips h ON (((h.event_id = w.event_id) AND (h.head_idx = w.next_head))))
+          WHERE ((w.pr_at_head IS NULL) AND (w.commit_index > COALESCE(w.prev_merge, 0)) AND (w.commit_message !~~ 'Merge %'::text))
         ), pr_size AS (
          SELECT candidates.repo_id,
             candidates.pull_request_id,
