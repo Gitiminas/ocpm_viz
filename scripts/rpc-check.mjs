@@ -394,6 +394,54 @@ if (layoutFail.length) {
 }
 console.log('gate    layout in every time mode, both structural arrangements   ✓');
 
+// ---- the seed search keeps what the client will rank first --------------------------
+/**
+ * `api.search_seeds` filters and caps; the client ranks. The cap makes the server's order
+ * matter: an exact number must survive it, whatever else contains the same digits. The
+ * smallest number of each type is the one most at risk, so that is the probe, once with
+ * the type stated and once without — the second catches a leading type key filling the
+ * cap with issues and starving pull requests.
+ */
+function checkSeedSearch() {
+  const rows = JSON.parse(
+    execFileSync(
+      'psql',
+      ['-d', DB, '-Atc',
+        `SELECT coalesce(json_agg(t), '[]') FROM (
+           SELECT s.type, min(s.number) AS number
+           FROM fe.seed_lookup s
+           JOIN repo r ON r.id = s.repo_id
+           WHERE r.name = ${quote(repo)} AND s.number IS NOT NULL
+           GROUP BY s.type) t`],
+      { encoding: 'utf8' },
+    ),
+  );
+  for (const { type, number } of rows) {
+    for (const seedType of [type, null]) {
+      const found = JSON.parse(
+        execFileSync(
+          'psql',
+          ['-d', DB, '-Atc',
+            `SELECT coalesce(json_agg(t), '[]') FROM api.search_seeds(
+               ${quote(repo)}, ${seedType ? quote(seedType) : 'NULL'}, ${quote(number)},
+               NULL, NULL, 200) t`],
+          { encoding: 'utf8' },
+        ),
+      );
+      if (!found.some((s) => s.type === type && s.number === number)) {
+        console.error(
+          `\nFAIL — api.search_seeds(${repo}, ${seedType ?? 'NULL'}, '${number}') returned ` +
+            `${found.length} rows and none is ${type} #${number}: the exact match was cut by the cap.`,
+        );
+        process.exit(1);
+      }
+    }
+  }
+  console.log(`gate    exact seed number survives the search cap (${rows.length} types)   ✓`);
+}
+
+checkSeedSearch();
+
 // ---- and the app reaches it as web_anon, not as the owner ----------------------------
 /**
  * The second path: PostgREST, over HTTP, unauthenticated.
