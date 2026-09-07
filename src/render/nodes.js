@@ -878,6 +878,9 @@ export function nodeTooltipSpec(node, actorLogin) {
     ['Actor', actorCell],
     ['Object', escapeHtml(node.object.label)],
   ];
+  // The issue's or pull request's own title, when the payload carries it (vmap.title).
+  const vmap = node.object?.vmap || {};
+  if (vmap.title) rows.push(['Title', escapeHtml(String(vmap.title))]);
   if (node.derivedOpening) {
     rows.push(['Source', 'read from a later event’s payload, not an observed event']);
   }
@@ -891,6 +894,14 @@ export function nodeTooltipSpec(node, actorLogin) {
     rows.push({
       excerptText: node.event.attrs.comment_excerpt,
       truncated: Boolean(node.event.attrs.comment_truncated),
+    });
+  } else if (!node.isComment && vmap.body_excerpt) {
+    // A lifecycle mark shows the object's description the way a comment mark shows the
+    // comment: same block, same 500-character server-side cap, its own heading.
+    rows.push({
+      excerptText: vmap.body_excerpt,
+      truncated: Boolean(vmap.body_truncated),
+      heading: 'Description',
     });
   }
   return {

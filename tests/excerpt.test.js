@@ -67,3 +67,54 @@ describe('the comment hovercard carries the excerpt', () => {
     assert.ok(spec.rows.every((r) => Array.isArray(r) || r.excerptText == null));
   });
 });
+
+describe('the issue and pull-request cards carry the title and the description', () => {
+  const lifecycleNode = (vmap, extra = {}) => ({
+    lane: 'pull_request',
+    isComment: false,
+    title: 'Opened',
+    t: new Date('2025-01-05T10:00:00Z'),
+    actorId: 'actor:1',
+    object: { label: 'PR #14', vmap },
+    event: { attrs: {} },
+    ...extra,
+  });
+
+  test('a Title row and a Description block appear when the payload carries them', () => {
+    const spec = nodeTooltipSpec(
+      lifecycleNode({ title: 'Fix <b>the</b> thing', body_excerpt: 'Why: it was broken.', body_truncated: true }),
+      () => 'alice',
+    );
+    const title = spec.rows.find((r) => Array.isArray(r) && r[0] === 'Title');
+    assert.ok(title, 'a Title row');
+    assert.ok(!title[1].includes('<b>'), 'the title is escaped');
+    const body = spec.rows.find((r) => !Array.isArray(r) && r.excerptText != null);
+    assert.equal(body.excerptText, 'Why: it was broken.');
+    assert.equal(body.truncated, true);
+    assert.equal(body.heading, 'Description');
+  });
+
+  test('a comment mark keeps the comment text, not the description', () => {
+    const spec = nodeTooltipSpec(
+      lifecycleNode(
+        { title: 'T', body_excerpt: 'the description' },
+        { isComment: true, event: { attrs: { comment_excerpt: 'the comment' } } },
+      ),
+      () => 'alice',
+    );
+    const blocks = spec.rows.filter((r) => !Array.isArray(r) && r.excerptText != null);
+    assert.equal(blocks.length, 1);
+    assert.equal(blocks[0].excerptText, 'the comment');
+  });
+
+  test('without a title or body in vmap the card has neither row, not empty ones', () => {
+    const spec = nodeTooltipSpec(lifecycleNode({ pr_number: 14 }), () => 'alice');
+    assert.ok(!spec.rows.some((r) => Array.isArray(r) && r[0] === 'Title'));
+    assert.ok(spec.rows.every((r) => Array.isArray(r) || r.excerptText == null));
+  });
+
+  test('the excerpt block takes its heading from the row', () => {
+    assert.ok(excerptHtml({ excerptText: 'x', heading: 'Description' }).includes('Description'));
+    assert.ok(excerptHtml({ excerptText: 'x' }).includes('Comment text'));
+  });
+});

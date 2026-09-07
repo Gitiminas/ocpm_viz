@@ -914,6 +914,8 @@ export function nodeCard(node, actorLogin = (id) => id) {
     'time',
   ]);
   if (!rows.length) rows.push(['Time', formatInstant(node.t), 'time']);
+  const vmap = node.object?.vmap || {};
+  if (vmap.title) rows.push(['Title', escapeHtml(String(vmap.title))]);
   if (node.commentCount) {
     rows.push(['Comments', String(node.commentCount)]);
   }
@@ -925,6 +927,13 @@ export function nodeCard(node, actorLogin = (id) => id) {
         .map((id) => `@${escapeHtml(actorLogin(id))}`)
         .join(', ') + (node.actorIds.length > 3 ? ` +${node.actorIds.length - 3}` : ''),
     ]);
+  }
+  if (vmap.body_excerpt) {
+    rows.push({
+      excerptText: vmap.body_excerpt,
+      truncated: Boolean(vmap.body_truncated),
+      heading: 'Description',
+    });
   }
 
   return {

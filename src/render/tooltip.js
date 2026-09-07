@@ -26,7 +26,7 @@ import { glyph } from './theme.js';
  * payload's excerpt is capped at 500 characters server-side, and when even that was cut
  * the expanded block ends by saying so rather than trailing off silently.
  */
-export function excerptHtml({ excerptText, truncated = false }) {
+export function excerptHtml({ excerptText, truncated = false, heading = 'Comment text' }) {
   const text = escapeHtml(String(excerptText));
   // Visible only once expanded (CSS): while the block is clamped the fade already says
   // "there is more here", and two more-indicators at once said less than one.
@@ -42,7 +42,7 @@ export function excerptHtml({ excerptText, truncated = false }) {
   // barely readable over half-faded words.
   return (
     `<div class="tip-group tip-excerpt${clamp}">` +
-    '<div class="tip-group-head"><div class="k">Comment text</div></div>' +
+    `<div class="tip-group-head"><div class="k">${escapeHtml(heading)}</div></div>` +
     `<div class="tip-excerpt-body"><div class="tip-excerpt-text">${text}</div>` +
     `${cutNote}<div class="tip-excerpt-more">hover text to read more</div></div></div>`
   );
