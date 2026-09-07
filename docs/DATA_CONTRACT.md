@@ -86,7 +86,14 @@ is not recorded here because nothing in this project depends on it.
 
 #### `issues_identity`
 One row per issue, capturing the event that opened it — canonical `issue_id` ↔ `issue_number` ↔
-opening-event mapping.
+opening-event mapping — and, since 2026-09-07 (the third approved upstream patch, §4, the same
+fallback as `prs_identity` below), one row from a later `IssuesEvent` or from an
+`IssueCommentEvent` on the issue when the `opened` event is missing from the corpus. Fallback rows
+have `issue_creation_event_id IS NULL` and the payload's `created_at`; rows with an `opened` event
+are unchanged. Measured after the patch (2026-09-07): fallback rows react 1,684, kubernetes
+5,700, vscode 15,023; `mv_issue_to_pr_validated_all` 19,238 → 21,863 (+13.6%), because every
+link view resolves the issue through this relation and dropped a link to an unknown issue as
+`missing_issue`; `fe.link_mat` 191,519 → 193,245.
 **Columns (5):** `repo_id`, `issue_id`, `issue_number`, `issue_creation_event_id`, `issue_created_at`
 
 #### `prs_identity`
@@ -107,9 +114,8 @@ issue↔PR links without the `issue_created_after_pr` test. After the patch (202
 rows react 777, kubernetes 4,595, vscode 1,863; `mv_issue_to_pr_validated_all` 19,259 → 19,238,
 the 21 leavers now failing a test they could not be given; links still without
 `pr_created_at_utc` 2,059 → 1,457, all of them `proximity` rows, which never carry it;
-`mv_issue_pr_links_issue_comment` 83 → 84. `issues_identity` has the same
-single-event dependency and is **not** patched; `fe.diag_time_semantics` shows how many issues
-fall back to first-seen.
+`mv_issue_pr_links_issue_comment` 83 → 84. `issues_identity` had the same single-event
+dependency and was patched the same day, see above.
 
 ---
 
@@ -336,8 +342,8 @@ exactly one commit→PR admission rule in the project — the inherited one. The
 "never modify upstream", both 2026-09-07 and both approved: the `push_order` detection branch
 added to `mv_commit_pr_links` (§3), a fourth candidate source feeding that same rule, placed
 upstream precisely so that a second rule would not have to be written downstream; and the
-fallback rows in `prs_identity` (§2), placed upstream because ten link views join it and the
-fix reaches all of them at once. Lifecycle intervals are ours, built as
+fallback rows in `prs_identity` and `issues_identity` (§2), placed upstream because the link
+views join them and the fix reaches all of them at once. Lifecycle intervals are ours, built as
 `fe.interval_issue` / `fe.interval_pull_request` in `sql/fe_layer.sql`. Process gaps are computed in
 JS over the loaded sub-log so they follow the toggles; no upstream gap view is
 consumed. The derived layer is described in `DATA_LAYER.md`.

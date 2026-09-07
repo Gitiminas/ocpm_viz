@@ -220,6 +220,18 @@ instead of at its close on 2023-09-29, and carries its title and refs. Not verif
 two plausibility tests each of the 21 links that left `mv_issue_to_pr_validated_all` failed —
 the link views keep only rows that pass, so the rejected rows are not inspectable after the fact.
 
+### The `issues_identity` fallback, 2026-09-07
+
+The same rebuild for issues (`DATA_CONTRACT.md` §2), over all `IssuesEvent` actions and the
+non-PR `IssueCommentEvent` rows, with the same nine dependents recreated and refreshed in one
+transaction (6 minutes), then `./ocpm.sh db`. Checked first, read-only: existing rows unchanged
+(`EXCEPT`: 0), fallback rows react 1,684 / kubernetes 5,700 / vscode 15,023 — exactly the set
+`fe.diag_time_semantics` had been reporting as `first_seen(activity)` — none with a NULL time.
+Checked afterwards: all six sanity checks at expected, both gates pass, `npm test` 825 / 0, no
+issue left on `first_seen(activity)`. The effect on links is far larger than for pull requests:
+`mv_issue_to_pr_validated_all` 19,238 → 21,863, because every link view resolves the issue
+through this relation and had been dropping links to unknown issues as `missing_issue`.
+
 ---
 
 ## 5. Not verified
