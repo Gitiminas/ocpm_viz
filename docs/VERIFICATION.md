@@ -232,6 +232,19 @@ issue left on `first_seen(activity)`. The effect on links is far larger than for
 `mv_issue_to_pr_validated_all` 19,238 → 21,863, because every link view resolves the issue
 through this relation and had been dropping links to unknown issues as `missing_issue`.
 
+### Lifecycle intervals from the creation time, 2026-09-07
+
+Both interval views take the identity tables' creation time as an opening (`DATA_LAYER.md`,
+"Objects, activities, intervals"). Checked before: 28,472 issue and PR objects had no interval
+(22,529 with a close but no open, 5,943 with no lifecycle event at all). Checked after
+`./ocpm.sh db`: 0 objects without an interval; intervals 186,549 → 208,698 (issues) and
+94,497 → 105,186 (PRs); all six sanity checks at expected; both gates pass; `npm test` 825 / 0.
+The motivating sub-log, kubernetes #47532 at degree 2, now gives PR #65509 the interval
+2018-06-27 00:25 → 2018-07-24 23:10 and PR #65539 2018-06-27 17:27 → 2018-06-28 02:00, both
+previously empty, so their commit links meet the bar. Not verified: that no existing interval
+moved — asserted by construction (the synthetic opening sorts first at the same instant as the
+observed one and is the same state), not by diffing the two views row for row.
+
 ---
 
 ## 5. Not verified

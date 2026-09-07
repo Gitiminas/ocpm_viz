@@ -250,10 +250,18 @@ Three upstream activities are dropped by design, and `fe.diag_dropped_activities
 `IssueLabeled` (1). An unmapped activity throws in JS
 rather than rendering a raw enum string.
 
-Intervals come from the events. `fe.interval_issue` opens on `IssueOpened`/`IssueReopened` and
-closes on `IssueClosed`; `fe.interval_pull_request` opens on the PR equivalents and closes on
-`PullRequestMerged`, `PullRequestMergedOffPlatform` or `PullRequestClosed`. Consecutive
-same-state events are collapsed. An `end` of `null` means still open.
+Intervals come from the events, plus one opening the identity tables supply. `fe.interval_issue`
+opens on `IssueOpened`/`IssueReopened` and closes on `IssueClosed`; `fe.interval_pull_request`
+opens on the PR equivalents and closes on `PullRequestMerged`, `PullRequestMergedOffPlatform` or
+`PullRequestClosed`. Since 2026-09-07 each view also takes the object's creation time from
+`issues_identity` / `prs_identity` as an opening, sorted first at its instant: where the opening
+event is in the log it is the same state at the same time and collapses into it, so no existing
+interval changed; where the corpus lacks the opening, the object gets its interval from creation
+to the first observed close instead of none. Before that, 22,529 issues and PRs with a close and
+no open drew no lifecycle bar, and every link to them anchored at the left edge of the axis
+(kubernetes #47532, PRs #65509 and #65539). Consecutive same-state events are collapsed. An
+`end` of `null` means no close was observed — the object was still open as far as the log knows,
+which now also covers an object whose only surviving events are comments.
 
 ## Links
 
