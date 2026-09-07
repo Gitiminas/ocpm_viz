@@ -156,8 +156,9 @@ flag for each of the view ones.
 
 `absolute` spends x on real time, linear over the first and last instants. `discrete` spends it
 on rank: `assignRanks` gives one mark per node plus one per extra commit observation, sorted by
-time then lane then id, and events without a rank interpolate between rank times. Both share
-everything else.
+time then lane then id, one rank per distinct instant (marks at the same second share a column;
+the sort decides how they stack in it), and events without a rank interpolate between rank
+times. Both share everything else.
 
 y is object identity. The issue and PR lanes partition objects into **bands** by lifecycle
 overlap (`assignSubLanes`, greedy, a band reused once the previous occupant has ended), then
