@@ -24,6 +24,7 @@ import {
   resetToggles,
   summarizeHidden,
   selectVisible,
+  summaryForMode,
   nudgesFor,
   MIN_ZOOM,
   MAX_ZOOM,
@@ -1473,9 +1474,12 @@ function updateSubLogCard() {
         'traverse to. The artifact itself is shown.',
     );
   }
+  const visible = selectVisible(graph, state, groupsByCommit);
   renderSubLogCard({
     container: elements.subLogCard,
-    summary: summarizeSubLog(selectVisible(graph, state, groupsByCommit)),
+    // The relationships mode folds events into one mark per object and draws actors only
+    // when pinned; `summaryForMode` counts what that mode actually puts on screen.
+    summary: summaryForMode(summarizeSubLog(visible), visible, state),
     total: summarizeSubLog(graph),
     notes,
   });

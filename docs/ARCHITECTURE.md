@@ -117,8 +117,9 @@ renderers read `kind`, never `mode`.
 `isLinkVisible` (both endpoints visible, plus the relationship-pair, qualifier and method
 toggles). `layout/` receives a predicate, not the state object, so it never learns about lanes
 or hidden objects; `render/` calls the predicates rather than re-deriving them. `selectVisible`
-applies the same rules to produce a filtered graph for the statistics page and the sub-log card.
-Adding a filter is an edit to one file and its tests.
+applies the same rules to produce a filtered graph for the statistics page and the sub-log card;
+`summaryForMode` beside it adjusts the card's summary for the relationships mode, which draws one
+mark per object and an actor only when pinned. Adding a filter is an edit to one file and its tests.
 
 ## State
 

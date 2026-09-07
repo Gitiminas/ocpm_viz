@@ -78,7 +78,9 @@ the seed or the degree blurs the picture behind a loading card naming what is be
 new one arrives. Nothing appears for loads under 200 ms, which is every load on the fixture source.
 
 The sub-log card under the query states what is on screen: counts per object type, links, events
-and the time span, shown as `n / total` whenever a toggle has hidden something. There is no
+and the time span, shown as `n / total` whenever a toggle has hidden something. In the
+relationships view it counts what that view draws: one artifact per issue, PR or commit mark, and
+an actor only once its trail is pinned. There is no
 "case" anywhere — the same event may belong to many sub-logs.
 
 **Three pages.** *Trace* is the drawing. *Stats* is a table of one row per object (open for, events,

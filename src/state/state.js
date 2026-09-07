@@ -327,6 +327,36 @@ export function actorPreview(actorId, state) {
  * statement that those commits are out of scope. Conflating the two would make the
  * commit count jump when you fold a push.
  */
+/**
+ * What the sub-log card should count for the ACTIVE MODE, given a summary of the visible
+ * selection (`summarizeSubLog(selectVisible(...))`).
+ *
+ * The two timeline modes draw one mark per event, so the summary is right as it is. The
+ * relationships mode draws one mark per issue, pull request or commit — its events are
+ * folded into that mark and its comments into a count on it — and draws an actor only
+ * once its trail is pinned. Counting events and every actor there would declare marks
+ * that are not on screen, which is exactly what the card exists to not do. So in that
+ * mode "artifacts" is the number of marks (the visible issue, PR and commit objects) and
+ * "actors" the pinned ones that are in the selection; both still read against the
+ * payload's totals, so "0 / 16 actors" says what it means.
+ *
+ * Pure and DOM-free: takes the summary and the visible graph, returns a new summary.
+ *
+ * @param {object} summary        `summarizeSubLog` over the visible selection
+ * @param {object} visible        the visible selection itself (for the actor ids in it)
+ * @param {object} state          `st` — reads `mode` and `actors`
+ */
+export function summaryForMode(summary, visible, state) {
+  if (state.mode !== 'relationships') return summary;
+  const counts = new Map(summary.counts);
+  const marks = LANE_TYPES.reduce((n, type) => n + (counts.get(type) ?? 0), 0);
+  const visibleActors = new Set(
+    visible.objects.filter((object) => object.type === 'actor').map((object) => object.id),
+  );
+  counts.set('actor', [...state.actors].filter((id) => visibleActors.has(id)).length);
+  return { ...summary, counts, events: marks };
+}
+
 export function selectVisible(graph, state, groupsByCommit = new Map()) {
   const objects = graph.objects.filter((object) => {
     // `actor` is the only laneless object type.

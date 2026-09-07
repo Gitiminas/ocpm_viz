@@ -17,6 +17,7 @@ import {
   summarizeHidden,
   restoreAll,
   selectVisible,
+  summaryForMode,
   nudgesFor,
 } from '../src/state/state.js';
 import { summarizeSubLog } from '../src/data/loadSubLog.js';
@@ -505,5 +506,48 @@ describe('drag offsets belong to one arrangement', () => {
     state.nodeNudges.clear(); // what the reset pill and a new sub-log do
     assert.equal(nudgesFor(state, 'layered').size, 0);
     assert.equal(nudgesFor(state, 'cluster').size, 0);
+  });
+});
+
+describe('the sub-log card counts what the relationships mode draws', () => {
+  // That mode folds an object's events into one mark, its comments into a count on the
+  // mark, and draws an actor only once its trail is pinned. The card must not declare
+  // events and actors that are not on screen there; the timeline modes are untouched.
+  test('artifacts are marks and actors are the pinned ones; totals stay the payload', async () => {
+    const c = await context('F10');
+    const total = summarizeSubLog(c.graph);
+    const visible = selectVisible(c.graph, c.state, c.groupsByCommit);
+    const timeline = summaryForMode(summarizeSubLog(visible), visible, c.state);
+    assert.equal(timeline.events, total.events, 'the timeline mode counts every event');
+    assert.equal(timeline.counts.get('actor'), total.counts.get('actor'));
+
+    c.state.mode = 'relationships';
+    const rel = summaryForMode(summarizeSubLog(visible), visible, c.state);
+    const marks =
+      (rel.counts.get('issue') ?? 0) + (rel.counts.get('pull_request') ?? 0) + (rel.counts.get('commit') ?? 0);
+    assert.equal(rel.events, marks, 'one artifact per drawn mark');
+    assert.ok(rel.events < total.events, 'fewer than the payload’s events, so the tile reads n / total');
+    assert.equal(rel.counts.get('actor'), 0, 'no trail pinned: no actor drawn');
+    assert.equal(rel.counts.get('issue'), total.counts.get('issue'), 'object counts are not touched');
+
+    const [anActor] = visible.objects.filter((o) => o.type === 'actor');
+    c.state.actors.add(anActor.id);
+    const pinned = summaryForMode(summarizeSubLog(visible), visible, c.state);
+    assert.equal(pinned.counts.get('actor'), 1, 'a pinned trail is a drawn actor');
+
+    c.state.actors.add('actor:not-in-this-sub-log');
+    const stray = summaryForMode(summarizeSubLog(visible), visible, c.state);
+    assert.equal(stray.counts.get('actor'), 1, 'a pin outside the selection does not count');
+  });
+
+  test('hiding a lane in the relationships mode drops its marks from the artifact count', async () => {
+    const c = await context('F10');
+    c.state.mode = 'relationships';
+    const before = selectVisible(c.graph, c.state, c.groupsByCommit);
+    const b = summaryForMode(summarizeSubLog(before), before, c.state);
+    c.state.lanes.pull_request = false;
+    const after = selectVisible(c.graph, c.state, c.groupsByCommit);
+    const a = summaryForMode(summarizeSubLog(after), after, c.state);
+    assert.equal(a.events, b.events - (b.counts.get('pull_request') ?? 0));
   });
 });
