@@ -879,8 +879,10 @@ export function nodeTooltipSpec(node, actorLogin) {
     ['Object', escapeHtml(node.object.label)],
   ];
   // The issue's or pull request's own title, when the payload carries it (vmap.title).
+  // Lifecycle marks only: a comment card is about the comment, and its Object row
+  // already says which issue or PR it sits on.
   const vmap = node.object?.vmap || {};
-  if (vmap.title) rows.push(['Title', escapeHtml(String(vmap.title))]);
+  if (!node.isComment && vmap.title) rows.push(['Title', escapeHtml(String(vmap.title))]);
   if (node.derivedOpening) {
     rows.push(['Source', 'read from a later event’s payload, not an observed event']);
   }
