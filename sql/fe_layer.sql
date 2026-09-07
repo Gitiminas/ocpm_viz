@@ -844,7 +844,7 @@ CREATE VIEW fe.commit_pr_link AS
 SELECT l.repo_id, l.commit_sha, l.pull_request_id, l.pr_number, l.link_method
 FROM mv_commit_pr_links l
 WHERE l.admitted
-  AND (l.link_method IN ('head_sha','merge_commit_sha')
+  AND (l.link_method IN ('head_sha','merge_commit_sha','push_order')
        OR EXISTS (
          SELECT 1
          FROM fe.pr_head_ref h
@@ -857,7 +857,9 @@ WHERE l.admitted
 
 COMMENT ON VIEW fe.commit_pr_link IS
   'mv_commit_pr_links with the ref_match narrowing applied: a ref_match commit '
-  'is admitted only where GitHub flagged it new on the PR''s own head branch. The single '
+  'is admitted only where GitHub flagged it new on the PR''s own head branch. push_order '
+  'passes untouched like the SHA methods: it is anchored on the PR''s own head and merge '
+  'SHAs and reads the merge push''s order, so the born-on-branch test does not apply. The single '
   'source of commit-to-PR attribution in this layer — fe.link branches A and B both read it.';
 
 
@@ -994,12 +996,14 @@ SELECT 'pr:' || b.pull_request_id::text,
        CASE WHEN 'merge_commit_sha' = ANY(b.methods) THEN 'merge_commit'
             ELSE 'contains_commit' END,
        -- validated if ANY method validates (classifyLink, src/model/evidence.js).
-       -- ref_match alone is a branch-naming convention and stays extracted.
+       -- ref_match alone is a branch-naming convention and stays extracted; push_order
+       -- is an inference from the merge push's commit order, not a GitHub assertion or
+       -- an identity match, and stays extracted too.
        CASE WHEN b.methods && ARRAY['merge_commit_sha','head_sha'] THEN 'validated'
             ELSE 'extracted' END,
        -- the primary method, strongest first — same ordering the evidence rule uses
        COALESCE(
-         (ARRAY(SELECT m FROM unnest(ARRAY['merge_commit_sha','head_sha','ref_match']) m
+         (ARRAY(SELECT m FROM unnest(ARRAY['merge_commit_sha','head_sha','push_order','ref_match']) m
                  WHERE m = ANY(b.methods)))[1],
          b.methods[1]),
        array_length(b.methods, 1),
@@ -1518,8 +1522,10 @@ WITH rm AS (
   FROM mv_commit_pr_links l WHERE l.admitted AND l.link_method = 'ref_match'
 ),
 sha AS (
+  -- push_order counts as an anchored method here: it needs the PR's head and merge SHAs
+  -- in the push, so a commit it names is not "kept only by ref_match".
   SELECT DISTINCT repo_id, commit_sha, pull_request_id
-  FROM mv_commit_pr_links WHERE admitted AND link_method IN ('head_sha','merge_commit_sha')
+  FROM mv_commit_pr_links WHERE admitted AND link_method IN ('head_sha','merge_commit_sha','push_order')
 ),
 -- ⚠️ Reports the narrowing's **cost as well as its benefit**, because a filter that only
 -- ever printed what it removed would read as pure gain. `dropped_born_elsewhere` is the
