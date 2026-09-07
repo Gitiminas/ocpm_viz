@@ -120,6 +120,13 @@ export const LEGEND_SECTIONS = [
         swatch: ring(true, { stroke: COLORS.extracted, dasharray: '1.5 3' }),
       },
       { key: 'closed-unmerged', label: 'closed, not merged', swatch: ring(true) },
+      // An opening the log never recorded as an event, read from a later event's
+      // payload — same dotted extracted ring as the heuristic landmark, same reason.
+      {
+        key: 'opening-derived',
+        label: 'opened · from a later event',
+        swatch: ring(true, { stroke: COLORS.extracted, dasharray: '1.5 3' }),
+      },
       {
         key: 'repeat-observation',
         label: 'same commit, pushed again',

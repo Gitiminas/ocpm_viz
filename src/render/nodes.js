@@ -346,6 +346,19 @@ export function renderNodes({
         .attr('stroke', nodeColor)
         .attr('stroke-width', 1.5)
         .attr('stroke-opacity', 0.7);
+    } else if (node.derivedOpening) {
+      // An opening read from a later event's payload, not recorded as an event: the
+      // same dotted ring in the extracted colour as the heuristic landmark, the tool's one
+      // cue for "not the platform's own event", so the mark claims no more than the data.
+      group
+        .append('circle')
+        .attr('data-legend', 'opening-derived')
+        .attr('r', 8 + 6)
+        .attr('fill', 'none')
+        .attr('stroke', COLORS.extracted)
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '1.5 3')
+        .attr('stroke-opacity', 0.9);
     }
 
     /*
@@ -853,11 +866,21 @@ export function nodeTooltipSpec(node, actorLogin) {
   }
 
   const type = TYPE[node.lane];
+  const attrs = node.event?.attrs || {};
+  // A derived opening may name its actor only in attrs: the account performed no event in
+  // the corpus, so there is no actor object to resolve, but the payload still says who.
+  const actorCell =
+    node.actorId == null && attrs.opened_by
+      ? `@${escapeHtml(String(attrs.opened_by))} · no actor record`
+      : `@${escapeHtml(actorLogin(node.actorId))}`;
   const rows = [
     ['Time', formatInstant(node.t), 'time'],
-    ['Actor', `@${escapeHtml(actorLogin(node.actorId))}`],
+    ['Actor', actorCell],
     ['Object', escapeHtml(node.object.label)],
   ];
+  if (node.derivedOpening) {
+    rows.push(['Source', 'read from a later event’s payload, not an observed event']);
+  }
   if (node.event?.attrs?.auto_closed) {
     rows.push(['Auto-close', escapeHtml(String(node.event.attrs.auto_closed).replace(/^via /, ''))]);
   }

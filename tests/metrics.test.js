@@ -216,4 +216,20 @@ describe('gaps follow the events they are given', () => {
     assert.equal(gap.hours, 24);
     assert.equal(gap.actorChanged, true);
   });
+
+  // An opening derived from a later event's payload can carry no actor (an issue known
+  // only from comments). "Unknown → someone" is a gap in the record, not a handoff.
+  test('a gap from or to an event without an actor is not a handoff', () => {
+    const events = [
+      { id: 'a', object_id: 'i:1', time: new Date('2025-01-01T00:00:00Z'), actor_id: null },
+      { id: 'b', object_id: 'i:1', time: new Date('2025-01-02T00:00:00Z'), actor_id: 'actor:2' },
+      { id: 'c', object_id: 'i:1', time: new Date('2025-01-03T00:00:00Z'), actor_id: 'actor:2' },
+      { id: 'd', object_id: 'i:1', time: new Date('2025-01-04T00:00:00Z'), actor_id: 'actor:3' },
+    ];
+    const gaps = perObjectGaps(events, 'i:1');
+    assert.deepEqual(
+      gaps.map((gap) => gap.actorChanged),
+      [false, false, true],
+    );
+  });
 });

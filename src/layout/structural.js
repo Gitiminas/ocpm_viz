@@ -30,7 +30,12 @@
  * timeline uses, so this module never learns what a lane toggle is.
  */
 
-import { isLandmark, isUnmergedClose, isHeuristicLandmark } from '../model/activities.js';
+import {
+  isLandmark,
+  isUnmergedClose,
+  isHeuristicLandmark,
+  isDerivedEvent,
+} from '../model/activities.js';
 
 /**
  * Drawn radius by object type — issue > pull request > commit.
@@ -97,6 +102,7 @@ export function buildStructuralNodes({
           actorId: event.actor_id ?? null,
           landmark: isLandmark(event.activity),
           heuristicLandmark: isHeuristicLandmark(event.activity),
+          derivedOpening: isDerivedEvent(event),
           unmergedClose: isUnmergedClose(event.activity),
         }));
 

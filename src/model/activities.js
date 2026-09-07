@@ -252,6 +252,19 @@ export function isUnmergedClose(activity) {
 }
 
 /**
+ * An event the archive never recorded as one: an `IssueOpened` or `PullRequestOpened`
+ * whose time and actor were read from a later event's payload, because GitHub stamps
+ * every event with the whole object (`sql/fe_layer.sql` §4, branches 4 and 5). The
+ * data layer marks it with `attrs.source === 'payload'`; this is the one place that
+ * string is interpreted, so the renderer and the layout agree on what "derived" means.
+ * Such an event is real in time and actor, and derived only in that it stands as an
+ * event at all — so it draws the dotted extracted ring and is otherwise an opening.
+ */
+export function isDerivedEvent(event) {
+  return event?.attrs?.source === 'payload';
+}
+
+/**
  * Collect every vocabulary problem in one pass, so a malformed bundle reports all
  * of its unknown activities at once instead of one per reload.
  *

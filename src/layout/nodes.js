@@ -23,6 +23,7 @@ import {
   isLandmark,
   isUnmergedClose,
   isHeuristicLandmark,
+  isDerivedEvent,
 } from '../model/activities.js';
 
 /**
@@ -98,6 +99,9 @@ export function buildNodes({
           // The off-platform merge: emphasised like a landmark, ringed like a
           // heuristic. Read by the renderer beside `landmark`.
           heuristicLandmark: isHeuristicLandmark(event.activity),
+          // An opening the corpus never recorded as an event, read from a later event's
+          // payload (`DATA_LAYER.md`, "Events"). Ringed like the heuristic landmark.
+          derivedOpening: isDerivedEvent(event),
           // A pull request that ended without merging. Carried here rather than derived
           // in the renderer so "which glyph gets the abandoned mark" stays checkable
           // without a DOM, like `landmark` beside it.

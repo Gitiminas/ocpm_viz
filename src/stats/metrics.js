@@ -209,7 +209,13 @@ export function perObjectGaps(events, objectId) {
       from: mine[i - 1],
       to: mine[i],
       hours: (+mine[i].time - +mine[i - 1].time) / 3600000,
-      actorChanged: mine[i - 1].actor_id !== mine[i].actor_id,
+      // Both sides must name an actor: an opening derived from a later event's payload
+      // (`attrs.source === 'payload'`) can carry none, and "unknown → someone" is not a
+      // handoff, it is a gap in the record.
+      actorChanged:
+        mine[i - 1].actor_id != null &&
+        mine[i].actor_id != null &&
+        mine[i - 1].actor_id !== mine[i].actor_id,
     });
   }
   return gaps;
