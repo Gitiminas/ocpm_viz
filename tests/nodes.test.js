@@ -146,18 +146,39 @@ describe('multiple issues and PRs all render — the singleton bug', () => {
 });
 
 describe('ranking and filtering', () => {
-  test('ranks follow temporal order and are dense', async () => {
+  test('ranks follow temporal order and are dense over distinct instants', async () => {
     const { nodes } = await f1Context();
     const { rankOrder, rankMax, rankTimes } = assignRanks(nodes);
     assert.equal(rankOrder.length, nodes.length);
-    assert.equal(rankMax, nodes.length - 1);
+    const distinct = new Set(nodes.map((n) => +n.t)).size;
+    assert.equal(rankTimes.length, distinct, 'one rank per instant');
+    assert.equal(rankMax, Math.max(1, distinct - 1));
     for (let i = 1; i < rankTimes.length; i++) {
-      assert.ok(rankTimes[i] >= rankTimes[i - 1], 'ranks must be in time order');
+      assert.ok(rankTimes[i] > rankTimes[i - 1], 'rank instants are strictly increasing');
     }
-    assert.deepEqual(
-      rankOrder.map((n) => n.rank),
-      rankOrder.map((_, i) => i),
-    );
+    // Dense: each rank is the previous rank or the previous rank plus one, from 0.
+    assert.equal(rankOrder[0].rank, 0);
+    for (let i = 1; i < rankOrder.length; i++) {
+      const step = rankOrder[i].rank - rankOrder[i - 1].rank;
+      assert.ok(step === 0 || step === 1, `rank jumped by ${step} at ${i}`);
+      assert.equal(step === 0, +rankOrder[i].t === +rankOrder[i - 1].t, 'same rank iff same instant');
+    }
+  });
+
+  test('two events at the same instant share a column in discrete mode', () => {
+    // vscode #188934: a reopen and the comment that reopened it, both 2023-07-27 21:05:51.
+    const t = new Date('2023-07-27T21:05:51Z');
+    const later = new Date('2023-07-27T21:07:00Z');
+    const { rankOrder, rankMax, rankTimes } = assignRanks([
+      { id: 'e_comment', lane: 'issue', t },
+      { id: 'e_reopen', lane: 'issue', t },
+      { id: 'e_after', lane: 'issue', t: later },
+    ]);
+    const byId = new Map(rankOrder.map((m) => [m.id, m.rank]));
+    assert.equal(byId.get('e_comment'), byId.get('e_reopen'), 'same second, same rank');
+    assert.equal(byId.get('e_after'), 1);
+    assert.equal(rankMax, 1);
+    assert.deepEqual(rankTimes, [+t, +later]);
   });
 
   test('ranks are deterministic when timestamps tie', () => {
@@ -417,11 +438,13 @@ describe('discrete mode gives every drawn mark its own slot', () => {
     assert.equal(new Set(ranks).size, 3, 'each observation needs its own discrete slot');
   });
 
-  test('a sub-log with no repeats ranks exactly as before', async () => {
+  test('a sub-log with no repeats ranks one slot per instant, as everywhere', async () => {
     const { nodes } = await f1Context();
     const { rankOrder, rankMax } = assignRanks(nodes);
     assert.equal(rankOrder.length, nodes.length);
-    assert.equal(rankMax, nodes.length - 1);
+    // Marks at one instant share a slot (`assignRanks`), so the last rank is the number
+    // of distinct instants minus one — equal to nodes.length - 1 only when no two tie.
+    assert.equal(rankMax, Math.max(1, new Set(nodes.map((n) => +n.t)).size - 1));
   });
 });
 

@@ -51,9 +51,12 @@ export function computeTicks({ mode, scales, zoom, rankOrder, rankMax, plotWidth
   const ticks = [];
   for (let k = 0; k < count; k++) {
     const index = Math.round((k * (rankOrder.length - 1)) / Math.max(1, count - 1));
-    if (seen.has(index)) continue;
-    seen.add(index);
-    ticks.push({ x: marginLeft + (index / rankMax) * plotWidth, t: rankOrder[index].t });
+    // Marks at one instant share a rank (`assignRanks`), so the tick sits at the mark's
+    // rank, not at its position in the order, and one tick per rank is enough.
+    const { rank, t } = rankOrder[index];
+    if (seen.has(rank)) continue;
+    seen.add(rank);
+    ticks.push({ x: marginLeft + (rank / rankMax) * plotWidth, t });
   }
   return ticks;
 }

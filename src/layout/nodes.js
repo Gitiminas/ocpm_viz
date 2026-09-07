@@ -256,15 +256,31 @@ export function assignRanks(nodes) {
     return a.id < b.id ? -1 : 1;
   });
 
-  marks.forEach((mark, i) => {
-    mark.rank = i;
-    mark.target.rank = i;
-  });
+  /*
+   * ⚠️ **One rank per INSTANT, not per mark.** Discrete mode discards durations, but it
+   * must not invent one: two events at the same second — a reopen and the comment that
+   * reopened it (vscode #188934, 2023-07-27 21:05:51) — used to get consecutive ranks
+   * and so two columns, which read as "one happened after the other". Marks that share
+   * an instant share a rank and a column; the tie order above still decides how they
+   * stack within it. `rankTimes` is therefore one instant per rank, which is what the
+   * scale's interpolation and the axis's gap bands index it by.
+   */
+  const rankTimes = [];
+  let rank = -1;
+  for (const mark of marks) {
+    const t = +mark.t;
+    if (rank < 0 || t !== rankTimes[rank]) {
+      rank += 1;
+      rankTimes.push(t);
+    }
+    mark.rank = rank;
+    mark.target.rank = rank;
+  }
 
   return {
     rankOrder: marks,
-    rankMax: Math.max(1, marks.length - 1),
-    rankTimes: marks.map((mark) => +mark.t),
+    rankMax: Math.max(1, rankTimes.length - 1),
+    rankTimes,
   };
 }
 
