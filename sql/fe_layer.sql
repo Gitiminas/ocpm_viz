@@ -183,7 +183,8 @@ ANALYZE mv_commit_message_issue_links_all;
 -- ~120 ms, fe.event 134 ms, everything else under 10 ms. The intervals are the next thing
 -- to attack if it matters; nothing here needed it to.
 --
--- MATERIALIZATION: exactly one, fe.link_mat, with its measurement in §5.1. The other
+-- MATERIALIZATION: fe.link_mat (§5.1), fe.seed_lookup, fe.dfg_mat, and since 2026-09-07
+-- the four object/interval copies (§3, before §4), each with its measurement. The other
 -- candidate — rebuilding fe_commit_pr_links — is declined: that
 -- join already exists upstream as mv_commit_pr_links (inherited), so
 -- rebuilding it would create a second admission rule to disagree with the first.
@@ -429,6 +430,36 @@ LEFT JOIN refs r ON r.pull_request_id = u.pull_request_id
 ORDER BY u.repo_id, u.pull_request_id, u.priority, u.t0;
 
 -- -------------------------------------------------------------------------------------
+-- The issue and pull-request objects, MATERIALIZED (2026-09-07). Both views resolve
+-- identity, first-seen fallback and now title and body with a DISTINCT ON over the whole
+-- repository, and no request filter reaches below that DISTINCT ON: a two-object request
+-- paid 0.12 s + 0.28 s for it, the seed check paid it again, and fe.event's PR-comment
+-- branch joins fe.object_pull_request on every request. Nothing in either view changes
+-- between upstream refreshes, so the copies are read by every per-request path (the
+-- seed check, the RPC's `obj`, fe.event branch 2) and the live views stay the definition
+-- — and what fe.seed_lookup and fe.link are built from at refresh time.
+-- Measured with fe.interval_*_mat below: api.get_sublog vscode issue:2902032454 went from
+-- 3.3 s (degree 0) / 3.8 s (degree 2) to the figures in VERIFICATION.md.
+-- -------------------------------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS fe.object_issue_mat CASCADE;
+CREATE MATERIALIZED VIEW fe.object_issue_mat AS SELECT * FROM fe.object_issue WITH DATA;
+CREATE INDEX IF NOT EXISTS ix_objissmat_repo_issue ON fe.object_issue_mat (repo_id, issue_id);
+ANALYZE fe.object_issue_mat;
+
+DROP MATERIALIZED VIEW IF EXISTS fe.object_pull_request_mat CASCADE;
+CREATE MATERIALIZED VIEW fe.object_pull_request_mat AS SELECT * FROM fe.object_pull_request WITH DATA;
+CREATE INDEX IF NOT EXISTS ix_objprmat_repo_prid   ON fe.object_pull_request_mat (repo_id, pull_request_id);
+CREATE INDEX IF NOT EXISTS ix_objprmat_repo_prnum  ON fe.object_pull_request_mat (repo_id, pr_number);
+ANALYZE fe.object_pull_request_mat;
+
+COMMENT ON MATERIALIZED VIEW fe.object_issue_mat IS
+  'Materialized copy of fe.object_issue, read by every per-request path. '
+  'Refresh with fe.refresh_objects() — first, before fe.link_mat — after any upstream MV refresh.';
+COMMENT ON MATERIALIZED VIEW fe.object_pull_request_mat IS
+  'Materialized copy of fe.object_pull_request, read by every per-request path and by '
+  'fe.event''s PR-comment branch. Refresh with fe.refresh_objects().';
+
+-- -------------------------------------------------------------------------------------
 -- COMMIT — one object per distinct SHA, attributes from the first observing push.
 --
 -- Keyed `commit:<sha>` and not `commit:<repo_id>_<sha>`: a SHA is unique by
@@ -657,6 +688,34 @@ LEFT JOIN closes c
   ON c.repo_id = o.repo_id AND c.pull_request_id = o.pull_request_id AND c.rn = o.rn;
 
 
+-- -------------------------------------------------------------------------------------
+-- The lifecycle intervals, MATERIALIZED (2026-09-07), for the same reason as the object
+-- copies above: the window functions run over the repository's whole lifecycle stream
+-- (0.57 s + 0.38 s per request on vscode, and since the identity rows joined the stream
+-- there is more of it), and the request's id filter cannot cut a window short. The RPC's
+-- `iv` reads the copies; the views stay the definition.
+-- -------------------------------------------------------------------------------------
+DROP MATERIALIZED VIEW IF EXISTS fe.interval_issue_mat CASCADE;
+CREATE MATERIALIZED VIEW fe.interval_issue_mat AS SELECT * FROM fe.interval_issue WITH DATA;
+CREATE INDEX IF NOT EXISTS ix_ivissmat_repo_issue ON fe.interval_issue_mat (repo_id, issue_id);
+ANALYZE fe.interval_issue_mat;
+
+DROP MATERIALIZED VIEW IF EXISTS fe.interval_pull_request_mat CASCADE;
+CREATE MATERIALIZED VIEW fe.interval_pull_request_mat AS SELECT * FROM fe.interval_pull_request WITH DATA;
+CREATE INDEX IF NOT EXISTS ix_ivprmat_repo_prid ON fe.interval_pull_request_mat (repo_id, pull_request_id);
+ANALYZE fe.interval_pull_request_mat;
+
+CREATE OR REPLACE FUNCTION fe.refresh_objects() RETURNS void
+LANGUAGE sql AS $$
+  REFRESH MATERIALIZED VIEW fe.object_issue_mat;
+  REFRESH MATERIALIZED VIEW fe.object_pull_request_mat;
+  REFRESH MATERIALIZED VIEW fe.interval_issue_mat;
+  REFRESH MATERIALIZED VIEW fe.interval_pull_request_mat;
+$$;
+COMMENT ON FUNCTION fe.refresh_objects() IS
+  'Refresh the four object and interval copies. Run first, before fe.refresh_links(), after any '
+  'upstream MV refresh; fe.diag_staleness reports their age.';
+
 -- =====================================================================================
 -- §4 — Events
 --
@@ -749,7 +808,7 @@ raw AS (
                      LIMIT 1), '{}'::jsonb)
          ELSE '{}'::jsonb END
   FROM mv_pull_request_and_comment_activities_full a
-  JOIN fe.object_pull_request o
+  JOIN fe.object_pull_request_mat o          -- the copy: this join runs on every request
     ON o.repo_id = a.repo_id AND o.pr_number = a.pr_number
   WHERE a.pr_number IS NOT NULL
 
@@ -1278,7 +1337,7 @@ LANGUAGE sql AS $$
 $$;
 
 COMMENT ON MATERIALIZED VIEW fe.link_mat IS
-  'Materialized copy of fe.link. The ONE measured materialization. Run '
+  'Materialized copy of fe.link. The first measured materialization. Run '
   'fe.refresh_links() after any upstream MV refresh; fe.diag_link_staleness reports drift.';
 
 -- Cheap drift check: compares the materialized copy against the live view. Not free, but
@@ -1368,9 +1427,9 @@ BEGIN
   -- natural key reaches the index (~1.5 ms).
   ------------------------------------------------------------------------------------
   IF NOT (CASE
-      WHEN seed ~ '^issue:[0-9]+$'  THEN EXISTS (SELECT 1 FROM fe.object_issue o
+      WHEN seed ~ '^issue:[0-9]+$'  THEN EXISTS (SELECT 1 FROM fe.object_issue_mat o
              WHERE o.repo_id = _repo_id AND o.issue_id = substring(seed from 7)::bigint)
-      WHEN seed ~ '^pr:[0-9]+$'     THEN EXISTS (SELECT 1 FROM fe.object_pull_request o
+      WHEN seed ~ '^pr:[0-9]+$'     THEN EXISTS (SELECT 1 FROM fe.object_pull_request_mat o
              WHERE o.repo_id = _repo_id AND o.pull_request_id = substring(seed from 4)::bigint)
       WHEN seed ~ '^commit:[0-9a-f]+$' THEN EXISTS (SELECT 1 FROM fe.object_commit o
              WHERE o.repo_id = _repo_id AND o.commit_sha = substring(seed from 8))
@@ -1459,11 +1518,11 @@ BEGIN
   WITH
   obj AS MATERIALIZED (
     SELECT o.id, o.type, o.label, o.vmap, o.time_semantics, NULL::timestamptz AS t0
-      FROM fe.object_issue o
+      FROM fe.object_issue_mat o
      WHERE o.repo_id = _repo_id AND o.issue_id = ANY(_issue_ids)
     UNION ALL
     SELECT o.id, o.type, o.label, o.vmap, o.time_semantics, NULL
-      FROM fe.object_pull_request o
+      FROM fe.object_pull_request_mat o
      WHERE o.repo_id = _repo_id AND o.pull_request_id = ANY(_pr_ids)
     UNION ALL
     SELECT o.id, o.type, o.label, o.vmap, o.time_semantics, o.t0
@@ -1488,10 +1547,10 @@ BEGIN
     WHERE a.actor_id IN (SELECT DISTINCT actor_num FROM ev WHERE actor_num IS NOT NULL)
   ),
   iv AS MATERIALIZED (
-    SELECT object_id, start, "end" FROM fe.interval_issue
+    SELECT object_id, start, "end" FROM fe.interval_issue_mat
      WHERE repo_id = _repo_id AND issue_id = ANY(_issue_ids)
     UNION ALL
-    SELECT object_id, start, "end" FROM fe.interval_pull_request
+    SELECT object_id, start, "end" FROM fe.interval_pull_request_mat
      WHERE repo_id = _repo_id AND pull_request_id = ANY(_pr_ids)
     UNION ALL
     -- A commit is observed at an instant, so its interval is a point: start = end. Not
@@ -2136,6 +2195,9 @@ COMMENT ON MATERIALIZED VIEW fe.dfg_mat IS
 CREATE OR REPLACE FUNCTION fe.refresh_all() RETURNS void
 LANGUAGE plpgsql AS $$
 BEGIN
+  -- First: fe.event's PR-comment branch reads fe.object_pull_request_mat, and fe.dfg_mat
+  -- reads fe.event.
+  PERFORM fe.refresh_objects();
   REFRESH MATERIALIZED VIEW fe.link_mat;
   REFRESH MATERIALIZED VIEW fe.seed_lookup;
   -- After link_mat: the cross-edge arm reads it, so a stale link table would bake last
@@ -2145,7 +2207,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION fe.refresh_all() IS
-  'Refresh every materialized relation in this layer. Run after any upstream MV refresh.';
+  'Refresh every materialized relation in this layer (seven), in dependency order. Run after any upstream MV refresh.';
 
 -- Row counts alone cannot prove freshness — an upstream change that adds and removes the
 -- same number of rows leaves them equal. What this catches is the common case (upstream
@@ -2168,7 +2230,27 @@ UNION ALL
 SELECT 'fe.dfg_mat',
        NULL::bigint,
        (SELECT count(*) FROM fe.dfg_mat),
-       (SELECT (pg_stat_file(pg_relation_filepath('fe.dfg_mat'))).modification);
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.dfg_mat'))).modification)
+UNION ALL
+SELECT 'fe.object_issue_mat',
+       (SELECT count(*) FROM fe.object_issue),
+       (SELECT count(*) FROM fe.object_issue_mat),
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.object_issue_mat'))).modification)
+UNION ALL
+SELECT 'fe.object_pull_request_mat',
+       (SELECT count(*) FROM fe.object_pull_request),
+       (SELECT count(*) FROM fe.object_pull_request_mat),
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.object_pull_request_mat'))).modification)
+UNION ALL
+SELECT 'fe.interval_issue_mat',
+       (SELECT count(*) FROM fe.interval_issue),
+       (SELECT count(*) FROM fe.interval_issue_mat),
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.interval_issue_mat'))).modification)
+UNION ALL
+SELECT 'fe.interval_pull_request_mat',
+       (SELECT count(*) FROM fe.interval_pull_request),
+       (SELECT count(*) FROM fe.interval_pull_request_mat),
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.interval_pull_request_mat'))).modification);
 
 
 -- -------------------------------------------------------------------------------------
