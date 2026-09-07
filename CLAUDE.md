@@ -86,10 +86,12 @@ diff, so verification matters more than usual.
   SQL is only for figures spanning data that is not loaded, such as link coverage per repository.
   Precomputing them there would silently answer "comments hidden → gaps unchanged".
 - Derived relations live in **this project's own schemas**, never the shared namespace: `fe` for
-  the views, `api` for the RPCs. Plain `VIEW` by default; three materializations, each with its
+  the views, `api` for the RPCs. Plain `VIEW` by default; seven materializations, each with its
   measurement beside it — `fe.link_mat`, because the traversal needs a whole repository's adjacency,
-  `fe.seed_lookup` behind the seed box, and `fe.dfg_mat`, the whole-log process map. **All three
-  go stale silently: run `SELECT fe.refresh_all()` after any upstream refresh**, and read
+  `fe.seed_lookup` behind the seed box, `fe.dfg_mat`, the whole-log process map, and (2026-09-07)
+  copies of the two object views and the two interval views, because their `DISTINCT ON` and
+  window functions run over a whole repository and no request filter reaches below them. **All
+  seven go stale silently: run `SELECT fe.refresh_all()` after any upstream refresh**, and read
   `fe.diag_staleness` for last-written times.
 - **Two admission rules belong to this project, not upstream**; both narrow `ref_match`.
   Every commit-link and issue↔PR figure is therefore a **floor**, never a point

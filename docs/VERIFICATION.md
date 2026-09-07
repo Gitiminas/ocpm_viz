@@ -306,6 +306,19 @@ was not pulled today. Checked after: both gates pass, `npm test` 836 / 0 (four n
 the comment text, nothing is emitted when vmap has neither, the heading is per row). Not verified
 in a browser: the Description block's clamp and fade on a real card.
 
+### The object and interval copies, 2026-09-07
+
+The lever named above was pulled: `fe.object_issue_mat`, `fe.object_pull_request_mat`,
+`fe.interval_issue_mat`, `fe.interval_pull_request_mat` (`DATA_LAYER.md`, "Refreshing"), read by
+the seed check, the RPC's `obj` and `iv`, and `fe.event`'s PR-comment branch. `fe.refresh_objects()`
+is new and runs first inside `fe.refresh_all()`; `fe.diag_staleness` lists all seven copies with
+live and materialized counts equal. Measured in psql, warm: vscode `issue:2902032454` 3.3 s →
+0.52–0.56 s (degree 0) and 3.8 s → 0.57 s (degree 2); kubernetes `issue:235959617` degree 2
+(222 KB payload) 5.0 s → 2.4 s; react `pr:1413026032` 0.15 s. `rpc-check` end to end: 0.62 s, 0.64 s,
+2.38 s. `./ocpm.sh db` 2 m 32 s. On disk: 146 + 71 + 23 + 12 MB. Both gates pass, `npm test`
+836 / 0. Not verified: refresh time of the four copies on their own; they were built by
+`./ocpm.sh db`, not timed separately.
+
 ---
 
 ## 5. Not verified

@@ -48,16 +48,28 @@ smaller and precomputation is the only lever left. It took the vscode degree-2 r
 to 1.7 s. `fe.seed_lookup` is the search index behind the seed box, 529,199 rows built in 4.2 s,
 and it turns a 348 ms lookup into 1.2 ms.
 
-Both go stale silently the moment any upstream MV is refreshed. A stale `link_mat` does not
+`fe.object_issue_mat`, `fe.object_pull_request_mat`, `fe.interval_issue_mat` and
+`fe.interval_pull_request_mat` (2026-09-07) are copies of the object and interval views. Each of
+those resolves a whole repository — a `DISTINCT ON` over every issue or PR, window functions over
+the whole lifecycle stream — and no request filter reaches below that, so every request paid
+about 1.5 s of repository-wide work before keeping its handful of objects, and `fe.event`'s
+PR-comment branch paid the PR view's share again. The copies are what every per-request path
+reads: the seed check, the RPC's `obj` and `iv`, and `fe.event`. The live views remain the
+definition and what `fe.seed_lookup` and `fe.link` are built from. Measured on vscode
+`issue:2902032454`: `api.get_sublog` 3.3 s → 0.55 s at degree 0, 3.8 s → 0.57 s at degree 2;
+kubernetes `issue:235959617` at degree 2, 222 KB, 5.0 s → 2.4 s. Size: 252 MB for the four.
+
+All seven go stale silently the moment any upstream MV is refreshed. A stale `link_mat` does not
 error; it answers with last week's graph. A stale `seed_lookup` simply cannot find objects that
-now exist.
+now exist. A stale object copy draws last refresh's objects against this refresh's events.
 
 | Function | Refreshes |
 |---|---|
+| `fe.refresh_objects()` | the four object and interval copies — first, because `fe.event` reads the PR copy and `fe.dfg_mat` reads `fe.event` |
 | `fe.refresh_links()` | `fe.link_mat` |
 | `fe.refresh_search()` | `fe.seed_lookup` |
 | `fe.refresh_dfg()` | `fe.dfg_mat` (after `fe.link_mat` — the cross-edge arm reads it) |
-| `fe.refresh_all()` | all three, in dependency order |
+| `fe.refresh_all()` | all seven, in dependency order |
 
 `SELECT * FROM fe.diag_staleness` reports live rows, materialized rows and when each copy was
 last written. Row counts alone cannot prove freshness, so the last-written column is the useful
