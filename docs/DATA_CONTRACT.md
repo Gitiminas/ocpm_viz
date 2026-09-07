@@ -90,8 +90,26 @@ opening-event mapping.
 **Columns (5):** `repo_id`, `issue_id`, `issue_number`, `issue_creation_event_id`, `issue_created_at`
 
 #### `prs_identity`
-One row per pull request, capturing the event that opened it.
+One row per pull request, capturing the event that opened it — and, since 2026-09-07 (the second
+of this project's two approved upstream patches, §4), one row from any later `PullRequestEvent`
+for a pull request whose `opened` event the corpus lacks. Every such event carries the full
+`pull_request` payload, so the fallback row has the exact `created_at`; it is told apart by
+`pr_creation_event_id IS NULL`. Rows with an `opened` event are unchanged.
 **Columns (5):** `repo_id`, `pull_request_id`, `pr_number`, `pr_creation_event_id`, `pr_created_at`
+
+Why it matters: the corpus is not a complete capture. It has 928 zero-event days in ten runs
+between 2015 and 2025, and shorter per-repository holes (facebook/react has no `PullRequestEvent`
+between 2023-06-26 and 2023-07-03 while other repositories have dozens a day). Before the patch,
+7,179 pull requests seen in `mv_pull_request_events_full` had no identity row (react 760,
+kubernetes 4,556, vscode 1,863); all ten link views join this relation, so the issue-comment
+detector could not link to them at all and the others admitted 2,059 of 19,259 validated
+issue↔PR links without the `issue_created_after_pr` test. After the patch (2026-09-07): fallback
+rows react 777, kubernetes 4,595, vscode 1,863; `mv_issue_to_pr_validated_all` 19,259 → 19,238,
+the 21 leavers now failing a test they could not be given; links still without
+`pr_created_at_utc` 2,059 → 1,457, all of them `proximity` rows, which never carry it;
+`mv_issue_pr_links_issue_comment` 83 → 84. `issues_identity` has the same
+single-event dependency and is **not** patched; `fe.diag_time_semantics` shows how many issues
+fall back to first-seen.
 
 ---
 
@@ -314,10 +332,12 @@ assigned in `DATA_LAYER.md`.
 
 `mv_commit_pr_links` and `mv_issue_to_pr_validated_all` are two derivations this project would
 otherwise have built. Both are consumed with their admission logic as it stands, so there is
-exactly one commit→PR admission rule in the project — the inherited one. The single exception to
-"never modify upstream" is the `push_order` detection branch added to `mv_commit_pr_links` on
-2026-09-07 (§3): a fourth candidate source feeding that same rule, placed upstream precisely so
-that a second rule would not have to be written downstream. Lifecycle intervals are ours, built as
+exactly one commit→PR admission rule in the project — the inherited one. The two exceptions to
+"never modify upstream", both 2026-09-07 and both approved: the `push_order` detection branch
+added to `mv_commit_pr_links` (§3), a fourth candidate source feeding that same rule, placed
+upstream precisely so that a second rule would not have to be written downstream; and the
+fallback rows in `prs_identity` (§2), placed upstream because ten link views join it and the
+fix reaches all of them at once. Lifecycle intervals are ours, built as
 `fe.interval_issue` / `fe.interval_pull_request` in `sql/fe_layer.sql`. Process gaps are computed in
 JS over the loaded sub-log so they follow the toggles; no upstream gap view is
 consumed. The derived layer is described in `DATA_LAYER.md`.

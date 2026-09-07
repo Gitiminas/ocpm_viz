@@ -206,6 +206,20 @@ two commits, is now attached with `push_order` / `contains_commit` / `extracted`
 rule's precision on batched merge pushes was checked by construction (the previous-`Merge` bound)
 and on this example, not by sampling; the count is a floor either way.
 
+### The `prs_identity` fallback, 2026-09-07
+
+`prs_identity` was rebuilt over all `PullRequestEvent` actions (`DATA_CONTRACT.md` §2) and its
+nine dependent matviews recreated and refreshed in one transaction (6 minutes), then
+`./ocpm.sh db`. Checked first, read-only: the new definition leaves every existing row unchanged
+(`EXCEPT` over the old rows: 0) and adds 7,235 fallback rows, none with a NULL time. Checked
+afterwards: all six `fe.diag_sanity` checks at expected; both gates pass; `npm test` 825 / 0;
+`fe.diag_time_semantics` shows every pull request that used to be `first_seen(activity)` as
+`created_at(payload)` (react 762, kubernetes 4,556, vscode 1,863) and none left on the fallback.
+The motivating case, facebook/react #27024 (`pr:1413026032`), now starts on 2023-06-29 09:37 UTC
+instead of at its close on 2023-09-29, and carries its title and refs. Not verified: which of the
+two plausibility tests each of the 21 links that left `mv_issue_to_pr_validated_all` failed —
+the link views keep only rows that pass, so the rejected rows are not inspectable after the fact.
+
 ---
 
 ## 5. Not verified

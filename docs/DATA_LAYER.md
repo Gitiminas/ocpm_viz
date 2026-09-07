@@ -92,8 +92,11 @@ number, so `issue:655615214` and not `issue:102358`.
 `new Date()` rejects while this project's validator accepts. Upstream types are mixed and the
 mixture is invisible, so every naive column is lifted with `AT TIME ZONE 'UTC'` where it is first
 selected. `objects[].time_semantics` says what the object's start time means: `created_at(opened)`
-when the opening event is in the window, `first_seen(activity)` when it is not, `first_seen(push)`
-for commits, `static` for actors. Commit time is first-seen-in-a-PushEvent, never the git author
+when the opening event is in the window; `created_at(payload)` for a pull request whose opening
+the corpus lacks but whose later events carry its creation time (since 2026-09-07, via the
+`prs_identity` fallback, `DATA_CONTRACT.md` §2 — the time is as exact as the first, only the
+opening event is missing); `first_seen(activity)` when neither is available; `first_seen(push)`
+for commits; `static` for actors. Commit time is first-seen-in-a-PushEvent, never the git author
 time.
 
 `intervals` is the only lifecycle mechanism; there is no `t_start`/`t_end` pair anywhere. A
