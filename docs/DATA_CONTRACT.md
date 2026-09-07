@@ -47,7 +47,10 @@ real bound. Do not quote it as the data window.
 
 **MV refresh timestamps** (`pg_stat_file(pg_relation_filepath(...))`): every one of the 23 was last
 written **2026-08-02, 19:32–19:45 UTC**. Quote this beside any figure that rests on an upstream
-view, the commit→PR link counts above all.
+view, the commit→PR link counts above all. Exception, on the WSL database only: `mv_commit_pr_links`
+and the five matviews downstream of it (`mv_issue_pr_links_closed_via_commit`, `_commit_message`,
+`_proximity`, `mv_issue_to_pr_validated_all`, `mv_issue_pr_links_extended_conventions`) were
+recreated and refreshed **2026-09-07, 00:31 UTC** for the `push_order` patch (§3, §4).
 
 ---
 
@@ -252,8 +255,12 @@ Commit↔PR attribution.
 `n_commits`, `first_pushed_at`, `pushed_in_window`, `prewindow_only`, **`admitted`**.
 222,619 rows. No `issue_id` — it is a commit↔PR relation and nothing else.
 
-`link_method` takes exactly three values, all already in the `LINK_METHOD` enum:
-`merge_commit_sha`, `head_sha`, `ref_match`.
+`link_method` takes exactly four values, all in the `LINK_METHOD` enum:
+`merge_commit_sha`, `head_sha`, `ref_match`, and — since 2026-09-07, the one patch this project
+has made to an upstream definition — `push_order`: the commits enumerated in the PR's merge push
+between the previous merge commit and the PR's head, when head and merge commit sit at adjacent
+indexes. `DATA_LAYER.md` ("Two admission rules") has the rule; the banner on the view in
+`sql/matviews_scoped.sql` has the reason and the measured gain.
 
 The `admitted` rule is **inherited, not reimplemented**. Admitted / not admitted, by
 repo and method, 2026-08-04:
@@ -264,6 +271,9 @@ repo and method, 2026-08-04:
 | 20580498 kubernetes | 35,853 / 26 | 42,618 / 230 | 2,895 / 4,472 | 94.5% |
 | 41881900 vscode | 15,017 / 513 | 10,720 / 226 | 71,470 / 26,199 | 78.3% |
 
+`push_order`, admitted / not admitted, 2026-09-07: react 417 / 0, kubernetes 13,516 / 223,
+vscode 9,994 / 934 (this database, after the refresh described in §4).
+
 ⚠️ **Do not read the per-repo spread as a process difference.** The `ref_match` share — 7% of
 kubernetes' commit links against 79% of vscode's — is a contribution-model artifact, not a detection
 finding: `ref_match` requires `head_repo_id = repo_id`, so it cannot fire on a fork-based pull
@@ -273,8 +283,8 @@ links are cleaner.
 
 ⚠️ **This project does not consume `admitted` unchanged.** `fe.link` narrows the `ref_match`
 branch and propagates that narrowing to the issue↔PR links derived from it — the two
-divergences from upstream in this layer. The view itself is untouched: the predicate lives in
-`fe.link`, and `fe.diag_ref_match_narrowing` reports what it removes. **Our commit→PR link counts
+divergences from upstream in this layer. The narrowing predicate lives in
+`fe.link`, not in the view, and `fe.diag_ref_match_narrowing` reports what it removes. **Our commit→PR link counts
 are therefore deliberately lower than this view yields**, by an amount that differs per repository —
 `ref_match` pairs go vscode 71,470 → 20,846, kubernetes 2,895 → 1,981, react 3,934 → 1,343
 (`fe.diag_ref_match_narrowing`, 2026-09-06; the earlier rule, since replaced, kept 32,262 /
@@ -282,7 +292,9 @@ are therefore deliberately lower than this view yields**, by an amount that diff
 Cite the narrowing beside any such number and report it as a range, with raw `ref_match` as the
 ceiling.
 
-The view can change beneath us, so quote its refresh timestamp (§1: 2026-08-02 19:39 UTC) beside any
+The view can change beneath us, so quote its refresh timestamp (§1: 2026-08-02 19:39 UTC;
+re-refreshed 2026-09-07 00:31 UTC on the WSL database for `push_order`, together with the five
+matviews downstream of it) beside any
 figure resting on it.
 
 #### `mv_commit_message_issue_links_all`
@@ -301,8 +313,11 @@ assigned in `DATA_LAYER.md`.
 ## 4. What this project builds on top
 
 `mv_commit_pr_links` and `mv_issue_to_pr_validated_all` are two derivations this project would
-otherwise have built. Both are consumed as they stand, so there is exactly one commit→PR admission
-rule in the project — the inherited one. Lifecycle intervals are ours, built as
+otherwise have built. Both are consumed with their admission logic as it stands, so there is
+exactly one commit→PR admission rule in the project — the inherited one. The single exception to
+"never modify upstream" is the `push_order` detection branch added to `mv_commit_pr_links` on
+2026-09-07 (§3): a fourth candidate source feeding that same rule, placed upstream precisely so
+that a second rule would not have to be written downstream. Lifecycle intervals are ours, built as
 `fe.interval_issue` / `fe.interval_pull_request` in `sql/fe_layer.sql`. Process gaps are computed in
 JS over the loaded sub-log so they follow the toggles; no upstream gap view is
 consumed. The derived layer is described in `DATA_LAYER.md`.

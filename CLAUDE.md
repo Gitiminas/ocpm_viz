@@ -61,7 +61,10 @@ diff, so verification matters more than usual.
   `TRUNCATE`, no refreshes, no altering a view. The relations are shared and read-only. Indexes on
   them are the exception: they belong to this project, and `sql/fe_layer.sql` §0 creates 19 with
   measurements. Announce an index rather than adding it quietly, and check `pg_class.reltuples` is
-  not `-1`: a non-owner `ANALYZE` reports success while skipping.
+  not `-1`: a non-owner `ANALYZE` reports success while skipping. One definition change was made
+  with explicit approval and is recorded: the `push_order` branch of `mv_commit_pr_links`
+  (2026-09-07, its banner in `sql/matviews_scoped.sql`, `DATA_CONTRACT.md` §4). It is not a
+  precedent — the next one needs the same approval.
 - **Out of scope, do not wire them in.** The `ocel_*` views, bot classification, OCEL 2.0 tables,
   labels, forks, reviews, review comments, and branch and ref lifecycle.
 - **Never fabricate data.** No placeholder rows, no `Math.random()`, no mock UI. Fixtures live in

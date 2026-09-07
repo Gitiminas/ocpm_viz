@@ -261,14 +261,14 @@ actor links, because who performed an event is `event.actor_id` and nothing else
 |---|---|---|---|---|
 | A | `pr:` → `issue:` | `resolves` | first present of `pr_body, pr_title, commit_message, issue_comment, branch_name, closed_via_commit, proximity` | `mv_issue_to_pr_validated_all` |
 | A2 | `pr:` → `issue:` | `resolves` | the view's own `link_method` | `mv_issue_pr_links_extended_conventions`, only where branch A has no row for the pair |
-| B | `pr:` → `commit:` | `merge_commit` if `merge_commit_sha` is among the methods, else `contains_commit` | first present of `merge_commit_sha, head_sha, ref_match` | `fe.commit_pr_link`, grouped by (repo, sha, PR) |
+| B | `pr:` → `commit:` | `merge_commit` if `merge_commit_sha` is among the methods, else `contains_commit` | first present of `merge_commit_sha, head_sha, push_order, ref_match` | `fe.commit_pr_link`, grouped by (repo, sha, PR) |
 | D | `commit:` → `issue:` | `references_issue` | `commit_message` | `mv_commit_message_issue_links_all` where `ref_scope = 'same_repo'` |
 
 Qualifiers emitted: `resolves`, `contains_commit`, `merge_commit`, `references_issue`. Evidence:
 `validated`, `extracted`. Methods: the ten named above plus whatever
 `mv_issue_pr_links_extended_conventions.link_method` carries. The JS enum in
-`src/model/evidence.js` is the vocabulary and holds 16 values, four validated (`pr_body`,
-`head_sha`, `merge_commit_sha`, `closed_via_commit`) and twelve extracted. An unknown method
+`src/model/evidence.js` is the vocabulary and holds 17 values, four validated (`pr_body`,
+`head_sha`, `merge_commit_sha`, `closed_via_commit`) and thirteen extracted. An unknown method
 throws.
 
 **The evidence rule.** A link is `validated` when the platform's own data asserts it: documented
@@ -294,7 +294,8 @@ Archive's PR payload does not list them. The best available evidence is `ref_mat
 was pushed to the PR's branch while the PR was open. That is noisy, because merging anything into
 a long-lived branch re-enumerates every incoming commit and attributes all of them to the PR.
 `fe.commit_pr_link` therefore admits an `mv_commit_pr_links` row only when the method
-is `head_sha` or `merge_commit_sha` (identity matches, untouched) **or** the commit was flagged
+is `head_sha` or `merge_commit_sha` (identity matches, untouched), or `push_order` (anchored on
+both of those SHAs, untouched — see below), **or** the commit was flagged
 new by GitHub on that PR's own head branch — `fe.commit_born_ref` tested against
 `fe.pr_head_ref`. On vscode PR #116416 it admits 36 of the 217 `ref_match` commits upstream: the
 previous rule had already dropped 130 first seen on trunk, and this one drops 52 more that were
@@ -320,6 +321,27 @@ links for vscode, 272 for react, 56 for kubernetes.
 `SELECT * FROM fe.diag_ref_match_narrowing` prints, per repository, the upstream pair count, what
 was kept, what was dropped as born elsewhere, what was dropped though born here (the floor's
 size), and what is kept only by `ref_match`. Run it rather than quoting the figures from memory.
+
+**`push_order`, the fourth commit → PR method (2026-09-07).** `ref_match` cannot fire on a
+fork-based PR at all, and the two SHA methods name only the branch tip and the merge commit, so
+for most kubernetes PRs the commits *behind* the tip had no method — although the merge push to
+the base branch lists them, oldest first, immediately before the tip. `push_order` reads that
+enumeration: in a push where the PR's `head_sha` sits at index *h* and its `merge_commit_sha` at
+*h+1*, every commit between the previous merge commit in that push and *h* is the PR's. It is
+detected upstream, as a fourth branch of `mv_commit_pr_links` (the one place this project has
+patched an upstream definition; its banner in `sql/matviews_scoped.sql` says why), so the
+inherited `admitted` rule applies to it unchanged, and the two issue↔PR views that join
+`mv_commit_pr_links` gain from it too. Evidence `extracted`: GitHub asserts the order and the two
+SHAs, the attribution is our inference. Still a floor — squash merges, non-adjacent pairs and
+20-commit truncation yield nothing. Measured on 2026-09-07 after the refresh: upstream admits
+13,516 `push_order` rows for kubernetes (6,580 PRs), 9,994 for vscode (2,478), 417 for react
+(101); `fe.link_mat` grew from 171,817 to 191,540 links, and issue↔PR `commit_message` links
+rose too (vscode 2,293 → 2,874, kubernetes 3,053 → 3,078) because the mentions on the newly
+attributed commits now reach a pull request. `fe.diag_link_methods` reports its per-repository
+count as primary method (12,730 / 8,479 / 388 — lower than upstream where an earlier event's
+`head_sha` also names the commit and wins the primary slot). In
+`fe.diag_ref_match_narrowing`, a commit also named by `push_order` no longer counts as
+`kept_only_by_ref_match` (vscode 16,124 → 13,660).
 
 ## The RPCs
 

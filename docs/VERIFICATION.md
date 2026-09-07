@@ -19,7 +19,7 @@ against stub objects instead of one.
 
 | Property | Suite | Scope |
 |---|---|---|
-| Bundle shape; unknown activity, object type, evidence class or method rejected; the sixteen `link.method` values (42) | `model` | F1 + synthetic |
+| Bundle shape; unknown activity, object type, evidence class or method rejected; the seventeen `link.method` values (43) | `model` | F1 + synthetic |
 | Four object types, three of which get lanes; a repo-typed object rejected (39); both link endpoints are objects (49) | `model`, `verification` | synthetic; F1–F14 |
 | Evidence classification follows the platform-asserts-it rule (7) | `model` | rule + F1's 3 / 31 split |
 | Bursts derive from `push_id`; size is the member count | `model` | F1, F7, F10 |
@@ -191,6 +191,20 @@ real sub-logs across all three repositories and all three seed types, at degrees
 branches (16,040 + 5,111 surplus rows), 3,359 objects with no events, 2 objects with a NULL id, a
 nonexistent seed returning an empty payload instead of erroring, four point-intervals on one commit,
 and — after the fix — the `ref_match` narrowing reaching only one of the two link families.
+
+### The `push_order` method, 2026-09-07
+
+The fourth commit→PR method (`DATA_LAYER.md`, "Two admission rules") was applied to
+`gharchive_ocpm_viz_wsl` by recreating `mv_commit_pr_links` and its five dependent matviews in one
+transaction (the refresh took 26 minutes, 21 of them `mv_commit_pr_links`), then `./ocpm.sh db`.
+Checked afterwards: all six `fe.diag_sanity` checks at expected; `scripts/rpc-check.mjs` and
+`scripts/dfg-check.mjs` pass (the `Push` node still equals the `CommitObserved` count, since the
+method adds links and no events); `npm test` 825 / 0. The motivating sub-log, kubernetes #41633
+(`issue:208391990`) at degree 2, went from 4 commits to 5: commit c669ce44, the first of PR #59542's
+two commits, is now attached with `push_order` / `contains_commit` / `extracted`, beside the head
+(`head_sha`) and the merge commit (`merge_commit_sha`) that were already there. Not verified: the
+rule's precision on batched merge pushes was checked by construction (the previous-`Merge` bound)
+and on this example, not by sampling; the count is a floor either way.
 
 ---
 
