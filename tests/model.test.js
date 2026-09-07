@@ -239,8 +239,8 @@ describe('validation fails loudly on a malformed bundle', () => {
  * class silently flipping is a link changing from solid to dashed in every render
  * and a changed validated/extracted split in every figure that quotes it.
  *
- * `link.method` is closed at sixteen values: with `event_actor_id` gone, the enum
- * holds exactly those sixteen and nothing else.
+ * `link.method` is closed at seventeen values: with `event_actor_id` gone, the enum
+ * holds exactly those seventeen and nothing else.
  */
 const EXPECTED_EVIDENCE = [
   ['pr_body', 'validated'],
@@ -253,6 +253,7 @@ const EXPECTED_EVIDENCE = [
   ['branch_name', 'extracted'],
   ['proximity', 'extracted'],
   ['ref_match', 'extracted'],
+  ['push_order', 'extracted'],
   ['pr_title_gh', 'extracted'],
   ['pr_title_symfony', 'extracted'],
   ['pr_title_for', 'extracted'],
@@ -278,9 +279,9 @@ describe('evidence classification', () => {
     assert.throws(() => classifyMethod('event_actor_id'), /Unknown link method/);
   });
 
-  test('link.method has exactly sixteen values', () => {
+  test('link.method has exactly seventeen values', () => {
     const linkMethods = Object.values(LINK_METHOD).sort();
-    assert.equal(linkMethods.length, 16);
+    assert.equal(linkMethods.length, 17);
     assert.deepEqual(linkMethods, EXPECTED_EVIDENCE.map(([m]) => m).sort());
   });
 

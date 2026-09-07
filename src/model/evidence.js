@@ -19,9 +19,9 @@ export const EVIDENCE = {
 /**
  * The closed set of link detection methods.
  *
- * **Sixteen values, and every one of them is a link between two objects.**
+ * **Seventeen values, and every one of them is a link between two objects.**
  * `link.method` — how one object came to be linked to another — is fixed at the four
- * validated and twelve extracted entries below.
+ * validated and thirteen extracted entries below.
  *
  * Three values are excluded and none may return without an upstream source that
  * produces it: `merge_commit_message` (no view emits it), `offplatform_commit_message`
@@ -86,6 +86,22 @@ export const LINK_METHOD = {
    * links carry it, so **any count is a floor**, with raw `ref_match` as the ceiling.
    */
   REF_MATCH: 'ref_match',
+  /**
+   * Commit found in the PR's merge push, in the run of commits immediately before the
+   * PR's head, bounded below by the previous merge commit in that push.
+   *
+   * The gap it fills: `head_sha` and `merge_commit_sha` name only the branch tip and the
+   * merge commit, and `ref_match` needs a push to the PR's branch in the same repository,
+   * so for a fork-based PR the commits behind the tip had no method at all — although the
+   * merge push to the base branch lists them, oldest first, right before the tip. Detected
+   * upstream in `mv_commit_pr_links` (2026-09-07) and subject to the same `admitted` rule.
+   *
+   * Extracted, not validated: GitHub asserts the push's commit order and the PR's two
+   * SHAs, but that the commits between the previous merge and the head belong to this PR
+   * is our inference from that order. A floor: squash merges, non-adjacent head/merge
+   * pairs and pushes truncated at 20 commits yield nothing.
+   */
+  PUSH_ORDER: 'push_order',
 
   /*
    * The six extended conventions. Project-specific issue-reference
