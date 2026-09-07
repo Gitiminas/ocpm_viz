@@ -121,6 +121,16 @@ CREATE INDEX IF NOT EXISTS ix_prcomments_event
   ON mv_pull_request_comments_full (event_id);
 CREATE INDEX IF NOT EXISTS ix_issident_repo_issue
   ON issues_identity (repo_id, issue_id);
+-- 2026-09-07: fe.object_issue reads the title and body excerpt with one correlated
+-- lookup per object (§3), the same shape as the comment excerpt in §4. mv_issues_full had
+-- an index on (repo_id, actor_id) only, so without this each lookup was a 362k-row scan.
+CREATE INDEX IF NOT EXISTS ix_issues_full_repo_issue
+  ON mv_issues_full (repo_id, issue_id);
+-- 2026-09-07: the derived issue opening (§4 branch 5) names the earliest comment event
+-- for an issue known only from comments, with one lookup per identity row. Without this
+-- that lookup is a scan of the 2.3M-row comment MV, per row.
+CREATE INDEX IF NOT EXISTS ix_icomments_repo_issue
+  ON mv_issue_comments_full (repo_id, issue_id);
 CREATE INDEX IF NOT EXISTS ix_prident_repo_prid
   ON prs_identity (repo_id, pull_request_id);
 
@@ -277,22 +287,43 @@ first_seen AS (
   FROM mv_issue_and_issuecomment_activities_full
   WHERE issue_id IS NOT NULL
   GROUP BY repo_id, issue_id
+),
+base AS (
+  SELECT DISTINCT ON (u.repo_id, u.issue_id)
+         'issue:' || u.issue_id::text AS id,          -- the prefix prevents collision
+         'issue'::text                AS type,
+         '#' || u.issue_number        AS label,
+         u.repo_id,
+         u.issue_id,
+         u.issue_number,              -- a real column: fe.link's commit→issue branch joins on it
+         u.t0,
+         u.time_semantics
+  FROM (SELECT * FROM from_identity UNION ALL SELECT * FROM first_seen) u
+  ORDER BY u.repo_id, u.issue_id, u.priority, u.t0
 )
-SELECT DISTINCT ON (u.repo_id, u.issue_id)
-       'issue:' || u.issue_id::text AS id,          -- the prefix prevents collision
-       'issue'::text                AS type,
-       '#' || u.issue_number        AS label,
-       u.repo_id,
-       u.issue_id,
-       u.issue_number,              -- a real column: fe.link's commit→issue branch joins on it
-       u.t0,
-       u.time_semantics,
+SELECT b.id, b.type, b.label, b.repo_id, b.issue_id, b.issue_number, b.t0, b.time_semantics,
        jsonb_build_object(
-         'issue_number', u.issue_number,
-         'issue_id',     u.issue_id
-       ) AS vmap
-FROM (SELECT * FROM from_identity UNION ALL SELECT * FROM first_seen) u
-ORDER BY u.repo_id, u.issue_id, u.priority, u.t0;
+         'issue_number', b.issue_number,
+         'issue_id',     b.issue_id
+       )
+       -- Title and the opening of the body, from the issue's own 'opened' row when there
+       -- is one, else its earliest surviving IssuesEvent (2026-09-07). Same excerpt rule
+       -- and the same correlated-subquery shape as the comment excerpt in §4, and it rides
+       -- on ix_issues_full_repo_issue (§0).
+       --
+       -- ⚠️ OUTSIDE the DISTINCT ON, on purpose. Inside it the planner evaluated the lookup
+       -- for every candidate row before the Unique — 293,308 index searches for a two-object
+       -- request on vscode, 4.7 s (measured 2026-09-07). Out here it runs once per row that
+       -- survives the caller's id filter.
+       || COALESCE((SELECT jsonb_strip_nulls(jsonb_build_object(
+                      'title',          f.issue_title,
+                      'body_excerpt',   left(f.issue_body, 500),
+                      'body_truncated', length(f.issue_body) > 500))
+                    FROM mv_issues_full f
+                    WHERE f.repo_id = b.repo_id AND f.issue_id = b.issue_id
+                    ORDER BY (f.action = 'opened') DESC, f.event_created_at, f.event_id
+                    LIMIT 1), '{}'::jsonb) AS vmap
+FROM base b;
 
 -- -------------------------------------------------------------------------------------
 -- PULL REQUEST — identity preferred, first-seen fallback
@@ -370,7 +401,7 @@ refs AS (
   -- The 'opened' row when there is one, else the earliest surviving event: same fallback
   -- as prs_identity, so a PR the corpus never saw opened still gets its title and refs.
   SELECT DISTINCT ON (pull_request_id)
-         pull_request_id, head_ref, base_ref, pr_title
+         pull_request_id, head_ref, base_ref, pr_title, pr_body
   FROM mv_pull_request_events_full
   ORDER BY pull_request_id, (action = 'opened') DESC, event_created_at
 )
@@ -388,7 +419,10 @@ SELECT DISTINCT ON (u.repo_id, u.pull_request_id)
          'pull_request_id', u.pull_request_id,
          'title',           r.pr_title,
          'head_ref',        r.head_ref,
-         'base_ref',        r.base_ref
+         'base_ref',        r.base_ref,
+         -- the opening of the description, same 500-char rule as the comment excerpt (§4)
+         'body_excerpt',    left(r.pr_body, 500),
+         'body_truncated',  length(r.pr_body) > 500
        )) AS vmap
 FROM (SELECT * FROM from_identity UNION ALL SELECT * FROM first_seen) u
 LEFT JOIN refs r ON r.pull_request_id = u.pull_request_id
@@ -755,10 +789,12 @@ raw AS (
   --    supplied it — so a mark can show a dotted ring and a count can exclude it.
   --    Measured before applying: 7,235 PRs, every one with an author in the payload.
   --
-  --    ⚠️ One pass over the events MV, DISTINCT ON, hash-joined to the fallback identity
-  --    rows — NOT a LATERAL lookup per PR. The first draft did that, and the issue twin
-  --    below had no (repo, issue) index on the 2.3M-row comment MV to lean on: fe.dfg_mat
-  --    took >10 minutes to build instead of ~1 and was cancelled.
+  --    ⚠️ One correlated lookup per identity row, on ix_prev_repo_prid — the shape that
+  --    lets the caller's object filter cut the work down (the RPC reads fe.event several
+  --    times per request with `object_id = ANY(...)`). A DISTINCT ON over the whole events
+  --    MV, hash-joined, was tried in between: fast for the whole-log fe.dfg_mat build, but
+  --    it ran in full on every RPC call and put rpc-check at 6–7 s (measured 2026-09-07).
+  --    The lookup form needs the index; the issue twin below needs two (§0).
   ---------------------------------------------------------------------------------------
   --
   --    ⚠️ The actor is named only if the `actor` base table has the account. 239 PR
@@ -781,12 +817,12 @@ raw AS (
            'opened_by',     CASE WHEN ka.id IS NULL THEN src.author_login END,
            'opened_by_id',  CASE WHEN ka.id IS NULL THEN src.author_id END))
   FROM prs_identity i
-  JOIN (
-    SELECT DISTINCT ON (e.repo_id, e.pull_request_id)
-           e.repo_id, e.pull_request_id, e.event_id, e.author_id, e.author_login
+  JOIN LATERAL (
+    SELECT e.event_id, e.author_id, e.author_login
     FROM mv_pull_request_events_full e
-    ORDER BY e.repo_id, e.pull_request_id, e.event_created_at, e.event_id) src
-    ON src.repo_id = i.repo_id AND src.pull_request_id = i.pull_request_id
+    WHERE e.repo_id = i.repo_id AND e.pull_request_id = i.pull_request_id
+    ORDER BY e.event_created_at, e.event_id
+    LIMIT 1) src ON true
   LEFT JOIN actor ka ON ka.id = src.author_id
   WHERE i.pr_creation_event_id IS NULL
     AND i.pull_request_id IS NOT NULL
@@ -799,7 +835,8 @@ raw AS (
   --    is emitted with NO actor, and derived_from names the earliest comment event. The
   --    layer already tolerates a NULL actor (the sanity check skips it, the DFG emits no
   --    actor row, the layout carries null); the handoff metric was taught to as well.
-  --    Same single-pass shape as branch 4; the comment MV is aggregated once.
+  --    Same lookup shape as branch 4, on ix_issues_full_repo_issue and
+  --    ix_icomments_repo_issue (§0).
   ---------------------------------------------------------------------------------------
   SELECT 'issue_open_payload:' || i.issue_id::text,
          'IssueOpened'::text,
@@ -814,20 +851,17 @@ raw AS (
            'opened_by',     CASE WHEN ka.id IS NULL THEN ie.issue_creator_login END,
            'opened_by_id',  CASE WHEN ka.id IS NULL THEN ie.issue_creator_id END))
   FROM issues_identity i
-  LEFT JOIN (
-    SELECT DISTINCT ON (f.repo_id, f.issue_id)
-           f.repo_id, f.issue_id, f.event_id, f.issue_creator_id, f.issue_creator_login
+  LEFT JOIN LATERAL (
+    SELECT f.event_id, f.issue_creator_id, f.issue_creator_login
     FROM mv_issues_full f
-    WHERE f.issue_id IS NOT NULL
-    ORDER BY f.repo_id, f.issue_id, f.event_created_at, f.event_id) ie
-    ON ie.repo_id = i.repo_id AND ie.issue_id = i.issue_id
+    WHERE f.repo_id = i.repo_id AND f.issue_id = i.issue_id
+    ORDER BY f.event_created_at, f.event_id
+    LIMIT 1) ie ON true
   LEFT JOIN actor ka ON ka.id = ie.issue_creator_id
-  LEFT JOIN (
-    SELECT c.repo_id, c.issue_id, min(c.event_id) AS first_event_id
+  LEFT JOIN LATERAL (
+    SELECT min(c.event_id) AS first_event_id
     FROM mv_issue_comments_full c
-    WHERE c.issue_id IS NOT NULL
-    GROUP BY c.repo_id, c.issue_id) ic
-    ON ic.repo_id = i.repo_id AND ic.issue_id = i.issue_id
+    WHERE c.repo_id = i.repo_id AND c.issue_id = i.issue_id) ic ON ie.event_id IS NULL
   WHERE i.issue_creation_event_id IS NULL
     AND i.issue_id IS NOT NULL
 )
