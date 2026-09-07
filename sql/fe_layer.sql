@@ -255,10 +255,13 @@ WITH from_identity AS (
   -- issue_id is NULL (measured 2026-08-04), and `'issue:' || NULL` is NULL — so without
   -- this the view emits two objects with a NULL id, which findGraphProblems reports as
   -- "an object has no id" and which would take their events down with them.
+  -- Same two kinds of row as prs_identity since 2026-09-07: from the 'opened' event, or a
+  -- fallback from a later IssuesEvent / IssueCommentEvent carrying the issue's created_at.
   SELECT repo_id, issue_id, issue_number,
          issue_created_at AT TIME ZONE 'UTC' AS t0,
          0 AS priority,
-         'created_at(opened)'::text AS time_semantics
+         CASE WHEN issue_creation_event_id IS NULL THEN 'created_at(payload)'
+              ELSE 'created_at(opened)' END::text AS time_semantics
   FROM issues_identity
   WHERE issue_id IS NOT NULL
 ),
