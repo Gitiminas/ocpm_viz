@@ -245,6 +245,26 @@ previously empty, so their commit links meet the bar. Not verified: that no exis
 moved — asserted by construction (the synthetic opening sorts first at the same instant as the
 observed one and is the same state), not by diffing the two views row for row.
 
+### Derived openings, 2026-09-07
+
+`fe.event` branches 4 and 5 (`DATA_LAYER.md`, "Derived openings"). The first draft looked up
+the source event per object with a `LATERAL` join and had no (repo, issue) index on the
+2.3M-row comment MV to lean on: `fe.dfg_mat` ran over ten minutes and was cancelled. The
+shipped form aggregates each source MV once and hash-joins it to the fallback identity rows
+(standalone: 131 ms for PRs, 652 ms for issues); the full `./ocpm.sh db` takes 2 m 45 s. The
+first application then failed the sanity check "actors named by an event with no actor object"
+with 3,749, because 3,764 opener accounts named only in payloads performed no event and have no
+`actor` row; the branches now name an actor only when that table has it and carry the login in
+`attrs.opened_by` otherwise, and the check is back at 0. Checked after: all six sanity checks at
+expected; `dfg-check` passes with `Push` still equal to `CommitObserved`; `rpc-check` passes;
+`npm test` 832 / 0, six of them new in `tests/derived-opening.test.js` (the flag on timeline and
+structural nodes, an actor-less event through the loader and index, the handoff rule, the
+legend key). Counts: `IssueOpened` 176,362 → 198,769 (22,407 derived, 9,577 without an actor
+of which 3,672 name one in attrs), `PullRequestOpened` 90,262 → 97,441 (7,179 derived, 275
+without an actor, all named). Kubernetes #47532 at degree 2 now has an opening for all 8 of its
+pull requests, previously 6. Not verified in a browser: the dotted ring and the hovercard rows
+are asserted through the node flag and the legend key, not a screenshot.
+
 ---
 
 ## 5. Not verified

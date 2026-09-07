@@ -103,8 +103,8 @@ time.
 commit gets exactly one point interval, `start = end`, from the object's own first-seen time and
 not one per `CommitObserved` event. Actors get `[]`.
 
-`meta.data_honesty` carries five strings: `commit_time`, `extracted_edges`, `validated_edges`,
-`truncation`, `commit_authorship`. **Nothing under `src/` reads it.** The equivalent caveats are
+`meta.data_honesty` carries six strings: `commit_time`, `extracted_edges`, `validated_edges`,
+`truncation`, `commit_authorship`, `derived_openings`. **Nothing under `src/` reads it.** The equivalent caveats are
 in the UI as hardcoded English in the renderer, so a transport that dropped the field would look
 identical. Keep it as a warning rather than a claim: a field whose removal is invisible is worse
 than no field.
@@ -249,6 +249,26 @@ Three upstream activities are dropped by design, and `fe.diag_dropped_activities
 `attrs` instead; the process map reads the same rows as `Push`, §12.0), `IssueComment_` (1) and
 `IssueLabeled` (1). An unmapped activity throws in JS
 rather than rendering a raw enum string.
+
+**Derived openings (2026-09-07).** GitHub stamps every `IssuesEvent` and `PullRequestEvent`
+with the whole object, so an issue or pull request whose `opened` event the corpus lacks still
+has its creation time and its opener stated verbatim in a later event's payload. `fe.event`
+branches 4 and 5 emit that opening as an `IssueOpened` / `PullRequestOpened` for every object
+whose identity row came from the fallback (`DATA_CONTRACT.md` §2), with `attrs.source =
+'payload'` and `attrs.derived_from`, the event whose payload supplied it. The time and the actor
+are GitHub's record, read, not estimated; what is derived is only that an event stands for them.
+The actor is named only when the `actor` table has the account, because the layer keeps the
+contract that every actor an event names is an object: 3,764 opener accounts performed no event
+in the corpus and have no actor row, so their 3,947 openings carry `actor_id = null` and say who
+in `attrs.opened_by` / `opened_by_id`. An issue known only from comments has no creator in the
+comment payload and carries neither. The client: `isDerivedEvent` (`src/model/activities.js`)
+is the one place `attrs.source` is interpreted; the layout carries `derivedOpening` on the node
+beside `landmark`; the renderer draws the dotted ring in the extracted colour that the
+heuristic landmark uses, under the legend key `opening-derived`; the hovercard adds a Source row
+and shows `opened_by` where there is no actor; and the handoff metric treats a missing actor as
+a gap in the record, not a change of hands. Counts after applying: 22,407 derived issue
+openings (176,362 → 198,769) and 7,179 derived PR openings (90,262 → 97,441). Derived events
+are not synthesised events: an object none of whose events survived gets nothing.
 
 Intervals come from the events, plus one opening the identity tables supply. `fe.interval_issue`
 opens on `IssueOpened`/`IssueReopened` and closes on `IssueClosed`; `fe.interval_pull_request`
