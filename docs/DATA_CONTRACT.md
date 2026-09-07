@@ -89,8 +89,13 @@ One row per issue, capturing the event that opened it — canonical `issue_id` �
 opening-event mapping — and, since 2026-09-07 (the third approved upstream patch, §4, the same
 fallback as `prs_identity` below), one row from a later `IssuesEvent` or from an
 `IssueCommentEvent` on the issue when the `opened` event is missing from the corpus. Fallback rows
-have `issue_creation_event_id IS NULL` and the payload's `created_at`; rows with an `opened` event
-are unchanged. Measured after the patch (2026-09-07): fallback rows react 1,684, kubernetes
+have `issue_creation_event_id IS NULL`. Since the second step of the same day, `issue_created_at`
+is the payload's `created_at` for **every** row: the `opened` event fires after creation by the
+archive's delivery delay (113,412 rows by 1–3 s) and, for an issue transferred in from another
+repository, by years (707 rows by more than a minute; vscode #235853: event 2024-12-11, created
+2018-11-29); the `opened` events of 2019-08-27..29 were stamped 4–8 hours late, after their own
+close. The event id still says whether the opening is in the log. Measured after the first step
+(2026-09-07): fallback rows react 1,684, kubernetes
 5,700, vscode 15,023; `mv_issue_to_pr_validated_all` 19,238 → 21,863 (+13.6%), because every
 link view resolves the issue through this relation and dropped a link to an unknown issue as
 `missing_issue`; `fe.link_mat` 191,519 → 193,245.
@@ -101,7 +106,9 @@ One row per pull request, capturing the event that opened it — and, since 2026
 of this project's two approved upstream patches, §4), one row from any later `PullRequestEvent`
 for a pull request whose `opened` event the corpus lacks. Every such event carries the full
 `pull_request` payload, so the fallback row has the exact `created_at`; it is told apart by
-`pr_creation_event_id IS NULL`. Rows with an `opened` event are unchanged.
+`pr_creation_event_id IS NULL`. Since the second step of the same day, `pr_created_at` is the
+payload's `created_at` for every row, as for `issues_identity` above (71,843 opened rows moved by
+the delivery delay, 156 by more than a minute).
 **Columns (5):** `repo_id`, `pull_request_id`, `pr_number`, `pr_creation_event_id`, `pr_created_at`
 
 Why it matters: the corpus is not a complete capture. It has 928 zero-event days in ten runs

@@ -265,11 +265,31 @@ without an actor, all named). Kubernetes #47532 at degree 2 now has an opening f
 pull requests, previously 6. Not verified in a browser: the dotted ring and the hovercard rows
 are asserted through the node flag and the legend key, not a screenshot.
 
+### Creation time from the payload for every identity row, 2026-09-07
+
+Both identity views now take `created_at` from the payload for every row (`DATA_CONTRACT.md` §2).
+Checked first, read-only: no key or creation-event id changes (`EXCEPT` on the key columns: 0);
+75,350 PR and 113,414 issue rows move in time, 156 and 707 of them by more than a minute; no NULL
+time. Applied by dropping both views CASCADE and recreating the eleven affected matviews in one
+transaction (5 m 47 s), then `./ocpm.sh db`. Checked after: all six sanity checks at expected,
+both gates pass, `npm test` 832 / 0; `mv_issue_to_pr_validated_all` 21,863 → 21,866, `fe.link_mat`
+193,245 → 193,248; intervals 208,698 → 208,723 (issues) and 105,186 → 105,188 (PRs). Spot checks:
+vscode #235853 now starts 2018-11-29 (was the transfer's `opened` on 2024-12-11); vscode #79901 now
+has [2019-08-27 11:35 → 11:57 UTC] and, because the archive stamped its `opened` event at 19:35 that
+day, a second open-ended interval from there — the archive's event order is kept on purpose, and
+that is the residual for the 26 late-stamped objects of 2019-08-27..29. Not verified: which of the
+three new validated links owe their admission to the time shift.
+
 ---
 
 ## 5. Not verified
 
 Stated plainly rather than left to inference. Each item re-checked 2026-08-23.
+
+- **Pull requests known only from their comments are not drawn** (2026-09-07). 1,961 of them across
+  the three repositories have no `PullRequestEvent` in the corpus, so no PR-side id and no object;
+  `fe.diag_unresolvable_pr_comments` counts their 17,737 comments. Left as a floor on purpose: the
+  fix is a second PR key scheme for objects no link could reach. See `DATA_LAYER.md`, Diagnostics.
 
 - ⚠️ **There is no automated check that the picture is correct, and this is the largest gap in the
   project.** Every layout assertion checks that positions are finite, banded and anchored, never

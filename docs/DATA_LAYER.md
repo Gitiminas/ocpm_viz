@@ -91,8 +91,9 @@ number, so `issue:655615214` and not `issue:102358`.
 **Time.** Every timestamp is UTC, rendered by `fe.utc()` as `+00:00` and not bare `+00`, which
 `new Date()` rejects while this project's validator accepts. Upstream types are mixed and the
 mixture is invisible, so every naive column is lifted with `AT TIME ZONE 'UTC'` where it is first
-selected. `objects[].time_semantics` says what the object's start time means: `created_at(opened)`
-when the opening event is in the window; `created_at(payload)` for an issue or pull request whose
+selected. `objects[].time_semantics` says what the object's start time means. The time itself is
+always the payload's `created_at` (`DATA_CONTRACT.md` §2, since 2026-09-07); the label says
+whether the opening is in the log: `created_at(opened)` when the opening event is; `created_at(payload)` for an issue or pull request whose
 opening the corpus lacks but whose later events carry its creation time (since 2026-09-07, via the
 `issues_identity` / `prs_identity` fallbacks, `DATA_CONTRACT.md` §2 — the time is as exact as the
 first, only the opening event is missing); `first_seen(activity)` when neither is available; `first_seen(push)`
@@ -478,7 +479,7 @@ upstream refresh.
 | `fe.diag_link_staleness` | Drift between `fe.link` and `fe.link_mat` alone |
 | `fe.diag_sanity` | Six checks, each with its expected value: dangling event objects, issue/PR objects with no events, actors named by an event with no actor object, pairs linked twice by the same qualifier, link endpoints that are not objects, and that exactly 10 distinct activities occur |
 | `fe.diag_dropped_activities` | What the vocabulary whitelist drops |
-| `fe.diag_unresolvable_pr_comments` | PR comment events and PRs discarded because no numeric PR id exists for them |
+| `fe.diag_unresolvable_pr_comments` | PR comment events and PRs discarded because no numeric PR id exists for them. A known floor, not a defect to fix: a pull request has two ids on GitHub, and a comment event names only the issue-side one, while `pr:<id>` is keyed by the PR-side one; 1,961 PRs (kubernetes 1,564, vscode 233, react 164) have nothing but comments in the corpus, so their 17,737 comments have no object to attach to. Giving them an object would need a second key scheme, and no link could ever reach them, since links name the PR-side id (2026-09-07) |
 | `fe.diag_time_semantics` | How many issue and PR objects needed the first-seen fallback, per repository |
 | `fe.diag_link_methods` | Link counts grouped by `(repo, method, qualifier, evidence)`. Group by method **and** qualifier: `commit_message` is one technique covering two relationships |
 | `fe.diag_ref_match_narrowing` | Per repository, what the commit→PR narrowing kept, what it removed, and what it cost |
