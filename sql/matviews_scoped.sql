@@ -39,12 +39,18 @@
 -- had no identity row although its later events carry the same `issue` payload — id,
 -- number and created_at. Measured before patching: issues seen in mv_issues_full with no
 -- identity row react 1,144, kubernetes 4,054, vscode 11,304; seen in the issue-or-comment
--- activities MV 1,684 / 5,700 / 15,023. Priority: the 'opened' row (unchanged: same
--- issue_creation_event_id, same issue_created_at = the event's own time), then the earliest
+-- activities MV 1,684 / 5,700 / 15,023. Priority: the 'opened' row, then the earliest
 -- other IssuesEvent, then the earliest IssueCommentEvent whose issue is not a pull request.
--- Fallback rows carry issue_creation_event_id NULL and the payload's created_at as naive
--- UTC; the two comment-stream conditions (not a PR, created_at present) exist because
--- IssueCommentEvent also fires on pull requests and a few old rows lack the field.
+-- Fallback rows carry issue_creation_event_id NULL; the two comment-stream conditions (not
+-- a PR, created_at present) exist because IssueCommentEvent also fires on pull requests
+-- and a few old rows lack the field.
+--
+-- PATCHED again 2026-09-07 (second step), as prs_identity: issue_created_at is the
+-- PAYLOAD's created_at for EVERY row. 113,412 of 176,361 opened rows moved by the
+-- delivery delay (1–3 s); 707 by more than a minute — transferred issues (vscode #235853:
+-- 'opened' fired 2024-12-11 for an issue created 2018-11-29) and the 'opened' events of
+-- 2019-08-27..29, which the archive stamped 4–8 hours late, after the issue's own close
+-- (vscode #79901). The payload is GitHub's record of creation.
 -- Measured after refresh (2026-09-07, this database): fallback rows react 1,684,
 -- kubernetes 5,700, vscode 15,023 — exactly the activities MV's gap; validated issue↔PR
 -- links 19,238 → 21,863 (+13.6%: every link view resolves the issue through this relation,
@@ -66,10 +72,7 @@ CREATE MATERIALIZED VIEW public.issues_identity AS
                     WHEN ((event.type = 'IssuesEvent'::public.event_type) AND ((event.payload ->> 'action'::text) = 'opened'::text)) THEN event.id
                     ELSE NULL::bigint
                 END AS issue_creation_event_id,
-                CASE
-                    WHEN ((event.type = 'IssuesEvent'::public.event_type) AND ((event.payload ->> 'action'::text) = 'opened'::text)) THEN event.created_at
-                    ELSE ((((event.payload -> 'issue'::text) ->> 'created_at'::text))::timestamp with time zone AT TIME ZONE 'UTC'::text)
-                END AS issue_created_at,
+            ((((event.payload -> 'issue'::text) ->> 'created_at'::text))::timestamp with time zone AT TIME ZONE 'UTC'::text) AS issue_created_at,
                 CASE
                     WHEN ((event.type = 'IssuesEvent'::public.event_type) AND ((event.payload ->> 'action'::text) = 'opened'::text)) THEN 0
                     WHEN (event.type = 'IssuesEvent'::public.event_type) THEN 1
@@ -109,10 +112,17 @@ CREATE MATERIALIZED VIEW public.issues_identity AS
 -- with created_at available from a later event. Ten link views join this relation; the
 -- issue-comment detector inner-joins it and lost those PRs outright, the others left-join
 -- it for pr_created_at and admitted 2,059 of 19,259 validated issue↔PR links without the
--- issue_created_after_pr test. Rows that HAVE an opened event are unchanged: same
--- pr_creation_event_id, same pr_created_at (the event's own time). Fallback rows carry
--- pr_creation_event_id NULL and the payload's created_at as naive UTC, so a consumer can
--- tell the two apart. Measured after refresh (2026-09-07, this database): fallback rows
+-- issue_created_after_pr test. Fallback rows carry pr_creation_event_id NULL, so a
+-- consumer can tell whether the opening is in the log.
+--
+-- PATCHED again 2026-09-07 (second step): pr_created_at is the PAYLOAD's created_at for
+-- EVERY row, opened rows included. The first step kept the 'opened' event's own time for
+-- those, which made two kinds of row disagree on what "created" means: the event fires
+-- after creation by the archive's delivery delay (71,843 of 90,261 opened rows differ,
+-- almost all by 1–3 s), and by years for a pull request transferred in from another
+-- repository, whose 'opened' is re-emitted while the payload keeps the original date
+-- (156 rows differ by more than a minute). The payload is GitHub's record of creation;
+-- the event time is when the archive saw the event. pr_creation_event_id is unchanged. Measured after refresh (2026-09-07, this database): fallback rows
 -- react 777, kubernetes 4,595, vscode 1,863 (the raw table holds a few PRs the events MV's
 -- window does not); validated issue↔PR links 19,259 → 19,238, the 21 leavers now failing
 -- a plausibility test they could not be given before; links still lacking pr_created_at
@@ -134,10 +144,7 @@ CREATE MATERIALIZED VIEW public.prs_identity AS
                     WHEN ((event.payload ->> 'action'::text) = 'opened'::text) THEN event.id
                     ELSE NULL::bigint
                 END AS pr_creation_event_id,
-                CASE
-                    WHEN ((event.payload ->> 'action'::text) = 'opened'::text) THEN event.created_at
-                    ELSE ((((event.payload -> 'pull_request'::text) ->> 'created_at'::text))::timestamp with time zone AT TIME ZONE 'UTC'::text)
-                END AS pr_created_at,
+            ((((event.payload -> 'pull_request'::text) ->> 'created_at'::text))::timestamp with time zone AT TIME ZONE 'UTC'::text) AS pr_created_at,
             ((event.payload ->> 'action'::text) = 'opened'::text) AS is_opened,
             event.created_at AS event_created_at
            FROM public.event
