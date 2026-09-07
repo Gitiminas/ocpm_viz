@@ -331,14 +331,14 @@ export function actorPreview(actorId, state) {
  * What the sub-log card should count for the ACTIVE MODE, given a summary of the visible
  * selection (`summarizeSubLog(selectVisible(...))`).
  *
- * The two timeline modes draw one mark per event, so the summary is right as it is. The
- * relationships mode draws one mark per issue, pull request or commit — its events are
- * folded into that mark and its comments into a count on it — and draws an actor only
- * once its trail is pinned. Counting events and every actor there would declare marks
- * that are not on screen, which is exactly what the card exists to not do. So in that
- * mode "artifacts" is the number of marks (the visible issue, PR and commit objects) and
- * "actors" the pinned ones that are in the selection; both still read against the
- * payload's totals, so "0 / 16 actors" says what it means.
+ * An actor is drawn, in every mode, only once its trail is pinned — nothing else on the
+ * canvas stands for one — so "actors" is the pinned ones that are in the selection,
+ * against the payload's total: "0 / 16" says what it means. The two timeline modes draw
+ * one mark per event, so the rest of the summary is right as it is. The relationships
+ * mode draws one mark per issue, pull request or commit — its events are folded into
+ * that mark and its comments into a count on it — so there "artifacts" is the number of
+ * marks (the visible issue, PR and commit objects). Counting events there would declare
+ * marks that are not on screen, which is exactly what the card exists to not do.
  *
  * Pure and DOM-free: takes the summary and the visible graph, returns a new summary.
  *
@@ -347,14 +347,16 @@ export function actorPreview(actorId, state) {
  * @param {object} state          `st` — reads `mode` and `actors`
  */
 export function summaryForMode(summary, visible, state) {
-  if (state.mode !== 'relationships') return summary;
   const counts = new Map(summary.counts);
-  const marks = LANE_TYPES.reduce((n, type) => n + (counts.get(type) ?? 0), 0);
   const visibleActors = new Set(
     visible.objects.filter((object) => object.type === 'actor').map((object) => object.id),
   );
   counts.set('actor', [...state.actors].filter((id) => visibleActors.has(id)).length);
-  return { ...summary, counts, events: marks };
+  const events =
+    state.mode === 'relationships'
+      ? LANE_TYPES.reduce((n, type) => n + (counts.get(type) ?? 0), 0)
+      : summary.events;
+  return { ...summary, counts, events };
 }
 
 export function selectVisible(graph, state, groupsByCommit = new Map()) {

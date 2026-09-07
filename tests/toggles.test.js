@@ -509,7 +509,7 @@ describe('drag offsets belong to one arrangement', () => {
   });
 });
 
-describe('the sub-log card counts what the relationships mode draws', () => {
+describe('the sub-log card counts what is drawn: pinned actors, and marks in the relationships mode', () => {
   // That mode folds an object's events into one mark, its comments into a count on the
   // mark, and draws an actor only once its trail is pinned. The card must not declare
   // events and actors that are not on screen there; the timeline modes are untouched.
@@ -519,7 +519,7 @@ describe('the sub-log card counts what the relationships mode draws', () => {
     const visible = selectVisible(c.graph, c.state, c.groupsByCommit);
     const timeline = summaryForMode(summarizeSubLog(visible), visible, c.state);
     assert.equal(timeline.events, total.events, 'the timeline mode counts every event');
-    assert.equal(timeline.counts.get('actor'), total.counts.get('actor'));
+    assert.equal(timeline.counts.get('actor'), 0, 'no trail pinned: no actor drawn, in any mode');
 
     c.state.mode = 'relationships';
     const rel = summaryForMode(summarizeSubLog(visible), visible, c.state);

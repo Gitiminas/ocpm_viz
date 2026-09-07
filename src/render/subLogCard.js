@@ -13,10 +13,10 @@
  * numbers drop. A count that dropped is shown against the payload's total ("6 / 8") so
  * the card can never be read as "this sub-log has six pull requests" when the truth is
  * "you are looking at six of eight" — anything hidden is declared, in numbers. The
- * kicker reads "Currently displayed" for the same reason. The relationships mode draws
- * one mark per object and an actor only when pinned, so there the summary is first
- * passed through `summaryForMode` (`state/state.js`): artifacts are marks, actors are
- * the pinned ones, both still against the payload's totals.
+ * kicker reads "Currently displayed" for the same reason. An actor is drawn only when
+ * pinned, and the relationships mode draws one mark per object, so the summary is first
+ * passed through `summaryForMode` (`state/state.js`): actors are the pinned ones, and in
+ * that mode artifacts are marks, both still against the payload's totals.
  *
  * Renders into the container it is given and nothing else; both summaries come from
  * `summarizeSubLog`, which is DOM-free and tested on its own.

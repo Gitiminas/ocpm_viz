@@ -51,7 +51,7 @@ export const TIPS = Object.freeze({
 
   // ---- the sub-log card -----------------------------------------------------------
   card: 'What is currently shown, counted. When something is hidden by a toggle, the total follows after a slash.',
-  'card.type': (type) => `How many ${plural(typeName(type), 2)} are shown, against how many the sub-log holds. In the relationships view an actor counts once its trail is pinned.`,
+  'card.type': (type) => `How many ${plural(typeName(type), 2)} are shown, against how many the sub-log holds. An actor counts once its trail is pinned.`,
   'card.links': 'Links between artifacts that are shown. A link joins two artifacts, such as a PR and the issue it closes.',
   'card.events': 'Artifacts that are shown: every event on an issue or pull request, and every observed commit. In the relationships view, one mark per issue, PR or commit.',
   'card.span': 'From the first shown event to the last, in UTC.',

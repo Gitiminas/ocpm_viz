@@ -1477,8 +1477,8 @@ function updateSubLogCard() {
   const visible = selectVisible(graph, state, groupsByCommit);
   renderSubLogCard({
     container: elements.subLogCard,
-    // The relationships mode folds events into one mark per object and draws actors only
-    // when pinned; `summaryForMode` counts what that mode actually puts on screen.
+    // An actor is drawn only when pinned, and the relationships mode folds events into
+    // one mark per object; `summaryForMode` counts what is actually on screen.
     summary: summaryForMode(summarizeSubLog(visible), visible, state),
     total: summarizeSubLog(graph),
     notes,
