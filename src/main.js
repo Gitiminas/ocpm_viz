@@ -74,9 +74,11 @@ const elements = {
   scroll: el('scroll'),
   statsContent: el('statsContent'),
   dfgContent: el('dfgContent'),
-  dfgToggles: el('dfgToggles'),
   dfgActivities: el('dfgActivities'),
   dfgLegend: el('dfgLegend'),
+  dfgLanes: el('dfgLanes'),
+  dfgRelationships: el('dfgRelationships'),
+  dfgRange: el('dfgRange'),
   subLogQuery: el('subLogQuery'),
   dfgQueryNote: el('dfgQueryNote'),
   dfgFocusInfo: el('dfgFocusInfo'),
@@ -1059,7 +1061,9 @@ function updateDfgFocusLabel() {
 /** The Process page's sidebar controls, rebuilt from the current vocabulary and view. */
 function renderDfgSidebar() {
   renderDfgControls({
-    container: elements.dfgToggles,
+    lanesContainer: elements.dfgLanes,
+    relationshipsContainer: elements.dfgRelationships,
+    rangeContainer: elements.dfgRange,
     activitiesContainer: elements.dfgActivities,
     vocabulary: currentDfgToggles,
     view: dfgView,

@@ -804,9 +804,18 @@ export function setupCombo({ input, dropdown, options, initialLabel, onSelect })
  * `onChange` re-renders the map; the range label updates live but the picture waits
  * for the release, the comment-window slider's split.
  */
-export function renderDfgControls({ container, activitiesContainer, vocabulary, view, onChange }) {
-  container.innerHTML = '';
-  activitiesContainer.innerHTML = '';
+export function renderDfgControls({
+  lanesContainer,
+  relationshipsContainer,
+  rangeContainer,
+  activitiesContainer,
+  vocabulary,
+  view,
+  onChange,
+}) {
+  for (const el of [lanesContainer, relationshipsContainer, rangeContainer, activitiesContainer]) {
+    el.innerHTML = '';
+  }
 
   const laneControls = [];
   const pairControls = [];
@@ -939,7 +948,10 @@ export function renderDfgControls({ container, activitiesContainer, vocabulary, 
     }
   }
 
-  container.append(laneSection.wrapper, pairSection.wrapper);
+  // Under the Trace page's own headers: per-type successions are the Lanes section,
+  // cross-link successions and their classes the Relationships section.
+  lanesContainer.appendChild(laneSection.wrapper);
+  relationshipsContainer.appendChild(pairSection.wrapper);
 
   // ---- the count range: two handles on one track, log-scaled -----------------------
   const scale = dfgRangeScale(vocabulary.maxSuccessions);
@@ -998,7 +1010,7 @@ export function renderDfgControls({ container, activitiesContainer, vocabulary, 
   paint();
 
   wrap.append(rangeLabel, track);
-  container.appendChild(wrap);
+  rangeContainer.appendChild(wrap);
 
   // ---- per-activity rows, grouped by lane ------------------------------------------
   for (const lane of vocabulary.lanes) {
