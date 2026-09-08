@@ -12,6 +12,7 @@ import {
   dfgRangeScale,
   DFG_CONTRACT_VERSION,
 } from '../src/model/dfg.js';
+import { summarizeDfgHidden } from '../src/state/state.js';
 
 /*
  * The hand-built bundle is the primary fixture, the way the fold suites build synthetic
@@ -375,5 +376,52 @@ describe('link classes filter, then aggregate to one arrow, then the range appli
     assert.equal(toggles.crossArrows, 2);
     // maxSuccessions in arrow units: the merged arrow's 4 beats every raw row.
     assert.equal(toggles.maxSuccessions, 4);
+  });
+});
+
+describe('the Process page reports what its view hides, with a restore per item', () => {
+  const freshView = (toggles) => ({
+    lanes: {}, pairs: {}, hiddenActivities: new Set(),
+    linkEvidence: {}, linkQualifiers: {}, linkMethods: {},
+    range: [...toggles.defaultRange], focus: null,
+  });
+
+  test('an all-on view hides nothing', () => {
+    const toggles = deriveDfgToggles(validDfg());
+    assert.deepEqual(summarizeDfgHidden(freshView(toggles), toggles, { hiddenByRange: 0 }), { anyHidden: false, items: [] });
+  });
+
+  test('each subtraction is one item, and its restore undoes exactly that', () => {
+    const dfg = validDfg();
+    const toggles = deriveDfgToggles(dfg);
+    const view = freshView(toggles);
+    view.lanes.commit = false;
+    view.pairs.issue_pull_request = false;
+    view.linkEvidence.validated = false;
+    view.hiddenActivities.add('issue/IssueClosed');
+    view.range = [2, toggles.defaultRange[1]];
+    const counts = filterDfg(dfg, view);
+    const summary = summarizeDfgHidden(view, toggles, counts);
+    assert.deepEqual(summary.items.map((i) => i.key), ['lanes', 'pairs', 'evidence', 'activities', 'range']);
+    assert.match(summary.items[0].label, /Commit lane hidden/);
+    assert.match(summary.items[1].label, /Issue ↔ PR/);
+    assert.match(summary.items[3].label, /Issue close/);
+    assert.match(summary.items[4].label, /outside the count range 2–2/);
+
+    summary.items.find((i) => i.key === 'lanes').restore(view);
+    assert.equal(view.lanes.commit, true);
+    assert.equal(view.pairs.issue_pull_request, false, 'restoring the lane leaves the pair alone');
+    summary.items.find((i) => i.key === 'range').restore(view);
+    assert.deepEqual(view.range, toggles.defaultRange);
+    summary.items.find((i) => i.key === 'activities').restore(view);
+    assert.equal(view.hiddenActivities.size, 0);
+  });
+
+  test('the default range is not reported as hidden, even though it hides the bottom decile', () => {
+    const dfg = validDfg();
+    const toggles = deriveDfgToggles(dfg);
+    const view = freshView(toggles);
+    const counts = filterDfg(dfg, view);
+    assert.ok(!summarizeDfgHidden(view, toggles, counts).items.some((i) => i.key === 'range'));
   });
 });

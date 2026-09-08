@@ -23,6 +23,7 @@ import {
   deriveMethods,
   resetToggles,
   summarizeHidden,
+  summarizeDfgHidden,
   selectVisible,
   summaryForMode,
   nudgesFor,
@@ -97,6 +98,7 @@ const elements = {
   bursts: el('bursts'),
   presets: el('presets'),
   hiddenBanner: el('hiddenBanner'),
+  dfgHiddenBanner: el('dfgHiddenBanner'),
   toast: el('toast'),
   statsGrid: el('statsGrid'),
   statsLandmarks: el('statsLandmarks'),
@@ -1032,13 +1034,7 @@ async function refreshDfg() {
       // clears, range re-derives to this artifact's default.
       dfgView.focus = null;
       dfgView.range = [...currentDfgToggles.defaultRange];
-      renderDfgControls({
-        container: elements.dfgToggles,
-        activitiesContainer: elements.dfgActivities,
-        vocabulary: currentDfgToggles,
-        view: dfgView,
-        onChange: renderDfg,
-      });
+      renderDfgSidebar();
     }
     dfgSurface.hide();
     renderDfg();
@@ -1060,6 +1056,17 @@ function updateDfgFocusLabel() {
 }
 
 /** Draw the loaded DFG: the page view filters BEFORE layout, so rows re-spread. */
+/** The Process page's sidebar controls, rebuilt from the current vocabulary and view. */
+function renderDfgSidebar() {
+  renderDfgControls({
+    container: elements.dfgToggles,
+    activitiesContainer: elements.dfgActivities,
+    vocabulary: currentDfgToggles,
+    view: dfgView,
+    onChange: renderDfg,
+  });
+}
+
 function renderDfg() {
   if (!currentDfg) return;
   const filtered = filterDfg(currentDfg, dfgView);
@@ -1094,6 +1101,17 @@ function renderDfg() {
     },
   });
   renderLegend(elements.dfgLegend, legendKeysPresentIn(elements.dfgContent), { only: ['Process map'] });
+  // Same banner as the Trace page's, below the picture: what this page's own view hides,
+  // each item with its restore. Restoring rebuilds the sidebar so its controls agree.
+  renderHiddenBanner({
+    container: elements.dfgHiddenBanner,
+    summary: summarizeDfgHidden(dfgView, currentDfgToggles, filtered),
+    state: dfgView,
+    onRestore: () => {
+      renderDfgSidebar();
+      renderDfg();
+    },
+  });
 }
 
 for (const dashboard of [

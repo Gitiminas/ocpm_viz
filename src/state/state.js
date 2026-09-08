@@ -18,6 +18,7 @@
 import { DEFAULT_COMMENT_WINDOW_DAYS } from '../model/commentBursts.js';
 import { EVIDENCE, ISSUE_PR_METHODS } from '../model/evidence.js';
 import { isCommitInVisibleGroup } from '../model/commitGroups.js';
+import { activityShortLabel } from '../model/activities.js';
 import { LANE_TYPES, TYPE_LABELS } from './labels.js';
 
 export const MIN_ZOOM = 0.55;
@@ -493,6 +494,79 @@ export function summarizeHidden(state, context = {}) {
     });
   }
 
+  return { anyHidden: items.length > 0, items };
+}
+
+/**
+ * What the Process page's view hides, for its hidden-state banner — the same shape
+ * `summarizeHidden` above gives the Trace page: `{anyHidden, items}`, each item a label
+ * and a `restore(view)` that undoes that one subtraction. Pure, so the banner's wording
+ * and its restores are testable without a DOM.
+ *
+ * @param {object} view        the page's view state (`dfgView` in main.js)
+ * @param {object} vocabulary  `deriveDfgToggles(dfg)` (model/dfg.js)
+ * @param {{hiddenByRange?: number}} [counts]  `filterDfg`'s readout, for the range item
+ */
+export function summarizeDfgHidden(view, vocabulary, counts = {}) {
+  const items = [];
+  const label = (type) => TYPE_LABELS[type] || type;
+
+  const lanes = vocabulary.lanes.filter((lane) => view.lanes?.[lane.type] === false);
+  if (lanes.length) {
+    items.push({
+      key: 'lanes',
+      label: `${lanes.map((lane) => label(lane.type)).join(', ')} lane${lanes.length === 1 ? '' : 's'} hidden`,
+      restore: (v) => lanes.forEach((lane) => (v.lanes[lane.type] = true)),
+    });
+  }
+  const pairs = vocabulary.pairs.filter((pair) => view.pairs?.[pair.key] === false);
+  if (pairs.length) {
+    items.push({
+      key: 'pairs',
+      label:
+        `${pairs.length} link pair${pairs.length === 1 ? '' : 's'} hidden ` +
+        `(${pairs.map((pair) => pair.types.map(label).join(' ↔ ')).join(', ')})`,
+      restore: (v) => pairs.forEach((pair) => (v.pairs[pair.key] = true)),
+    });
+  }
+  for (const [key, field, rows, noun] of [
+    ['evidence', 'linkEvidence', vocabulary.linkEvidence, 'evidence class'],
+    ['qualifiers', 'linkQualifiers', vocabulary.linkQualifiers, 'qualifier'],
+    ['methods', 'linkMethods', vocabulary.linkMethods, 'detection method'],
+  ]) {
+    const off = (rows || []).filter((row) => view[field]?.[row.key] === false);
+    if (!off.length) continue;
+    items.push({
+      key,
+      label: `${noun}${off.length === 1 ? '' : 's'} hidden (${off.map((row) => row.key).join(', ')})`,
+      restore: (v) => off.forEach((row) => (v[field][row.key] = true)),
+    });
+  }
+  const hiddenActivities = view.hiddenActivities ?? new Set();
+  if (hiddenActivities.size) {
+    const names = [...hiddenActivities]
+      .map((k) => k.split('/'))
+      .map(([type, activity]) => `${label(type)} ${activityShortLabel(activity)}`)
+      .sort()
+      .join(', ');
+    items.push({
+      key: 'activities',
+      label: `${hiddenActivities.size} activit${hiddenActivities.size === 1 ? 'y' : 'ies'} hidden (${names})`,
+      restore: (v) => v.hiddenActivities.clear(),
+    });
+  }
+  const [low, high] = view.range ?? vocabulary.defaultRange;
+  const [dLow, dHigh] = vocabulary.defaultRange;
+  const hiddenByRange = counts.hiddenByRange ?? 0;
+  if (hiddenByRange > 0 && (low !== dLow || high !== dHigh)) {
+    items.push({
+      key: 'range',
+      label:
+        `${hiddenByRange} arrow${hiddenByRange === 1 ? '' : 's'} outside the count range ` +
+        `${low.toLocaleString('en-US')}–${high.toLocaleString('en-US')}`,
+      restore: (v) => (v.range = [...vocabulary.defaultRange]),
+    });
+  }
   return { anyHidden: items.length > 0, items };
 }
 
