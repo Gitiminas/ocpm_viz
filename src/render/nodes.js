@@ -19,6 +19,57 @@ import { GAP_THRESHOLD_MS } from '../layout/scales.js';
 
 /** Commit labels are thinned so they never collide. */
 const COMMIT_LABEL_MIN_GAP_PX = 64;
+/**
+ * Issue and PR lifecycle labels are thinned the same way: a word sits to the right of its
+ * glyph (x + 18, 13 px), so it needs about this much clear space before the next mark on
+ * the same row. This was the packing's collision threshold before 2026-09-08; the packing
+ * now bumps on glyph overlap only (`layout/packing.js`) and the word gives way instead.
+ */
+const LIFECYCLE_LABEL_MIN_GAP_PX = 100;
+
+/**
+ * Which marks carry their text label: a set of node ids.
+ *
+ * Commit labels sit beneath the glyph and are thinned left to right so consecutive labels
+ * stay `COMMIT_LABEL_MIN_GAP_PX` apart. Issue and PR lifecycle labels sit to the right of
+ * the glyph, so what matters is the next mark on the SAME ROW: a label is drawn only when
+ * that mark is at least `LIFECYCLE_LABEL_MIN_GAP_PX` away (or there is none). Comments,
+ * bursts and folded commits never carry one. Pure, so the rule is testable without a DOM;
+ * the hovercard names the activity whatever this decides, and zooming in widens the
+ * spacing until every label is back.
+ *
+ * @param {Array} nodes  drawn nodes carrying `id`, `lane`, `row`, `x`, `isComment`, …
+ * @returns {Set<string>}
+ */
+export function labelledMarks(nodes) {
+  const shown = new Set();
+
+  let lastX = -1e9;
+  for (const node of nodes
+    .filter((n) => n.lane === 'commit' && !n.isBurst && !n.inBurst)
+    .sort((a, b) => a.x - b.x)) {
+    if (node.x - lastX > COMMIT_LABEL_MIN_GAP_PX) {
+      shown.add(node.id);
+      lastX = node.x;
+    }
+  }
+
+  const rows = new Map();
+  for (const node of nodes) {
+    if (node.lane === 'commit' || node.isComment || node.isCommentBurst || node.isBurst) continue;
+    const key = `${node.lane}|${node.row}`;
+    if (!rows.has(key)) rows.set(key, []);
+    rows.get(key).push(node);
+  }
+  for (const inRow of rows.values()) {
+    inRow.sort((a, b) => a.x - b.x);
+    inRow.forEach((node, i) => {
+      const next = inRow[i + 1];
+      if (!next || next.x - node.x >= LIFECYCLE_LABEL_MIN_GAP_PX) shown.add(node.id);
+    });
+  }
+  return shown;
+}
 
 export function renderLifecycleBars({
   gBG,
@@ -266,17 +317,8 @@ export function renderNodes({
   actorLogin,
   objectColors = new Map(),
 }) {
-  // Thin commit labels so only well-separated ones are drawn.
-  const showLabel = new Set();
-  let lastX = -1e9;
-  for (const node of nodes
-    .filter((n) => n.lane === 'commit' && !n.isBurst && !n.inBurst)
-    .sort((a, b) => a.x - b.x)) {
-    if (node.x - lastX > COMMIT_LABEL_MIN_GAP_PX) {
-      showLabel.add(node.id);
-      lastX = node.x;
-    }
-  }
+  // Thin labels so only well-separated ones are drawn (`labelledMarks`).
+  const showLabel = labelledMarks(nodes);
 
   for (const node of nodes) {
     const dim = objectOpacity(node.objectId, focus);
@@ -412,7 +454,7 @@ export function renderNodes({
           .attr('class', 'mono')
           .text(node.title);
       }
-    } else if (!node.isComment) {
+    } else if (!node.isComment && showLabel.has(node.id)) {
       group
         .append('text')
         .attr('x', 18)

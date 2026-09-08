@@ -19,12 +19,21 @@
  * The commit lane has no sub-lanes. A commit is an instant, not a span, and a
  * commit linked to several PRs needs extra edges rather than extra layout
  * Its nodes are packed by collision alone.
+ *
+ * ⚠️ A collision is two GLYPHS overlapping, not two labels. The issue and PR
+ * threshold used to be 100 px — a glyph plus its word ("open", "merge") — so a mark was
+ * bumped a row to make room for text, and on a dense sub-log (kubernetes #47532 in
+ * discrete mode) a PR's merge landed two rows under its open, with comments between:
+ * layout that read as structure. A row bump now means the icons would touch; when
+ * words would collide, the renderer drops the word and keeps the icon on its row
+ * (`labelledMarks`, render/nodes.js), and the word returns as zoom widens the spacing.
  */
 
 /** Minimum horizontal separation before two nodes are considered to collide. */
 export const COLLISION_THRESHOLD_PX = {
   commit: 24,
-  default: 100,
+  // A lifecycle glyph is radius 8, its landmark ring radius 14: two rings touch at 28.
+  default: 30,
 };
 
 /** Vertical pitch between rows, and the padding around a lane's content. */
@@ -188,19 +197,36 @@ function packByCollision(nodes, lane, baseRow) {
   const placed = [];
   let maxRow = baseRow;
 
-  for (const node of nodes.slice().sort((a, b) => a.t - b.t)) {
-    let row = baseRow + startingOffset(node, lane);
+  /*
+   * Lifecycle marks first, then comments beneath ALL of them. When two lifecycle marks
+   * of one object are closer than a glyph (a PR opened and merged within the same
+   * discrete column or two), the second must take the next row — but with comments
+   * interleaved by arrival time it took the row after the comments, and "open, then a
+   * row of comments, then merge" read as three separate things. Packing the lifecycle
+   * rows first keeps open and merge adjacent and puts the comment traffic under both.
+   * With one lifecycle row this is exactly the old layout: comments start one row down.
+   */
+  const byTime = (a, b) => a.t - b.t;
+  const lifecycle = nodes.filter((node) => !startingOffset(node, lane)).sort(byTime);
+  const comments = nodes.filter((node) => startingOffset(node, lane)).sort(byTime);
+
+  const place = (node, firstRow) => {
+    let row = firstRow;
     while (placed.some((p) => p.row === row && Math.abs(p.x - node.x) < threshold)) row++;
     node.row = row;
     placed.push(node);
     if (row > maxRow) maxRow = row;
-  }
+  };
+  for (const node of lifecycle) place(node, baseRow);
+  const commentRow = Math.max(baseRow + 1, lifecycle.length ? maxRow + 1 : baseRow + 1);
+  for (const node of comments) place(node, commentRow);
   return maxRow;
 }
 
 /**
- * Comments sit one row below their object's events, which keeps the lifecycle
- * readable as a single line with the comment traffic beneath it.
+ * Comments sit below their object's lifecycle rows (one row down when the lifecycle
+ * fits on one, as it nearly always does), which keeps the lifecycle readable as a line
+ * with the comment traffic beneath it. `packByCollision` places the lifecycle first.
  */
 function startingOffset(node, lane) {
   const hasCommentRow = lane === 'issue' || lane === 'pull_request';

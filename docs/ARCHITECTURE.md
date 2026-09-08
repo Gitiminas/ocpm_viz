@@ -162,8 +162,10 @@ times. Both share everything else.
 
 y is object identity. The issue and PR lanes partition objects into **bands** by lifecycle
 overlap (`assignSubLanes`, greedy, a band reused once the previous occupant has ended), then
-bump within a band on collision (100 px; comment nodes start one row down). The commit lane is
-collision-only at 24 px, plus one extra row when a commit is observed more than once.
+bump within a band on collision (30 px, i.e. the glyphs would touch; lifecycle marks are packed
+first and comment nodes start on the row below them all). Words do not move marks: a lifecycle label is drawn only when the next mark on its row is
+100 px away (`labelledMarks`, `render/nodes.js`), and comes back as zoom widens the spacing. The
+commit lane is collision-only at 24 px, plus one extra row when a commit is observed more than once.
 `ROW_HEIGHT` is 36.
 
 `anchors.js` decides where a link lands: commit links attach to the drawn commit node, issue and

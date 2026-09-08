@@ -323,3 +323,41 @@ describe('discrete-mode gap labels merge when they would collide', () => {
     assert.equal(groups.flatMap((g) => g.gaps).length, 20, 'every band keeps a label group');
   });
 });
+
+describe('a row bump means the glyphs would touch, never that the words would', () => {
+  const mark = (id, x, extra = {}) => ({ id, lane: 'pull_request', objectId: 'pr:1', t: x, x, ...extra });
+
+  test('two lifecycle marks 40 px apart share the row (they used to be bumped for the label)', () => {
+    const nodes = [mark('open', 100), mark('merge', 140)];
+    packRows(nodes, ['pull_request']);
+    assert.equal(nodes[0].row, nodes[1].row);
+  });
+
+  test('two lifecycle marks 20 px apart still bump — the icons would overlap', () => {
+    const nodes = [mark('open', 100), mark('merge', 120)];
+    packRows(nodes, ['pull_request']);
+    assert.notEqual(nodes[0].row, nodes[1].row);
+  });
+});
+
+describe('comments go under the lifecycle, never between two lifecycle marks', () => {
+  const mark = (id, x, extra = {}) => ({ id, lane: 'pull_request', objectId: 'pr:1', t: x, x, ...extra });
+
+  test('an open and a merge too close to share a row stay adjacent; the comment between them drops below both', () => {
+    const nodes = [mark('open', 100), mark('c', 110, { isComment: true }), mark('merge', 120)];
+    packRows(nodes, ['pull_request']);
+    const row = Object.fromEntries(nodes.map((n) => [n.id, n.row]));
+    assert.equal(row.open, 0);
+    assert.equal(row.merge, 1, 'the second lifecycle mark takes the very next row');
+    assert.equal(row.c, 2, 'the comment goes under both');
+  });
+
+  test('with one lifecycle row the comment row is one down, as before', () => {
+    const nodes = [mark('open', 100), mark('c', 110, { isComment: true }), mark('merge', 300)];
+    packRows(nodes, ['pull_request']);
+    const row = Object.fromEntries(nodes.map((n) => [n.id, n.row]));
+    assert.equal(row.open, 0);
+    assert.equal(row.merge, 0);
+    assert.equal(row.c, 1);
+  });
+});

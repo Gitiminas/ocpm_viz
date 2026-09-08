@@ -7,7 +7,7 @@ import { indexSubLog, normalizeGraph } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { deriveCommentBursts } from '../src/model/commentBursts.js';
 import { isUnmergedClose } from '../src/model/activities.js';
-import { actorPoints, expandedCommentRuns, markForEvent } from '../src/render/nodes.js';
+import { actorPoints, expandedCommentRuns, markForEvent, labelledMarks } from '../src/render/nodes.js';
 import { buildNodes, assignRanks, filterNodes } from '../src/layout/nodes.js';
 import { packRows } from '../src/layout/packing.js';
 import {
@@ -767,5 +767,32 @@ describe('an actor-card row finds its mark, through whatever fold carries it', (
   test('an event whose mark is filtered out resolves to nothing, not to a wrong mark', () => {
     assert.equal(markForEvent(nodes, { id: 'e8', object_id: 'commit:zz' }), null);
     assert.equal(markForEvent(nodes, null), null);
+  });
+});
+
+describe('labels give way before marks do', () => {
+  const mark = (id, x, extra = {}) => ({ id, lane: 'pull_request', row: 0, x, isComment: false, ...extra });
+
+  test('of two same-row marks 40 px apart only the right-hand one keeps its word', () => {
+    const shown = labelledMarks([mark('open', 100), mark('merge', 140)]);
+    assert.ok(!shown.has('open'), 'the left mark would run its word into the right mark');
+    assert.ok(shown.has('merge'), 'the last mark on a row always keeps its word');
+  });
+
+  test('two marks 120 px apart both keep their words; a comment never has one', () => {
+    const shown = labelledMarks([mark('open', 100), mark('c', 130, { isComment: true }), mark('merge', 220)]);
+    assert.ok(shown.has('open') && shown.has('merge'));
+    assert.ok(!shown.has('c'));
+  });
+
+  test('rows and lanes are independent: a close mark on another row does not hide a word', () => {
+    const shown = labelledMarks([mark('open', 100), mark('other', 110, { row: 1 }), mark('issue', 105, { lane: 'issue' })]);
+    assert.ok(shown.has('open') && shown.has('other') && shown.has('issue'));
+  });
+
+  test('commit labels keep their own left-to-right thinning', () => {
+    const c = (id, x) => ({ id, lane: 'commit', row: 0, x, isComment: false });
+    const shown = labelledMarks([c('a', 0), c('b', 30), c('c', 100)]);
+    assert.deepEqual([...shown].sort(), ['a', 'c']);
   });
 });
