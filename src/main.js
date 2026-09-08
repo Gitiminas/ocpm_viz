@@ -115,6 +115,8 @@ renderProcessCard({ container: elements.dfgCard, shown: null });
 // The help strip: one delegated listener on the body, texts from help/tips.js. Removing
 // this one call switches the feature off; the data-tip attributes are inert without it.
 bindHelpStrip({ root: document.body, stripEl: el('helpStrip') });
+// The Process page's strip: same binding, same root — only one page is visible at a time.
+bindHelpStrip({ root: document.body, stripEl: el('dfgHelpStrip') });
 
 /*
  * One message surface per page, each a sibling of the thing it stands in for.
@@ -1075,7 +1077,7 @@ function renderDfg() {
     width,
     maxSuccessions: currentDfgToggles.maxSuccessions,
   });
-  dfgChart.render(currentDfg, layout, { counts: filtered, focus: dfgView.focus });
+  dfgChart.render(currentDfg, layout, { focus: dfgView.focus });
   updateDfgFocusLabel();
   renderProcessCard({
     container: elements.dfgCard,

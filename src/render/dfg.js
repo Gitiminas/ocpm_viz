@@ -8,9 +8,10 @@
  *
  * The page cannot follow the sidebar toggles — the DFG is computed server-side over
  * data the client never loads, which is the one stated exception to the
- * metrics-follow-the-toggles rule — so a standing notice says so, in the Stats page's
- * filtered-notice style. Cross-type successions ride on the admitted links and are
- * floors; their hovercard and the notice both say that too.
+ * metrics-follow-the-toggles rule — which the Process page's help texts and card say.
+ * Cross-type successions ride on the admitted links and are floors; their hovercard
+ * says so. What the page's own filter hid is the hidden-state banner's business, as on
+ * the Trace page (main.js).
  */
 
 /* global d3 */
@@ -18,7 +19,7 @@
 import { TYPE, typeColor, drawSymbol } from './theme.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
 import { DIM_OPACITY } from '../model/graph.js';
-import { escapeHtml, formatDateYear } from './format.js';
+import { escapeHtml } from './format.js';
 import { DFG_LOOP_RADIUS } from '../layout/dfg.js';
 
 const ARROW_SIZE = 7;
@@ -54,13 +55,6 @@ function trimmed(points, radius) {
 }
 
 export function createDfgView({ container, tooltip, handlers = {} }) {
-  const notice = document.createElement('div');
-  notice.className = 'mono';
-  notice.style.cssText =
-    'font-size:11px;color:var(--color-accent-300);border:1px solid var(--color-accent-700);' +
-    'background:color-mix(in srgb, var(--color-accent) 10%, transparent);' +
-    'border-radius:var(--radius-sm);padding:7px 10px;line-height:1.5';
-  container.appendChild(notice);
 
   const svg = d3
     .select(container)
@@ -85,13 +79,12 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
 
   function clear() {
     svg.selectAll('*').remove();
-    notice.textContent = '';
   }
 
   /**
    * Draw one laid-out DFG. The layout already carries exactly what the page's filter
    * kept (`filterDfg` runs before `layoutDfg`); `counts` is that filter's arithmetic,
-   * printed in the notice so nothing disappears quietly.
+   * which the page's hidden-state banner reports so nothing disappears quietly.
    *
    * `focus` is an activity key (`type/activity`) or null: everything not touching it
    * dims to the standard focus opacity. Highlight only — the geometry this function
@@ -101,27 +94,12 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
    * @param {object} layout   from `layoutDfg`, post-filter
    * @param {{counts?: object, focus?: string|null}} options
    */
-  function render(dfg, layout, { counts = null, focus = null } = {}) {
+  function render(dfg, layout, { focus = null } = {}) {
     svg.selectAll('*').remove();
     svg.attr('width', layout.width).attr('height', layout.height);
 
-    const sample = dfg.meta.source?.sample
-      ? ` Drawn from sample ${dfg.meta.source.sample}, a snapshot of ${dfg.meta.repo}.`
-      : '';
-    const readout = counts
-      ? ` Showing ${counts.shown} of ${counts.total} succession arrows.` +
-        (counts.hiddenByRange ? ` ${counts.hiddenByRange} outside the count range.` : '') +
-        (counts.hiddenByToggles ? ` ${counts.hiddenByToggles} switched off.` : '')
-      : '';
-    // The artifact's own staleness is this page's largest caveat, so the notice dates
-    // it — the sub-log card labels its span the same way.
-    const refreshed = dfg.meta.source?.mv_refreshed
-      ? ` Data as refreshed ${formatDateYear(new Date(dfg.meta.source.mv_refreshed))} UTC.`
-      : '';
-    notice.textContent =
-      `The whole log of ${dfg.meta.repo}, computed server-side. Cross-type successions ` +
-      `are floors: they ride on the admitted links.${refreshed}${sample}${readout}`;
-
+    // What the filter hid is the hidden-state banner's business (main.js), as on the
+    // Trace page; nothing is printed above the picture.
     const gBand = svg.append('g');
     const gLink = svg.append('g');
     // The invisible hover targets, in their own layer above every stroke. Inside the

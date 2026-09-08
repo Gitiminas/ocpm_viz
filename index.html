@@ -93,11 +93,11 @@ html,body{height:100%;margin:0;overflow:hidden}
    rule on its left that takes the accent colour while it is saying something and falls
    back to a quiet grey on the hint. Two text lines tall whatever it says, so the header
    never changes height; the text fades between sentences rather than snapping. */
-#helpStrip{flex:0 1 560px;min-width:0;display:flex;align-items:flex-start;gap:9px;padding:3px 10px 3px 0;border-left:2px solid var(--color-accent-600,#5b5bd6);margin-left:2px;font-size:12px;line-height:1.4;color:var(--color-neutral-200);transition:border-color .2s ease}
-#helpStrip::before{content:'i';flex:0 0 auto;margin:-2px 0 0 10px;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-weight:700;font-size:19px;line-height:1;color:var(--color-accent-300);transition:color .2s ease}
-#helpStrip .helpText{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.8em;transition:opacity .15s ease}
-#helpStrip.isDefault{border-left-color:var(--color-neutral-700)}
-#helpStrip.isDefault::before{color:var(--color-neutral-600)}
+.helpStrip{flex:0 1 560px;min-width:0;display:flex;align-items:flex-start;gap:9px;padding:3px 10px 3px 0;border-left:2px solid var(--color-accent-600,#5b5bd6);margin-left:2px;font-size:12px;line-height:1.4;color:var(--color-neutral-200);transition:border-color .2s ease}
+.helpStrip::before{content:'i';flex:0 0 auto;margin:-2px 0 0 10px;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-weight:700;font-size:19px;line-height:1;color:var(--color-accent-300);transition:color .2s ease}
+.helpStrip .helpText{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.8em;transition:opacity .15s ease}
+.helpStrip.isDefault{border-left-color:var(--color-neutral-700)}
+.helpStrip.isDefault::before{color:var(--color-neutral-600)}
 #helpStrip.isDefault .helpText{color:var(--color-neutral-500);font-style:italic}
 /* A search page revealed on scroll blends in rather than popping (setupSearchCombo). */
 @keyframes searchRowIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
@@ -365,7 +365,7 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);flex:0 0 auto;flex-wrap:nowrap;min-width:0">
 <!-- The help strip: what the pointer is on, in a sentence or two (render/helpStrip.js,
      texts in help/tips.js). Two lines tall whatever it says, so the header never jumps. -->
-<div id="helpStrip" class="isDefault" aria-live="polite"></div>
+<div id="helpStrip" class="helpStrip isDefault" aria-live="polite"></div>
 <div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:nowrap;margin-left:auto;min-width:0;flex:0 0 auto">
 <div class="mono" id="focusInfo" data-tip="focus.info" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
 <!--
@@ -523,11 +523,16 @@ html,body{height:100%;margin:0;overflow:hidden}
 <!-- Its own overlay: a DFG load is independent of the sub-log load and must not blur
      the Trace page, nor be blurred by it. `position:relative` above anchors it. -->
 <div class="loadingOverlay" id="dfgLoading"></div>
-<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);margin:0 0 var(--space-6)">
-<h1 style="font-size:20px;margin:0">Process map</h1>
-<!-- The Trace header's focus pill, without the degree stepper: an activity's
+<!-- The same header row as the Trace page: the help strip on the left, the focus label on
+     the right. No page title — the sidebar's "Whole log · Process" names the page, as
+     "Sub-log · Trace" names the other. -->
+<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);flex:0 0 auto;flex-wrap:nowrap;min-width:0;margin:0 0 var(--space-4)">
+<div id="dfgHelpStrip" class="helpStrip isDefault" aria-live="polite"></div>
+<div style="display:flex;align-items:center;gap:var(--space-4);flex-wrap:nowrap;margin-left:auto;min-width:0;flex:0 0 auto">
+<!-- The Trace header's focus label, without the degree stepper: an activity's
      neighbourhood is one hop by definition. -->
 <div class="mono" id="dfgFocusInfo" data-tip="dfg.focus" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
+</div>
 </div>
 <!-- This page's message surface — a SIBLING of the content root, before it, for the
      same reason #statsMessage is: the renderer owns what is inside #dfgContent, and a
