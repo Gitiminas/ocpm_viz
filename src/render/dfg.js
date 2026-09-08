@@ -21,7 +21,7 @@ import { activityLabel, activityShortLabel } from '../model/activities.js';
 import { DIM_OPACITY } from '../model/graph.js';
 import { escapeHtml } from './format.js';
 import { DFG_TYPE_LABELS } from '../state/labels.js';
-import { DFG_LOOP_RADIUS } from '../layout/dfg.js';
+import { DFG_LOOP_RADIUS, DFG_LOOP_DX } from '../layout/dfg.js';
 
 const ARROW_SIZE = 7;
 
@@ -176,7 +176,9 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
       let path;
       let head;
       if (edge.loop) {
-        const [at] = edge.points;
+        const [centre] = edge.points;
+        // Up and to the left of the node (`DFG_LOOP_DX`), clear of the arcs leaving it.
+        const at = { x: centre.x + DFG_LOOP_DX, y: centre.y };
         const r = DFG_LOOP_RADIUS;
         // A circle tangent above the node, drawn as two arcs so it has a free end for
         // the arrowhead to sit on.
@@ -201,8 +203,10 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
         .attr('stroke-width', edge.width)
         .attr('stroke-linecap', 'round')
         .attr('stroke-dasharray', cross ? '6 6' : null)
-        .attr('opacity', (cross ? 0.7 : 0.8) * dim);
-      if (head) head.attr('opacity', (cross ? 0.7 : 0.9) * dim);
+        // Cross arrows a shade lighter than the in-row arcs, so the solid lifecycle arcs
+        // read first through the dashed traffic between rows.
+        .attr('opacity', (cross ? 0.55 : 0.85) * dim);
+      if (head) head.attr('opacity', (cross ? 0.6 : 0.9) * dim);
 
       // The count label answers the pointer with the SAME card as its edge, so a number
       // in a crowd can be interrogated without finding its arrow first.

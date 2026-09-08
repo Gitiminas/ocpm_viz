@@ -27,11 +27,16 @@ const MARGIN = { top: 48, right: 48, bottom: 48, left: 168 };
 /** Vertical room per row: the marks plus the tallest arc on either side. */
 const LANE_HEIGHT = 240;
 /** An arc's rise: a floor so short hops stay visible, growing with the slots skipped. */
-const ARC_BASE = 26;
-const ARC_PER_SLOT = 14;
-const ARC_MAX = 78;
+const ARC_BASE = 34;
+const ARC_PER_SLOT = 22;
+const ARC_MAX = 100;
 /** The loop's ring above a self-succession's node. */
 export const DFG_LOOP_RADIUS = 16;
+/**
+ * The loop sits up and to the LEFT of its node: forward arcs leave a node toward the
+ * upper right, and a loop centred above the node sat exactly in their way.
+ */
+export const DFG_LOOP_DX = -16;
 
 const EDGE_WIDTH_MIN = 1;
 const EDGE_WIDTH_MAX = 6;
@@ -200,7 +205,7 @@ export function layoutDfg(dfg, { width = 960, maxSuccessions = null } = {}) {
         loop: true,
         width: strokeWidth,
         points: [{ x: from.x, y: from.y }],
-        labelAt: { x: from.x, y: from.y - from.radius - 2 * DFG_LOOP_RADIUS - 8 },
+        labelAt: { x: from.x + DFG_LOOP_DX, y: from.y - from.radius - 2 * DFG_LOOP_RADIUS - 8 },
       }];
     }
 
