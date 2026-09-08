@@ -127,6 +127,21 @@ html,body{height:100%;margin:0;overflow:hidden}
   .spinner{animation:none;border-top-color:var(--color-accent)}
   .loadingOverlay{animation:none}
 }
+/* Page navigation (sidebar top). `.pageGroup` boxes the two sub-log pages and carries one
+   sliding indicator, `.pageThumb`, which main.js's showPage() positions over the active tab
+   and switches off (`.off`) on the Process page. `.pageTab.solo` is the Process button,
+   styled on its own. Rectangular on purpose: the chart header's filled `.switch` pill is a
+   different kind of control and must not look like this one's sibling. */
+.pageCaption{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500);padding-left:2px}
+.pageGroup{position:relative;display:flex;gap:2px;padding:3px;border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);background:var(--color-neutral-900)}
+.pageThumb{position:absolute;top:3px;bottom:3px;left:3px;width:0;border-radius:calc(var(--radius-md) - 2px);background:color-mix(in srgb, var(--color-accent) 16%, transparent);border:1px solid var(--color-accent);box-sizing:border-box;pointer-events:none;transition:left .2s ease,width .2s ease,opacity .2s ease}
+.pageThumb.off{opacity:0}
+.pageTab{position:relative;z-index:1;box-sizing:border-box;border:1px solid transparent;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-neutral-400);padding:6px 12px;border-radius:calc(var(--radius-md) - 2px);display:flex;align-items:center;gap:7px;transition:color .15s ease}
+.pageTab.on{color:var(--color-text)}
+.pageTab:not(.on):hover{color:var(--color-text)}
+.pageTab.solo{border-radius:var(--radius-md);padding:9px 12px}
+.pageTab.solo.on{border-color:var(--color-accent);background:color-mix(in srgb, var(--color-accent) 16%, transparent)}
+@media (prefers-reduced-motion:reduce){.pageThumb{transition:none}}
 /* The FIRST level of the mode control is a switch, not a segment: a pill
    whose active side is filled, with a radio dot as the literal indicator. It is drawn
    differently from the second-level segments on purpose — outlined alike, "Time |
@@ -166,15 +181,32 @@ html,body{height:100%;margin:0;overflow:hidden}
      page, so it lives at the root rather than inside one page's hidden subtree. -->
 <div id="app" style="position:relative;display:flex;height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);overflow:hidden">
 <aside style="width:300px;flex:0 0 auto;background:var(--color-surface);border-right:1px solid var(--color-neutral-800);display:flex;flex-direction:column;overflow-y:auto;padding:var(--space-6)">
-<div style="display:flex;gap:8px;padding-bottom:var(--space-6);margin-bottom:var(--space-6);border-bottom:1px solid var(--color-neutral-800)">
+<!-- Page navigation. Two things are on offer, and the shape says which is which:
+     Trace and Stats show ONE SUB-LOG — the same loaded query, drawn or tabulated — so they
+     share a boxed group with one indicator that slides between them. Process is the WHOLE
+     LOG's map, so it stands apart behind a rule, under its own caption, and when it is
+     the page the group's indicator goes out: neither sub-log page is showing. Drawn as a
+     rectangle with a caption, not as a filled pill, so it is not read as a sibling of the
+     Time | Relationships switch in the chart header, which is a different kind of choice. -->
+<div style="display:flex;gap:10px;align-items:flex-end;padding-bottom:var(--space-6);margin-bottom:var(--space-6);border-bottom:1px solid var(--color-neutral-800)">
+<div style="display:flex;flex-direction:column;gap:4px">
+<span class="pageCaption">Sub-log</span>
+<div class="pageGroup" id="pageGroup" role="tablist" aria-label="Sub-log pages">
+<span class="pageThumb" id="pageThumb" aria-hidden="true"></span>
 <!-- The tab reads "Trace": the page shows one sub-log's trace, as a timeline or as a graph of
      relationships. Its id stays "timeline" — it names the renderer module (render/timeline.js),
      which draws both; the URL names the other pages as ?page=stats and ?page=dfg. -->
-<button class="pageTab on" data-page="timeline" data-tip="page.trace" style="box-sizing:border-box;border:1px solid var(--color-accent);background:color-mix(in srgb, var(--color-accent) 16%, transparent);cursor:pointer;font-size:13px;font-weight:500;color:var(--color-text);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><circle cx="6" cy="19" r="3"></circle><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"></path><circle cx="18" cy="5" r="3"></circle></svg>Trace</button>
-<button class="pageTab" data-page="stats" data-tip="page.stats" style="box-sizing:border-box;border:1px solid transparent;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-neutral-400);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><line x1="4" x2="4" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="20" x2="20" y1="20" y2="14"></line></svg>Stats</button>
+<button class="pageTab on" data-page="timeline" data-tip="page.trace"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><circle cx="6" cy="19" r="3"></circle><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"></path><circle cx="18" cy="5" r="3"></circle></svg> Trace</button>
+<button class="pageTab" data-page="stats" data-tip="page.stats"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><line x1="4" x2="4" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="20" x2="20" y1="20" y2="14"></line></svg> Stats</button>
+</div>
+</div>
+<div style="width:1px;align-self:stretch;background:var(--color-neutral-800)"></div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<span class="pageCaption">Whole log</span>
 <!-- The whole-log directly-follows graph. The URL value stays "dfg"; the visible label
      says what the picture is rather than the initialism. -->
-<button class="pageTab" data-page="dfg" data-tip="page.dfg" style="box-sizing:border-box;border:1px solid transparent;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--color-neutral-400);padding:6px 12px;border-radius:999px;display:flex;align-items:center;gap:7px"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><circle cx="5" cy="6" r="3"></circle><circle cx="19" cy="6" r="3"></circle><circle cx="12" cy="18" r="3"></circle><path d="M8 6h8M6.5 8.5L10 15M17.5 8.5L14 15"></path></svg>Process</button>
+<button class="pageTab solo" data-page="dfg" data-tip="page.dfg"><svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"><circle cx="5" cy="6" r="3"></circle><circle cx="19" cy="6" r="3"></circle><circle cx="12" cy="18" r="3"></circle><path d="M8 6h8M6.5 8.5L10 15M17.5 8.5L14 15"></path></svg> Process</button>
+</div>
 </div>
 <div style="margin-bottom:var(--space-8)">
 <!-- "OCEL case" in the mockup. There is no case in OCPM. -->

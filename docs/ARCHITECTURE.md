@@ -313,7 +313,10 @@ control (marks use `data-legend`, which maps to `legend.<key>`) and the sentence
 browser `title=` attributes beside a tip.
 
 **A page.** (Stats predates this entry; the Process page is what wrote it.) A page needs: a
-`.pageTab` button with `data-page` and a `page.<name>` tip; a `<main>` sibling of the others,
+`.pageTab` button with `data-page` and a `page.<name>` tip — inside `#pageGroup` if it shows the
+loaded sub-log (Trace and Stats share one sliding indicator there, placed by `placePageThumb`),
+or standalone with `.solo` under the "Whole log" caption if it does not (Process, whose
+selection switches the group's indicator off); a `<main>` sibling of the others,
 `position:relative`, holding its own loading overlay and a message surface that PRECEDES its
 content root as a sibling (`tests/shell.test.js` pins the ordering); a sidebar block beside
 `#timelineSidebarSections`; an entry in `main.js`'s `PAGES` map with an `onShow` that measures

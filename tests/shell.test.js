@@ -91,3 +91,16 @@ describe('the app shell keeps its load-bearing order', () => {
     assert.match(html, /<div id="chart"><\/div>/, '#chart must ship empty');
   });
 });
+
+describe('the page navigation says which pages share a sub-log', () => {
+  test('Trace and Stats sit in one group with one indicator; Process stands apart', async () => {
+    const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+    const group = html.slice(html.indexOf('id="pageGroup"'), html.indexOf('</div>', html.indexOf('id="pageGroup"')));
+    assert.ok(group.includes('id="pageThumb"'), 'the group carries the sliding indicator');
+    assert.ok(group.includes('data-page="timeline"') && group.includes('data-page="stats"'));
+    assert.ok(!group.includes('data-page="dfg"'), 'the process map is not a sub-log page');
+    assert.ok(html.includes('class="pageTab solo" data-page="dfg"'), 'Process is styled on its own');
+    assert.ok(html.indexOf('Sub-log</span>') < html.indexOf('id="pageGroup"'), 'the group is captioned');
+    assert.ok(html.includes('Whole log</span>'), 'and so is the process map');
+  });
+});

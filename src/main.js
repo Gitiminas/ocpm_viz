@@ -887,18 +887,32 @@ const PAGES = {
   dfg: { pageEl: 'dfgPage', sidebarEl: 'dfgSidebarSections', onShow: () => refreshDfg() },
 };
 
+/**
+ * The sub-log group's sliding indicator: over the active Trace or Stats tab, out on the
+ * Process page. Measured from the DOM because the tabs' widths are their labels'. The
+ * geometry is trivial on purpose — a `left`/`width` pair — so the motion is CSS's.
+ */
+function placePageThumb(page) {
+  const thumb = document.getElementById('pageThumb');
+  const group = document.getElementById('pageGroup');
+  if (!thumb || !group) return;
+  const tab = group.querySelector(`.pageTab[data-page="${page}"]`);
+  if (!tab) {
+    thumb.classList.add('off');
+    return;
+  }
+  thumb.classList.remove('off');
+  thumb.style.left = `${tab.offsetLeft}px`;
+  thumb.style.width = `${tab.offsetWidth}px`;
+}
+
 /** Switch pages. Extracted so `?page=` can drive it as a click would. */
 function showPage(page) {
   activePage = page;
   for (const other of document.querySelectorAll('.pageTab')) {
-    const isThis = other.dataset.page === page;
-    other.classList.toggle('on', isThis);
-    other.style.color = isThis ? 'var(--color-text)' : 'var(--color-neutral-400)';
-    other.style.background = isThis
-      ? 'color-mix(in srgb, var(--color-accent) 16%, transparent)'
-      : 'none';
-    other.style.border = isThis ? '1px solid var(--color-accent)' : '1px solid transparent';
+    other.classList.toggle('on', other.dataset.page === page);
   }
+  placePageThumb(page);
 
   for (const [name, entry] of Object.entries(PAGES)) {
     el(entry.pageEl).style.display = name === page ? 'flex' : 'none';
@@ -917,6 +931,9 @@ function showPage(page) {
 for (const tab of document.querySelectorAll('.pageTab')) {
   tab.addEventListener('click', () => showPage(tab.dataset.page));
 }
+// The indicator's first position, and again once fonts have settled the tab widths.
+placePageThumb(activePage);
+window.addEventListener('load', () => placePageThumb(activePage));
 
 // ---------------------------------------------------------------------------
 // the process-map page
