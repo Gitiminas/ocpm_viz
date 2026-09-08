@@ -117,3 +117,20 @@ describe('the Process page carries the Trace page’s header chrome', () => {
     assert.ok(html.includes('id="dfgHiddenBanner"'), 'the hidden-state banner has a home');
   });
 });
+
+describe('each page’s markup is balanced, so its content stays inside it', () => {
+  // A stray closing tag once ended the Process page before its content root, and the
+  // map rendered — into a container outside the page, where nothing showed. Counting
+  // opens against closes between a page's <main> and its </main> catches that shape.
+  for (const id of ['timelinePage', 'statsPage', 'dfgPage']) {
+    test(`${id}: every <div> opened inside is closed inside`, async () => {
+      const html = await shell();
+      const start = html.indexOf(`id="${id}"`);
+      const end = html.indexOf('</main>', start);
+      const body = html.slice(html.indexOf('>', start) + 1, end).replace(/<!--[\s\S]*?-->/g, '');
+      const opens = (body.match(/<div\b/g) || []).length;
+      const closes = (body.match(/<\/div>/g) || []).length;
+      assert.equal(opens, closes, `${id}: ${opens} <div> vs ${closes} </div>`);
+    });
+  }
+});
