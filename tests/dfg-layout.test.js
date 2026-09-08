@@ -182,3 +182,75 @@ describe('aggregated cross arrows pass their members through the layout', () => 
     assert.deepEqual(layout.crossEdges[0].members, bundle.cross_edges[0].members);
   });
 });
+
+describe('arrows and their counts stay tellable apart', () => {
+  const cross = (from, to, successions) => ({
+    from_type: from.split('/')[0], from_activity: from.split('/')[1],
+    to_type: to.split('/')[0], to_activity: to.split('/')[1],
+    successions, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body',
+  });
+  const box = (edge) => {
+    const text = edge.successions.toLocaleString('en-US');
+    const w = text.length * 6 + 6;
+    return { x0: edge.labelAt.x - w / 2, x1: edge.labelAt.x + w / 2, y0: edge.labelAt.y - 6, y1: edge.labelAt.y + 6 };
+  };
+  const overlap = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+  test('cross edges leaving one node toward different nodes fan apart in destination order', () => {
+    const bundle = dfg();
+    bundle.cross_edges = [
+      cross('commit/Push', 'issue/IssueOpened', 5),
+      cross('commit/Push', 'issue/IssueCommented', 5),
+      cross('commit/Push', 'issue/IssueClosed', 5),
+    ];
+    const { crossEdges, nodes } = layoutDfg(bundle, BOX);
+    const push = nodes.find((n) => n.activity === 'Push');
+    // Each control point shifts sideways by the edge's rank at the push node; the
+    // rightmost destination gets the rightmost mid-curve, so no two edges share a path.
+    const controls = crossEdges.map((e) => e.points[1].x);
+    assert.deepEqual([...controls].sort((a, b) => a - b), controls, 'ordered like their destinations');
+    assert.ok(new Set(controls).size === 3, 'three distinct mid-curves');
+    assert.ok(Math.abs(controls[1] - (push.x + crossEdges[1].points[2].x) / 2) < 6, 'the middle one keeps near the midpoint');
+  });
+
+  test('no count label lands on another, on a node, or on a node’s captions', () => {
+    const bundle = dfg();
+    bundle.cross_edges = [
+      cross('commit/Push', 'issue/IssueOpened', 5),
+      cross('commit/Push', 'issue/IssueCommented', 6),
+      cross('commit/Push', 'issue/IssueClosed', 7),
+      cross('issue/IssueOpened', 'commit/Push', 8),
+      cross('pull_request/PullRequestMerged', 'issue/IssueClosed', 9),
+      cross('pull_request/PullRequestOpened', 'issue/IssueOpened', 10),
+    ];
+    const { edges, crossEdges, nodes } = layoutDfg(bundle, BOX);
+    const labels = [...edges, ...crossEdges].filter((e) => !e.loop).map(box);
+    for (let i = 0; i < labels.length; i++) {
+      for (let j = i + 1; j < labels.length; j++) {
+        assert.ok(!overlap(labels[i], labels[j]), `labels ${i} and ${j} overlap`);
+      }
+    }
+    for (const node of nodes) {
+      const mark = { x0: node.x - node.radius, x1: node.x + node.radius, y0: node.y - node.radius, y1: node.y + node.radius };
+      const caption = { x0: node.x - 30, x1: node.x + 30, y0: node.y + node.radius + 6, y1: node.y + node.radius + 31 };
+      for (const label of labels) {
+        assert.ok(!overlap(label, mark), 'a label on a mark');
+        assert.ok(!overlap(label, caption), 'a label on a caption');
+      }
+    }
+  });
+
+  test('a label stays on its own curve: within a few pixels of some point of it', () => {
+    const { crossEdges } = layoutDfg(dfg(), BOX);
+    const [edge] = crossEdges;
+    const [p0, p1, p2] = edge.points;
+    let best = Infinity;
+    for (let t = 0; t <= 1; t += 0.01) {
+      const u = 1 - t;
+      const x = u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x;
+      const y = u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y;
+      best = Math.min(best, Math.hypot(edge.labelAt.x - x, edge.labelAt.y - y));
+    }
+    assert.ok(best <= 10, `label is ${best.toFixed(1)}px from its curve`);
+  });
+});

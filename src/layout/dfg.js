@@ -19,13 +19,13 @@
  * would draw one visible edge, and equal widths would hide the orders entirely.
  */
 
-import { LANE_TYPES, ACTIVITIES, READING_ORDER } from '../model/activities.js';
+import { LANE_TYPES, ACTIVITIES, READING_ORDER, activityShortLabel } from '../model/activities.js';
 
 export const DFG_NODE_RADIUS = 14;
 
 const MARGIN = { top: 48, right: 48, bottom: 48, left: 168 };
 /** Vertical room per row: the marks plus the tallest arc on either side. */
-const LANE_HEIGHT = 200;
+const LANE_HEIGHT = 240;
 /** An arc's rise: a floor so short hops stay visible, growing with the slots skipped. */
 const ARC_BASE = 26;
 const ARC_PER_SLOT = 14;
@@ -35,6 +35,94 @@ export const DFG_LOOP_RADIUS = 16;
 
 const EDGE_WIDTH_MIN = 1;
 const EDGE_WIDTH_MAX = 6;
+/**
+ * Cross edges meeting at one node fan their mid-curves apart by this much per edge,
+ * ordered by where the other end is, so a node with twenty arrows does not draw them
+ * as one bundle whose counts sit on top of each other.
+ */
+const FAN_STEP = 11;
+/** A count label's box, for keeping labels off each other: per digit, plus padding. */
+const LABEL_CHAR_W = 6;
+const LABEL_H = 12;
+/**
+ * Where along its curve a label may sit, tried in order until the box is clear of every
+ * label already placed and of every node. In-row arcs start at the apex, as always;
+ * cross edges start off-centre, because the middle of the picture is where every
+ * cross edge crosses every other.
+ */
+const LABEL_T_ARC = [0.5, 0.4, 0.6, 0.3, 0.7].map((t) => ({ t, flip: false }));
+const LABEL_T_CROSS = [0.36, 0.5, 0.64, 0.26, 0.74, 0.18, 0.82].flatMap((t) => [
+  { t, flip: false },
+  { t, flip: true },
+]);
+/**
+ * The two captions under every node — the activity name and its event count — as the
+ * renderer draws them (render/dfg.js): reserved so no count label lands on them.
+ */
+const NODE_CAPTION = [
+  { dy: 12, h: 13, charW: 7 }, // the activity name, 11 px, at radius + 12
+  { dy: 25, h: 11, charW: 6 }, // the event count, 9 px, at radius + 25
+];
+
+/** A point on the quadratic curve (from, control, to) at parameter t. */
+function pointOnQuad([p0, p1, p2], t) {
+  const u = 1 - t;
+  return {
+    x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+    y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
+  };
+}
+
+/** Axis-aligned box of a label centred at (x, y) for the given text. */
+function labelBox(x, y, text) {
+  const w = text.length * LABEL_CHAR_W + 6;
+  return { x0: x - w / 2, x1: x + w / 2, y0: y - LABEL_H / 2, y1: y + LABEL_H / 2 };
+}
+
+const boxesOverlap = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+/**
+ * Place every non-loop edge's count label along its own curve, at the first candidate
+ * position whose box is clear of the labels placed before it and of every node mark.
+ * Loops keep their fixed spot but occupy it. Greedy in edge order — successions
+ * descending, so the counts that matter most get first pick — and deterministic.
+ * When nothing is clear the first candidate stands: a label that overlaps beats a
+ * label that is missing, and the hovercard carries the number either way.
+ */
+function placeLabels(edges, nodes, { offsetOf, captionsOf }) {
+  const placed = nodes.flatMap((n) => [
+    { x0: n.x - n.radius - 2, x1: n.x + n.radius + 2, y0: n.y - n.radius - 2, y1: n.y + n.radius + 2 },
+    ...NODE_CAPTION.map(({ dy, h, charW }, i) => {
+      const w = captionsOf(n)[i].length * charW + 6;
+      return { x0: n.x - w / 2, x1: n.x + w / 2, y0: n.y + n.radius + dy - h / 2, y1: n.y + n.radius + dy + h / 2 };
+    }),
+  ]);
+  const order = [...edges].sort((a, b) => b.successions - a.successions);
+  for (const edge of order) {
+    const text = edge.successions.toLocaleString('en-US');
+    if (edge.loop) {
+      placed.push(labelBox(edge.labelAt.x, edge.labelAt.y, text));
+      continue;
+    }
+    const candidates = edge.cross ? LABEL_T_CROSS : LABEL_T_ARC;
+    let chosen = null;
+    let first = null;
+    for (const { t, flip } of candidates) {
+      const at = pointOnQuad(edge.points, t);
+      const off = offsetOf(edge, t, flip);
+      const spot = { x: at.x + off.x, y: at.y + off.y };
+      const box = labelBox(spot.x, spot.y, text);
+      first = first ?? { spot, box };
+      if (!placed.some((other) => boxesOverlap(box, other))) {
+        chosen = { spot, box };
+        break;
+      }
+    }
+    const { spot, box } = chosen ?? first;
+    edge.labelAt = spot;
+    placed.push(box);
+  }
+}
 
 /**
  * Stroke width for a succession count, √-scaled against the picture's largest count
@@ -125,6 +213,8 @@ export function layoutDfg(dfg, { width = 960, maxSuccessions = null } = {}) {
     return [{
       ...edge,
       loop: false,
+      cross: false,
+      side,
       width: strokeWidth,
       points: [{ x: from.x, y: from.y }, apex, { x: to.x, y: to.y }],
       labelAt: { x: apex.x, y: apex.y + side * 10 },
@@ -148,6 +238,37 @@ export function layoutDfg(dfg, { width = 960, maxSuccessions = null } = {}) {
     crossBundles.get(key).push(edge);
   }
 
+  /*
+   * The fan. Every cross edge is ranked among the cross edges meeting at its source and
+   * among those meeting at its target, each list ordered by where the OTHER end sits
+   * left to right; the edge's mid-curve then shifts sideways by its rank from centre at
+   * both ends, averaged. Edges leaving one node toward different places spread apart in
+   * the order of their destinations, so none crosses a neighbour needlessly and no two
+   * lie on one curve. Deterministic: the ranking keys are node positions and names.
+   */
+  // node key -> the OTHER nodes its cross edges reach, as `otherKey -> otherX`. Ranked by
+  // node, not by edge: the two directions of one pair share a fan slot and are told
+  // apart by the perpendicular shift below, so a lone pair still sits on the midpoint.
+  const incident = new Map();
+  for (const edge of dfg.cross_edges) {
+    const fromKey = `${edge.from_type}/${edge.from_activity}`;
+    const toKey = `${edge.to_type}/${edge.to_activity}`;
+    const from = nodeAt.get(fromKey);
+    const to = nodeAt.get(toKey);
+    if (!from || !to) continue;
+    for (const [key, otherKey, otherX] of [[fromKey, toKey, to.x], [toKey, fromKey, from.x]]) {
+      if (!incident.has(key)) incident.set(key, new Map());
+      incident.get(key).set(otherKey, otherX);
+    }
+  }
+  const fanShift = (key, otherKey) => {
+    const others = [...(incident.get(key) || new Map()).entries()].sort(
+      (a, b) => a[1] - b[1] || a[0].localeCompare(b[0]),
+    );
+    const rank = others.findIndex(([k]) => k === otherKey);
+    return (rank - (others.length - 1) / 2) * FAN_STEP;
+  };
+
   const crossEdges = [...crossBundles.values()].flatMap((bundle) => {
     // Rank by directed key, so the offset is deterministic whatever order the payload
     // listed the bundle in.
@@ -168,18 +289,32 @@ export function layoutDfg(dfg, { width = 960, maxSuccessions = null } = {}) {
       const dy = b.y - a.y;
       const length = Math.hypot(dx, dy) || 1;
       const shift = (rank - (ranked.length - 1) / 2) * 20;
+      const fromKey = `${edge.from_type}/${edge.from_activity}`;
+      const toKey = `${edge.to_type}/${edge.to_activity}`;
+      const fan = (fanShift(fromKey, toKey) + fanShift(toKey, fromKey)) / 2;
       const control = {
-        x: (from.x + to.x) / 2 + (-dy / length) * shift,
+        x: (from.x + to.x) / 2 + (-dy / length) * shift + fan,
         y: (from.y + to.y) / 2 + (dx / length) * shift,
       };
       return [{
         ...edge,
         loop: false,
+        cross: true,
         width: dfgEdgeWidth(edge.successions, maxS),
         points: [{ x: from.x, y: from.y }, control, { x: to.x, y: to.y }],
         labelAt: { x: control.x, y: control.y - 8 },
       }];
     });
+  });
+
+  // Labels last, over the finished curves: an in-row arc's label sits just outside its
+  // arc (above a forward arc, below a rework one); a cross edge's a little above its
+  // curve. Both then slide along the curve until clear.
+  placeLabels([...edges, ...crossEdges], nodes, {
+    // A cross label sits just above its curve, or just below it when above is taken.
+    offsetOf: (edge, t, flip) =>
+      edge.cross ? { x: 0, y: flip ? 9 : -8 } : { x: 0, y: edge.side * (t === 0.5 ? 10 : 12) },
+    captionsOf: (node) => [activityShortLabel(node.activity), `${node.events.toLocaleString('en-US')} ev`],
   });
 
   return {
