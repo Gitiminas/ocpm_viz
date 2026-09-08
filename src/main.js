@@ -937,18 +937,6 @@ for (const tab of document.querySelectorAll('.pageTab')) {
   tab.addEventListener('click', () => showPage(tab.dataset.page));
 }
 
-// The Process page's zoom: the same buttons and bounds as the Trace page's, over the
-// page's own view state. Reset also clears the focus, which is the view's other state.
-function setDfgZoom(value) {
-  dfgView.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
-  renderDfg();
-}
-el('dfgZin').onclick = () => setDfgZoom(dfgView.zoom * 1.3);
-el('dfgZout').onclick = () => setDfgZoom(dfgView.zoom / 1.3);
-el('dfgZrst').onclick = () => {
-  dfgView.focus = null;
-  setDfgZoom(1);
-};
 // The indicator's first position, and again once fonts have settled the tab widths.
 placePageThumb(activePage);
 window.addEventListener('load', () => placePageThumb(activePage));
@@ -983,8 +971,6 @@ const dfgChart = createDfgView({
  * absolute count is a statement about one log while the decile default transfers.
  */
 const dfgView = {
-  /** Horizontal zoom, as on the Trace page: the map is laid out to width × zoom. */
-  zoom: 1,
   lanes: {},
   pairs: {},
   hiddenActivities: new Set(),
@@ -1094,9 +1080,7 @@ function renderDfg() {
   ) {
     dfgView.focus = null;
   }
-  const width = dfgChart.measure() * dfgView.zoom;
-  el('dfgZin').disabled = dfgView.zoom >= MAX_ZOOM - 0.001;
-  el('dfgZout').disabled = dfgView.zoom <= MIN_ZOOM + 0.001;
+  const width = dfgChart.measure();
   // Widths pinned to the UNFILTERED maximum, so a stroke means the same count at
   // every filter setting.
   const layout = layoutDfg(filtered.dfg, {

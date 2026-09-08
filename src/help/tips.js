@@ -119,7 +119,6 @@ export const TIPS = Object.freeze({
   'dfg.card.perType': 'Successions within one artifact type that are drawn, against the whole log’s count.',
   'dfg.card.cross': 'Successions across links that are drawn, against the whole log’s count. Floors either way.',
   'dfg.focus': 'Which activity is focused. Click a mark to focus it, click the background to clear it.',
-  'dfg.zoom.reset': 'Put the view back: the zoom and the focus.',
   'dfg.range': 'Keep only successions whose count falls inside this range. The scale is logarithmic, and the rarest tenth of edges starts hidden.',
   'legend.dfg-activity': 'One activity, drawn as its lane’s shape. The number is how many events it has in the whole log.',
   'legend.dfg-succession': 'One activity directly followed by another within one artifact’s events. Wider means more often.',

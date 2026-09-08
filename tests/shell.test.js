@@ -106,13 +106,13 @@ describe('the page navigation says which pages share a sub-log', () => {
 });
 
 describe('the Process page carries the Trace page’s header chrome', () => {
-  test('help strip, focus label and the three zoom buttons, in that order', async () => {
+  test('help strip then focus label, as on the Trace page; no zoom — the map is drawn to width', async () => {
     const html = await shell();
     const page = html.slice(html.indexOf('id="dfgPage"'), html.indexOf('id="dfgContent"'));
-    const order = ['id="dfgHelpStrip"', 'id="dfgFocusInfo"', 'id="dfgZout"', 'id="dfgZrst"', 'id="dfgZin"']
-      .map((needle) => page.indexOf(needle));
+    const order = ['id="dfgHelpStrip"', 'id="dfgFocusInfo"'].map((needle) => page.indexOf(needle));
     assert.ok(order.every((i) => i >= 0), `missing: ${order}`);
-    assert.deepEqual(order, [...order].sort((a, b) => a - b), 'same order as the Trace header');
+    assert.ok(order[0] < order[1], 'same order as the Trace header');
+    assert.ok(!page.includes('id="dfgZin"'), 'no zoom buttons on the process map');
     assert.ok(!page.includes('<h1'), 'no page title: the sidebar names the page');
     assert.ok(html.includes('id="dfgHiddenBanner"'), 'the hidden-state banner has a home');
   });
