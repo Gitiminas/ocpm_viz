@@ -550,6 +550,13 @@ html,body{height:100%;margin:0;overflow:hidden}
 <!-- The Trace header's focus label, without the degree stepper: an activity's
      neighbourhood is one hop by definition. -->
 <div class="mono" id="dfgFocusInfo" data-tip="dfg.focus" style="font-size:11px;color:var(--color-neutral-500)">No focus</div>
+<!-- The Trace header's zoom group. The map is laid out to the page's width times the
+     zoom, and the page scrolls sideways past that width. -->
+<div style="display:flex;gap:2px;border:1px solid var(--color-neutral-700);border-radius:var(--radius-md);padding:2px">
+<button aria-label="Zoom out" class="btn btn-icon" id="dfgZout" data-tip="zoom.out"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line></svg></button>
+<button aria-label="Reset the view" class="btn btn-icon" id="dfgZrst" data-tip="dfg.zoom.reset"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg></button>
+<button aria-label="Zoom in" class="btn btn-icon" id="dfgZin" data-tip="zoom.in"><svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><line x1="12" x2="12" y1="5" y2="19"></line></svg></button>
+</div>
 </div>
 </div>
 <!-- This page's message surface — a SIBLING of the content root, before it, for the

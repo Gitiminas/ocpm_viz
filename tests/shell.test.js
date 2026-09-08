@@ -104,3 +104,16 @@ describe('the page navigation says which pages share a sub-log', () => {
     assert.ok(html.includes('Whole log</span>'), 'and so is the process map');
   });
 });
+
+describe('the Process page carries the Trace page’s header chrome', () => {
+  test('help strip, focus label and the three zoom buttons, in that order', async () => {
+    const html = await shell();
+    const page = html.slice(html.indexOf('id="dfgPage"'), html.indexOf('id="dfgContent"'));
+    const order = ['id="dfgHelpStrip"', 'id="dfgFocusInfo"', 'id="dfgZout"', 'id="dfgZrst"', 'id="dfgZin"']
+      .map((needle) => page.indexOf(needle));
+    assert.ok(order.every((i) => i >= 0), `missing: ${order}`);
+    assert.deepEqual(order, [...order].sort((a, b) => a - b), 'same order as the Trace header');
+    assert.ok(!page.includes('<h1'), 'no page title: the sidebar names the page');
+    assert.ok(html.includes('id="dfgHiddenBanner"'), 'the hidden-state banner has a home');
+  });
+});
