@@ -19,7 +19,7 @@ import { DEFAULT_COMMENT_WINDOW_DAYS } from '../model/commentBursts.js';
 import { EVIDENCE, ISSUE_PR_METHODS } from '../model/evidence.js';
 import { isCommitInVisibleGroup } from '../model/commitGroups.js';
 import { activityShortLabel } from '../model/activities.js';
-import { LANE_TYPES, TYPE_LABELS } from './labels.js';
+import { LANE_TYPES, TYPE_LABELS, DFG_TYPE_LABELS } from './labels.js';
 
 export const MIN_ZOOM = 0.55;
 export const MAX_ZOOM = 14;
@@ -509,13 +509,14 @@ export function summarizeHidden(state, context = {}) {
  */
 export function summarizeDfgHidden(view, vocabulary, counts = {}) {
   const items = [];
-  const label = (type) => TYPE_LABELS[type] || type;
+  const label = (type) => DFG_TYPE_LABELS[type] || type;
 
+  // `view.lanes` switches a lane's own successions, not the lane: the marks stay.
   const lanes = vocabulary.lanes.filter((lane) => view.lanes?.[lane.type] === false);
   if (lanes.length) {
     items.push({
       key: 'lanes',
-      label: `${lanes.map((lane) => label(lane.type)).join(', ')} lane${lanes.length === 1 ? '' : 's'} hidden`,
+      label: `successions within ${lanes.map((lane) => label(lane.type)).join(', ')} hidden`,
       restore: (v) => lanes.forEach((lane) => (v.lanes[lane.type] = true)),
     });
   }

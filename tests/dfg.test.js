@@ -403,8 +403,8 @@ describe('the Process page reports what its view hides, with a restore per item'
     const counts = filterDfg(dfg, view);
     const summary = summarizeDfgHidden(view, toggles, counts);
     assert.deepEqual(summary.items.map((i) => i.key), ['lanes', 'pairs', 'evidence', 'activities', 'range']);
-    assert.match(summary.items[0].label, /Commit lane hidden/);
-    assert.match(summary.items[1].label, /Issue ↔ PR/);
+    assert.match(summary.items[0].label, /successions within Push hidden/);
+    assert.match(summary.items[1].label, /Issue ↔ Pull request/);
     assert.match(summary.items[3].label, /Issue close/);
     assert.match(summary.items[4].label, /outside the count range 2–2/);
 

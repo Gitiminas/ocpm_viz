@@ -328,9 +328,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 </div>
 <div id="dfgSidebarSections" style="display:none;flex-direction:column">
 <!-- The same headers as the Trace page's, in its order, so the two sidebars read alike:
-     Lanes (per-type successions), Relationships (cross-link successions and their
-     classes), then this page's own two — Successions (the count range) and Activities —
-     and the Legend. -->
+     Lanes (each lane's activities, foldable), Relationships (successions within a type
+     and across links, with the link classes), then this page's own Successions (the
+     count range) and the Legend. -->
 <div style="margin-bottom:var(--space-8)">
 <div class="collapseHeader" data-target="dfgLanes" data-tip="section.lanes" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
 <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Lanes</span>
@@ -351,13 +351,6 @@ html,body{height:100%;margin:0;overflow:hidden}
 <span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
 </div>
 <div id="dfgRange" style="display:flex;flex-direction:column;gap:2px"></div>
-</div>
-<div style="margin-bottom:var(--space-8)">
-<div class="collapseHeader" data-target="dfgActivities" data-tip="section.activities" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
-<span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Activities</span>
-<span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
-</div>
-<div id="dfgActivities" style="display:flex;flex-direction:column;gap:4px"></div>
 </div>
 <div>
 <div class="collapseHeader" data-target="dfgLegend" data-tip="section.legend" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">

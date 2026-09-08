@@ -19,6 +19,7 @@
  */
 
 import { glyph, typeColor, TYPE, chevron } from './theme.js';
+import { DFG_TYPE_LABELS } from '../state/labels.js';
 import { escapeHtml } from './format.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
 import { dfgRangeScale } from '../model/dfg.js';
@@ -808,13 +809,62 @@ export function renderDfgControls({
   lanesContainer,
   relationshipsContainer,
   rangeContainer,
-  activitiesContainer,
   vocabulary,
   view,
   onChange,
 }) {
-  for (const el of [lanesContainer, relationshipsContainer, rangeContainer, activitiesContainer]) {
+  for (const el of [lanesContainer, relationshipsContainer, rangeContainer]) {
     el.innerHTML = '';
+  }
+
+  /*
+   * LANES: what the map draws per lane — its activities. One foldable master row per
+   * lane, as the Trace page's lane rows fold their sub-rows; the master shows or hides
+   * every activity of the lane, a child row one activity. Hiding an activity removes its
+   * node and every succession touching it (`filterDfg`).
+   */
+  const laneActivityMasters = [];
+  for (const lane of vocabulary.lanes) {
+    const keysOf = () =>
+      vocabulary.activities
+        .filter((a) => a.type === lane.type)
+        .map((entry) => `${entry.type}/${entry.activity}`);
+    const children = vocabulary.activities
+      .filter((a) => a.type === lane.type)
+      .map((entry) => {
+        const key = `${entry.type}/${entry.activity}`;
+        const control = subRow({
+          label: activityShortLabel(entry.activity),
+          checked: !view.hiddenActivities.has(key),
+          swatch: typeColor(entry.type),
+          count: entry.events,
+          tip: { key: 'dfg.activity', arg: activityLabel(entry.activity) },
+          onChange: (checked) => {
+            if (checked) view.hiddenActivities.delete(key);
+            else view.hiddenActivities.add(key);
+            sync();
+            onChange();
+          },
+        });
+        return { key, ...control };
+      });
+    const section = masterSection({
+      label: DFG_TYPE_LABELS[lane.type],
+      open: false,
+      children: children.map((c) => c.row),
+      tip: { key: 'dfg.laneActivities', arg: DFG_TYPE_LABELS[lane.type] },
+      onMasterChange: (checked) => {
+        for (const key of keysOf()) {
+          if (checked) view.hiddenActivities.delete(key);
+          else view.hiddenActivities.add(key);
+        }
+        for (const child of children) child.checkbox.checked = checked;
+        sync();
+        onChange();
+      },
+    });
+    laneActivityMasters.push({ lane, section, keysOf });
+    lanesContainer.appendChild(section.wrapper);
   }
 
   const laneControls = [];
@@ -822,7 +872,7 @@ export function renderDfgControls({
 
   const laneChildren = vocabulary.lanes.map((lane) => {
     const control = subRow({
-      label: TYPE[lane.type].label,
+      label: DFG_TYPE_LABELS[lane.type],
       checked: view.lanes[lane.type] !== false,
       swatch: typeColor(lane.type),
       count: lane.edges,
@@ -852,7 +902,7 @@ export function renderDfgControls({
     },
   });
 
-  const pairLabel = (pair) => pair.types.map((type) => TYPE[type].label).join(' ↔ ');
+  const pairLabel = (pair) => pair.types.map((type) => DFG_TYPE_LABELS[type]).join(' ↔ ');
   const pairChildren = vocabulary.pairs.map((pair) => {
     const control = subRow({
       label: pairLabel(pair),
@@ -916,6 +966,12 @@ export function renderDfgControls({
 
   /** Master states and pair availability, the relationship rows' contract. */
   function sync() {
+    for (const { section, keysOf } of laneActivityMasters) {
+      const shown = keysOf().map((key) => !view.hiddenActivities.has(key));
+      section.master.checked = shown.every(Boolean);
+      section.master.indeterminate = !shown.every(Boolean) && shown.some(Boolean);
+      section.row.classList.toggle('on', shown.some(Boolean));
+    }
     const laneValues = laneControls.map(({ lane }) => view.lanes[lane.type] !== false);
     laneSection.master.indeterminate = !laneValues.every(Boolean) && laneValues.some(Boolean);
     laneSection.master.checked = laneValues.every(Boolean);
@@ -948,10 +1004,9 @@ export function renderDfgControls({
     }
   }
 
-  // Under the Trace page's own headers: per-type successions are the Lanes section,
-  // cross-link successions and their classes the Relationships section.
-  lanesContainer.appendChild(laneSection.wrapper);
-  relationshipsContainer.appendChild(pairSection.wrapper);
+  // RELATIONSHIPS: the successions — within a type and across links — under the Trace
+  // page's own header, since both are toggles on what joins the marks, not on the marks.
+  relationshipsContainer.append(laneSection.wrapper, pairSection.wrapper);
 
   // ---- the count range: two handles on one track, log-scaled -----------------------
   const scale = dfgRangeScale(vocabulary.maxSuccessions);
@@ -1013,26 +1068,6 @@ export function renderDfgControls({
   rangeContainer.appendChild(wrap);
 
   // ---- per-activity rows, grouped by lane ------------------------------------------
-  for (const lane of vocabulary.lanes) {
-    activitiesContainer.appendChild(sectionLabel(TYPE[lane.type].label));
-    for (const entry of vocabulary.activities.filter((a) => a.type === lane.type)) {
-      const key = `${entry.type}/${entry.activity}`;
-      const { row } = subRow({
-        label: activityShortLabel(entry.activity),
-        checked: !view.hiddenActivities.has(key),
-        swatch: typeColor(entry.type),
-        count: entry.events,
-        tip: { key: 'dfg.activity', arg: activityLabel(entry.activity) },
-        onChange: (checked) => {
-          if (checked) view.hiddenActivities.delete(key);
-          else view.hiddenActivities.add(key);
-          onChange();
-        },
-      });
-      activitiesContainer.appendChild(row);
-    }
-  }
-
   sync();
   return sync;
 }

@@ -64,7 +64,6 @@ export const TIPS = Object.freeze({
   'section.actors': 'Everyone who did something in this sub-log. Hover to preview their trail, click to pin it.',
   'section.legend': 'What each shape, ring and line means. Dimmed rows are not in the current picture.',
   'section.successions': 'How common a succession must be to be drawn: the count range, with the rarest tenth hidden to start.',
-  'section.activities': 'Show or hide single activities. Hiding one removes its node and every succession touching it.',
 
   // ---- views --------------------------------------------------------------------
   'views.preset': (description) => description || 'A saved combination of toggles. Click to apply it.',
@@ -115,6 +114,7 @@ export const TIPS = Object.freeze({
   'dfg.qualifier': (label) => `Count only cross successions whose link means ${label}. Each arrow keeps one aggregate count.`,
   'dfg.method': (label) => `Count only cross successions whose link was detected by ${label}. A floor, like every cross count.`,
   'dfg.activity': (label) => `Show or hide ${label}. Hiding an activity removes its node and every succession touching it.`,
+  'dfg.laneActivities': (label) => `Show or hide every ${label} activity at once. Unfold the row to pick single activities.`,
   'dfg.card.activities': 'How many activities are drawn, against how many the whole log holds.',
   'dfg.card.perType': 'Successions within one artifact type that are drawn, against the whole log’s count.',
   'dfg.card.cross': 'Successions across links that are drawn, against the whole log’s count. Floors either way.',

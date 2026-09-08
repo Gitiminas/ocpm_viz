@@ -20,6 +20,7 @@ import { TYPE, typeColor, drawSymbol } from './theme.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
 import { DIM_OPACITY } from '../model/graph.js';
 import { escapeHtml } from './format.js';
+import { DFG_TYPE_LABELS } from '../state/labels.js';
 import { DFG_LOOP_RADIUS } from '../layout/dfg.js';
 
 const ARROW_SIZE = 7;
@@ -135,7 +136,7 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
         .attr('font-size', 13)
         .attr('font-weight', 600)
         .attr('fill', 'var(--color-text)')
-        .text(TYPE[lane.type].label);
+        .text(DFG_TYPE_LABELS[lane.type]);
     });
 
     const edgeSets = [
@@ -294,7 +295,7 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
     return {
       accent: typeColor(node.object_type),
       shape: TYPE[node.object_type].shape,
-      kicker: `${TYPE[node.object_type].label} · activity`,
+      kicker: `${DFG_TYPE_LABELS[node.object_type]} · activity`,
       title: escapeHtml(activityLabel(node.activity)),
       rows: [
         ['Events', node.events.toLocaleString('en-US')],
@@ -312,12 +313,12 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
   }
 
   function successionCard(edge, cross) {
-    const from = cross ? `${TYPE[edge.from_type].label} ${activityShortLabel(edge.from_activity)}` : activityShortLabel(edge.from_activity);
-    const to = cross ? `${TYPE[edge.to_type].label} ${activityShortLabel(edge.to_activity)}` : activityShortLabel(edge.to_activity);
+    const from = cross ? `${DFG_TYPE_LABELS[edge.from_type]} ${activityShortLabel(edge.from_activity)}` : activityShortLabel(edge.from_activity);
+    const to = cross ? `${DFG_TYPE_LABELS[edge.to_type]} ${activityShortLabel(edge.to_activity)}` : activityShortLabel(edge.to_activity);
     return {
       accent: typeColor(cross ? edge.from_type : edge.object_type),
       shape: cross ? 'line' : TYPE[edge.object_type].shape,
-      kicker: cross ? 'Succession · across a link' : `${TYPE[edge.object_type].label} · succession`,
+      kicker: cross ? 'Succession · across a link' : `${DFG_TYPE_LABELS[edge.object_type]} · succession`,
       title: `${escapeHtml(from)} → ${escapeHtml(to)}`,
       rows: [
         ['Successions', edge.successions.toLocaleString('en-US')],
