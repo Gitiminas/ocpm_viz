@@ -361,7 +361,27 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
   container.innerHTML = '';
 
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:2px 8px';
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:2px 0';
+
+  /*
+   * Two foldings, two boxes. In one flow the push readout and the comment slider read as
+   * one setting with a slider under it, so each gets its own captioned box — the sub-log
+   * card's treatment — and says only what is its own.
+   */
+  const box = (caption, tip) => {
+    const el = document.createElement('div');
+    el.dataset.tip = tip;
+    el.style.cssText =
+      'display:flex;flex-direction:column;gap:5px;padding:7px 9px 8px;' +
+      'border:1px solid var(--color-neutral-800);border-radius:var(--radius-md);' +
+      'background:var(--color-neutral-900)';
+    const head = document.createElement('div');
+    head.style.cssText =
+      'font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)';
+    head.textContent = caption;
+    el.appendChild(head);
+    return el;
+  };
 
   /*
    * Pushes fold by `push_id` and that is the whole rule, so this states the outcome
@@ -372,16 +392,17 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
    * had to be before the tool bothered, which is a preference dressed as a finding. The
    * checkboxes duplicated a click that already exists on the burst itself, and on a
    * sub-log with many pushes the list was longer than everything else in the sidebar.
+   * How to unfold a mark is the mark's help text, not a line here.
    */
+  const pushBox = box('Pushes', 'folding.pushes');
   const pushes = document.createElement('div');
   pushes.className = 'mono';
-  pushes.dataset.tip = 'folding.pushes';
-  pushes.style.cssText = 'font-size:11px;color:var(--color-neutral-400);line-height:1.5';
+  pushes.style.cssText =
+    'font-size:11px;color:var(--color-neutral-400);line-height:1.5;display:flex;justify-content:space-between';
   pushes.innerHTML =
-    `Pushes fold by <span style="color:var(--color-text)">push id</span>` +
-    `<div style="color:var(--color-neutral-600);font-size:10px;margin-top:2px">` +
-    `${bursts.length} folded · click one to expand, and the handle above it to fold back</div>`;
-  wrap.appendChild(pushes);
+    `<span>Fold by <span style="color:var(--color-text)">push id</span></span>` +
+    `<span style="color:var(--color-neutral-600)">${bursts.length} folded</span>`;
+  pushBox.appendChild(pushes);
 
   /*
    * The comment window, in days.
@@ -391,13 +412,13 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
    * watches the count change. That is the difference between this control and the one
    * that used to sit above it.
    */
+  const commentBox = box('Comments', 'folding.commentWindow');
   const commentLabel = document.createElement('div');
   commentLabel.className = 'mono';
-  commentLabel.dataset.tip = 'folding.commentWindow';
   commentLabel.style.cssText =
-    'font-size:11px;color:var(--color-neutral-400);display:flex;justify-content:space-between;margin-top:12px';
+    'font-size:11px;color:var(--color-neutral-400);display:flex;justify-content:space-between';
   const commentValue = () =>
-    `Fold comments within <span style="color:var(--color-text)">${state.commentWindowDays}</span> day${state.commentWindowDays === 1 ? '' : 's'}`;
+    `Fold within <span style="color:var(--color-text)">${state.commentWindowDays}</span> day${state.commentWindowDays === 1 ? '' : 's'}`;
   commentLabel.innerHTML =
     `<span>${commentValue()}</span><span style="color:var(--color-neutral-600)">` +
     `${commentBursts.length} folded</span>`;
@@ -416,8 +437,9 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
   // 0 days means "only comments sharing an instant", which is the honest way to switch
   // the folding off without a second control that can disagree with the slider.
   commentSlider.addEventListener('change', () => onChange());
+  commentBox.append(commentLabel, commentSlider);
 
-  wrap.append(commentLabel, commentSlider);
+  wrap.append(pushBox, commentBox);
   container.appendChild(wrap);
 }
 

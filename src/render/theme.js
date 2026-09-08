@@ -20,7 +20,7 @@ export const COLORS = {
 export const TYPE = {
   issue: { color: COLORS.issue, label: 'Issue', shape: 'circle' },
   pull_request: { color: COLORS.pull_request, label: 'Pull request', shape: 'diamond' },
-  commit: { color: COLORS.commit, label: 'Commit / push', shape: 'square' },
+  commit: { color: COLORS.commit, label: 'Commit / Push', shape: 'square' },
 };
 
 /**
