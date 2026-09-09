@@ -1148,7 +1148,9 @@ SELECT 'pr:'    || r.pull_request_id::text AS source,
        -- links dashed with a "?", understating the confidence cue the tool
        -- exists to show. The validated set here is the issue↔PR half of
        -- VALIDATED_METHODS; head_sha / merge_commit_sha cannot occur in this branch.
-       CASE WHEN r.methods && ARRAY['pr_body','closed_via_commit']
+       -- pr_body left the set on 2026-09-09: the upstream view regex-parses the body,
+       -- so the link is our parse of the text, not GitHub's record of a close.
+       CASE WHEN r.methods && ARRAY['closed_via_commit']
             THEN 'validated' ELSE 'extracted' END          AS evidence,
        -- The primary method, recomputed: upstream's own priority order, applied to
        -- whatever survived. Carrying `v.primary_link_method` through would name a method
@@ -1605,11 +1607,11 @@ BEGIN
        'activity_scope',   'OCEL-strict + comments (reviews/dismissals/review-comments excluded)',
        'data_honesty', jsonb_build_object(
           'commit_time',     'first-seen in PushEvent, NOT real git commit time',
-          'extracted_edges', 'Links we parsed from an unenforced human convention '
-                          || '(branch-ref matches, commit-message references, timing '
-                          || 'proximity) render dashed with a "?" badge.',
-          'validated_edges', 'Links the platform''s own data asserts (a closing keyword '
-                          || 'in the PR body, an exact SHA match) render solid.',
+          'extracted_edges', 'Links we parsed from text or timing (closing keywords and '
+                          || 'references in PR bodies and titles, branch-ref matches, '
+                          || 'commit-message references, timing proximity) render dashed.',
+          'validated_edges', 'Links the platform''s own data asserts (an exact SHA match, '
+                          || 'GitHub''s own closed-via-commit record) render solid.',
           'truncation',      'GH Archive caps PushEvent.commits at 20; events with '
                           || 'attrs.truncated = true describe a push with more commits '
                           || 'than are drawn.',

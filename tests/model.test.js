@@ -243,10 +243,10 @@ describe('validation fails loudly on a malformed bundle', () => {
  * holds exactly those seventeen and nothing else.
  */
 const EXPECTED_EVIDENCE = [
-  ['pr_body', 'validated'],
   ['head_sha', 'validated'],
   ['merge_commit_sha', 'validated'],
   ['closed_via_commit', 'validated'],
+  ['pr_body', 'extracted'],
   ['pr_title', 'extracted'],
   ['commit_message', 'extracted'],
   ['issue_comment', 'extracted'],
@@ -298,24 +298,30 @@ describe('evidence classification', () => {
 
   test('one validating method is enough for a multi-method link', () => {
     assert.equal(
-      classifyLink([LINK_METHOD.REF_MATCH, LINK_METHOD.PR_BODY]),
+      classifyLink([LINK_METHOD.REF_MATCH, LINK_METHOD.HEAD_SHA]),
       EVIDENCE.VALIDATED,
     );
     assert.equal(
       classifyLink([LINK_METHOD.REF_MATCH, LINK_METHOD.PR_TITLE]),
       EVIDENCE.EXTRACTED,
     );
+    // Parses agreeing with parses: pr_body no longer lifts a link to validated.
+    assert.equal(
+      classifyLink([LINK_METHOD.PR_BODY, LINK_METHOD.BRANCH_NAME, LINK_METHOD.PR_TITLE]),
+      EVIDENCE.EXTRACTED,
+    );
   });
 
-  test('F1 splits 3 validated / 31 extracted', async () => {
+  test('F1 splits 2 validated / 32 extracted', async () => {
     const graph = await loadF1();
     // Over `graph.links` directly: the split used to be quoted over a filtered
     // subset, because the 42 attribution links were all validated and would have
     // turned 3/31 into 45/31. Nothing to filter now — the quoted number and the
-    // number in the bundle are the same number.
+    // number in the bundle are the same number. 2/32 since pr_body became
+    // extracted (2026-09-09); the two survivors are the head-SHA matches.
     const links = graph.links;
-    assert.equal(links.filter((l) => l.evidence === 'validated').length, 3);
-    assert.equal(links.filter((l) => l.evidence === 'extracted').length, 31);
+    assert.equal(links.filter((l) => l.evidence === 'validated').length, 2);
+    assert.equal(links.filter((l) => l.evidence === 'extracted').length, 32);
     assert.equal(JSON.stringify(graph.links).includes('inferred'), false);
   });
 });

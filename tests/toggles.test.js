@@ -428,7 +428,7 @@ describe('presets', () => {
     const preset = BUILT_IN_PRESETS.find((p) => p.name === 'Validated links only');
     applyState(c.state, preset.build(c.ctx));
     const remaining = visibleLinks(c);
-    assert.equal(remaining.length, 3, 'F1 has 3 validated object links');
+    assert.equal(remaining.length, 2, 'F1 has 2 validated object links');
     assert.equal(remaining.every((l) => l.evidence === 'validated'), true);
   });
 

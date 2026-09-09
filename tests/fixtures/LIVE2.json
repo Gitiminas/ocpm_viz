@@ -2529,7 +2529,7 @@
       "method": "pr_body",
       "source": "pr:570227066",
       "target": "issue:430693708",
-      "evidence": "validated",
+      "evidence": "extracted",
       "n_methods": 2,
       "qualifier": "resolves",
       "link_methods": [

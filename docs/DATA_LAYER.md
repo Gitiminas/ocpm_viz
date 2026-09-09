@@ -313,13 +313,16 @@ actor links, because who performed an event is `event.actor_id` and nothing else
 Qualifiers emitted: `resolves`, `contains_commit`, `merge_commit`, `references_issue`. Evidence:
 `validated`, `extracted`. Methods: the ten named above plus whatever
 `mv_issue_pr_links_extended_conventions.link_method` carries. The JS enum in
-`src/model/evidence.js` is the vocabulary and holds 17 values, four validated (`pr_body`,
-`head_sha`, `merge_commit_sha`, `closed_via_commit`) and thirteen extracted. An unknown method
-throws.
+`src/model/evidence.js` is the vocabulary and holds 17 values, three validated (`head_sha`,
+`merge_commit_sha`, `closed_via_commit`) and fourteen extracted. An unknown method throws.
 
-**The evidence rule.** A link is `validated` when the platform's own data asserts it: documented
-GitHub syntax that GitHub acts on, or an exact identity match. It is `extracted` when it comes
-from parsing a convention nobody enforces. `inferred` is retired vocabulary. The rule is applied
+**The evidence rule.** A link is `validated` when the platform's own data asserts it: an exact
+identity match, or a record GitHub itself made of the link. It is `extracted` when it comes
+from parsing text or timing, whatever GitHub would have done with the same text. `pr_body` moved
+from validated to extracted on 2026-09-09 for that reason: GitHub acts on a closing keyword, but
+the upstream view regex-parses the body and nothing observes the auto-close, so the link is a
+parse. Since `closed_via_commit` produces no rows in this database, every issue↔PR link it holds
+is now extracted. `inferred` is retired vocabulary. The rule is applied
 per link, not per method: a link is validated if **any** of its methods validates it, which is
 what `classifyLink` does in JS and what branches A and B reproduce in SQL. Testing the primary
 method alone draws well-evidenced links dashed.

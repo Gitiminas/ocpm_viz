@@ -21,7 +21,7 @@ against stub objects instead of one.
 |---|---|---|
 | Bundle shape; unknown activity, object type, evidence class or method rejected; the seventeen `link.method` values (43) | `model` | F1 + synthetic |
 | Four object types, three of which get lanes; a repo-typed object rejected (39); both link endpoints are objects (49) | `model`, `verification` | synthetic; F1–F14 |
-| Evidence classification follows the platform-asserts-it rule (7) | `model` | rule + F1's 3 / 31 split |
+| Evidence classification follows the platform-asserts-it rule (7) | `model` | rule + F1's 2 / 32 split |
 | Bursts derive from `push_id`; size is the member count | `model` | F1, F7, F10 |
 | Focus BFS depth, cap, burst folding, no actor in the adjacency | `model` | F1 |
 | Attribution survives the actor-link deletion: 42 events, 4 actors, all resolvable (41) | `model` | F1 |
@@ -99,7 +99,7 @@ F1–F14 plus two live samples. `tests/fixtures/README.md` carries the per-fixtu
 one exists to exhibit — and is the place to change it. What bears on verification is this.
 
 **F1 is the only fixture built from real GitHub data**: the vscode sub-log, 1 issue, 1 PR, 32
-commits, 4 actors, one folded burst of 20, 3 validated and 31 extracted links. F2–F14 are synthetic
+commits, 4 actors, one folded burst of 20, 2 validated and 32 extracted links. F2–F14 are synthetic
 structures built to exercise layout and toggle behaviour. Their counts are properties of those
 constructions, not observations about real workflows, and none may be cited as a finding — F10
 (3 PRs, 300 commits) and F11 (four PRs, one per detection method) most of all, being the numbers
@@ -305,6 +305,19 @@ was not pulled today. Checked after: both gates pass, `npm test` 836 / 0 (four n
 `tests/excerpt.test.js`: the rows appear when the payload carries them, the comment mark keeps
 the comment text, nothing is emitted when vmap has neither, the heading is per row). Not verified
 in a browser: the Description block's clamp and fade on a real card.
+
+### `pr_body` reclassified as extracted, 2026-09-09
+
+The evidence rule (`DATA_LAYER.md`, "Links") no longer admits `pr_body` as validated: the
+upstream view regex-parses the body, so the link is a parse, not GitHub's record. Changed in
+`src/model/evidence.js`, branch A of `fe.link`, the `data_honesty` strings, both fixture builders,
+the help text and the tests that quoted the split. F1 to F14 rebuilt; LIVE2 (one link, `pr_body`
++ `commit_message`) and DFG1 (31 cross rows) edited in place, evidence field only, as the
+2026-09-06 rename was. Then `./ocpm.sh db`. Checked after: `npm test` 858 / 0; both gates pass;
+all six sanity checks at expected; `fe.diag_link_methods` shows `pr_body` as `resolves` /
+`extracted` and no `validated` row outside the two SHA methods. Live totals moved from
+117,593 validated / 75,655 extracted to 111,972 / 81,276 (`fe.link_mat` 193,248 both times). Not verified: a browser look at the
+"Validated links only" preset, which now leaves only commit links on every sub-log.
 
 ### The object and interval copies, 2026-09-07
 

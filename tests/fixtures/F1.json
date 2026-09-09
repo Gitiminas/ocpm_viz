@@ -1333,7 +1333,7 @@
       "source": "pr:243221",
       "target": "issue:242864",
       "qualifier": "resolves",
-      "evidence": "validated",
+      "evidence": "extracted",
       "method": "pr_body",
       "link_methods": [
         "pr_body"

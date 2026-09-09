@@ -219,9 +219,10 @@ describe('relationship toggles are derived, not enumerated', () => {
     const groups = deriveRelGroups(graph.links, index.byId);
 
     const summary = groups.map((g) => [g.key, g.pairs.map((p) => p.label).sort()]);
+    // Still four: the Issue ↔ PR pair moved from validated to extracted with pr_body.
     assert.deepEqual(summary, [
-      ['validated', ['Commit ↔ PR', 'Issue ↔ PR']],
-      ['extracted', ['Commit ↔ Issue', 'Commit ↔ PR']],
+      ['validated', ['Commit ↔ PR']],
+      ['extracted', ['Commit ↔ Issue', 'Commit ↔ PR', 'Issue ↔ PR']],
     ]);
   });
 

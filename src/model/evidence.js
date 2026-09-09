@@ -20,8 +20,8 @@ export const EVIDENCE = {
  * The closed set of link detection methods.
  *
  * **Seventeen values, and every one of them is a link between two objects.**
- * `link.method` — how one object came to be linked to another — is fixed at the four
- * validated and thirteen extracted entries below.
+ * `link.method` — how one object came to be linked to another — is fixed at the three
+ * validated and fourteen extracted entries below.
  *
  * Three values are excluded and none may return without an upstream source that
  * produces it: `merge_commit_message` (no view emits it), `offplatform_commit_message`
@@ -35,8 +35,6 @@ export const EVIDENCE = {
 export const LINK_METHOD = {
   // --- validated: the platform asserts it, or it is an exact identity match ---
 
-  /** Closing keyword in the PR body, e.g. "Closes #242864". */
-  PR_BODY: 'pr_body',
   /** PR head SHA found among a push's commit SHAs. */
   HEAD_SHA: 'head_sha',
   /** PR merge commit SHA found among a push's commit SHAs. */
@@ -46,6 +44,15 @@ export const LINK_METHOD = {
 
   // --- extracted: we parsed a convention nobody enforces, or matched on timing ---
 
+  /**
+   * Closing keyword in the PR body, e.g. "Closes #242864".
+   *
+   * Extracted since 2026-09-09, validated before. GitHub does act on this syntax, but
+   * the upstream view regex-parses the body; nothing observes GitHub's auto-close, so
+   * the link is our parse of the text, not the platform's record. The platform's own
+   * record of a commit closing an issue is `closed_via_commit`, which stays validated.
+   */
+  PR_BODY: 'pr_body',
   /** Issue reference in the PR title. */
   PR_TITLE: 'pr_title',
   /**
@@ -130,17 +137,14 @@ export const LINK_METHOD = {
 /**
  * Which detection methods the platform itself asserts.
  *
- * `pr_body` is the one arguable member: the upstream view regex-parses the body
- * rather than observing GitHub's auto-close. It is admitted because the syntax is
- * documented and GitHub acts on it.
- *
- * Note what is *not* here. `pr_body_refs` and `pr_body_fixed_tickets` are also read
- * out of the PR body, and `closed_via_commit` is also about closing — but the rule
- * asks whether GitHub acts on it, not where the text sat. `Refs #123` closes nothing,
- * so it is extracted; a closed-via-commit record is GitHub's own, so it is validated.
+ * Note what is *not* here. `pr_body` was a member until 2026-09-09: the syntax is
+ * documented and GitHub acts on it, but the upstream view regex-parses the body
+ * rather than observing GitHub's auto-close, so what the tool holds is a parse, and a
+ * parse is extracted whatever GitHub would have done with the same text. The rule
+ * asks whether the platform *recorded* the link: a closed-via-commit record is
+ * GitHub's own, so it is validated; every reading of PR text is not.
  */
 const VALIDATED_METHODS = new Set([
-  LINK_METHOD.PR_BODY,
   LINK_METHOD.HEAD_SHA,
   LINK_METHOD.MERGE_COMMIT_SHA,
   LINK_METHOD.CLOSED_VIA_COMMIT,

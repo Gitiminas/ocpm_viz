@@ -304,9 +304,10 @@ function selfCheck(graph, source) {
 
   // The reclassification is the one change that alters how F1 renders, so assert
   // the predicted split rather than trusting it: of the 34 object links, only the
-  // single pr_body match and the two head-SHA matches survive as validated.
-  if (validated !== 3) problems.push(`expected 3 validated object links, got ${validated}`);
-  if (extracted !== 31) problems.push(`expected 31 extracted object links, got ${extracted}`);
+  // two head-SHA matches survive as validated (the single pr_body match was the
+  // third until 2026-09-09, when pr_body became extracted).
+  if (validated !== 2) problems.push(`expected 2 validated object links, got ${validated}`);
+  if (extracted !== 32) problems.push(`expected 32 extracted object links, got ${extracted}`);
 
   if (graph.objects.length !== source.objects.length)
     problems.push('object count changed during conversion');

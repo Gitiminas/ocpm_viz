@@ -195,7 +195,7 @@ describe('fixtures exhibit the properties they claim', () => {
     const graph = await load('F12');
     const multi = graph.links.filter((l) => l.n_methods > 1);
     assert.ok(multi.length >= 1, 'at least one link must have several methods agreeing');
-    assert.equal(multi[0].evidence, 'validated', 'one validating method is enough');
+    assert.equal(multi[0].evidence, 'extracted', 'three parses agreeing are still a parse');
 
     // The same commit-PR pair, asserted once by identity and once by convention.
     const pairs = new Map();

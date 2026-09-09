@@ -49,7 +49,7 @@ function derivedOpeningGraph() {
       { id: 'pr_act:903', activity: 'PullRequestMerged', time: '2024-01-04T00:00:00Z',
         object_id: 'pr:2', actor_id: 'actor:2', repo, comment: false, attrs: {} },
     ],
-    links: [{ source: 'pr:2', target: 'issue:1', qualifier: 'resolves', evidence: 'validated',
+    links: [{ source: 'pr:2', target: 'issue:1', qualifier: 'resolves', evidence: 'extracted',
               method: 'pr_body', n_methods: 1, link_methods: ['pr_body'] }],
   });
 }

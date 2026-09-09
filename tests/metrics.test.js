@@ -71,7 +71,7 @@ describe('F1 reproduces the numbers on the baseline stats page', () => {
 
   test('link counts report the reclassified split, not the old one', async () => {
     const graph = await loadF1();
-    assert.deepEqual(linkCounts(graph), { total: 34, validated: 3, extracted: 31 });
+    assert.deepEqual(linkCounts(graph), { total: 34, validated: 2, extracted: 32 });
   });
 });
 

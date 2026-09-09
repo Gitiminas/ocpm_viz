@@ -92,9 +92,10 @@ changes only, never value changes**, with three mandated exceptions noted below.
 ### The three value changes, and why they are not freehand edits
 
 **Evidence reclassification.** 29 `ref_match` links move from validated to extracted, so F1 goes
-from 32 solid / 2 dashed to **3 validated / 31 extracted**. The three survivors are one `pr_body`
-match and two `head_sha` matches. This is the evidence rule applied, not a correction — and the
-script asserts the 3/31 split rather than trusting it.
+from 32 solid / 2 dashed to **2 validated / 32 extracted**. The two survivors are the `head_sha`
+matches; the single `pr_body` match was a third survivor until 2026-09-09, when `pr_body` became
+extracted (a parse of the body, not GitHub's record). This is the evidence rule applied, not a
+correction — and the script asserts the 2/32 split rather than trusting it.
 
 **Method prose dropped.** The source's free-text `method` is replaced by the enum rather than
 carried alongside it, because nothing upstream produces that prose: a field only this fixture

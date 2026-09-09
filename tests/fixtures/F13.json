@@ -448,7 +448,7 @@
       "source": "pr:80",
       "target": "issue:13",
       "qualifier": "resolves",
-      "evidence": "validated",
+      "evidence": "extracted",
       "method": "pr_body",
       "link_methods": [
         "pr_body"

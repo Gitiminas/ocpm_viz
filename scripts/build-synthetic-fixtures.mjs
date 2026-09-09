@@ -100,7 +100,7 @@ function event(activity, time, objectId, { actorId = 'actor:alice', comment = fa
 // Deliberately a literal list rather than an import from `src/model/evidence.js`:
 // the fixtures are the second opinion the evidence rule is checked against, and a
 // generator that read the same set as the implementation could only agree with it.
-const VALIDATED_METHODS = ['pr_body', 'head_sha', 'merge_commit_sha'];
+const VALIDATED_METHODS = ['head_sha', 'merge_commit_sha'];
 
 /**
  * A link detected by one or more methods.
@@ -614,7 +614,8 @@ FIXTURES.F12 = () => {
     event('IssueClosed', t(12), 'issue:120'),
   ];
   const links = [
-    // Three methods agree on this one — the strongest signal the model can express.
+    // Three methods agree on this one. All three are parses of PR text, so agreement
+    // raises n_methods and nothing else: the link stays extracted.
     link('pr:1201', 'issue:120', 'resolves', ['pr_body', 'branch_name', 'pr_title']),
     // The same commit↔PR pair, asserted once by identity and once by convention.
     link('pr:1201', `commit:${sha}`, 'contains_commit', 'head_sha'),

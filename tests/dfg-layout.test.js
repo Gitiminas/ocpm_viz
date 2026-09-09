@@ -28,7 +28,7 @@ function dfg() {
       { object_type: 'commit', from_activity: 'Push', to_activity: 'Push', successions: 1, objects: 1 },
     ],
     cross_edges: [
-      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body' },
+      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'closed_via_commit' },
     ],
   };
 }
@@ -187,7 +187,7 @@ describe('arrows and their counts stay tellable apart', () => {
   const cross = (from, to, successions) => ({
     from_type: from.split('/')[0], from_activity: from.split('/')[1],
     to_type: to.split('/')[0], to_activity: to.split('/')[1],
-    successions, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body',
+    successions, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'closed_via_commit',
   });
   const box = (edge) => {
     const text = edge.successions.toLocaleString('en-US');

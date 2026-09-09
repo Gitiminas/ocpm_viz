@@ -164,7 +164,7 @@
       "source": "pr:20",
       "target": "issue:2",
       "qualifier": "resolves",
-      "evidence": "validated",
+      "evidence": "extracted",
       "method": "pr_body",
       "link_methods": [
         "pr_body"

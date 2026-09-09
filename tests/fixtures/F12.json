@@ -189,7 +189,7 @@
       "source": "pr:1201",
       "target": "issue:120",
       "qualifier": "resolves",
-      "evidence": "validated",
+      "evidence": "extracted",
       "method": "pr_body",
       "link_methods": [
         "pr_body",

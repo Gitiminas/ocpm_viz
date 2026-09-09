@@ -230,11 +230,11 @@ describe('the four issue-PR detection method toggles each work independently (F1
 });
 
 describe('multi-method agreement and mixed evidence survive the pipeline (F12)', () => {
-  test('a link agreed by three methods is validated and carries its count', async () => {
+  test('a link agreed by three parsed methods stays extracted and carries its count', async () => {
     const { graph } = await pipeline('F12');
     const multi = graph.links.find((link) => link.n_methods > 1);
     assert.equal(multi.n_methods, 3);
-    assert.equal(multi.evidence, 'validated');
+    assert.equal(multi.evidence, 'extracted');
     assert.deepEqual(multi.link_methods.sort(), ['branch_name', 'pr_body', 'pr_title']);
   });
 

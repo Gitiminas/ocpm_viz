@@ -620,7 +620,7 @@
       "successions": 42,
       "to_activity": "PullRequestClosed",
       "from_activity": "IssueClosed",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -664,7 +664,7 @@
       "successions": 141,
       "to_activity": "PullRequestCommented",
       "from_activity": "IssueClosed",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -807,7 +807,7 @@
       "successions": 85,
       "to_activity": "PullRequestOpened",
       "from_activity": "IssueClosed",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -873,7 +873,7 @@
       "successions": 59,
       "to_activity": "PullRequestClosed",
       "from_activity": "IssueCommented",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -939,7 +939,7 @@
       "successions": 376,
       "to_activity": "PullRequestCommented",
       "from_activity": "IssueCommented",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1038,7 +1038,7 @@
       "successions": 39,
       "to_activity": "PullRequestMerged",
       "from_activity": "IssueCommented",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1137,7 +1137,7 @@
       "successions": 860,
       "to_activity": "PullRequestOpened",
       "from_activity": "IssueCommented",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1203,7 +1203,7 @@
       "successions": 1,
       "to_activity": "PullRequestReopened",
       "from_activity": "IssueCommented",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1236,7 +1236,7 @@
       "successions": 2,
       "to_activity": "PullRequestClosed",
       "from_activity": "IssueOpened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1280,7 +1280,7 @@
       "successions": 4,
       "to_activity": "PullRequestCommented",
       "from_activity": "IssueOpened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1324,7 +1324,7 @@
       "successions": 2,
       "to_activity": "PullRequestMerged",
       "from_activity": "IssueOpened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1390,7 +1390,7 @@
       "successions": 476,
       "to_activity": "PullRequestOpened",
       "from_activity": "IssueOpened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1456,7 +1456,7 @@
       "successions": 1,
       "to_activity": "PullRequestReopened",
       "from_activity": "IssueOpened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1489,7 +1489,7 @@
       "successions": 1,
       "to_activity": "PullRequestClosed",
       "from_activity": "IssueReopened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1522,7 +1522,7 @@
       "successions": 8,
       "to_activity": "PullRequestCommented",
       "from_activity": "IssueReopened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1599,7 +1599,7 @@
       "successions": 23,
       "to_activity": "PullRequestOpened",
       "from_activity": "IssueReopened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1698,7 +1698,7 @@
       "successions": 99,
       "to_activity": "IssueClosed",
       "from_activity": "PullRequestClosed",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1775,7 +1775,7 @@
       "successions": 247,
       "to_activity": "IssueCommented",
       "from_activity": "PullRequestClosed",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1819,7 +1819,7 @@
       "successions": 4,
       "to_activity": "IssueReopened",
       "from_activity": "PullRequestClosed",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1896,7 +1896,7 @@
       "successions": 100,
       "to_activity": "IssueClosed",
       "from_activity": "PullRequestCommented",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -1984,7 +1984,7 @@
       "successions": 403,
       "to_activity": "IssueCommented",
       "from_activity": "PullRequestCommented",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2072,7 +2072,7 @@
       "successions": 7,
       "to_activity": "IssueReopened",
       "from_activity": "PullRequestCommented",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2171,7 +2171,7 @@
       "successions": 36,
       "to_activity": "IssueClosed",
       "from_activity": "PullRequestMerged",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2259,7 +2259,7 @@
       "successions": 61,
       "to_activity": "IssueCommented",
       "from_activity": "PullRequestMerged",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2358,7 +2358,7 @@
       "successions": 5,
       "to_activity": "IssueReopened",
       "from_activity": "PullRequestMerged",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2380,7 +2380,7 @@
       "successions": 1,
       "to_activity": "IssueCommented",
       "from_activity": "PullRequestMergedOffPlatform",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2446,7 +2446,7 @@
       "successions": 132,
       "to_activity": "IssueClosed",
       "from_activity": "PullRequestOpened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2523,7 +2523,7 @@
       "successions": 300,
       "to_activity": "IssueCommented",
       "from_activity": "PullRequestOpened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2611,7 +2611,7 @@
       "successions": 4,
       "to_activity": "IssueReopened",
       "from_activity": "PullRequestOpened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2677,7 +2677,7 @@
       "successions": 3,
       "to_activity": "IssueClosed",
       "from_activity": "PullRequestReopened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {
@@ -2699,7 +2699,7 @@
       "successions": 4,
       "to_activity": "IssueCommented",
       "from_activity": "PullRequestReopened",
-      "link_evidence": "validated",
+      "link_evidence": "extracted",
       "link_qualifier": "resolves"
     },
     {

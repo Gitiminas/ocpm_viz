@@ -237,7 +237,7 @@
       "source": "pr:90",
       "target": "issue:14",
       "qualifier": "resolves",
-      "evidence": "validated",
+      "evidence": "extracted",
       "method": "pr_body",
       "link_methods": [
         "pr_body"

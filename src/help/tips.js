@@ -79,7 +79,7 @@ export const TIPS = Object.freeze({
   'lane.group': 'Commits grouped by the pull request they reached. Hide a group to hide its commits.',
 
   // ---- relationships ------------------------------------------------------------
-  'rel.validated': 'Links the platform itself asserts, such as a closing keyword GitHub acted on or an exact SHA match. Drawn solid.',
+  'rel.validated': 'Links the platform itself asserts, such as an exact SHA match or GitHub\'s own record of a commit closing an issue. Drawn solid.',
   'rel.extracted': 'Links we parsed from a convention nobody enforces, such as a number mentioned in a commit message. Drawn dashed, with a question mark.',
   'rel.pair': (label) => `Show or hide ${label || 'this kind of link'}.`,
   'rel.qualifiers': 'What a link means: resolves, references, contains a commit, and so on.',

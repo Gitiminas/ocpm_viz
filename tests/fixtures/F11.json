@@ -242,7 +242,7 @@
       "source": "pr:1101",
       "target": "issue:110",
       "qualifier": "resolves",
-      "evidence": "validated",
+      "evidence": "extracted",
       "method": "pr_body",
       "link_methods": [
         "pr_body"

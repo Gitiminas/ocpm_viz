@@ -48,7 +48,7 @@ function validDfg() {
       { object_type: 'commit', from_activity: 'Push', to_activity: 'Push', successions: 1, objects: 1 },
     ],
     cross_edges: [
-      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body' },
+      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'closed_via_commit' },
     ],
   };
 }
@@ -318,7 +318,7 @@ describe('link classes filter, then aggregate to one arrow, then the range appli
   function classedDfg() {
     const dfg = validDfg();
     dfg.cross_edges = [
-      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 3, pairs: 2, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'pr_body' },
+      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 3, pairs: 2, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'closed_via_commit' },
       { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'extracted', link_method: 'commit_message' },
       { from_type: 'commit', from_activity: 'Push', to_type: 'issue', to_activity: 'IssueOpened', successions: 1, pairs: 1, link_qualifier: 'references_issue', link_evidence: 'extracted', link_method: 'commit_message' },
     ];
@@ -372,7 +372,7 @@ describe('link classes filter, then aggregate to one arrow, then the range appli
       { key: 'validated', successions: 3 },
     ]);
     assert.deepEqual(toggles.linkQualifiers.map((q) => q.key), ['references_issue', 'resolves']);
-    assert.deepEqual(toggles.linkMethods.map((m) => m.key), ['commit_message', 'pr_body']);
+    assert.deepEqual(toggles.linkMethods.map((m) => m.key), ['closed_via_commit', 'commit_message']);
     assert.equal(toggles.crossArrows, 2);
     // maxSuccessions in arrow units: the merged arrow's 4 beats every raw row.
     assert.equal(toggles.maxSuccessions, 4);
