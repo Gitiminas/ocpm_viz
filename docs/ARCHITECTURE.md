@@ -10,7 +10,7 @@ server-side is in `DATA_LAYER.md`.
 Fixed stack: PostgreSQL → PostgREST → D3. No bundler, no framework, no TypeScript. Native ES
 modules loaded straight from `index.html`; D3 7.8.5 from a CDN as the global `d3`; `d3-force`
 3.0.0 vendored unmodified in `vendor/` because `layout/` must run in bare Node. `package.json`
-has no dependencies at all. Tests are `node --test` (`npm test`), 858 tests over 35 files.
+has no dependencies at all. Tests are `node --test` (`npm test`), 861 tests over 35 files.
 
 ```
 PostgreSQL  →  fe views  →  api.get_sublog  →  PostgREST  →  loadSubLog
