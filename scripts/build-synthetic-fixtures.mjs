@@ -28,7 +28,7 @@ const t = (day, hour = 0) =>
 
 const repo = 'synthetic/fixture';
 
-function issue(n, { from, to, label = `#${n}` } = {}) {
+function issue(n, { from, to, label = `Issue #${n}` } = {}) {
   return {
     id: `issue:${n}`,
     type: 'issue',

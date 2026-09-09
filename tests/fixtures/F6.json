@@ -33,7 +33,7 @@
     {
       "id": "issue:5",
       "type": "issue",
-      "label": "#5",
+      "label": "Issue #5",
       "repo": "synthetic/fixture",
       "time_semantics": "created_at(opened)->closed",
       "vmap": {

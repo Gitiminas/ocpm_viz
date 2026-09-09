@@ -126,6 +126,18 @@ export function matchesSeedRef(ref, seed) {
   return scoreSeedRef(ref, seed) >= 0;
 }
 
+/**
+ * A seed as the seed box and the sub-log card name it: the type word, then the label
+ * with any type word the label itself carries removed — `issue #47532`, `pull request
+ * #102479`, `commit 05579e1`. Object labels name their type (`Issue #N`, `PR #N`) so a
+ * card can stand alone; the seed box already says the type, so it must not say it twice.
+ */
+export function seedDisplayLabel(seed) {
+  const type = String(seed.type || 'object').replace('_', ' ');
+  const label = String(seed.label ?? seed.id ?? '').replace(/^(PR|Issue)\s+/, '');
+  return `${type} ${label}`;
+}
+
 /** Human-readable description of a reference, for the "nothing found" message. */
 export function describeSeedRef(ref) {
   if (!ref) return 'anything';

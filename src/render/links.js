@@ -292,9 +292,10 @@ export function renderLinks({
     const buildSpec = () => ({
       accent: qualifierColor(link.qualifier),
       shape: 'line',
-      kicker: `OCEL link · ${link.qualifier}`,
+      kicker: 'Link',
       title: `${escapeHtml(source.label || source.id)} &rarr; ${escapeHtml(target.label || target.id)}`,
       rows: [
+        ['Qualifier', escapeHtml(link.qualifier || '—'), 'mono'],
         ['Evidence', evidenceBadge(link.evidence)],
         ['Method', escapeHtml(link.method || '—'), 'mono'],
         link.n_methods > 1 ? ['Methods agreeing', String(link.n_methods)] : null,

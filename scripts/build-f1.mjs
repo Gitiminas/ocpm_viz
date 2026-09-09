@@ -102,6 +102,12 @@ function convertObject(source) {
   const { t_start, t_end, ...rest } = source;
   return {
     ...rest,
+    // The blob labels issues `#N` and pull requests `PR #N`; the RPC names both types
+    // (`Issue #N`, `PR #N`) so a card or a link title says what kind of thing it names.
+    label:
+      source.type === 'issue' && /^#\d+$/.test(String(source.label))
+        ? `Issue ${source.label}`
+        : source.label,
     intervals: toIntervals(source),
   };
 }

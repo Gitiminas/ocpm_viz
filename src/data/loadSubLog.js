@@ -14,6 +14,7 @@
 
 import { assertValidGraph, normalizeGraph } from '../model/subLog.js';
 import { fixtureTransport } from './fixtures.js';
+import { seedDisplayLabel } from './seedQuery.js';
 
 /**
  * Load, validate and normalize one sub-log.
@@ -80,7 +81,7 @@ export function summarizeSubLog(graph) {
   const byId = new Map(graph.objects.map((o) => [o.id, o]));
   const seedLabels = (meta.seed || []).map((seed) => {
     const object = byId.get(seed.id);
-    return object ? `${seed.type.replace('_', ' ')} ${object.label}` : seed.id;
+    return object ? seedDisplayLabel({ type: seed.type, label: object.label }) : seed.id;
   });
 
   const counts = new Map();

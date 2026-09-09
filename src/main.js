@@ -11,7 +11,7 @@
 import { summarizeSubLog, seedObjects } from './data/loadSubLog.js';
 import { createSource, resolveQuery } from './data/source.js';
 import { TRAVERSAL_DEGREE } from './data/api.js';
-import { describeSeedRef, parseSeedRef } from './data/seedQuery.js';
+import { describeSeedRef, parseSeedRef, seedDisplayLabel } from './data/seedQuery.js';
 import { indexSubLog } from './model/subLog.js';
 import { LANE_TYPES, activityShortLabel } from './model/activities.js';
 import { MAX_FOCUS_DEGREE } from './model/graph.js';
@@ -1369,8 +1369,7 @@ function wireSelectors(activeRepoName, activeSeedId, loadedSeed) {
 // "pull request #116416", not "pull request PR #116416": a PR's own label starts with
 // "PR", which the spelled-out type already says. Display only — matching parses the
 // TYPED text ("pr 116416") against seed.type and the digits, never against this string.
-const seedLabel = (seed) =>
-  `${seed.type.replace('_', ' ')} ${seed.type === 'pull_request' ? String(seed.label).replace(/^PR\s+/, '') : seed.label}`;
+const seedLabel = seedDisplayLabel;
 
 async function reload(query) {
   /*

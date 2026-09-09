@@ -12,7 +12,7 @@
         {
           "id": "issue:242864",
           "type": "issue",
-          "label": "#242864",
+          "label": "Issue #242864",
           "title": "Discover and run MCP servers",
           "fixture": "F1",
           "synthetic": false
@@ -44,7 +44,7 @@
         {
           "id": "issue:1",
           "type": "issue",
-          "label": "#1",
+          "label": "Issue #1",
           "title": "Synthetic issue 1",
           "fixture": "F2",
           "synthetic": true
@@ -52,7 +52,7 @@
         {
           "id": "issue:100",
           "type": "issue",
-          "label": "#100",
+          "label": "Issue #100",
           "title": "Synthetic issue 100",
           "fixture": "F10",
           "synthetic": true
@@ -60,7 +60,7 @@
         {
           "id": "issue:110",
           "type": "issue",
-          "label": "#110",
+          "label": "Issue #110",
           "title": "Synthetic issue 110",
           "fixture": "F11",
           "synthetic": true
@@ -68,7 +68,7 @@
         {
           "id": "issue:120",
           "type": "issue",
-          "label": "#120",
+          "label": "Issue #120",
           "title": "Synthetic issue 120",
           "fixture": "F12",
           "synthetic": true
@@ -76,7 +76,7 @@
         {
           "id": "issue:13",
           "type": "issue",
-          "label": "#13",
+          "label": "Issue #13",
           "title": "Synthetic issue 13",
           "fixture": "F13",
           "synthetic": true
@@ -84,7 +84,7 @@
         {
           "id": "issue:14",
           "type": "issue",
-          "label": "#14",
+          "label": "Issue #14",
           "title": "Synthetic issue 14",
           "fixture": "F14",
           "synthetic": true
@@ -92,7 +92,7 @@
         {
           "id": "issue:2",
           "type": "issue",
-          "label": "#2",
+          "label": "Issue #2",
           "title": "Synthetic issue 2",
           "fixture": "F3",
           "synthetic": true
@@ -100,7 +100,7 @@
         {
           "id": "issue:5",
           "type": "issue",
-          "label": "#5",
+          "label": "Issue #5",
           "title": "Synthetic issue 5",
           "fixture": "F6",
           "synthetic": true
@@ -108,7 +108,7 @@
         {
           "id": "issue:9",
           "type": "issue",
-          "label": "#9",
+          "label": "Issue #9",
           "title": "Synthetic issue 9",
           "fixture": "F9",
           "synthetic": true

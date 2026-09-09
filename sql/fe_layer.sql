@@ -293,7 +293,7 @@ base AS (
   SELECT DISTINCT ON (u.repo_id, u.issue_id)
          'issue:' || u.issue_id::text AS id,          -- the prefix prevents collision
          'issue'::text                AS type,
-         '#' || u.issue_number        AS label,
+         'Issue #' || u.issue_number  AS label,        -- names its type, as 'PR #' does
          u.repo_id,
          u.issue_id,
          u.issue_number,              -- a real column: fe.link's commit→issue branch joins on it

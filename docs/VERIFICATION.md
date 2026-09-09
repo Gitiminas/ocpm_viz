@@ -306,6 +306,21 @@ was not pulled today. Checked after: both gates pass, `npm test` 836 / 0 (four n
 the comment text, nothing is emitted when vmap has neither, the heading is per row). Not verified
 in a browser: the Description block's clamp and fade on a real card.
 
+### Issue labels name their type, 2026-09-09
+
+`fe.object_issue` now labels an issue `Issue #N`, as a pull request has always been `PR #N`,
+so every surface that prints an object's label (hovercards, link titles, the Stats table, the
+Landmarks card, the sidebar's per-object rows, the hidden banner, the actor card, the lane
+subtitle) says which kind of object it names. Same change in both fixture builders; F1 to F14
+and the catalogue rebuilt; LIVE1 (one issue) and LIVE2 (four) relabelled in place, label field
+only. The seed box and the sub-log card, which put the type word in front of the label, now
+strip a type word the label already carries (`seedDisplayLabel`, `src/data/seedQuery.js`), so
+they read `issue #47532` and `pull request #102479` as before. The timeline link card's kicker
+is `Link` and the qualifier is a row, as on the relationships-mode edge card. Then
+`./ocpm.sh db`. Checked after: `npm test` 858 / 0, both gates pass, `fe.seed_lookup` and
+`fe.object_issue_mat` carry the new labels. Not verified in a browser: the wider label on the
+relationships-mode marks and the lane subtitle.
+
 ### `pr_body` reclassified as extracted, 2026-09-09
 
 The evidence rule (`DATA_LAYER.md`, "Links") no longer admits `pr_body` as validated: the
