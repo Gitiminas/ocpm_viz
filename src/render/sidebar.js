@@ -356,13 +356,13 @@ export function renderRelationshipRows({
   return () => syncers.forEach((sync) => sync());
 }
 
-/** Folding controls: the push rule as a readout, and the comment window slider. */
 /**
  * "0 folded", "1 fold", "n folds": a fold is by definition two or more marks in one, so
  * "1 folded" read as one *thing* folded, which is not a fold at all.
  */
 const foldCount = (n) => (n === 0 ? '0 folded' : n === 1 ? '1 fold' : `${n} folds`);
 
+/** Folding controls: the push rule as a readout, and the comment window slider. */
 export function renderBurstControls({ container, state, bursts, commentBursts = [], onChange }) {
   container.innerHTML = '';
 
