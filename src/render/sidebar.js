@@ -357,6 +357,12 @@ export function renderRelationshipRows({
 }
 
 /** Folding controls: the push rule as a readout, and the comment window slider. */
+/**
+ * "0 folded", "1 fold", "n folds": a fold is by definition two or more marks in one, so
+ * "1 folded" read as one *thing* folded, which is not a fold at all.
+ */
+const foldCount = (n) => (n === 0 ? '0 folded' : n === 1 ? '1 fold' : `${n} folds`);
+
 export function renderBurstControls({ container, state, bursts, commentBursts = [], onChange }) {
   container.innerHTML = '';
 
@@ -394,14 +400,14 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
    * sub-log with many pushes the list was longer than everything else in the sidebar.
    * How to unfold a mark is the mark's help text, not a line here.
    */
-  const pushBox = box('Pushes', 'folding.pushes');
+  const pushBox = box('Commits', 'folding.pushes');
   const pushes = document.createElement('div');
   pushes.className = 'mono';
   pushes.style.cssText =
     'font-size:11px;color:var(--color-neutral-400);line-height:1.5;display:flex;justify-content:space-between';
   pushes.innerHTML =
     `<span>Fold by <span style="color:var(--color-text)">push id</span></span>` +
-    `<span style="color:var(--color-neutral-600)">${bursts.length} folded</span>`;
+    `<span style="color:var(--color-neutral-600)">${foldCount(bursts.length)}</span>`;
   pushBox.appendChild(pushes);
 
   /*
@@ -421,7 +427,7 @@ export function renderBurstControls({ container, state, bursts, commentBursts = 
     `Fold within <span style="color:var(--color-text)">${state.commentWindowDays}</span> day${state.commentWindowDays === 1 ? '' : 's'}`;
   commentLabel.innerHTML =
     `<span>${commentValue()}</span><span style="color:var(--color-neutral-600)">` +
-    `${commentBursts.length} folded</span>`;
+    `${foldCount(commentBursts.length)}</span>`;
 
   const commentSlider = document.createElement('input');
   commentSlider.type = 'range';
