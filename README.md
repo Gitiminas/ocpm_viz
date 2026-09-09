@@ -127,7 +127,7 @@ times are UTC, labelled.
 | Relationships | Validated and Extracted masters with type-pair children, qualifiers, detection methods, with counts |
 | Folding | Push folding (fixed, by `push_id`) and a comment-folding window of 0–30 days |
 | Actors | One row per actor with colour, login and event count; hover previews the trail, click pins it |
-| Legend | Seventeen rows in five sections, dimmed when absent from the current render; hover highlights every matching mark |
+| Legend | Eighteen rows in five sections, dimmed when absent from the current render; hover highlights every matching mark |
 
 Commits pushed together fold into one bulk-push mark, and runs of comments inside the folding
 window fold into one comment burst — though a run never crosses a close or a reopen, so a
@@ -162,7 +162,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 824 tests over 34 files, ~1 s, no browser
+npm test                  # 858 tests over 35 files, ~1 s, no browser
 npm run test:watch
 ```
 

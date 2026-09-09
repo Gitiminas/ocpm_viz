@@ -7,17 +7,18 @@ which this document explains rather than repeats.
 
 ## Schemas
 
-`fe` holds the derivations: 19 views and materialized views, 8 diagnostic views, and five
-functions (`utc` and the four refreshers). `api` holds four `SECURITY DEFINER` functions and nothing else. Both are owned by
+`fe` holds the derivations: 16 views, 7 materialized views, 8 diagnostic views, and six
+functions (`utc` and the five refreshers). `api` holds four `SECURITY DEFINER` functions and nothing else. Both are owned by
 `fe_owner`. PostgREST is configured with `db-schemas = "api"`, so `api` is the entire HTTP
 surface and the frontend never reads a view directly.
 
 Views are plain by default. The frontend asks for one sub-log at a time, so a
 plain view lets the seed filter reach the underlying upstream MVs; the first lever for speed is
 an index on those MVs, not a copy of them. `fe_layer.sql` §0 creates 19 such indexes and
-`ANALYZE`s 13 of them, with the measurements that justified each. Three relations are
-materialized, each with a measurement recorded beside it: `fe.link_mat`, `fe.seed_lookup` and
-`fe.dfg_mat`.
+`ANALYZE`s 13 of them, with the measurements that justified each. Seven relations are
+materialized, each with a measurement recorded beside it: `fe.link_mat`, `fe.seed_lookup`,
+`fe.dfg_mat`, and since 2026-09-07 the four object and interval copies described under
+**Refreshing**.
 
 ### Applying it
 
@@ -373,8 +374,8 @@ for most kubernetes PRs the commits *behind* the tip had no method — although 
 the base branch lists them, oldest first, immediately before the tip. `push_order` reads that
 enumeration: in a push where the PR's `head_sha` sits at index *h* and its `merge_commit_sha` at
 *h+1*, every commit between the previous merge commit in that push and *h* is the PR's. It is
-detected upstream, as a fourth branch of `mv_commit_pr_links` (the one place this project has
-patched an upstream definition; its banner in `sql/matviews_scoped.sql` says why), so the
+detected upstream, as a fourth branch of `mv_commit_pr_links` (the first of this project's three
+approved patches to an upstream definition; its banner in `sql/matviews_scoped.sql` says why), so the
 inherited `admitted` rule applies to it unchanged, and the two issue↔PR views that join
 `mv_commit_pr_links` gain from it too. Evidence `extracted`: GitHub asserts the order and the two
 SHAs, the attribution is our inference. Still a floor — squash merges, non-adjacent pairs and
@@ -488,9 +489,9 @@ upstream refresh.
 
 | View | What it tells you |
 |---|---|
-| `fe.diag_staleness` | Live vs materialized rows and last-written time for `fe.link_mat`, `fe.seed_lookup` and `fe.dfg_mat` (whose live count is honestly NULL — recomputing it is the whole build) |
+| `fe.diag_staleness` | Live vs materialized rows and last-written time for all seven copies: `fe.link_mat`, `fe.seed_lookup`, `fe.dfg_mat` (whose live count is honestly NULL — recomputing it is the whole build) and the four object and interval copies |
 | `fe.diag_link_staleness` | Drift between `fe.link` and `fe.link_mat` alone |
-| `fe.diag_sanity` | Six checks, each with its expected value: dangling event objects, issue/PR objects with no events, actors named by an event with no actor object, pairs linked twice by the same qualifier, link endpoints that are not objects, and that exactly 10 distinct activities occur |
+| `fe.diag_sanity` | Six checks, each with its expected value: dangling event objects, issue/PR objects with no events, actors named by an event with no actor object, pairs linked twice by the same qualifier, link endpoints that are not objects, and that exactly 11 distinct activities occur |
 | `fe.diag_dropped_activities` | What the vocabulary whitelist drops |
 | `fe.diag_unresolvable_pr_comments` | PR comment events and PRs discarded because no numeric PR id exists for them. A known floor, not a defect to fix: a pull request has two ids on GitHub, and a comment event names only the issue-side one, while `pr:<id>` is keyed by the PR-side one; 1,961 PRs (kubernetes 1,564, vscode 233, react 164) have nothing but comments in the corpus, so their 17,737 comments have no object to attach to. Giving them an object would need a second key scheme, and no link could ever reach them, since links name the PR-side id (2026-09-07) |
 | `fe.diag_time_semantics` | How many issue and PR objects needed the first-seen fallback, per repository |

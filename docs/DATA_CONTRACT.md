@@ -287,8 +287,8 @@ Commit↔PR attribution.
 222,619 rows. No `issue_id` — it is a commit↔PR relation and nothing else.
 
 `link_method` takes exactly four values, all in the `LINK_METHOD` enum:
-`merge_commit_sha`, `head_sha`, `ref_match`, and — since 2026-09-07, the one patch this project
-has made to an upstream definition — `push_order`: the commits enumerated in the PR's merge push
+`merge_commit_sha`, `head_sha`, `ref_match`, and — since 2026-09-07, the first of the three
+approved patches this project has made to upstream definitions (§4) — `push_order`: the commits enumerated in the PR's merge push
 between the previous merge commit and the PR's head, when head and merge commit sit at adjacent
 indexes. `DATA_LAYER.md` ("Two admission rules") has the rule; the banner on the view in
 `sql/matviews_scoped.sql` has the reason and the measured gain.
