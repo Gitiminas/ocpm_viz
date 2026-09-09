@@ -10,7 +10,7 @@ server-side is in `DATA_LAYER.md`.
 Fixed stack: PostgreSQL → PostgREST → D3. No bundler, no framework, no TypeScript. Native ES
 modules loaded straight from `index.html`; D3 7.8.5 from a CDN as the global `d3`; `d3-force`
 3.0.0 vendored unmodified in `vendor/` because `layout/` must run in bare Node. `package.json`
-has no dependencies at all. Tests are `node --test` (`npm test`), 861 tests over 35 files.
+has no dependencies at all. Tests are `node --test` (`npm test`), 869 tests over 35 files.
 
 ```
 PostgreSQL  →  fe views  →  api.get_sublog  →  PostgREST  →  loadSubLog
@@ -119,7 +119,13 @@ toggles). `layout/` receives a predicate, not the state object, so it never lear
 or hidden objects; `render/` calls the predicates rather than re-deriving them. `selectVisible`
 applies the same rules to produce a filtered graph for the statistics page and the sub-log card;
 `summaryForMode` beside it adjusts the card's summary to what is drawn: pinned actors, and in the
-relationships mode one mark per object. Adding a filter is an edit to one file and its tests.
+relationships mode one mark per object. `relControlAvailability` is the same predicates read the
+other way: which relationship rows still govern a link that could be drawn. A row is inert (dimmed,
+unclickable, skipped by its master) while nothing it governs would pass every *other* filter — a
+pair under a hidden lane, a qualifier whose every link sits on a switched-off pair, a method no
+visible link carries. Only the row's own bag is excluded, so a row switched off by hand can always
+be switched back on. The Process page has the same rule in `dfgControlAvailability` over
+`filterDfg`'s toggles. Adding a filter is an edit to one file and its tests.
 
 ## State
 

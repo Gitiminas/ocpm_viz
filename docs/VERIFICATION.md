@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**861 tests in 35 files, 0 failures, ~1 s — run 2026-09-09.** None needs a browser, a network or a
+**869 tests in 35 files, 0 failures, ~1 s — run 2026-09-09.** None needs a browser, a network or a
 database.
 
 ---
@@ -305,6 +305,17 @@ was not pulled today. Checked after: both gates pass, `npm test` 836 / 0 (four n
 `tests/excerpt.test.js`: the rows appear when the payload carries them, the comment mark keeps
 the comment text, nothing is emitted when vmap has neither, the heading is per row). Not verified
 in a browser: the Description block's clamp and fade on a real card.
+
+### Relationship rows go inert together, 2026-09-09
+
+A pair row already dimmed under a hidden lane; a qualifier or method row never dimmed, so with
+the extracted class off, `pr_body` still looked switchable and did nothing. One pure rule now
+serves every row on both pages: `relControlAvailability` (`src/state/state.js`) and
+`dfgControlAvailability` (`src/model/dfg.js`) name the controls that still govern something
+drawable, excluding only the control's own bag, so a row switched off by hand stays available.
+The Trace rows also resync when an object or a commit group is hidden, which they did not. Eight
+tests (`toggles`, `dfg`) over F1, F12 and the hand-built classed bundle. Not verified in a
+browser: the dimming itself, which is the same style the pair rows already used.
 
 ### Issue labels name their type, 2026-09-09
 

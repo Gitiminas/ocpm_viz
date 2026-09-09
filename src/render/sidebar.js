@@ -3,8 +3,11 @@
  *
  * The toggle architecture from the mockup is preserved and extended rather than
  * replaced — a master checkbox that goes indeterminate over mixed children, and
- * sub-toggles that disable themselves when the lane they depend on is hidden. That
- * dependency-awareness is what "independently toggleable" needs to stay honest.
+ * sub-toggles that disable themselves while nothing they govern could be drawn: a pair
+ * under a hidden lane, a qualifier whose every link sits on a switched-off pair, a
+ * method no visible link carries (`relControlAvailability`; `dfgControlAvailability`
+ * for the Process page). That dependency-awareness is what "independently toggleable"
+ * needs to stay honest.
  *
  * What it adds over the mockup's:
  *   - individual issues and PRs, so one of two concurrent PRs can be hidden
@@ -22,7 +25,8 @@ import { glyph, typeColor, TYPE, chevron } from './theme.js';
 import { DFG_TYPE_LABELS } from '../state/labels.js';
 import { escapeHtml } from './format.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
-import { dfgRangeScale } from '../model/dfg.js';
+import { dfgRangeScale, dfgControlAvailability } from '../model/dfg.js';
+import { relControlAvailability } from '../state/state.js';
 
 const CHECKBOX = 'accent-color:var(--color-accent);width:14px;height:14px;flex:0 0 auto;cursor:pointer';
 const SUB_CHECKBOX = 'accent-color:var(--color-accent);width:13px;height:13px;cursor:pointer';
@@ -157,6 +161,7 @@ export function renderLaneRows({
             onChange: (checked) => {
               if (checked) state.hiddenCommitGroups.delete(group.key);
               else state.hiddenCommitGroups.add(group.key);
+              relSync();
               onChange();
             },
           });
@@ -175,6 +180,7 @@ export function renderLaneRows({
           onChange: (checked) => {
             if (checked) state.hiddenObjects.delete(object.id);
             else state.hiddenObjects.add(object.id);
+            relSync();
             onChange();
           },
         });
@@ -229,13 +235,25 @@ export function renderRelationshipRows({
   relGroups,
   qualifiers,
   methods,
+  links = [],
+  byId = new Map(),
+  groupsByCommit = new Map(),
   onChange,
 }) {
   container.innerHTML = '';
   const syncers = [];
+  const syncAll = () => syncers.forEach((fn) => fn());
+
+  // One rule for every row (`relControlAvailability`): a control is inert while nothing
+  // it governs could be drawn. Recomputed on every sync, because any row can empty
+  // another — a hidden lane empties its pairs, a switched-off pair its qualifiers.
+  let availability = relControlAvailability(links, byId, state, groupsByCommit);
+  const refresh = () => {
+    availability = relControlAvailability(links, byId, state, groupsByCommit);
+  };
 
   for (const group of relGroups) {
-    const available = (pair) => state.lanes[pair.types[0]] && state.lanes[pair.types[1]];
+    const available = (pair) => availability.pairs.has(pair.key);
     const controls = [];
     const children = group.pairs.map((pair) => {
       const { row, checkbox } = subRow({
@@ -244,7 +262,7 @@ export function renderRelationshipRows({
         checked: state.relPairs[pair.key] !== false,
         onChange: (checked) => {
           state.relPairs[pair.key] = checked;
-          sync();
+          syncAll();
           onChange();
         },
       });
@@ -261,7 +279,7 @@ export function renderRelationshipRows({
       onMasterChange: (checked) => {
         for (const pair of group.pairs) if (available(pair)) state.relPairs[pair.key] = checked;
         for (const control of controls) if (available(control.pair)) control.checkbox.checked = checked;
-        sync();
+        syncAll();
         onChange();
       },
       onToggleOpen: (open) => {
@@ -270,6 +288,7 @@ export function renderRelationshipRows({
     });
 
     function sync() {
+      refresh();
       const availablePairs = group.pairs.filter(available);
       const values = group.pairs.map((pair) => state.relPairs[pair.key]);
       const allOn = values.every(Boolean);
@@ -297,6 +316,7 @@ export function renderRelationshipRows({
   // ---- qualifiers and detection methods ------------------------------------
   const simpleFilter = ({ label, key, entries, bag }) => {
     if (!entries.length) return;
+    const available = (entry) => availability[key].has(entry.key);
     const controls = [];
     const children = entries.map((entry) => {
       const { row, checkbox } = subRow({
@@ -306,11 +326,11 @@ export function renderRelationshipRows({
         count: entry.count,
         onChange: (checked) => {
           bag[entry.key] = checked;
-          sync();
+          syncAll();
           onChange();
         },
       });
-      controls.push({ entry, checkbox });
+      controls.push({ entry, checkbox, row });
       return row;
     });
 
@@ -320,9 +340,10 @@ export function renderRelationshipRows({
       open: state.relOpen[key],
       children,
       onMasterChange: (checked) => {
-        for (const entry of entries) bag[entry.key] = checked;
-        for (const control of controls) control.checkbox.checked = checked;
-        sync();
+        // An inert row keeps its state, as an unavailable pair does under its master.
+        for (const entry of entries) if (available(entry)) bag[entry.key] = checked;
+        for (const control of controls) if (available(control.entry)) control.checkbox.checked = checked;
+        syncAll();
         onChange();
       },
       onToggleOpen: (open) => {
@@ -331,13 +352,23 @@ export function renderRelationshipRows({
     });
 
     function sync() {
-      const values = entries.map((entry) => bag[entry.key]);
+      refresh();
+      const availableEntries = entries.filter(available);
+      const values = availableEntries.map((entry) => bag[entry.key]);
       const allOn = values.every((v) => v !== false);
       const allOff = values.every((v) => v === false);
-      section.master.indeterminate = !allOn && !allOff;
-      section.master.checked = allOn;
-      section.row.classList.toggle('on', !allOff);
-      for (const control of controls) control.checkbox.checked = bag[control.entry.key] !== false;
+      section.master.indeterminate = values.length > 0 && !allOn && !allOff;
+      section.master.checked = values.length > 0 && allOn;
+      section.master.disabled = availableEntries.length === 0;
+      section.labelEl.style.opacity = availableEntries.length === 0 ? 0.45 : 1;
+      section.row.classList.toggle('on', values.length > 0 && !allOff);
+      for (const control of controls) {
+        control.checkbox.checked = bag[control.entry.key] !== false;
+        const ok = available(control.entry);
+        control.checkbox.disabled = !ok;
+        control.row.style.opacity = ok ? 1 : 0.45;
+        control.row.style.pointerEvents = ok ? 'auto' : 'none';
+      }
     }
 
     container.appendChild(section.wrapper);
@@ -353,7 +384,7 @@ export function renderRelationshipRows({
     bag: state.methods,
   });
 
-  return () => syncers.forEach((sync) => sync());
+  return syncAll;
 }
 
 /**
@@ -837,6 +868,7 @@ export function renderDfgControls({
   lanesContainer,
   relationshipsContainer,
   rangeContainer,
+  dfg,
   vocabulary,
   view,
   onChange,
@@ -922,6 +954,7 @@ export function renderDfgControls({
     tip: { key: 'dfg.showPerType' },
     onMasterChange: (checked) => {
       for (const { lane, checkbox } of laneControls) {
+        if (checkbox.disabled) continue; // an unavailable lane keeps its state
         view.lanes[lane.type] = checked;
         checkbox.checked = checked;
       }
@@ -953,11 +986,12 @@ export function renderDfgControls({
    * They live inside the Across-links sub because per-type successions ride no links.
    */
   const classControls = [];
-  for (const [heading, rows, bag, tipKey] of [
-    ['link evidence', vocabulary.linkEvidence, view.linkEvidence, 'dfg.evidence'],
-    ['qualifiers', vocabulary.linkQualifiers, view.linkQualifiers, 'dfg.qualifier'],
-    ['detection methods', vocabulary.linkMethods, view.linkMethods, 'dfg.method'],
+  for (const [heading, rows, bagKey, tipKey] of [
+    ['link evidence', vocabulary.linkEvidence, 'linkEvidence', 'dfg.evidence'],
+    ['qualifiers', vocabulary.linkQualifiers, 'linkQualifiers', 'dfg.qualifier'],
+    ['detection methods', vocabulary.linkMethods, 'linkMethods', 'dfg.method'],
   ]) {
+    const bag = view[bagKey];
     if (!rows.length) continue;
     pairChildren.push(sectionLabel(heading));
     for (const entry of rows) {
@@ -968,10 +1002,11 @@ export function renderDfgControls({
         tip: { key: tipKey, arg: entry.key },
         onChange: (checked) => {
           bag[entry.key] = checked;
+          sync();
           onChange();
         },
       });
-      classControls.push(control);
+      classControls.push({ ...control, entry, bag: bagKey });
       pairChildren.push(control.row);
     }
   }
@@ -1000,12 +1035,26 @@ export function renderDfgControls({
       section.master.indeterminate = !shown.every(Boolean) && shown.some(Boolean);
       section.row.classList.toggle('on', shown.some(Boolean));
     }
-    const laneValues = laneControls.map(({ lane }) => view.lanes[lane.type] !== false);
-    laneSection.master.indeterminate = !laneValues.every(Boolean) && laneValues.some(Boolean);
-    laneSection.master.checked = laneValues.every(Boolean);
+    // One rule for every row (`dfgControlAvailability`), the Trace sidebar's: a row is
+    // inert while no succession it governs could be drawn.
+    const availability = dfgControlAvailability(dfg, view);
+    const laneValues = laneControls
+      .filter(({ lane }) => availability.lanes.has(lane.type))
+      .map(({ lane }) => view.lanes[lane.type] !== false);
+    laneSection.master.indeterminate =
+      laneValues.length > 0 && !laneValues.every(Boolean) && laneValues.some(Boolean);
+    laneSection.master.checked = laneValues.length > 0 && laneValues.every(Boolean);
+    laneSection.master.disabled = laneValues.length === 0;
+    laneSection.labelEl.style.opacity = laneValues.length === 0 ? 0.45 : 1;
     laneSection.row.classList.toggle('on', laneValues.some(Boolean));
 
-    const available = (pair) => pair.types.every((type) => view.lanes[type] !== false);
+    const available = (pair) => availability.pairs.has(pair.key);
+    for (const control of laneControls) {
+      const ok = availability.lanes.has(control.lane.type);
+      control.checkbox.disabled = !ok;
+      control.row.style.opacity = ok ? 1 : 0.45;
+      control.row.style.pointerEvents = ok ? 'auto' : 'none';
+    }
     const availablePairs = pairControls.filter(({ pair }) => available(pair));
     const pairValues = availablePairs.map(({ pair }) => view.pairs[pair.key] !== false);
     pairSection.master.indeterminate =
@@ -1022,13 +1071,13 @@ export function renderDfgControls({
       control.row.style.pointerEvents = ok ? 'auto' : 'none';
     }
 
-    // The class rows filter cross successions, so with every pair off (or unavailable)
-    // there is nothing for them to filter — dimmed, the master-disables-children rule.
-    const anyCross = availablePairs.length > 0 && pairValues.some(Boolean);
+    // A class row filters cross successions; it is inert once the pairs, the activity
+    // hides or the other two classes leave it nothing to filter.
     for (const control of classControls) {
-      control.checkbox.disabled = !anyCross;
-      control.row.style.opacity = anyCross ? 1 : 0.45;
-      control.row.style.pointerEvents = anyCross ? 'auto' : 'none';
+      const ok = availability[control.bag].has(control.entry.key);
+      control.checkbox.disabled = !ok;
+      control.row.style.opacity = ok ? 1 : 0.45;
+      control.row.style.pointerEvents = ok ? 'auto' : 'none';
     }
   }
 

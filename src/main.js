@@ -384,7 +384,7 @@ async function load(query) {
  */
 function renderSidebar() {
   if (!current) return;
-  const { graph, index, actorColors, objectColors, commitGroups, toggleContext, query } = current;
+  const { graph, index, actorColors, objectColors, commitGroups, groupsByCommit, toggleContext, query } = current;
 
   renderLaneRows({
     container: elements.lanes,
@@ -402,6 +402,9 @@ function renderSidebar() {
     relGroups: toggleContext.relGroups,
     qualifiers: toggleContext.qualifiers,
     methods: toggleContext.methods,
+    links: graph.links,
+    byId: index.byId,
+    groupsByCommit,
     onChange: redraw,
   });
   renderBurstControls({
@@ -1064,6 +1067,7 @@ function renderDfgSidebar() {
     lanesContainer: elements.dfgLanes,
     relationshipsContainer: elements.dfgRelationships,
     rangeContainer: elements.dfgRange,
+    dfg: currentDfg,
     vocabulary: currentDfgToggles,
     view: dfgView,
     onChange: renderDfg,

@@ -275,6 +275,17 @@ export function isNodeVisible(node, state, groupsByCommit = new Map()) {
  * whole class regardless of state is not a filter, it is a deletion performed late.
  */
 export function isLinkVisible(link, byId, state, groupsByCommit = new Map()) {
+  if (!linkEndpointsVisible(link, byId, state, groupsByCommit)) return false;
+
+  if (state.relPairs[linkPairKey(link, byId)] === false) return false;
+  if (state.qualifiers[link.qualifier] === false) return false;
+  if (link.method && state.methods[link.method] === false) return false;
+
+  return true;
+}
+
+/** The object half of `isLinkVisible`: both endpoints resolve and are drawn. */
+function linkEndpointsVisible(link, byId, state, groupsByCommit) {
   const source = byId.get(link.source);
   const target = byId.get(link.target);
   if (!source || !target) return false;
@@ -285,12 +296,41 @@ export function isLinkVisible(link, byId, state, groupsByCommit = new Map()) {
     if (endpoint.type !== 'commit') continue;
     if (!isCommitInVisibleGroup(endpoint.id, groupsByCommit, state.hiddenCommitGroups)) return false;
   }
-
-  if (state.relPairs[linkPairKey(link, byId)] === false) return false;
-  if (state.qualifiers[link.qualifier] === false) return false;
-  if (link.method && state.methods[link.method] === false) return false;
-
   return true;
+}
+
+/**
+ * Which relationship controls still govern a link that could be drawn.
+ *
+ * A control is *available* when at least one link would pass every filter except the
+ * control's own — the lanes, the per-object and commit-group hides, and the two other
+ * link bags. A pair row with its lane hidden, a qualifier whose every link sits on a
+ * switched-off pair, a method no visible link carries: each is inert, dimmed rather
+ * than removed, because switching it would change nothing on screen and a control that
+ * does nothing reads as a control that is broken. The rule is one rule for all three,
+ * so the sidebar cannot apply it to pairs and forget it for qualifiers.
+ *
+ * Only a control's own bag is excluded, never the other two, so a control switched
+ * off by hand stays available and can be switched back on: it dims only when something
+ * *else* has emptied it.
+ *
+ * @returns {{pairs: Set<string>, qualifiers: Set<string>, methods: Set<string>}}
+ */
+export function relControlAvailability(links, byId, state, groupsByCommit = new Map()) {
+  const pairs = new Set();
+  const qualifiers = new Set();
+  const methods = new Set();
+  for (const link of links) {
+    if (!linkEndpointsVisible(link, byId, state, groupsByCommit)) continue;
+    const pairKey = linkPairKey(link, byId);
+    const pairOn = state.relPairs[pairKey] !== false;
+    const qualifierOn = state.qualifiers[link.qualifier] !== false;
+    const methodOn = !link.method || state.methods[link.method] !== false;
+    if (qualifierOn && methodOn) pairs.add(pairKey);
+    if (pairOn && methodOn) qualifiers.add(link.qualifier);
+    if (pairOn && qualifierOn && link.method) methods.add(link.method);
+  }
+  return { pairs, qualifiers, methods };
 }
 
 /**

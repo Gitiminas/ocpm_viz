@@ -10,6 +10,7 @@ import {
   filterDfg,
   aggregateCrossEdges,
   dfgRangeScale,
+  dfgControlAvailability,
   DFG_CONTRACT_VERSION,
 } from '../src/model/dfg.js';
 import { summarizeDfgHidden } from '../src/state/state.js';
@@ -423,5 +424,63 @@ describe('the Process page reports what its view hides, with a restore per item'
     const view = freshView(toggles);
     const counts = filterDfg(dfg, view);
     assert.ok(!summarizeDfgHidden(view, toggles, counts).items.some((i) => i.key === 'range'));
+  });
+});
+
+describe('a Process-page control is inert while no succession it governs could be drawn', () => {
+  // The classed bundle of the aggregation block above, rebuilt here since it is scoped there.
+  function classedDfg() {
+    const dfg = validDfg();
+    dfg.cross_edges = [
+      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 3, pairs: 2, link_qualifier: 'resolves', link_evidence: 'validated', link_method: 'closed_via_commit' },
+      { from_type: 'pull_request', from_activity: 'PullRequestMerged', to_type: 'issue', to_activity: 'IssueClosed', successions: 1, pairs: 1, link_qualifier: 'resolves', link_evidence: 'extracted', link_method: 'commit_message' },
+      { from_type: 'commit', from_activity: 'Push', to_type: 'issue', to_activity: 'IssueOpened', successions: 1, pairs: 1, link_qualifier: 'references_issue', link_evidence: 'extracted', link_method: 'commit_message' },
+    ];
+    return dfg;
+  }
+
+  test('a lane switched off empties its pairs and the classes only they carried', () => {
+    const dfg = classedDfg();
+    const all = dfgControlAvailability(dfg, {});
+    assert.deepEqual([...all.pairs].sort(), ['commit_issue', 'issue_pull_request']);
+    assert.deepEqual([...all.linkEvidence].sort(), ['extracted', 'validated']);
+
+    const a = dfgControlAvailability(dfg, { lanes: { pull_request: false } });
+    assert.equal(a.pairs.has('issue_pull_request'), false);
+    assert.ok(a.pairs.has('commit_issue'));
+    assert.deepEqual([...a.linkEvidence], ['extracted'], 'validated rode only on the PR pair');
+    assert.deepEqual([...a.linkQualifiers], ['references_issue']);
+    assert.deepEqual([...a.linkMethods], ['commit_message']);
+    assert.ok(a.lanes.has('issue'), 'per-type successions do not depend on the other lanes');
+  });
+
+  test('the pair switched off keeps its own row available, and empties the classes', () => {
+    const dfg = classedDfg();
+    const a = dfgControlAvailability(dfg, { pairs: { issue_pull_request: false } });
+    assert.ok(a.pairs.has('issue_pull_request'), 'only something else may empty a control');
+    assert.equal(a.linkEvidence.has('validated'), false);
+    assert.equal(a.linkMethods.has('closed_via_commit'), false);
+    assert.ok(a.linkMethods.has('commit_message'));
+  });
+
+  test('a class switched off empties the pair it alone filled, and the other classes it carried', () => {
+    const dfg = classedDfg();
+    const a = dfgControlAvailability(dfg, { linkQualifiers: { references_issue: false } });
+    assert.equal(a.pairs.has('commit_issue'), false);
+    assert.ok(a.linkQualifiers.has('references_issue'));
+    assert.ok(a.linkMethods.has('commit_message'), 'still carried by the resolves row');
+  });
+
+  test('hiding an activity empties the lane row and the pairs that touched it', () => {
+    const dfg = classedDfg();
+    const hidden = new Set(['issue/IssueClosed', 'issue/IssueOpened']);
+    const a = dfgControlAvailability(dfg, { hiddenActivities: hidden });
+    assert.equal(a.pairs.has('issue_pull_request'), false);
+    assert.equal(a.pairs.has('commit_issue'), false);
+    const issueEdges = dfg.edges.filter((e) => e.object_type === 'issue');
+    const anyIssueEdgeShown = issueEdges.some(
+      (e) => !hidden.has(`issue/${e.from_activity}`) && !hidden.has(`issue/${e.to_activity}`),
+    );
+    assert.equal(a.lanes.has('issue'), anyIssueEdgeShown);
   });
 });

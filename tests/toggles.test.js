@@ -19,6 +19,7 @@ import {
   selectVisible,
   summaryForMode,
   nudgesFor,
+  relControlAvailability,
 } from '../src/state/state.js';
 import { summarizeSubLog } from '../src/data/loadSubLog.js';
 import {
@@ -559,5 +560,59 @@ describe('the sub-log card counts what is drawn: pinned actors, and marks in the
     const after = selectVisible(c.graph, c.state, c.groupsByCommit);
     const a = summaryForMode(summarizeSubLog(after), after, c.state);
     assert.equal(a.events, b.events - (b.counts.get('pull_request') ?? 0));
+  });
+});
+
+describe('a relationship control is inert while nothing it governs could be drawn', () => {
+  test('hiding the issue lane empties every pair, qualifier and method that needs an issue (F1)', async () => {
+    const c = await context('F1');
+    const all = relControlAvailability(c.graph.links, c.index.byId, c.state, c.groupsByCommit);
+    assert.deepEqual([...all.qualifiers].sort(), ['contains_commit', 'references_issue', 'resolves']);
+    assert.ok(all.pairs.has('extracted_issue_pull_request'));
+
+    c.state.lanes.issue = false;
+    const a = relControlAvailability(c.graph.links, c.index.byId, c.state, c.groupsByCommit);
+    assert.equal(a.pairs.has('extracted_issue_pull_request'), false);
+    assert.equal(a.pairs.has('extracted_commit_issue'), false);
+    assert.ok(a.pairs.has('validated_commit_pull_request'), 'commit ↔ PR needs no issue');
+    assert.deepEqual([...a.qualifiers].sort(), ['contains_commit']);
+    assert.equal(a.methods.has('pr_body'), false, 'pr_body links all reach an issue');
+    assert.ok(a.methods.has('commit_message'), 'F1 also carries commit_message on PR → commit links');
+    assert.ok(a.methods.has('head_sha'));
+  });
+
+  test('switching the extracted class off empties the qualifiers and methods only it carried (F12)', async () => {
+    const c = await context('F12');
+    for (const key of Object.keys(c.state.relPairs)) {
+      if (key.startsWith('extracted')) c.state.relPairs[key] = false;
+    }
+    const a = relControlAvailability(c.graph.links, c.index.byId, c.state, c.groupsByCommit);
+    assert.equal(a.qualifiers.has('resolves'), false, 'resolves rides only on extracted links here');
+    assert.ok(a.qualifiers.has('contains_commit'), 'head_sha keeps a validated contains_commit link');
+    assert.ok(a.qualifiers.has('merge_commit'));
+    assert.equal(a.methods.has('pr_body'), false);
+    assert.equal(a.methods.has('ref_match'), false);
+    assert.ok(a.methods.has('head_sha'));
+    // The pairs switched off by hand stay available: only something ELSE can empty a control.
+    assert.ok(a.pairs.has('extracted_issue_pull_request'));
+  });
+
+  test('a qualifier switched off empties the pair that only it fills, and stays available itself (F1)', async () => {
+    const c = await context('F1');
+    c.state.qualifiers.references_issue = false;
+    const a = relControlAvailability(c.graph.links, c.index.byId, c.state, c.groupsByCommit);
+    assert.equal(a.pairs.has('extracted_commit_issue'), false);
+    assert.ok(a.qualifiers.has('references_issue'));
+    assert.ok(a.methods.has('commit_message'), 'still carried by contains_commit links');
+  });
+
+  test('a seeded method with no link is inert; hiding every object of a type empties like the lane', async () => {
+    const c = await context('F1');
+    const a = relControlAvailability(c.graph.links, c.index.byId, c.state, c.groupsByCommit);
+    assert.equal(a.methods.has('branch_name'), false, 'listed with a count of 0, nothing to govern');
+    for (const object of c.index.objectsOfType('issue')) c.state.hiddenObjects.add(object.id);
+    const b = relControlAvailability(c.graph.links, c.index.byId, c.state, c.groupsByCommit);
+    assert.equal(b.pairs.has('extracted_issue_pull_request'), false);
+    assert.equal(b.qualifiers.has('resolves'), false);
   });
 });

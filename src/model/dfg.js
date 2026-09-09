@@ -392,6 +392,54 @@ export function filterDfg(dfg, view = {}) {
 }
 
 /**
+ * Which Process-page controls still govern a succession that could be drawn — the
+ * Trace sidebar's `relControlAvailability`, for `filterDfg`'s toggles.
+ *
+ * A lane row is available while some per-type edge of that lane has both activities
+ * shown. A pair row is available while both lanes are on and some cross row of the pair
+ * passes the activity hides and the three class bags. A class row (evidence, qualifier,
+ * method) is available while some cross row carrying that class passes the lanes, the
+ * pair, the activity hides and the other two bags. As on the Trace page, only the
+ * control's own bag is excluded, so a row switched off by hand can always be switched
+ * back on. The count range is not a toggle and takes no part.
+ *
+ * @returns {{lanes: Set<string>, pairs: Set<string>, linkEvidence: Set<string>,
+ *   linkQualifiers: Set<string>, linkMethods: Set<string>}}
+ */
+export function dfgControlAvailability(dfg, view = {}) {
+  const laneOn = (type) => view.lanes?.[type] !== false;
+  const hidden = view.hiddenActivities ?? new Set();
+  const nodeOn = (type, activity) => !hidden.has(`${type}/${activity}`);
+  const on = (bag, key) => bag?.[key] !== false;
+
+  const lanes = new Set();
+  for (const edge of dfg.edges) {
+    if (nodeOn(edge.object_type, edge.from_activity) && nodeOn(edge.object_type, edge.to_activity)) {
+      lanes.add(edge.object_type);
+    }
+  }
+
+  const pairs = new Set();
+  const linkEvidence = new Set();
+  const linkQualifiers = new Set();
+  const linkMethods = new Set();
+  for (const edge of dfg.cross_edges) {
+    if (!laneOn(edge.from_type) || !laneOn(edge.to_type)) continue;
+    if (!nodeOn(edge.from_type, edge.from_activity) || !nodeOn(edge.to_type, edge.to_activity)) continue;
+    const pairKey = dfgPairKey(edge.from_type, edge.to_type);
+    const pairOn = on(view.pairs, pairKey);
+    const evidenceOn = on(view.linkEvidence, edge.link_evidence);
+    const qualifierOn = on(view.linkQualifiers, edge.link_qualifier);
+    const methodOn = on(view.linkMethods, edge.link_method);
+    if (evidenceOn && qualifierOn && methodOn) pairs.add(pairKey);
+    if (pairOn && qualifierOn && methodOn) linkEvidence.add(edge.link_evidence);
+    if (pairOn && evidenceOn && methodOn) linkQualifiers.add(edge.link_qualifier);
+    if (pairOn && evidenceOn && qualifierOn) linkMethods.add(edge.link_method);
+  }
+  return { lanes, pairs, linkEvidence, linkQualifiers, linkMethods };
+}
+
+/**
  * The count slider's scale: logarithmic, because succession counts span five orders of
  * magnitude and a linear slider would spend nearly all its travel on the top decade.
  * Edge counts are ≥ 1 by construction (an edge exists because a succession was
