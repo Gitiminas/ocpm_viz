@@ -13,7 +13,14 @@
 
 import { escapeHtml } from './format.js';
 import { qualifierColor, typeColor, evidenceStyle, COLORS } from './theme.js';
+import { describeMethods } from '../model/evidence.js';
 import { isLinkVisible } from '../state/state.js';
+
+/** `Method` or `Methods`, every detection method by name, primary first. */
+function methodsRow(link) {
+  const methods = describeMethods(link);
+  return [methods.length > 1 ? 'Methods' : 'Method', escapeHtml(methods.join(', ') || '—'), 'mono'];
+}
 
 function evidenceBadge(evidence) {
   const color = evidence === 'validated' ? 'var(--color-accent-300)' : COLORS.extracted;
@@ -297,8 +304,7 @@ export function renderLinks({
       rows: [
         ['Qualifier', escapeHtml(link.qualifier || '—'), 'mono'],
         ['Evidence', evidenceBadge(link.evidence)],
-        ['Method', escapeHtml(link.method || '—'), 'mono'],
-        link.n_methods > 1 ? ['Methods agreeing', String(link.n_methods)] : null,
+        methodsRow(link),
       ],
       note: folded
         ? 'Standing in for every folded commit’s link to this artifact. Expand the push to see them individually.'

@@ -13,7 +13,7 @@ import {
   FOCUS_FALLOFF,
   MAX_FOCUS_DEGREE,
 } from '../src/model/graph.js';
-import { classifyMethod, classifyLink, LINK_METHOD, EVIDENCE } from '../src/model/evidence.js';
+import { classifyMethod, classifyLink, describeMethods, LINK_METHOD, EVIDENCE } from '../src/model/evidence.js';
 import {
   activityLabel,
   activityShortLabel,
@@ -621,5 +621,23 @@ describe('focus fades with distance, where it is asked to', () => {
       const value = objectOpacity(id, set, { graded: true });
       assert.ok(value < 1 && value > DIM_OPACITY, `${id} should be graded, got ${value}`);
     }
+  });
+});
+
+describe('describeMethods lists a link’s methods by name, primary first', () => {
+  test('primary first, the rest in payload order, no duplicate of the primary', () => {
+    const link = { method: 'pr_title', n_methods: 3, link_methods: ['branch_name', 'pr_title', 'pr_body'] };
+    assert.deepEqual(describeMethods(link), ['pr_title', 'branch_name', 'pr_body']);
+  });
+
+  test('a single-method link and a link with no link_methods both name the primary', () => {
+    assert.deepEqual(describeMethods({ method: 'head_sha', link_methods: ['head_sha'] }), ['head_sha']);
+    assert.deepEqual(describeMethods({ method: 'ref_match' }), ['ref_match']);
+  });
+
+  test('F12’s three-method link names all three', async () => {
+    const graph = await loadSubLog({ fixture: 'F12' }, { transport: fileTransport });
+    const multi = graph.links.find((l) => l.n_methods > 1);
+    assert.deepEqual(describeMethods(multi).sort(), ['branch_name', 'pr_body', 'pr_title']);
   });
 });

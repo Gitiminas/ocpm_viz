@@ -316,7 +316,7 @@ and the catalogue rebuilt; LIVE1 (one issue) and LIVE2 (four) relabelled in plac
 only. The seed box and the sub-log card, which put the type word in front of the label, now
 strip a type word the label already carries (`seedDisplayLabel`, `src/data/seedQuery.js`), so
 they read `issue #47532` and `pull request #102479` as before. The timeline link card's kicker
-is `Link` and the qualifier is a row, as on the relationships-mode edge card. Then
+is `Link` and the qualifier is a row, as on the relationships-mode edge card, and both cards list every detection method by name, primary first, where they showed a count of agreeing methods. Then
 `./ocpm.sh db`. Checked after: `npm test` 858 / 0, both gates pass, `fe.seed_lookup` and
 `fe.object_issue_mat` carry the new labels. Not verified in a browser: the wider label on the
 relationships-mode marks and the lane subtitle.

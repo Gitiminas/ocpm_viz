@@ -29,6 +29,7 @@ import { TYPE, drawSymbol, typeColor, evidenceStyle, COLORS } from './theme.js';
 import { objectOpacity } from '../model/graph.js';
 import { formatInstant, escapeHtml } from './format.js';
 import { activityLabel } from '../model/activities.js';
+import { describeMethods } from '../model/evidence.js';
 import { legendKeyFor, actorPoints, trailCurve } from './nodes.js';
 import { bundleEdges, overlapsBrush } from '../layout/structural.js';
 import { pushApart } from './motion.js';
@@ -307,18 +308,16 @@ function edgeCard(group, source, target, heading) {
     for (const member of group) {
       rows.push([
         escapeHtml(member.qualifier || '—'),
-        escapeHtml(member.link?.method || '—'),
+        escapeHtml(describeMethods(member.link).join(', ') || '—'),
         'mono',
       ]);
     }
   } else {
+    const methods = describeMethods(edge.link);
     rows.push(['Qualifier', escapeHtml(edge.qualifier || '—'), 'mono']);
-    rows.push(['Method', escapeHtml(edge.link?.method || '—'), 'mono']);
+    rows.push([methods.length > 1 ? 'Methods' : 'Method', escapeHtml(methods.join(', ') || '—'), 'mono']);
   }
   rows.push(['Evidence', edge.evidence]);
-  if (group.length === 1 && edge.link?.n_methods > 1) {
-    rows.push(['Agreed by', `${edge.link.n_methods} methods`]);
-  }
   if (heading !== 0) {
     const [earlier, later] = heading === 1 ? [source, target] : [target, source];
     rows.push(['Order', `${escapeHtml(earlier.title)} → ${escapeHtml(later.title)}`]);

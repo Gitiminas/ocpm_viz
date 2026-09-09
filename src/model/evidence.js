@@ -212,3 +212,21 @@ export function classifyLink(methods) {
     ? EVIDENCE.VALIDATED
     : EVIDENCE.EXTRACTED;
 }
+
+/**
+ * The methods a link was detected by, primary first, for a card to list by name.
+ *
+ * `link.method` is the primary method and `link.link_methods` every method that
+ * found the pair; the two are carried separately because the primary is what the
+ * toggles key on. A card that printed only a count ("3 methods agree") could not tell
+ * three parses of the same PR text from a parse plus an identity match — and since
+ * agreement no longer lifts a link to validated, that difference is the whole story.
+ * Tolerates a payload with no `link_methods` (F1 carries only `method`).
+ */
+export function describeMethods(link) {
+  const primary = link?.method ? [link.method] : [];
+  const rest = (Array.isArray(link?.link_methods) ? link.link_methods : []).filter(
+    (m) => m && m !== link.method,
+  );
+  return [...primary, ...rest];
+}
