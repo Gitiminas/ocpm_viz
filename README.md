@@ -96,10 +96,11 @@ observation on its own. It is pre-computed server-side (`fe.dfg_mat`,
 `api.get_dfg`), so the sub-log sidebar's toggles do not apply — the page carries its own:
 per-lane and per-type-pair succession masters, link evidence, qualifier and detection-method filters (cross arrows thin rather than multiply, and their hovercards break the count down by link class), per-activity hides, a logarithmic min–max count
 range that opens with the rarest tenth of edges hidden, and click-to-focus on an activity. An
-activity card's *starts with* and *ends with* tiles are buttons on issue open and close: pin
-the card, click a tile, and the sidebar's Artifacts section lists the most recent artifacts
-whose sequence begins or ends there (100 of the total, and it says so); click one to open its
-sub-log on the Trace page. The
+activity card's *starts with* and *ends with* tiles are buttons on every lifecycle activity and
+on push (comments say "currently unavailable"): pin the card, click a tile, and the Artifacts
+box above the card lists the most recent artifacts whose sequence begins or ends there (100 of
+the total, and it says so; commits grouped by their push), scrolling inside the box; click one
+to open its sub-log on the Trace page. The
 notice always states the filter's arithmetic ("Showing 86 of 94 succession arrows"), so nothing
 disappears quietly; there is no seed on this page, the repository is the whole query. The page
 needs the database source: fixtures hold sub-logs, not a whole log, so on fixtures it says so and

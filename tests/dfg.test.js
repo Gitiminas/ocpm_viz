@@ -12,7 +12,10 @@ import {
   dfgRangeScale,
   dfgControlAvailability,
   isSequenceListable,
+  sequenceTileState,
+  groupSequenceRows,
   SEQUENCE_LISTABLE,
+  SEQUENCE_UNAVAILABLE,
   DFG_CONTRACT_VERSION,
 } from '../src/model/dfg.js';
 import { summarizeDfgHidden } from '../src/state/state.js';
@@ -488,13 +491,56 @@ describe('a Process-page control is inert while no succession it governs could b
 });
 
 describe('the sequence tiles are actions on a closed set of activities', () => {
-  test('issue openings and closes list; nothing else does yet', () => {
-    assert.deepEqual([...SEQUENCE_LISTABLE].sort(), ['issue/IssueClosed', 'issue/IssueOpened']);
-    assert.equal(isSequenceListable({ object_type: 'issue', activity: 'IssueOpened' }), true);
-    assert.equal(isSequenceListable({ object_type: 'issue', activity: 'IssueClosed' }), true);
-    assert.equal(isSequenceListable({ object_type: 'issue', activity: 'IssueCommented' }), false);
-    assert.equal(isSequenceListable({ object_type: 'pull_request', activity: 'PullRequestOpened' }), false);
-    assert.equal(isSequenceListable({ object_type: 'commit', activity: 'Push' }), false);
+  test('every lifecycle activity and Push list; the two comment activities are held back', () => {
+    assert.deepEqual([...SEQUENCE_LISTABLE].sort(), [
+      'commit/Push',
+      'issue/IssueClosed', 'issue/IssueOpened', 'issue/IssueReopened',
+      'pull_request/PullRequestClosed', 'pull_request/PullRequestMerged',
+      'pull_request/PullRequestMergedOffPlatform', 'pull_request/PullRequestOpened',
+      'pull_request/PullRequestReopened',
+    ]);
+    assert.deepEqual([...SEQUENCE_UNAVAILABLE].sort(), ['issue/IssueCommented', 'pull_request/PullRequestCommented']);
+    // The two sets partition the twelve activities: nothing is plain any more, and
+    // nothing is in both.
+    for (const key of SEQUENCE_LISTABLE) assert.equal(SEQUENCE_UNAVAILABLE.has(key), false, key);
+    assert.equal(SEQUENCE_LISTABLE.size + SEQUENCE_UNAVAILABLE.size, 11);
+  });
+
+  test('a node reads as action, unavailable or plain', () => {
+    assert.equal(sequenceTileState({ object_type: 'issue', activity: 'IssueReopened' }), 'action');
+    assert.equal(sequenceTileState({ object_type: 'pull_request', activity: 'PullRequestMergedOffPlatform' }), 'action');
+    assert.equal(sequenceTileState({ object_type: 'commit', activity: 'Push' }), 'action');
+    assert.equal(sequenceTileState({ object_type: 'issue', activity: 'IssueCommented' }), 'unavailable');
+    assert.equal(sequenceTileState({ object_type: 'pull_request', activity: 'PullRequestCommented' }), 'unavailable');
+    assert.equal(sequenceTileState({ object_type: 'commit', activity: 'CommitObserved' }), 'plain');
     assert.equal(isSequenceListable(null), false);
+    assert.equal(sequenceTileState(null), 'plain');
+  });
+});
+
+describe('the Artifacts list groups commit rows by their push', () => {
+  const commit = (sha, push, at, push_commits = 3) => ({ id: `commit:${sha}`, type: 'commit', label: sha.slice(0, 7), at, push_id: push, push_commits });
+
+  test('commits of one push sit under one header, in first-seen order; others are one group each', () => {
+    const rows = [
+      commit('aaaaaaa1', 20, '2025-01-03T00:00:00Z'),
+      commit('aaaaaaa2', 20, '2025-01-03T00:00:00Z'),
+      commit('bbbbbbb1', 10, '2025-01-02T00:00:00Z', 1),
+      { id: 'issue:1', type: 'issue', label: 'Issue #1', at: '2025-01-01T00:00:00Z' },
+    ];
+    const groups = groupSequenceRows(rows);
+    assert.deepEqual(groups.map((g) => [g.key, g.label, g.count, g.rows.length]), [
+      ['push:20', 'push 20', 3, 2],
+      ['push:10', 'push 10', 1, 1],
+      ['issue:1', null, 1, 1],
+    ]);
+  });
+
+  test('a commit without a push id is its own group, and no row is lost', () => {
+    const rows = [commit('ccccccc1', null, '2025-01-01T00:00:00Z'), commit('ccccccc2', 5, '2025-01-01T00:00:00Z')];
+    const groups = groupSequenceRows(rows);
+    assert.equal(groups.length, 2);
+    assert.equal(groups.flatMap((g) => g.rows).length, 2);
+    assert.deepEqual(groupSequenceRows([]), []);
   });
 });

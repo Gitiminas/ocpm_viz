@@ -2195,24 +2195,26 @@ WITH typed AS (
   WHERE split_part(o.object_id, ':', 1) IN ('issue', 'pr', 'commit')
 ),
 seq AS (
-  SELECT repo_id, object_type, object_id, activity, time,
+  SELECT repo_id, object_type, object_id, activity, time, id,
          row_number() OVER w                                        AS rn,
          count(*)     OVER (PARTITION BY repo_id, object_id)        AS n_events,
          first_value(activity) OVER w                               AS first_activity,
-         first_value(time)     OVER w                               AS first_time
+         first_value(time)     OVER w                               AS first_time,
+         first_value(id)       OVER w                               AS first_event_id
   FROM typed
   WINDOW w AS (PARTITION BY repo_id, object_id ORDER BY time, id)
 )
 SELECT repo_id, object_type, object_id,
-       first_activity, first_time,
-       activity AS last_activity, time AS last_time,
+       first_activity, first_time, first_event_id,
+       activity AS last_activity, time AS last_time, id AS last_event_id,
        n_events
 FROM seq
 WHERE rn = n_events;   -- the last occurrence carries the first through the window
 
 COMMENT ON VIEW fe.dfg_sequence IS
-  'One row per object: the activity and time its sequence begins and ends with, over the '
-  'E2O layer in (time, id) order — the same order §12 counts starts and ends in.';
+  'One row per object: the activity, time and event id its sequence begins and ends with, over '
+  'the E2O layer in (time, id) order — the same order §12 counts starts and ends in. A commit''s '
+  'event ids are push:<activity_id>, which §14 resolves to the push for grouping.';
 
 DROP MATERIALIZED VIEW IF EXISTS fe.dfg_sequence_mat;
 CREATE MATERIALIZED VIEW fe.dfg_sequence_mat AS SELECT * FROM fe.dfg_sequence WITH DATA;
@@ -2640,7 +2642,9 @@ BEGIN
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
              'id', q.object_id, 'type', q.object_type,
              'label', COALESCE(s.label, q.object_id), 'number', s.number, 'sha', s.sha, 'title', s.title,
-             'at', fe.utc(q.first_time), 'events', q.n_events)
+             'at', fe.utc(q.first_time), 'events', q.n_events,
+             -- A commit's sequence edge is a push: name it, so the list can group by it.
+             'push_id', p.push_id, 'push_commits', p.commit_count)
            ORDER BY q.first_time DESC, q.object_id), '[]'::jsonb)
       INTO _rows
     FROM (SELECT * FROM fe.dfg_sequence_mat q
@@ -2648,7 +2652,9 @@ BEGIN
             AND q.first_activity = list_sequence_objects.activity
           ORDER BY q.first_time DESC, q.object_id
           LIMIT max_results) q
-    LEFT JOIN fe.seed_lookup s ON s.repo_id = q.repo_id AND s.id = q.object_id;
+    LEFT JOIN fe.seed_lookup s ON s.repo_id = q.repo_id AND s.id = q.object_id
+    LEFT JOIN mv_push_activities p
+           ON q.object_type = 'commit' AND p.activity_id = split_part(q.first_event_id, ':', 2)::bigint;
   ELSE
     SELECT count(*) INTO _total FROM fe.dfg_sequence_mat q
     WHERE q.repo_id = _repo_id AND q.object_type = list_sequence_objects.object_type
@@ -2656,7 +2662,9 @@ BEGIN
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
              'id', q.object_id, 'type', q.object_type,
              'label', COALESCE(s.label, q.object_id), 'number', s.number, 'sha', s.sha, 'title', s.title,
-             'at', fe.utc(q.last_time), 'events', q.n_events)
+             'at', fe.utc(q.last_time), 'events', q.n_events,
+             -- A commit's sequence edge is a push: name it, so the list can group by it.
+             'push_id', p.push_id, 'push_commits', p.commit_count)
            ORDER BY q.last_time DESC, q.object_id), '[]'::jsonb)
       INTO _rows
     FROM (SELECT * FROM fe.dfg_sequence_mat q
@@ -2664,7 +2672,9 @@ BEGIN
             AND q.last_activity = list_sequence_objects.activity
           ORDER BY q.last_time DESC, q.object_id
           LIMIT max_results) q
-    LEFT JOIN fe.seed_lookup s ON s.repo_id = q.repo_id AND s.id = q.object_id;
+    LEFT JOIN fe.seed_lookup s ON s.repo_id = q.repo_id AND s.id = q.object_id
+    LEFT JOIN mv_push_activities p
+           ON q.object_type = 'commit' AND p.activity_id = split_part(q.last_event_id, ':', 2)::bigint;
   END IF;
 
   RETURN jsonb_build_object(

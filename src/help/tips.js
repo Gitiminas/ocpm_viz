@@ -122,6 +122,7 @@ export const TIPS = Object.freeze({
   'section.artifacts': 'The artifacts behind a node card’s "starts with" or "ends with" tile: a sample, most recent first, each one a click from its sub-log.',
   'artifacts.summary': 'How many are listed against how many there are. The list holds the most recent ones, and the rest exist unseen.',
   'artifacts.row': (label) => `Open the sub-log seeded from ${label || 'this artifact'}, on the Trace page.`,
+  'artifacts.push': 'One push, and the commits of it that are listed. Fewer than it carried means the rest fell outside the most recent hundred.',
   'artifacts.refresh': 'Fetch the list again. The data is historical, so this only matters after the layer was refreshed.',
   'dfg.range': 'Keep only successions whose count falls inside this range. The scale is logarithmic, and the rarest tenth of edges starts hidden.',
   'legend.dfg-activity': 'One activity, drawn as its lane’s shape. The number is how many events it has in the whole log.',

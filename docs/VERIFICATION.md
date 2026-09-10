@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**891 tests in 35 files, 0 failures, ~1 s — run 2026-09-09.** None needs a browser, a network or a
+**894 tests in 35 files, 0 failures, ~1 s — run 2026-09-09.** None needs a browser, a network or a
 database.
 
 ---
@@ -305,6 +305,22 @@ was not pulled today. Checked after: both gates pass, `npm test` 836 / 0 (four n
 `tests/excerpt.test.js`: the rows appear when the payload carries them, the comment mark keeps
 the comment text, nothing is emitted when vmap has neither, the heading is per row). Not verified
 in a browser: the Description block's clamp and fade on a real card.
+
+### The tiles on every lifecycle activity, and pushes grouped, 2026-09-10
+
+The listable set widened from issue open and close to every lifecycle activity and `Push`; the
+two comment tiles read "currently unavailable" (dashed, no action). A commit row now names the
+push its sequence edge belongs to (`push_id`, `push_commits`, from the new `first_event_id` /
+`last_event_id` on `fe.dfg_sequence_mat`), and the list groups commits under a header per push
+that says how many of the push's commits are listed. The Artifacts list moved out of the sidebar
+sections into a box above the "currently displayed" card, its rows scrolling inside it. Gate
+extended to `pull_request/PullRequestMerged/end` and `commit/Push/start`, asserting `push_id`
+and `push_commits` on every commit row; passes. Driven headlessly on vscode: the comment node's
+tiles read "unavailable" and do nothing; PR reopen's tiles are actions and its "starts with 0"
+lists "0 of 0" with the empty note; the Push node's "ends with" lists 100 of 115,289 under push
+headers ("push 23534767351 · 1 commit", the top 100 spanning 65 pushes); the box sits directly
+above the card and its list scrolls. `npm test` 894 / 0. Not verified: a push group with more
+listed commits than one in the browser (asserted DOM-free in `dfg`), and the look of the box.
 
 ### From a node card's tile to a sub-log, 2026-09-10
 

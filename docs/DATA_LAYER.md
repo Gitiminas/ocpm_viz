@@ -242,7 +242,8 @@ with the map.
 ```
 meta: { repo, repo_id, repo_ambiguous, object_type, activity, edge: 'start'|'end',
         total, max_results, order: 'most recent first', generated_at, source: {rpc, layer} }
-rows: [ { id, type, label, number, sha, title, at, events } ]   // ≤ max_results, most recent first
+rows: [ { id, type, label, number, sha, title, at, events,
+          push_id, push_commits } ]   // ≤ max_results, most recent first; the push fields on commits only
 ```
 
 `total` is the whole count; `rows` is a sample of it, capped at 100, and the payload says in
@@ -250,8 +251,13 @@ what order. Each row is shaped like a seed-search result, so the Process sidebar
 sub-log page as a seed unchanged. Raises on an unknown repository, an object type outside the
 three lanes, an activity outside the vocabulary (plus `Push`), an `edge` other than `start` or
 `end`, and `max_results` outside 1..100. Measured on vscode `IssueOpened`/`start`, three rows:
-0.4 s cold. The client offers it on a closed set of activities, `SEQUENCE_LISTABLE` in
-`src/model/dfg.js` — issue openings and closes first — widened one activity at a time.
+0.4 s cold. The client offers it on every lifecycle activity and on `Push` (`SEQUENCE_LISTABLE` in
+`src/model/dfg.js`); the two comment activities are `SEQUENCE_UNAVAILABLE`, whose tiles say so
+rather than vanish, because a sample of the objects whose last event is a comment says little.
+A commit's sequence edge is a push, so a commit row carries `push_id` and `push_commits`
+(resolved from the edge's `push:<activity_id>` event id through `mv_push_activities`) and the
+sidebar groups commit rows by push (`groupSequenceRows`), naming how many of the push's commits
+are listed. `fe.dfg_sequence_mat` carries `first_event_id` / `last_event_id` for that.
 
 ## Objects, activities, intervals
 

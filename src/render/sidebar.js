@@ -25,6 +25,7 @@ import { glyph, typeColor, TYPE, chevron } from './theme.js';
 import { DFG_TYPE_LABELS } from '../state/labels.js';
 import { escapeHtml, formatInstant } from './format.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
+import { groupSequenceRows } from '../model/dfg.js';
 import { dfgRangeScale, dfgControlAvailability } from '../model/dfg.js';
 import { relControlAvailability } from '../state/state.js';
 
@@ -1166,8 +1167,9 @@ export function renderDfgControls({
  * The database is historical, so a fetched list is kept until Refresh is clicked or the
  * repository changes — there is nothing to poll for.
  */
-export function renderDfgArtifacts({ container, listing, onSelect, onRefresh }) {
+export function renderDfgArtifacts({ container, countEl = null, listing, onSelect, onRefresh }) {
   container.innerHTML = '';
+  if (countEl) countEl.textContent = '';
 
   const note = (html) => {
     const el = document.createElement('div');
@@ -1183,7 +1185,7 @@ export function renderDfgArtifacts({ container, listing, onSelect, onRefresh }) 
         'Nothing listed yet. Pin an activity card on the map (right-click), then click its ' +
           '<span style="color:var(--color-neutral-300)">starts with</span> or ' +
           '<span style="color:var(--color-neutral-300)">ends with</span> tile to list the ' +
-          'artifacts whose sequence begins or ends there. Available on issue open and close.',
+          'artifacts whose sequence begins or ends there. Comments are not listed yet.',
       ),
     );
     return;
@@ -1221,6 +1223,9 @@ export function renderDfgArtifacts({ container, listing, onSelect, onRefresh }) 
       (shown < request.total ? ', most recent first' : '');
   }
   container.appendChild(summary);
+  if (countEl && status === 'ready') {
+    countEl.textContent = `${shown.toLocaleString('en-US')} / ${request.total.toLocaleString('en-US')}`;
+  }
 
   if (status === 'error') {
     container.appendChild(note(escapeHtml(String(error?.message || error || 'unknown error'))));
@@ -1232,7 +1237,20 @@ export function renderDfgArtifacts({ container, listing, onSelect, onRefresh }) 
     return;
   }
 
-  for (const row of rows) {
+  // Commits arrive grouped by the push their sequence edge belongs to; a group header
+  // names the push and how many commits it carried, so a partial group says so.
+  for (const group of groupSequenceRows(rows)) {
+    if (group.label) {
+      const header = sectionLabel(
+        `${group.label} · ${group.rows.length}${group.count != null && group.count !== group.rows.length ? ` of ${group.count}` : ''} commit${group.count === 1 ? '' : 's'}`,
+      );
+      header.dataset.tip = 'artifacts.push';
+      container.appendChild(header);
+    }
+    for (const row of group.rows) container.appendChild(artifactRow(row));
+  }
+
+  function artifactRow(row) {
     const el = document.createElement('div');
     el.className = 'sideRow';
     el.dataset.tip = 'artifacts.row';
@@ -1251,6 +1269,6 @@ export function renderDfgArtifacts({ container, listing, onSelect, onRefresh }) 
       `<span class="mono" style="font-size:9.5px;color:var(--color-neutral-600);flex:0 0 auto">` +
       `${escapeHtml(formatInstant(new Date(row.at)))}</span>`;
     el.addEventListener('click', () => onSelect(row));
-    container.appendChild(el);
+    return el;
   }
 }

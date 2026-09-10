@@ -440,19 +440,68 @@ export function dfgControlAvailability(dfg, view = {}) {
 }
 
 /**
- * The activity nodes whose "starts with" / "ends with" tiles list their artifacts.
+ * Which activity nodes' "starts with" / "ends with" tiles list their artifacts.
  *
- * A closed set, widened one activity at a time and only with a measurement: the list is
- * served by `api.list_sequence_objects` from `fe.dfg_sequence_mat`, so the cost is an
- * index lookup for any activity — but the sidebar can show 100 of tens of thousands,
- * and each activity added is a claim that a sample of its objects means something.
- * Issue openings and closes first, as asked.
+ * Every lifecycle activity lists: the list is served by `api.list_sequence_objects` from
+ * `fe.dfg_sequence_mat`, an index lookup whatever the activity. The two comment
+ * activities are held back — a comment is the most common first and last event by far,
+ * and "the 100 most recent issues whose last event is a comment" is a sample that says
+ * little; the tiles show as unavailable rather than absent, so the reader knows the
+ * figure exists and the list does not, yet. `Push` lists commits, grouped by the push
+ * whose event began or ended the commit's sequence (`groupSequenceRows`).
  */
-export const SEQUENCE_LISTABLE = new Set(['issue/IssueOpened', 'issue/IssueClosed']);
+export const SEQUENCE_LISTABLE = new Set([
+  'issue/IssueOpened',
+  'issue/IssueClosed',
+  'issue/IssueReopened',
+  'pull_request/PullRequestOpened',
+  'pull_request/PullRequestMerged',
+  'pull_request/PullRequestMergedOffPlatform',
+  'pull_request/PullRequestClosed',
+  'pull_request/PullRequestReopened',
+  'commit/Push',
+]);
+
+/** The tiles that exist but do not list yet, and say so. */
+export const SEQUENCE_UNAVAILABLE = new Set(['issue/IssueCommented', 'pull_request/PullRequestCommented']);
 
 /** Whether a node's sequence tiles are actions rather than plain figures. */
 export function isSequenceListable(node) {
   return SEQUENCE_LISTABLE.has(`${node?.object_type}/${node?.activity}`);
+}
+
+/** 'action', 'unavailable' or 'plain': what a node's sequence tiles are. */
+export function sequenceTileState(node) {
+  const key = `${node?.object_type}/${node?.activity}`;
+  if (SEQUENCE_LISTABLE.has(key)) return 'action';
+  if (SEQUENCE_UNAVAILABLE.has(key)) return 'unavailable';
+  return 'plain';
+}
+
+/**
+ * The Artifacts list's rows, grouped for display. Commit rows group by the push named on
+ * them (`push_id`, in first-seen order, which is most-recent-first as the rows are);
+ * anything else is one group per row. Each group: `{ key, label, count, rows }`, where
+ * `count` is the push's own commit count when the payload carries it, so a group of 3
+ * rows under "push · 20 commits" says the other 17 exist and are not listed.
+ */
+export function groupSequenceRows(rows = []) {
+  const groups = [];
+  const byKey = new Map();
+  for (const row of rows) {
+    if (row.type !== 'commit' || row.push_id == null) {
+      groups.push({ key: row.id, label: null, count: 1, rows: [row] });
+      continue;
+    }
+    const key = `push:${row.push_id}`;
+    if (!byKey.has(key)) {
+      const group = { key, label: `push ${row.push_id}`, count: row.push_commits ?? null, rows: [] };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    byKey.get(key).rows.push(row);
+  }
+  return groups;
 }
 
 /**

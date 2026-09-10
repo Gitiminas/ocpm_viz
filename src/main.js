@@ -80,6 +80,7 @@ const elements = {
   dfgRelationships: el('dfgRelationships'),
   dfgRange: el('dfgRange'),
   dfgArtifacts: el('dfgArtifacts'),
+  dfgArtifactsCount: el('dfgArtifactsCount'),
   subLogQuery: el('subLogQuery'),
   dfgQueryNote: el('dfgQueryNote'),
   dfgFocusInfo: el('dfgFocusInfo'),
@@ -870,7 +871,7 @@ function setSectionOpen(header, open) {
   header.querySelector('.chev').style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
 }
 for (const header of document.querySelectorAll('.collapseHeader')) {
-  setSectionOpen(header, header.dataset.open === 'true');
+  setSectionOpen(header, false);
   header.addEventListener('click', () => {
     setSectionOpen(header, el(header.dataset.target).style.display === 'none');
   });
@@ -1006,6 +1007,7 @@ let dfgArtifacts = null;
 function renderDfgArtifactsSection() {
   renderDfgArtifacts({
     container: elements.dfgArtifacts,
+    countEl: elements.dfgArtifactsCount,
     listing: dfgArtifacts,
     onRefresh: (request) => requestSequenceObjects(request, { force: true }),
     // A row is a seed: load its sub-log on the Trace page. The map and its list stay as

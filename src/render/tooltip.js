@@ -245,10 +245,11 @@ export function createTooltip({ tipEl, wrapEl }) {
       tiles
         .map(
           (tile, i) =>
-            `<div class="tip-tile${tile.action ? ' action' : ''}" data-tile="${i}">` +
+            `<div class="tip-tile${tile.action ? ' action' : ''}${tile.unavailable ? ' unavailable' : ''}" data-tile="${i}">` +
             `<div class="k">${tile.kicker}</div>` +
             `<div class="l">${tile.label}</div>` +
             `<div class="n">${tile.value}</div>` +
+            (tile.unavailable ? '<div class="u">currently unavailable</div>' : '') +
             '</div>',
         )
         .join('') +

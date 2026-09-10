@@ -174,7 +174,12 @@ if (fail.length) {
 console.log('gate    validator, per-node conservation, Push = CommitObserved, sequence ends, vocabulary   ✓');
 
 // ---- the sequence-objects RPC, on the listable activities ----------------------------
-for (const [type, activity, edge] of [['issue', 'IssueOpened', 'start'], ['issue', 'IssueClosed', 'end']]) {
+for (const [type, activity, edge] of [
+  ['issue', 'IssueOpened', 'start'],
+  ['issue', 'IssueClosed', 'end'],
+  ['pull_request', 'PullRequestMerged', 'end'],
+  ['commit', 'Push', 'start'],
+]) {
   const listed = JSON.parse(
     execFileSync(
       'psql',
@@ -195,6 +200,14 @@ for (const [type, activity, edge] of [['issue', 'IssueOpened', 'start'], ['issue
   }
   for (let i = 1; i < (listed.rows || []).length; i++) {
     if (listed.rows[i - 1].at < listed.rows[i].at) fail.push('list_sequence_objects rows are not most-recent-first');
+  }
+  // A commit row names the push its sequence edge belongs to, so the list can group by it.
+  if (type === 'commit') {
+    for (const row of listed.rows || []) {
+      if (!Number.isInteger(row.push_id) || !Number.isInteger(row.push_commits)) {
+        fail.push(`commit row ${row.id} carries no push_id / push_commits`);
+      }
+    }
   }
 }
 if (fail.length) {
