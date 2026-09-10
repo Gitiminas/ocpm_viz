@@ -22,7 +22,9 @@
 --   §11 refreshers     fe.refresh_all() and friends
 --   §12.0 DFG events   fe.dfg_event / fe.dfg_e2o — the map's OCEL 2.0 E2O layer
 --   §12 the DFG        fe.dfg / fe.dfg_mat — the whole-log directly-follows graph
+--   §12.1 sequence ends fe.dfg_sequence / fe.dfg_sequence_mat — each object's first and last activity
 --   §13 the RPC        api.get_dfg(repo)
+--   §14 the RPC        api.list_sequence_objects(repo, object_type, activity, edge, max_results)
 --
 -- Run:  psql -d gharchive_ocpm_viz_wsl -f sql/fe_layer.sql
 --
@@ -70,7 +72,7 @@ CREATE SCHEMA IF NOT EXISTS api;   -- the only schema PostgREST exposes
 COMMENT ON SCHEMA fe  IS
   'This project''s derivations over the frozen upstream. Plain views.';
 COMMENT ON SCHEMA api IS
-  'PostgREST surface. Four RPCs. The frontend never queries a view directly.';
+  'PostgREST surface. Five RPCs. The frontend never queries a view directly.';
 
 -- -------------------------------------------------------------------------------------
 -- Indexes on the UNDERLYING MVs.
@@ -2163,9 +2165,72 @@ CREATE MATERIALIZED VIEW fe.dfg_mat AS SELECT * FROM fe.dfg WITH DATA;
 -- plan an index path.
 ANALYZE fe.dfg_mat;
 
+-- =====================================================================================
+-- §12.1 — Sequence ends: which objects begin or end with an activity
+--
+-- The map's node card says "starts with 11,449" and "ends with 9,102"; this is the
+-- relation that can say WHICH. One row per object (issue, pull request, commit) with
+-- the activity and time its own sequence begins and ends with, computed over the same
+-- E2O layer and the same (time, id) order as §12's `seq` CTE — so a count here equals
+-- the node's `starts` / `ends` by construction, and scripts/dfg-check.mjs asserts it.
+--
+-- Materialized, like the map itself (§12): a whole-log window over 3.2M occurrences,
+-- 17 s to build (2026-09-10, vscode + kubernetes + react), and no request filter
+-- reaches below it. The RPC (§14) then answers from two indexes. Refreshed with the
+-- map by fe.refresh_dfg(); fe.diag_staleness lists it.
+-- =====================================================================================
+
+CREATE VIEW fe.dfg_sequence AS
+WITH typed AS (
+  -- §12's `typed`, restated: one row per event–object occurrence, typed by prefix.
+  SELECT e.repo_id, o.object_id,
+         CASE split_part(o.object_id, ':', 1)
+           WHEN 'issue'  THEN 'issue'
+           WHEN 'pr'     THEN 'pull_request'
+           WHEN 'commit' THEN 'commit'
+         END AS object_type,
+         e.activity, e.time, e.id
+  FROM fe.dfg_e2o o
+  JOIN fe.dfg_event e ON e.id = o.event_id
+  WHERE split_part(o.object_id, ':', 1) IN ('issue', 'pr', 'commit')
+),
+seq AS (
+  SELECT repo_id, object_type, object_id, activity, time,
+         row_number() OVER w                                        AS rn,
+         count(*)     OVER (PARTITION BY repo_id, object_id)        AS n_events,
+         first_value(activity) OVER w                               AS first_activity,
+         first_value(time)     OVER w                               AS first_time
+  FROM typed
+  WINDOW w AS (PARTITION BY repo_id, object_id ORDER BY time, id)
+)
+SELECT repo_id, object_type, object_id,
+       first_activity, first_time,
+       activity AS last_activity, time AS last_time,
+       n_events
+FROM seq
+WHERE rn = n_events;   -- the last occurrence carries the first through the window
+
+COMMENT ON VIEW fe.dfg_sequence IS
+  'One row per object: the activity and time its sequence begins and ends with, over the '
+  'E2O layer in (time, id) order — the same order §12 counts starts and ends in.';
+
+DROP MATERIALIZED VIEW IF EXISTS fe.dfg_sequence_mat;
+CREATE MATERIALIZED VIEW fe.dfg_sequence_mat AS SELECT * FROM fe.dfg_sequence WITH DATA;
+
+-- One index per edge, most recent first: the RPC lists "the 100 most recent objects
+-- whose sequence starts (ends) with X", which is one range scan on either.
+CREATE INDEX IF NOT EXISTS ix_dfgseq_first ON fe.dfg_sequence_mat (repo_id, object_type, first_activity, first_time DESC);
+CREATE INDEX IF NOT EXISTS ix_dfgseq_last  ON fe.dfg_sequence_mat (repo_id, object_type, last_activity,  last_time DESC);
+ANALYZE fe.dfg_sequence_mat;
+
+COMMENT ON MATERIALIZED VIEW fe.dfg_sequence_mat IS
+  'Each object''s first and last activity (§12.1). ~17 s to build. Refreshed by fe.refresh_dfg() '
+  'with the map; fe.diag_staleness reports its age.';
+
 CREATE OR REPLACE FUNCTION fe.refresh_dfg() RETURNS void
 LANGUAGE sql AS $$
   REFRESH MATERIALIZED VIEW fe.dfg_mat;
+  REFRESH MATERIALIZED VIEW fe.dfg_sequence_mat;   -- §12.1, same layer, same order
 $$;
 
 COMMENT ON MATERIALIZED VIEW fe.dfg_mat IS
@@ -2205,11 +2270,12 @@ BEGIN
   -- After link_mat: the cross-edge arm reads it, so a stale link table would bake last
   -- week's pairs into a fresh-looking DFG.
   REFRESH MATERIALIZED VIEW fe.dfg_mat;
+  REFRESH MATERIALIZED VIEW fe.dfg_sequence_mat;
 END;
 $$;
 
 COMMENT ON FUNCTION fe.refresh_all() IS
-  'Refresh every materialized relation in this layer (seven), in dependency order. Run after any upstream MV refresh.';
+  'Refresh every materialized relation in this layer (eight), in dependency order. Run after any upstream MV refresh.';
 
 -- Row counts alone cannot prove freshness — an upstream change that adds and removes the
 -- same number of rows leaves them equal. What this catches is the common case (upstream
@@ -2252,7 +2318,13 @@ UNION ALL
 SELECT 'fe.interval_pull_request_mat',
        (SELECT count(*) FROM fe.interval_pull_request),
        (SELECT count(*) FROM fe.interval_pull_request_mat),
-       (SELECT (pg_stat_file(pg_relation_filepath('fe.interval_pull_request_mat'))).modification);
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.interval_pull_request_mat'))).modification)
+UNION ALL
+-- live_rows NULL for the same reason as fe.dfg_mat: counting the live view is the build.
+SELECT 'fe.dfg_sequence_mat',
+       NULL::bigint,
+       (SELECT count(*) FROM fe.dfg_sequence_mat),
+       (SELECT (pg_stat_file(pg_relation_filepath('fe.dfg_sequence_mat'))).modification);
 
 
 -- -------------------------------------------------------------------------------------
@@ -2505,6 +2577,109 @@ COMMENT ON FUNCTION api.get_dfg(text) IS
   'one row per class. Counted over the E2O layer (§12.0): nodes carry events and '
   'occurrences. Pre-computed in fe.dfg_mat. There is no case notion.';
 
+
+-- =====================================================================================
+-- §14 — The sequence-objects RPC
+--
+--   api.list_sequence_objects(repo, object_type, activity, edge, max_results)
+--
+-- The objects behind one tile of the map's node card: the most recent `max_results`
+-- objects of `object_type` whose own sequence starts ('start') or ends ('end') with
+-- `activity`, from fe.dfg_sequence_mat (§12.1), labelled through fe.seed_lookup so a row
+-- is exactly a seed the sub-log page can load. `total` is the whole count, which equals
+-- the node's `starts` / `ends` by construction; the rows are a SAMPLE of it, most recent
+-- first, and the payload says so. Capped at 100: the sidebar is a list to click, not a
+-- second search.
+-- =====================================================================================
+
+CREATE OR REPLACE FUNCTION api.list_sequence_objects(
+  repo         text,
+  object_type  text,
+  activity     text,
+  edge         text,
+  max_results  integer DEFAULT 100
+) RETURNS jsonb
+LANGUAGE plpgsql STABLE AS $fn$
+DECLARE
+  _repo_id  bigint;
+  _repo_nm  text;
+  _n_named  integer;
+  _total    bigint;
+  _rows     jsonb;
+BEGIN
+  IF object_type IS NULL OR object_type NOT IN ('issue', 'pull_request', 'commit') THEN
+    RAISE EXCEPTION 'object_type must be issue, pull_request or commit, got %', object_type;
+  END IF;
+  IF edge IS NULL OR edge NOT IN ('start', 'end') THEN
+    RAISE EXCEPTION 'edge must be start or end, got %', edge;
+  END IF;
+  IF activity IS NULL OR (activity <> 'Push' AND NOT EXISTS (
+       SELECT 1 FROM fe.activity_vocabulary v WHERE v.activity = list_sequence_objects.activity)) THEN
+    RAISE EXCEPTION 'unknown activity %', activity;
+  END IF;
+  IF max_results IS NULL OR max_results < 1 OR max_results > 100 THEN
+    RAISE EXCEPTION 'max_results must be between 1 and 100, got %', max_results;
+  END IF;
+
+  -- The same resolver as the other name-taking RPCs (§6): most events wins, ambiguity reported.
+  SELECT r.id, r.name, count(*) OVER ()
+    INTO _repo_id, _repo_nm, _n_named
+  FROM repo r
+  WHERE r.name = repo
+  ORDER BY (SELECT count(*) FROM event e WHERE e.repo_id = r.id) DESC, r.id
+  LIMIT 1;
+  IF _repo_id IS NULL THEN
+    RAISE EXCEPTION 'no repository named %', repo
+      USING HINT = 'SELECT name FROM repo — this database holds three with data.';
+  END IF;
+
+  IF edge = 'start' THEN
+    SELECT count(*) INTO _total FROM fe.dfg_sequence_mat q
+    WHERE q.repo_id = _repo_id AND q.object_type = list_sequence_objects.object_type
+      AND q.first_activity = list_sequence_objects.activity;
+    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+             'id', q.object_id, 'type', q.object_type,
+             'label', COALESCE(s.label, q.object_id), 'number', s.number, 'sha', s.sha, 'title', s.title,
+             'at', fe.utc(q.first_time), 'events', q.n_events)
+           ORDER BY q.first_time DESC, q.object_id), '[]'::jsonb)
+      INTO _rows
+    FROM (SELECT * FROM fe.dfg_sequence_mat q
+          WHERE q.repo_id = _repo_id AND q.object_type = list_sequence_objects.object_type
+            AND q.first_activity = list_sequence_objects.activity
+          ORDER BY q.first_time DESC, q.object_id
+          LIMIT max_results) q
+    LEFT JOIN fe.seed_lookup s ON s.repo_id = q.repo_id AND s.id = q.object_id;
+  ELSE
+    SELECT count(*) INTO _total FROM fe.dfg_sequence_mat q
+    WHERE q.repo_id = _repo_id AND q.object_type = list_sequence_objects.object_type
+      AND q.last_activity = list_sequence_objects.activity;
+    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+             'id', q.object_id, 'type', q.object_type,
+             'label', COALESCE(s.label, q.object_id), 'number', s.number, 'sha', s.sha, 'title', s.title,
+             'at', fe.utc(q.last_time), 'events', q.n_events)
+           ORDER BY q.last_time DESC, q.object_id), '[]'::jsonb)
+      INTO _rows
+    FROM (SELECT * FROM fe.dfg_sequence_mat q
+          WHERE q.repo_id = _repo_id AND q.object_type = list_sequence_objects.object_type
+            AND q.last_activity = list_sequence_objects.activity
+          ORDER BY q.last_time DESC, q.object_id
+          LIMIT max_results) q
+    LEFT JOIN fe.seed_lookup s ON s.repo_id = q.repo_id AND s.id = q.object_id;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'meta', jsonb_build_object(
+       'repo', _repo_nm, 'repo_id', _repo_id, 'repo_ambiguous', (_n_named > 1),
+       'object_type', object_type, 'activity', activity, 'edge', edge,
+       'total', _total, 'max_results', max_results, 'order', 'most recent first',
+       'generated_at', fe.utc(now()),
+       'source', jsonb_build_object('rpc', 'api.list_sequence_objects', 'layer', 'sql/fe_layer.sql')),
+    'rows', _rows);
+END;
+$fn$;
+
+COMMENT ON FUNCTION api.list_sequence_objects(text, text, text, text, integer) IS
+  'The most recent objects whose own sequence starts or ends with an activity, with the whole count (§14).';
 
 -- =====================================================================================
 -- AFTER THIS FILE, RE-RUN sql/postgrest_setup.sql

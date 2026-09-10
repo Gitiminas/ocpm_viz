@@ -122,6 +122,39 @@ if (push) {
   }
 }
 
+// §12.1: the sequence-ends table counts the same starts and ends the map does, node by
+// node — it was computed in the same (time, id) order over the same E2O layer, and this
+// is what lets the node card's tile and the sidebar's "n of total" name one number.
+const sequenceCounts = JSON.parse(
+  execFileSync(
+    'psql',
+    [
+      '-d',
+      DB,
+      '-Atc',
+      `SELECT COALESCE(jsonb_agg(jsonb_build_object('type', t, 'activity', a, 'edge', e, 'n', n)), '[]') ` +
+        `FROM (SELECT object_type t, first_activity a, 'start' e, count(*) n FROM fe.dfg_sequence_mat ` +
+        `WHERE repo_id = ${Number(raw.meta.repo_id)} GROUP BY 1, 2 ` +
+        `UNION ALL SELECT object_type, last_activity, 'end', count(*) FROM fe.dfg_sequence_mat ` +
+        `WHERE repo_id = ${Number(raw.meta.repo_id)} GROUP BY 1, 2) s`,
+    ],
+    { encoding: 'utf8' },
+  ),
+);
+const sequenceCount = (type, activity, edge) =>
+  sequenceCounts.find((r) => r.type === type && r.activity === activity && r.edge === edge)?.n ?? 0;
+for (const node of raw.nodes) {
+  for (const [edge, field] of [['start', 'starts'], ['end', 'ends']]) {
+    const n = sequenceCount(node.object_type, node.activity, edge);
+    if (n !== node[field]) {
+      fail.push(
+        `${node.object_type}/${node.activity}: the map says ${node[field]} ${field} but ` +
+          `fe.dfg_sequence_mat holds ${n} objects whose sequence ${edge}s there`,
+      );
+    }
+  }
+}
+
 // The vocabulary rules, checked against the raw text so a field the parser ignores
 // still counts: no case notion, and no BARE link vocabulary on successions — the
 // key-form regexes (`"evidence":`) cannot match the sanctioned link_-prefixed keys,
@@ -138,7 +171,38 @@ if (fail.length) {
   for (const line of fail.slice(0, 40)) console.error(`  - ${line}`);
   process.exit(1);
 }
-console.log('gate    validator, per-node conservation, Push = CommitObserved, vocabulary   ✓');
+console.log('gate    validator, per-node conservation, Push = CommitObserved, sequence ends, vocabulary   ✓');
+
+// ---- the sequence-objects RPC, on the listable activities ----------------------------
+for (const [type, activity, edge] of [['issue', 'IssueOpened', 'start'], ['issue', 'IssueClosed', 'end']]) {
+  const listed = JSON.parse(
+    execFileSync(
+      'psql',
+      ['-d', DB, '-Atc', `SELECT api.list_sequence_objects('${quote(repo)}', '${type}', '${activity}', '${edge}', 5)`],
+      { encoding: 'utf8' },
+    ),
+  );
+  const node = raw.nodes.find((n) => n.object_type === type && n.activity === activity);
+  const expected = node ? node[edge === 'start' ? 'starts' : 'ends'] : 0;
+  if (listed.meta.total !== expected) {
+    fail.push(`list_sequence_objects(${type}, ${activity}, ${edge}).meta.total is ${listed.meta.total}, the map says ${expected}`);
+  }
+  if (!Array.isArray(listed.rows) || listed.rows.length > 5) fail.push(`list_sequence_objects returned ${listed.rows?.length} rows for max_results 5`);
+  for (const row of listed.rows || []) {
+    if (!/^(issue|pr|commit):/.test(row.id) || row.type !== type || !row.label || !row.at) {
+      fail.push(`list_sequence_objects row is not a loadable seed: ${JSON.stringify(row)}`);
+    }
+  }
+  for (let i = 1; i < (listed.rows || []).length; i++) {
+    if (listed.rows[i - 1].at < listed.rows[i].at) fail.push('list_sequence_objects rows are not most-recent-first');
+  }
+}
+if (fail.length) {
+  console.error(`\nFAIL — ${fail.length} problem(s):`);
+  for (const line of fail.slice(0, 40)) console.error(`  - ${line}`);
+  process.exit(1);
+}
+console.log('gate    api.list_sequence_objects: totals match the map, rows are seeds, most recent first   ✓');
 
 // ---- through the real loader and the real layout -------------------------------------
 const dfg = await loadDfg({ repo }, { transport: async () => raw });
@@ -207,6 +271,21 @@ if (process.env.PGRST_SKIP) {
     }
     const body = await response.json();
     console.log(`gate    web_anon reaches api.get_dfg over HTTP (${body.nodes.length} nodes)   ✓`);
+
+    // The new function too: a SECURITY INVOKER reset on it would fail only here.
+    const listed = await fetch(`${base}/rpc/list_sequence_objects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ repo, object_type: 'issue', activity: 'IssueClosed', edge: 'end', max_results: 3 }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!listed.ok) {
+      console.error(`\nFAIL — PostgREST answered ${listed.status} as web_anon on list_sequence_objects:`);
+      console.error(`  ${(await listed.text()).slice(0, 300)}`);
+      process.exit(1);
+    }
+    const listedBody = await listed.json();
+    console.log(`gate    web_anon reaches api.list_sequence_objects over HTTP (${listedBody.meta.total} closes)   ✓`);
   }
 }
 

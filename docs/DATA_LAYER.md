@@ -1,24 +1,25 @@
 # The data layer
 
 Everything between the shared upstream database and `loadSubLog()`. Two schemas in
-PostgreSQL, four RPCs over PostgREST, and two client-side adapters. Upstream is read-only and
+PostgreSQL, five RPCs over PostgREST, and two client-side adapters. Upstream is read-only and
 described in `DATA_CONTRACT.md`. The relation-by-relation inventory is `sql/fe_layer.sql` itself,
 which this document explains rather than repeats.
 
 ## Schemas
 
-`fe` holds the derivations: 16 views, 7 materialized views, 8 diagnostic views, and six
-functions (`utc` and the five refreshers). `api` holds four `SECURITY DEFINER` functions and nothing else. Both are owned by
+`fe` holds the derivations: 17 views, 8 materialized views, 8 diagnostic views, and six
+functions (`utc` and the five refreshers). `api` holds five `SECURITY DEFINER` functions and nothing else. Both are owned by
 `fe_owner`. PostgREST is configured with `db-schemas = "api"`, so `api` is the entire HTTP
 surface and the frontend never reads a view directly.
 
 Views are plain by default. The frontend asks for one sub-log at a time, so a
 plain view lets the seed filter reach the underlying upstream MVs; the first lever for speed is
 an index on those MVs, not a copy of them. `fe_layer.sql` §0 creates 19 such indexes and
-`ANALYZE`s 13 of them, with the measurements that justified each. Seven relations are
+`ANALYZE`s 13 of them, with the measurements that justified each. Eight relations are
 materialized, each with a measurement recorded beside it: `fe.link_mat`, `fe.seed_lookup`,
-`fe.dfg_mat`, and since 2026-09-07 the four object and interval copies described under
-**Refreshing**.
+`fe.dfg_mat`, the four object and interval copies (2026-09-07) described under **Refreshing**,
+and `fe.dfg_sequence_mat` (2026-09-10), each object's first and last activity, described under
+**The sequence-objects payload**.
 
 ### Applying it
 
@@ -60,7 +61,7 @@ definition and what `fe.seed_lookup` and `fe.link` are built from. Measured on v
 `issue:2902032454`: `api.get_sublog` 3.3 s → 0.55 s at degree 0, 3.8 s → 0.57 s at degree 2;
 kubernetes `issue:235959617` at degree 2, 222 KB, 5.0 s → 2.4 s. Size: 252 MB for the four.
 
-All seven go stale silently the moment any upstream MV is refreshed. A stale `link_mat` does not
+All eight go stale silently the moment any upstream MV is refreshed. A stale `link_mat` does not
 error; it answers with last week's graph. A stale `seed_lookup` simply cannot find objects that
 now exist. A stale object copy draws last refresh's objects against this refresh's events.
 
@@ -69,8 +70,8 @@ now exist. A stale object copy draws last refresh's objects against this refresh
 | `fe.refresh_objects()` | the four object and interval copies — first, because `fe.event` reads the PR copy and `fe.dfg_mat` reads `fe.event` |
 | `fe.refresh_links()` | `fe.link_mat` |
 | `fe.refresh_search()` | `fe.seed_lookup` |
-| `fe.refresh_dfg()` | `fe.dfg_mat` (after `fe.link_mat` — the cross-edge arm reads it) |
-| `fe.refresh_all()` | all seven, in dependency order |
+| `fe.refresh_dfg()` | `fe.dfg_mat` (after `fe.link_mat` — the cross-edge arm reads it), then `fe.dfg_sequence_mat` |
+| `fe.refresh_all()` | all eight, in dependency order |
 
 `SELECT * FROM fe.diag_staleness` reports live rows, materialized rows and when each copy was
 last written. Row counts alone cannot prove freshness, so the last-written column is the useful
@@ -227,6 +228,30 @@ point: validate raw, normalize (only `generated_at` becomes a `Date`), attach th
 page is database-only: the fixtures source declares `dfgAvailable: false` (the
 `traversalEditable` capability pattern) and the pulled sample `tests/fixtures/DFG1.json`
 is a test input for the validator, never served to the page.
+
+### The sequence-objects payload
+
+The map's node card says how many objects' sequences start or end with an activity; this
+payload says which. `api.list_sequence_objects(repo, object_type, activity, edge, max_results)`
+reads `fe.dfg_sequence_mat` (§12.1): one row per object with the activity and time its own
+sequence begins and ends with, computed over the same E2O layer in the same `(time, id)` order
+as the map's `seq`, so the count here **equals the node's `starts` / `ends` by construction** and
+`scripts/dfg-check.mjs` asserts it node by node. Built in 17 s, 529,201 rows, 114 MB, refreshed
+with the map.
+
+```
+meta: { repo, repo_id, repo_ambiguous, object_type, activity, edge: 'start'|'end',
+        total, max_results, order: 'most recent first', generated_at, source: {rpc, layer} }
+rows: [ { id, type, label, number, sha, title, at, events } ]   // ≤ max_results, most recent first
+```
+
+`total` is the whole count; `rows` is a sample of it, capped at 100, and the payload says in
+what order. Each row is shaped like a seed-search result, so the Process sidebar hands it to the
+sub-log page as a seed unchanged. Raises on an unknown repository, an object type outside the
+three lanes, an activity outside the vocabulary (plus `Push`), an `edge` other than `start` or
+`end`, and `max_results` outside 1..100. Measured on vscode `IssueOpened`/`start`, three rows:
+0.4 s cold. The client offers it on a closed set of activities, `SEQUENCE_LISTABLE` in
+`src/model/dfg.js` — issue openings and closes first — widened one activity at a time.
 
 ## Objects, activities, intervals
 
@@ -394,7 +419,7 @@ count as primary method (12,730 / 8,479 / 388 — lower than upstream where an e
 
 ## The RPCs
 
-All four are `POST /rpc/<name>` with a JSON body. The browser calls same-origin `/rpc/*`;
+All five are `POST /rpc/<name>` with a JSON body. The browser calls same-origin `/rpc/*`;
 `scripts/serve.mjs` proxies to PostgREST so the two share an origin, and answers 502 when
 PostgREST is unreachable.
 
@@ -492,7 +517,7 @@ upstream refresh.
 
 | View | What it tells you |
 |---|---|
-| `fe.diag_staleness` | Live vs materialized rows and last-written time for all seven copies: `fe.link_mat`, `fe.seed_lookup`, `fe.dfg_mat` (whose live count is honestly NULL — recomputing it is the whole build) and the four object and interval copies |
+| `fe.diag_staleness` | Live vs materialized rows and last-written time for all eight copies: `fe.link_mat`, `fe.seed_lookup`, `fe.dfg_mat` (whose live count is honestly NULL — recomputing it is the whole build) and the four object and interval copies |
 | `fe.diag_link_staleness` | Drift between `fe.link` and `fe.link_mat` alone |
 | `fe.diag_sanity` | Six checks, each with its expected value: dangling event objects, issue/PR objects with no events, actors named by an event with no actor object, pairs linked twice by the same qualifier, link endpoints that are not objects, and that exactly 11 distinct activities occur |
 | `fe.diag_dropped_activities` | What the vocabulary whitelist drops |

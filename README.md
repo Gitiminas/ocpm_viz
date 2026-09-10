@@ -204,7 +204,7 @@ compare fill between shots and never against the box.
 | `src/render/` | The SVG renderers, sidebar, tooltips, stats page, theme |
 | `src/stats/metrics.js` | Durations, counts, gaps, outcomes as pure functions |
 | `src/help/tips.js` | Help texts as data: key → sentence |
-| `sql/` | `fe_layer.sql` (schema `fe` and the four RPCs), `postgrest_setup.sql` (roles and grants), and `matviews_scoped.sql` (the 23 upstream views, 14 of which the layer reads) |
+| `sql/` | `fe_layer.sql` (schema `fe` and the five RPCs), `postgrest_setup.sql` (roles and grants), and `matviews_scoped.sql` (the 23 upstream views, 14 of which the layer reads) |
 | `scripts/` | The dev server, fixture builders, the two gates (`rpc-check.mjs`, `dfg-check.mjs`), the two pullers (`pull-sublog.mjs`, `pull-dfg.mjs`), `shot.mjs` |
 | `tests/` | `node --test` suites and `tests/fixtures/` (F1–F14, LIVE1–LIVE2, `catalogue.json`) |
 | `vendor/` | d3-force 3.0.0, unmodified, because there is no bundler to resolve a bare import |

@@ -18,7 +18,7 @@ diff, so verification matters more than usual.
 |---|---|
 | `README.md` | Human entry point: run it, test it, extend it. Keep current |
 | `docs/ARCHITECTURE.md` | The frontend: folders, seams, data flow, layout traps |
-| `docs/DATA_LAYER.md` | Schemas `fe` and `api`, the four RPCs, the `SubLog` and DFG payloads, the adapters |
+| `docs/DATA_LAYER.md` | Schemas `fe` and `api`, the five RPCs, the `SubLog` and DFG payloads, the adapters |
 | `docs/DATA_CONTRACT.md` | The written record of what exists upstream. The database itself is ground truth |
 | `docs/VERIFICATION.md` | What was checked and how. §5 is the not-verified list — read it before trusting a figure |
 
@@ -28,7 +28,7 @@ diff, so verification matters more than usual.
 |---|---|---|
 | `index.html` | App shell: markup, CSS, the one `<script type="module">` entry | Work here for anything structural in the page |
 | `src/` | The application, as ES modules | Work here. Keep `model/`, `layout/`, `state/` and `stats/` DOM-free |
-| `sql/fe_layer.sql` | The data layer: schema `fe` (16 views, 7 materializations, 8 diagnostics) and the four `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
+| `sql/fe_layer.sql` | The data layer: schema `fe` (17 views, 8 materializations, 8 diagnostics) and the five `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
 | `scripts/rpc-check.mjs`, `dfg-check.mjs` | Acceptance gates: a real payload through the real loader and layout, then one unauthenticated call as `web_anon` | Run both after any change to `sql/`. The validators must return `[]`. The HTTP probes skip if PostgREST is down |
 | `scripts/pull-sublog.mjs`, `pull-dfg.mjs` | Snapshot RPC output to `tests/fixtures/LIVE*.json` / `DFG1.json` | Samples, not fixtures — no test asserts a count against them |
 | `scripts/shot.mjs` | Headless screenshot of the running app | Writes to `.shots/`, gitignored. Headless lays out ~90px shorter than `--window-size`: compare fill between shots, not against the box |
@@ -86,12 +86,12 @@ diff, so verification matters more than usual.
   SQL is only for figures spanning data that is not loaded, such as link coverage per repository.
   Precomputing them there would silently answer "comments hidden → gaps unchanged".
 - Derived relations live in **this project's own schemas**, never the shared namespace: `fe` for
-  the views, `api` for the RPCs. Plain `VIEW` by default; seven materializations, each with its
+  the views, `api` for the RPCs. Plain `VIEW` by default; eight materializations, each with its
   measurement beside it — `fe.link_mat`, because the traversal needs a whole repository's adjacency,
   `fe.seed_lookup` behind the seed box, `fe.dfg_mat`, the whole-log process map, and (2026-09-07)
   copies of the two object views and the two interval views, because their `DISTINCT ON` and
   window functions run over a whole repository and no request filter reaches below them. **All
-  seven go stale silently: run `SELECT fe.refresh_all()` after any upstream refresh**, and read
+  eight go stale silently: run `SELECT fe.refresh_all()` after any upstream refresh**, and read
   `fe.diag_staleness` for last-written times.
 - **Two admission rules belong to this project, not upstream**; both narrow `ref_match`.
   Every commit-link and issue↔PR figure is therefore a **floor**, never a point

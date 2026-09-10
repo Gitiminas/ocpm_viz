@@ -368,7 +368,7 @@ upstream relations, with the measurements that justify them in §0.1. Two cautio
 
 Roles and grants for the HTTP surface are created by `sql/postgrest_setup.sql`, applied after
 `fe_layer.sql`: `fe_owner` owns the `fe` and `api` objects and holds `SELECT` on `public`;
-`web_anon` may only `EXECUTE` the four `api` functions; `authenticator` is the `NOINHERIT` login
+`web_anon` may only `EXECUTE` the five `api` functions; `authenticator` is the `NOINHERIT` login
 role PostgREST connects as.
 
 ---
