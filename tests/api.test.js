@@ -16,9 +16,13 @@ import assert from 'node:assert/strict';
 import {
   createRpcTransport,
   createDfgTransport,
+  createSequenceObjectsTransport,
+  listSequenceObjects,
+  findSequenceObjectsProblems,
   searchSeeds,
   DEFAULT_BASE_URL,
   TRAVERSAL_DEGREE,
+  SEQUENCE_OBJECTS_LIMIT,
 } from '../src/data/api.js';
 import { loadSubLog } from '../src/data/loadSubLog.js';
 import { loadDfg } from '../src/data/loadDfg.js';
@@ -410,5 +414,59 @@ describe('the DFG transport asks for one repository and nothing else', () => {
     // Which DFG transport applies is the source's call; a silent default would let a
     // caller load the sample while believing it queried the database.
     await assert.rejects(() => loadDfg({ repo: 'r' }), /a transport is required/);
+  });
+});
+
+describe('the sequence-objects transport asks for one tile of one node', () => {
+  const PAYLOAD = {
+    meta: { repo: 'microsoft/vscode', object_type: 'issue', activity: 'IssueClosed', edge: 'end', total: 79018, max_results: 3, order: 'most recent first' },
+    rows: [
+      { id: 'issue:3', type: 'issue', label: 'Issue #3', number: 3, sha: null, title: 'c', at: '2025-04-02T00:00:00+00:00', events: 2 },
+      { id: 'issue:2', type: 'issue', label: 'Issue #2', number: 2, sha: null, title: 'b', at: '2025-04-01T00:00:00+00:00', events: 4 },
+    ],
+  };
+  const REQUEST = { repo: 'microsoft/vscode', objectType: 'issue', activity: 'IssueClosed', edge: 'end', limit: 3 };
+
+  test('posts to /rpc/list_sequence_objects with the SQL parameter names', async () => {
+    const { fetchImpl, calls } = stubFetch({ status: 200, body: PAYLOAD });
+    await createSequenceObjectsTransport({ fetchImpl })(REQUEST);
+    assert.equal(calls[0].url, `${DEFAULT_BASE_URL}/rpc/list_sequence_objects`);
+    assert.deepEqual(calls[0].body, { repo: 'microsoft/vscode', object_type: 'issue', activity: 'IssueClosed', edge: 'end', max_results: 3 });
+  });
+
+  test('the limit defaults to the RPC cap and is never asked above it', async () => {
+    const { fetchImpl, calls } = stubFetch({ status: 200, body: PAYLOAD });
+    const transport = createSequenceObjectsTransport({ fetchImpl });
+    await transport({ ...REQUEST, limit: undefined });
+    assert.equal(calls[0].body.max_results, SEQUENCE_OBJECTS_LIMIT);
+    await assert.rejects(() => transport({ ...REQUEST, limit: 500 }), /1 to 100/);
+    assert.equal(calls.length, 1);
+  });
+
+  test('a missing field or a bad edge fails before anything is fetched', async () => {
+    const { fetchImpl, calls } = stubFetch({ status: 200, body: PAYLOAD });
+    const transport = createSequenceObjectsTransport({ fetchImpl });
+    await assert.rejects(() => transport({ ...REQUEST, repo: '' }), /request\.repo is required/);
+    await assert.rejects(() => transport({ ...REQUEST, edge: 'middle' }), /start' or 'end/);
+    assert.equal(calls.length, 0);
+  });
+
+  test('listSequenceObjects returns a well-formed payload and refuses a malformed one', async () => {
+    const good = await listSequenceObjects(REQUEST, { transport: async () => PAYLOAD });
+    assert.equal(good.meta.total, 79018);
+    assert.equal(good.rows.length, 2);
+    const wrongType = { ...PAYLOAD, rows: [{ ...PAYLOAD.rows[0], type: 'pull_request' }] };
+    await assert.rejects(() => listSequenceObjects(REQUEST, { transport: async () => wrongType }), /not a issue/);
+    const tooMany = { ...PAYLOAD, rows: [PAYLOAD.rows[0], PAYLOAD.rows[1], PAYLOAD.rows[0], PAYLOAD.rows[1]] };
+    await assert.rejects(() => listSequenceObjects(REQUEST, { transport: async () => tooMany }), /4 rows for a limit of 3/);
+  });
+
+  test('the shape check names every fault, not the first', () => {
+    const problems = findSequenceObjectsProblems(
+      { meta: { total: -1 }, rows: [{ id: 'nope', type: 'issue' }, { id: 'issue:1', type: 'issue', label: 'Issue #1' }] },
+      REQUEST,
+    );
+    assert.deepEqual(problems, ['meta.total is not a count', '2 rows but a total of -1', 'row 0 has no prefixed id', 'row 0 has no label']);
+    assert.deepEqual(findSequenceObjectsProblems(PAYLOAD, REQUEST), []);
   });
 });

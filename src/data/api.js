@@ -197,6 +197,89 @@ export function createDfgTransport({
 export const dfgTransport = createDfgTransport();
 
 /**
+ * The objects behind one tile of the process map's node card: the most recent
+ * `max_results` objects whose own sequence starts or ends with an activity.
+ *
+ * `POST /rpc/list_sequence_objects` with the SQL parameter names. The payload carries
+ * the whole count in `meta.total` and the rows are a SAMPLE of it, most recent first,
+ * capped at 100 by the RPC; the sidebar states both. Each row is shaped like a seed
+ * search result, so a click hands it to the sub-log page unchanged.
+ */
+export const SEQUENCE_OBJECTS_LIMIT = 100;
+
+export function createSequenceObjectsTransport({
+  baseUrl = DEFAULT_BASE_URL,
+  fetchImpl = globalThis.fetch,
+} = {}) {
+  if (typeof fetchImpl !== 'function') {
+    throw new Error('No fetch available. Pass fetchImpl, or run on Node 18+ / a browser.');
+  }
+
+  return async function sequenceObjectsTransport(request = {}) {
+    const { repo, objectType, activity, edge, limit = SEQUENCE_OBJECTS_LIMIT } = request;
+    for (const [name, value] of [['repo', repo], ['objectType', objectType], ['activity', activity]]) {
+      if (!value) throw new Error(`sequenceObjectsTransport: request.${name} is required`);
+    }
+    if (edge !== 'start' && edge !== 'end') {
+      throw new Error(`sequenceObjectsTransport: request.edge must be 'start' or 'end', got ${edge}`);
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > SEQUENCE_OBJECTS_LIMIT) {
+      throw new Error(`sequenceObjectsTransport: limit must be an integer from 1 to ${SEQUENCE_OBJECTS_LIMIT}, got ${limit}`);
+    }
+    return postRpc(
+      '/rpc/list_sequence_objects',
+      JSON.stringify({ repo, object_type: objectType, activity, edge, max_results: limit }),
+      { baseUrl, fetchImpl },
+    );
+  };
+}
+
+/** A sequence-objects transport against the default instance. */
+export const sequenceObjectsTransport = createSequenceObjectsTransport();
+
+/**
+ * Fetch and check one sequence-objects payload. The check is shape only: `meta.total` a
+ * count, `rows` an array no longer than asked, every row a loadable seed (a prefixed id,
+ * a type, a label). A payload that fails is refused rather than listed, since a row that
+ * cannot be loaded is a button that does nothing.
+ *
+ * @returns {Promise<{meta: object, rows: Array}>}
+ */
+export async function listSequenceObjects(request, { transport = sequenceObjectsTransport } = {}) {
+  const raw = await transport(request);
+  const problems = findSequenceObjectsProblems(raw, request);
+  if (problems.length) {
+    throw new Error(`Malformed sequence-objects payload (${problems.length} problem[s]): ${problems.join('; ')}`);
+  }
+  return raw;
+}
+
+/** The shape check behind `listSequenceObjects`; exported so the rule is testable on its own. */
+export function findSequenceObjectsProblems(raw, request = {}) {
+  const problems = [];
+  if (!raw || typeof raw !== 'object') return ['payload is not an object'];
+  if (!raw.meta || typeof raw.meta !== 'object') problems.push('payload has no meta');
+  else if (!Number.isInteger(raw.meta.total) || raw.meta.total < 0) problems.push('meta.total is not a count');
+  if (!Array.isArray(raw.rows)) {
+    problems.push('rows is not an array');
+    return problems;
+  }
+  const limit = request.limit ?? SEQUENCE_OBJECTS_LIMIT;
+  if (raw.rows.length > limit) problems.push(`${raw.rows.length} rows for a limit of ${limit}`);
+  if (raw.meta && Number.isInteger(raw.meta.total) && raw.rows.length > raw.meta.total) {
+    problems.push(`${raw.rows.length} rows but a total of ${raw.meta.total}`);
+  }
+  raw.rows.forEach((row, i) => {
+    if (!row || typeof row.id !== 'string' || !/^(issue|pr|commit):/.test(row.id)) {
+      problems.push(`row ${i} has no prefixed id`);
+    }
+    if (request.objectType && row?.type !== request.objectType) problems.push(`row ${i} is a ${row?.type}, not a ${request.objectType}`);
+    if (!row?.label) problems.push(`row ${i} has no label`);
+  });
+  return problems;
+}
+
+/**
  * Search a repository for seeds matching what someone typed.
  *
  * The gap this closes: people know a pull request as `#102479`, and the RPC keys on

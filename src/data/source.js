@@ -14,6 +14,8 @@
  *   loadSubLog(query)            the answer
  *   loadDfg(repo)                the whole-log directly-follows graph (database only,
  *                                declared by the dfgAvailable capability flag)
+ *   listSequenceObjects(request) the objects behind a node card's "starts with" /
+ *                                "ends with" tile (database only, same flag)
  *
  * ⚠️ **`searchSeeds` is async in both.** The fixture version has nothing to await, but
  * making the shapes differ would push the difference up into the caller, which is the
@@ -34,6 +36,8 @@ import {
 import {
   rpcTransport,
   dfgTransport,
+  sequenceObjectsTransport,
+  listSequenceObjects,
   searchSeeds as searchDatabaseSeeds,
   listRepos as listDbRepos,
 } from './api.js';
@@ -108,6 +112,9 @@ function databaseSource() {
     dfgAvailable: true,
     loadDfg(repo) {
       return loadDfg({ repo }, { transport: dfgTransport });
+    },
+    listSequenceObjects(request) {
+      return listSequenceObjects(request, { transport: sequenceObjectsTransport });
     },
     /*
      * **There is no default seed, and that is the design, not a gap.**
