@@ -118,6 +118,15 @@ export function createTooltip({ tipEl, wrapEl }) {
     }
   }
 
+  /** The tile spec behind a rendered tile, by its index within the card's tile rows. */
+  function tileFor(tileEl) {
+    const index = Number(tileEl.dataset.tile);
+    const rows = (currentSpec?.rows || []).filter((row) => row && !Array.isArray(row) && row.tiles);
+    const parent = tileEl.closest('.tip-tiles');
+    const nth = [...tipEl.querySelectorAll('.tip-tiles')].indexOf(parent);
+    return rows[nth]?.tiles?.[index] ?? null;
+  }
+
   function attachCopyHandlers() {
     const closeButton = tipEl.querySelector('.tip-close');
     if (closeButton) {
@@ -159,6 +168,21 @@ export function createTooltip({ tipEl, wrapEl }) {
         event.stopPropagation();
         const textEl = block.querySelector('.tip-excerpt-text');
         if (textEl?.textContent) copyToClipboard(textEl.textContent.trim(), textEl);
+      });
+    }
+
+    // A tile runs its action when it has one, else copies its figure like any row.
+    for (const tileEl of tipEl.querySelectorAll('.tip-tile')) {
+      tileEl.addEventListener('click', (event) => {
+        if (!pinned) return;
+        event.stopPropagation();
+        const tile = tileFor(tileEl);
+        if (tile?.action) {
+          tile.action();
+          return;
+        }
+        const number = tileEl.querySelector('.n');
+        if (number?.textContent) copyToClipboard(number.textContent.trim(), number);
       });
     }
 
@@ -207,6 +231,32 @@ export function createTooltip({ tipEl, wrapEl }) {
   }
 
   /**
+   * Two or three figures side by side, each a small tile: a kicker, a label and the
+   * number. A tile with an `action` is a button once the card is pinned — the Process
+   * page's "starts with / ends with" tiles list their artifacts in the sidebar — and a
+   * plain figure otherwise. Tiles rather than rows because the two figures are one
+   * fact read two ways, and side by side says so where two rows would not.
+   *
+   * @param {{tiles: Array<{kicker: string, label: string, value: string, action?: Function}>}} row
+   */
+  function tilesHtml({ tiles }) {
+    return (
+      '<div class="tip-tiles">' +
+      tiles
+        .map(
+          (tile, i) =>
+            `<div class="tip-tile${tile.action ? ' action' : ''}" data-tile="${i}">` +
+            `<div class="k">${tile.kicker}</div>` +
+            `<div class="l">${tile.label}</div>` +
+            `<div class="n">${tile.value}</div>` +
+            '</div>',
+        )
+        .join('') +
+      '</div>'
+    );
+  }
+
+  /**
    * Render a card.
    *
    * @param {object} spec
@@ -217,13 +267,17 @@ export function createTooltip({ tipEl, wrapEl }) {
    * @param {Array}  spec.rows    [label, valueHtml, className?]
    * @param {string} [spec.note]  footer note
    */
+  let currentSpec = null;
+
   function show(event, spec) {
     clearTimeout(hideTimer);
+    currentSpec = spec;
 
     const rows = spec.rows
       .filter(Boolean)
       .map((row) => {
         if (!Array.isArray(row) && row.excerptText != null) return excerptHtml(row);
+        if (!Array.isArray(row) && row.tiles) return tilesHtml(row);
         if (!Array.isArray(row)) return groupHtml(row);
         const [label, value, className] = row;
         return (

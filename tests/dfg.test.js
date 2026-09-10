@@ -11,6 +11,8 @@ import {
   aggregateCrossEdges,
   dfgRangeScale,
   dfgControlAvailability,
+  isSequenceListable,
+  SEQUENCE_LISTABLE,
   DFG_CONTRACT_VERSION,
 } from '../src/model/dfg.js';
 import { summarizeDfgHidden } from '../src/state/state.js';
@@ -482,5 +484,17 @@ describe('a Process-page control is inert while no succession it governs could b
       (e) => !hidden.has(`issue/${e.from_activity}`) && !hidden.has(`issue/${e.to_activity}`),
     );
     assert.equal(a.lanes.has('issue'), anyIssueEdgeShown);
+  });
+});
+
+describe('the sequence tiles are actions on a closed set of activities', () => {
+  test('issue openings and closes list; nothing else does yet', () => {
+    assert.deepEqual([...SEQUENCE_LISTABLE].sort(), ['issue/IssueClosed', 'issue/IssueOpened']);
+    assert.equal(isSequenceListable({ object_type: 'issue', activity: 'IssueOpened' }), true);
+    assert.equal(isSequenceListable({ object_type: 'issue', activity: 'IssueClosed' }), true);
+    assert.equal(isSequenceListable({ object_type: 'issue', activity: 'IssueCommented' }), false);
+    assert.equal(isSequenceListable({ object_type: 'pull_request', activity: 'PullRequestOpened' }), false);
+    assert.equal(isSequenceListable({ object_type: 'commit', activity: 'Push' }), false);
+    assert.equal(isSequenceListable(null), false);
   });
 });

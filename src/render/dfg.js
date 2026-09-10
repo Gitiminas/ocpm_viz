@@ -19,6 +19,7 @@
 import { TYPE, typeColor, drawSymbol } from './theme.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
 import { DIM_OPACITY } from '../model/graph.js';
+import { isSequenceListable } from '../model/dfg.js';
 import { escapeHtml } from './format.js';
 import { DFG_TYPE_LABELS } from '../state/labels.js';
 import { DFG_LOOP_RADIUS, DFG_LOOP_DX } from '../layout/dfg.js';
@@ -309,10 +310,28 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
           ? [['Event–object occurrences', node.occurrences.toLocaleString('en-US')]]
           : []),
         ['Objects', node.objects.toLocaleString('en-US')],
-        ['Sequence starts', node.starts.toLocaleString('en-US')],
-        ['Sequence ends', node.ends.toLocaleString('en-US')],
+        // How many objects' sequences begin or end here, side by side. On the listable
+        // activities the tiles are buttons: click one on a pinned card and the sidebar
+        // lists those artifacts (`handlers.onSequenceRequest`).
+        { tiles: [sequenceTile(node, 'start'), sequenceTile(node, 'end')] },
       ],
-      note: '',
+      note: listable(node)
+        ? 'Pin the card, then click a tile to list those artifacts in the sidebar.'
+        : '',
+    };
+  }
+
+  const listable = (node) => Boolean(handlers.onSequenceRequest) && isSequenceListable(node);
+
+  function sequenceTile(node, edge) {
+    const total = edge === 'start' ? node.starts : node.ends;
+    return {
+      kicker: 'Sequence',
+      label: edge === 'start' ? 'starts with' : 'ends with',
+      value: total.toLocaleString('en-US'),
+      action: listable(node)
+        ? () => handlers.onSequenceRequest({ objectType: node.object_type, activity: node.activity, edge, total })
+        : null,
     };
   }
 

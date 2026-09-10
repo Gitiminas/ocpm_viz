@@ -440,6 +440,22 @@ export function dfgControlAvailability(dfg, view = {}) {
 }
 
 /**
+ * The activity nodes whose "starts with" / "ends with" tiles list their artifacts.
+ *
+ * A closed set, widened one activity at a time and only with a measurement: the list is
+ * served by `api.list_sequence_objects` from `fe.dfg_sequence_mat`, so the cost is an
+ * index lookup for any activity — but the sidebar can show 100 of tens of thousands,
+ * and each activity added is a claim that a sample of its objects means something.
+ * Issue openings and closes first, as asked.
+ */
+export const SEQUENCE_LISTABLE = new Set(['issue/IssueOpened', 'issue/IssueClosed']);
+
+/** Whether a node's sequence tiles are actions rather than plain figures. */
+export function isSequenceListable(node) {
+  return SEQUENCE_LISTABLE.has(`${node?.object_type}/${node?.activity}`);
+}
+
+/**
  * The count slider's scale: logarithmic, because succession counts span five orders of
  * magnitude and a linear slider would spend nearly all its travel on the top decade.
  * Edge counts are ≥ 1 by construction (an edge exists because a succession was
