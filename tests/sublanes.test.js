@@ -164,6 +164,27 @@ describe('fixtures exhibit the properties they claim', () => {
     assert.ok(+issue.intervals[0].end < +issue.intervals[1].start, 'intervals must be disjoint');
   });
 
+  test('F15 really does put a PR in each issue lifecycle and one after, and a commit in each PR lifecycle and one after', async () => {
+    const graph = await load('F15');
+    const within = (time, interval) => +interval.start <= +time && +time <= +interval.end;
+    const issue = graph.objects.find((o) => o.id === 'issue:15');
+    assert.equal(issue.intervals.length, 2);
+    const opened = (id) => graph.objects.find((o) => o.id === id).intervals[0].start;
+    assert.ok(within(opened('pr:1501'), issue.intervals[0]), 'PR 1501 opens in the first lifecycle');
+    assert.ok(within(opened('pr:1502'), issue.intervals[1]), 'PR 1502 opens in the reopen');
+    assert.ok(+opened('pr:1503') > +issue.intervals[1].end, 'PR 1503 opens after the final close');
+
+    const pr = graph.objects.find((o) => o.id === 'pr:1504');
+    assert.equal(pr.intervals.length, 2);
+    const commitTime = (id) => graph.objects.find((o) => o.id === id).intervals[0].start;
+    assert.ok(within(commitTime('commit:f15early000000001'), pr.intervals[0]));
+    assert.ok(within(commitTime('commit:f15during00000001'), pr.intervals[1]));
+    assert.ok(+commitTime('commit:f15late0000000001') > +pr.intervals[1].end);
+    // And the early commit falls BETWEEN the issue's lifecycles, which is the tie the rule breaks.
+    const early = commitTime('commit:f15early000000001');
+    assert.ok(+early > +issue.intervals[0].end && +early < +issue.intervals[1].start);
+  });
+
   test('F10 really is large enough to exercise density behaviour', async () => {
     const graph = await load('F10');
     const commits = graph.objects.filter((o) => o.type === 'commit');
@@ -367,6 +388,7 @@ describe('links that would coincide are fanned apart', () => {
     y: (id) => targets[id]?.y ?? COMMIT_Y,
     xAt: () => 500,
     clampToLifecycle: (id, object, sx) => sx,
+    endpoints: () => ({ sx: 500, tx: 500 }),
     xOfTime: () => 500,
   });
 

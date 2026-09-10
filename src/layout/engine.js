@@ -367,7 +367,7 @@ function layoutStructural({
  * Endpoint resolution for the structural layout.
  *
  * Deliberately the same interface as `layout/anchors.js` — `{x, y, xAt, clampToLifecycle,
- * xOfTime}` — so `render/links.js` never learns which engine ran. The bodies are trivial
+ * endpoints, xOfTime}` — so `render/links.js` never learns which engine ran. The bodies are trivial
  * here because a structural node has one position and nothing to slide along: there is no
  * lifecycle bar to meet side-on and no time axis to project onto.
  *
@@ -387,6 +387,10 @@ function createStructuralAnchors(nodeByObject) {
     y: (anchorId) => at(anchorId)?.y ?? 0,
     xAt: (object) => (object ? (at(object.id)?.x ?? 0) : 0),
     clampToLifecycle: (anchorId) => at(anchorId)?.x ?? 0,
+    endpoints: ({ sourceAnchorId, targetAnchorId }) => ({
+      sx: at(sourceAnchorId)?.x ?? 0,
+      tx: at(targetAnchorId)?.x ?? 0,
+    }),
     xOfTime: () => {
       throw new Error(
         'xOfTime() has no meaning in the relationships (structural) mode: there is no time axis to ' +

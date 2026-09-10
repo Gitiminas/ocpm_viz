@@ -186,12 +186,16 @@ export function renderLinks({
       drawn.add(key);
     }
 
-    const sx = anchors.x(sourceAnchor.id, source);
     const sy = anchors.y(sourceAnchor.id, source);
     const ty = anchors.y(targetAnchor.id, target);
-    // Slide the target end along the target's lifecycle bar so the edge meets it at
-    // the nearest point rather than always at its start.
-    const tx = anchors.clampToLifecycle(targetAnchor.id, target, sx);
+    // One end is fixed, the other slides along its lifecycle to meet it — which end,
+    // and along which interval, is `layout/anchors.js`'s ruling, not this file's.
+    const { sx, tx } = anchors.endpoints({
+      source,
+      target,
+      sourceAnchorId: sourceAnchor.id,
+      targetAnchorId: targetAnchor.id,
+    });
 
     entries.push({ link, source, target, sourceAnchor, targetAnchor, folded, sx, sy, tx, ty });
   }

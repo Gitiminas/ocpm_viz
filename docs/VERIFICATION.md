@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**869 tests in 35 files, 0 failures, ~1 s — run 2026-09-09.** None needs a browser, a network or a
+**885 tests in 35 files, 0 failures, ~1 s — run 2026-09-09.** None needs a browser, a network or a
 database.
 
 ---
@@ -99,7 +99,7 @@ F1–F14 plus two live samples. `tests/fixtures/README.md` carries the per-fixtu
 one exists to exhibit — and is the place to change it. What bears on verification is this.
 
 **F1 is the only fixture built from real GitHub data**: the vscode sub-log, 1 issue, 1 PR, 32
-commits, 4 actors, one folded burst of 20, 2 validated and 32 extracted links. F2–F14 are synthetic
+commits, 4 actors, one folded burst of 20, 2 validated and 32 extracted links. F2–F15 are synthetic
 structures built to exercise layout and toggle behaviour. Their counts are properties of those
 constructions, not observations about real workflows, and none may be cited as a finding — F10
 (3 PRs, 300 commits) and F11 (four PRs, one per detection method) most of all, being the numbers
@@ -305,6 +305,26 @@ was not pulled today. Checked after: both gates pass, `npm test` 836 / 0 (four n
 `tests/excerpt.test.js`: the rows appear when the payload carries them, the comment mark keeps
 the comment text, nothing is emitted when vmap has neither, the heading is per row). Not verified
 in a browser: the Description block's clamp and fade on a real card.
+
+### Links meet the interval they belong to, 2026-09-10
+
+vscode #188934 (`issue:1822674613`) is closed, reopened and closed again, with three resolving
+PRs: one opened in the first lifecycle, one during the reopen, one after the final close. All
+three links met the first bar, because `layout/anchors.js` read `intervals[0]` alone, and a
+PR → commit link always left the PR at its first opening. `clampToLifecycle` now slides over
+every interval to the nearest point (inside the interval that contains the other end's moment,
+else the nearest close or reopen), and `endpoints` fixes one end — a commit at its node, else
+the source at its opening — and slides the other. F15 is the case in miniature (a reopened issue
+with a PR per lifecycle and one after; a reopened PR with a commit per lifecycle and one after).
+Asserted in `tests/anchors.test.js` for both temporal modes: PR 1502 meets the reopen bar at its
+own opening, PR 1503 the final close mark, the between-lifecycles commit the nearer first close,
+and the reopened PR's commit links meet the PR inside the lifecycle each commit fell in; plus a
+guard that on F1 to F14 every link lands exactly where the old rule put it, the one deliberate
+difference being a PR end that now slides to its commit. `rpc-check` on the real seed passes.
+Looked at once, headless (`.shots/microsoft-vscode-issue-1822674613-d1.png`, not kept): PR
+#188941 on the first bar, PRs #189139 and #189150 and the Jul 28 commits on the reopen bar and
+the final close. Not verified: an object whose only interval is open still draws no bar, so a
+link into it lands on a bare row — unchanged by this fix.
 
 ### Relationship rows go inert together, 2026-09-09
 

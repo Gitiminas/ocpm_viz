@@ -90,6 +90,14 @@
           "synthetic": true
         },
         {
+          "id": "issue:15",
+          "type": "issue",
+          "label": "Issue #15",
+          "title": "Synthetic issue 15",
+          "fixture": "F15",
+          "synthetic": true
+        },
+        {
           "id": "issue:2",
           "type": "issue",
           "label": "Issue #2",

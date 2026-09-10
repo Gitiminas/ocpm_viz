@@ -20,7 +20,7 @@ zero-dependency server that provides one, and also proxies `/rpc/*` to PostgREST
 the API share an origin (it answers 502 when PostgREST is down). Nothing is bundled or compiled.
 
 **Fixtures need no database.** The app starts on the fixture source, which serves 16 pre-built
-sub-logs under one repository, `synthetic/fixture` — F1 is a real vscode sub-log, F2–F14 are
+sub-logs under one repository, `synthetic/fixture` — F1 is a real vscode sub-log, F2–F15 are
 synthetic shapes, LIVE1 and LIVE2 are snapshots of real RPC output. That is enough to see the
 tool work.
 
@@ -162,7 +162,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 869 tests over 35 files, ~1 s, no browser
+npm test                  # 885 tests over 35 files, ~1 s, no browser
 npm run test:watch
 ```
 
@@ -170,7 +170,7 @@ npm run test:watch
 `model/`, `layout/`, `state/` and `stats/` is DOM-free and asserted directly.
 
 ```
-npm run build:fixtures    # rebuild F1, F2–F14 and the catalogue
+npm run build:fixtures    # rebuild F1, F2–F15 and the catalogue
 node scripts/build-f1.mjs --check          # fails if the committed fixture is stale
 node scripts/rpc-check.mjs                 # the sub-log data-layer gate
 node scripts/dfg-check.mjs                 # the DFG data-layer gate

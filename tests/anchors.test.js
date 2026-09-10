@@ -36,7 +36,7 @@ const MARGIN = { top: 32, bottom: 150 };
 const MARGIN_LEFT = 180;
 const PLOT_WIDTH = 1100;
 const LANES = ['issue', 'pull_request', 'commit'];
-const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13', 'F14'];
+const ALL = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12', 'F13', 'F14', 'F15'];
 
 /**
  * The renderer's own pipeline, up to the point where anchors are created —
@@ -179,5 +179,94 @@ describe('the commit lane keeps its own rule', () => {
     // The renderer resolves the commit to its burst before asking for an anchor,
     // which is why the burst id is what is passed here.
     assert.equal(anchors.y(burst.id, folded), burstNode.y);
+  });
+});
+
+/**
+ * A link meets the lifecycle interval the other end falls in, or the nearest close
+ * or reopen — over EVERY interval, never the first by default.
+ *
+ * The reported case is vscode #188934: an issue closed, reopened and closed again, with
+ * three resolving PRs, one per lifecycle and one after the final close. All three were
+ * drawn onto the first interval because the anchor read `intervals[0]` alone. F15 is
+ * that shape in miniature, plus a reopened PR with a commit in each of its lifecycles.
+ */
+describe('a link meets the interval the other end falls in (F15)', () => {
+  const t = (day, hour = 0) => new Date(Date.UTC(2025, 0, day, hour));
+  const ends = (anchors, index, link) => {
+    const source = index.byId.get(link.source);
+    const target = index.byId.get(link.target);
+    return anchors.endpoints({ source, target, sourceAnchorId: source.id, targetAnchorId: target.id });
+  };
+  const linkOf = (graph, source, target) =>
+    graph.links.find((l) => l.source === source && l.target === target);
+
+  for (const mode of ['absolute', 'discrete']) {
+    test(`${mode}: PR → issue meets the issue interval the PR opened in, or the nearest close`, async () => {
+      const { graph, index, anchors } = await layout('F15', { mode });
+      const issue = index.byId.get('issue:15');
+      const xAt = (time) => anchors.xAt(issue, time);
+      // Inside the first interval: the PR's own opening.
+      assert.equal(ends(anchors, index, linkOf(graph, 'pr:1501', 'issue:15')).tx, xAt(t(2)));
+      // Inside the reopen: its own opening, on the SECOND bar.
+      const during = ends(anchors, index, linkOf(graph, 'pr:1502', 'issue:15')).tx;
+      assert.equal(during, xAt(t(10)));
+      assert.ok(during >= xAt(t(9)) && during <= xAt(t(14)), 'lands on the reopen bar');
+      assert.ok(during > xAt(t(4)), 'not on the first bar, which is what it used to be');
+      // After the final close: the final close mark.
+      assert.equal(ends(anchors, index, linkOf(graph, 'pr:1503', 'issue:15')).tx, xAt(t(14)));
+    });
+
+    test(`${mode}: commit → issue meets the nearest point of either interval`, async () => {
+      const { graph, index, anchors } = await layout('F15', { mode });
+      const issue = index.byId.get('issue:15');
+      const xAt = (time) => anchors.xAt(issue, time);
+      const shas = { early: 'commit:f15early000000001', during: 'commit:f15during00000001', late: 'commit:f15late0000000001' };
+      // Between the two intervals: the first close is nearer than the reopen.
+      assert.equal(ends(anchors, index, linkOf(graph, shas.early, 'issue:15')).tx, xAt(t(4)));
+      // Inside the reopen: the commit's own instant.
+      assert.equal(ends(anchors, index, linkOf(graph, shas.during, 'issue:15')).tx, xAt(t(12)));
+      // After both: the final close.
+      assert.equal(ends(anchors, index, linkOf(graph, shas.late, 'issue:15')).tx, xAt(t(14)));
+    });
+
+    test(`${mode}: PR → commit meets the PR at the commit's moment, on the PR's own lifecycles`, async () => {
+      const { graph, index, anchors } = await layout('F15', { mode });
+      const pr = index.byId.get('pr:1504');
+      const xAt = (time) => anchors.xAt(pr, time);
+      const shas = { early: 'commit:f15early000000001', during: 'commit:f15during00000001', late: 'commit:f15late0000000001' };
+      // The commit is the fixed end; the PR end slides to it.
+      const early = ends(anchors, index, linkOf(graph, 'pr:1504', shas.early));
+      assert.equal(early.tx, anchors.x(shas.early, index.byId.get(shas.early)));
+      assert.equal(early.sx, xAt(t(5, 12)), 'inside the PR’s first lifecycle');
+      assert.equal(ends(anchors, index, linkOf(graph, 'pr:1504', shas.during)).sx, xAt(t(12)), 'inside its reopen');
+      assert.equal(ends(anchors, index, linkOf(graph, 'pr:1504', shas.late)).sx, xAt(t(13)), 'the merge, after which nothing');
+      assert.notEqual(ends(anchors, index, linkOf(graph, 'pr:1504', shas.late)).sx, xAt(t(5)), 'no longer the first opening');
+    });
+  }
+
+  test('F1–F14 are unmoved: no earlier fixture links into a multi-interval object', async () => {
+    for (const fixture of ALL.filter((f) => f !== 'F15')) {
+      const { graph, index, anchors } = await layout(fixture);
+      for (const link of graph.links) {
+        const source = index.byId.get(link.source);
+        const target = index.byId.get(link.target);
+        const { sx, tx } = ends(anchors, index, link);
+        // The previous rule, restated: source at its opening, target clamped into its
+        // FIRST interval (or at its start when that interval is open).
+        const oldSx = anchors.x(source.id, source);
+        const first = target.intervals?.[0];
+        let oldTx;
+        if (target.type === 'commit' || !first?.start || !first?.end) oldTx = anchors.x(target.id, target);
+        else oldTx = Math.max(anchors.xAt(target, first.start), Math.min(anchors.xAt(target, first.end), oldSx));
+        if (target.type === 'commit' && source.type !== 'commit') {
+          // The one deliberate difference: a PR end now slides to its commit's moment.
+          assert.equal(tx, oldTx, `${fixture}: ${link.source} → ${link.target} commit end`);
+        } else {
+          assert.equal(sx, oldSx, `${fixture}: ${link.source} → ${link.target} source`);
+          assert.equal(tx, oldTx, `${fixture}: ${link.source} → ${link.target} target`);
+        }
+      }
+    }
   });
 });

@@ -20,7 +20,11 @@
  *                    until a lane held two overlapping objects.
  *   instant vs span  The x of a non-commit endpoint is the glyph for that exact
  *                    instant when one is drawn, so an edge lands *on* the "merged"
- *                    diamond rather than near it.
+ *                    diamond rather than near it. The span an endpoint slides along
+ *                    is EVERY interval of the object, not the first: a reopened
+ *                    issue's link meets the interval the other end falls in, or the
+ *                    nearest close or reopen (vscode #188934, three PRs on two
+ *                    intervals, all three once drawn onto the first).
  */
 
 import { rowY } from './lanes.js';
@@ -92,16 +96,48 @@ export function createAnchors({ nodes, nodeByObject, geometry, scales, objectRow
     return xAt(object, object?.intervals?.[0]?.start ?? scales.first);
   }
 
-  /** Slide an endpoint along the object's lifecycle so the edge meets it side-on. */
-  function clampToLifecycle(anchorId, object, sourceX) {
-    const node = commitNode(anchorId);
-    if (node) return node.x;
-    const interval = object?.intervals?.[0];
-    if (!interval?.start || !interval?.end) return x(anchorId, object);
-    const low = xAt(object, interval.start);
-    const high = xAt(object, interval.end);
-    return Math.max(low, Math.min(high, sourceX));
+  /**
+   * The point of the object's lifecycle nearest to `refX`, over every interval.
+   *
+   * Inside an interval, `refX` itself; otherwise the nearest boundary — a close or a
+   * reopen — with the earlier interval winning a tie. An interval with no end runs on
+   * to the axis's last instant. No interval at all falls back to the object's start.
+   */
+  function lifecycleX(anchorId, object, refX) {
+    let best = null;
+    for (const interval of object?.intervals || []) {
+      if (!interval.start) continue;
+      const low = xAt(object, interval.start);
+      const high = interval.end ? xAt(object, interval.end) : scales.x(scales.last);
+      const clamped = Math.max(low, Math.min(high, refX));
+      const distance = Math.abs(clamped - refX);
+      if (!best || distance < best.distance) best = { clamped, distance };
+    }
+    return best ? best.clamped : x(anchorId, object);
   }
 
-  return { x, y, xAt, clampToLifecycle, xOfTime: (t) => scales.x(t) };
+  /** Slide an endpoint along the object's lifecycle so the edge meets it side-on. */
+  function clampToLifecycle(anchorId, object, refX) {
+    const node = commitNode(anchorId);
+    if (node) return node.x;
+    return lifecycleX(anchorId, object, refX);
+  }
+
+  /**
+   * Both ends of a link. One end is the reference and the other slides to meet it:
+   * a commit is fixed at its drawn node, so a PR → commit link's PR end slides to the
+   * commit's moment; otherwise the source is fixed at its opening (`x`) and the target
+   * slides. A PR → issue link therefore reads "the PR that happened during the reopen
+   * meets the reopen", which is the ruling this encodes.
+   */
+  function endpoints({ source, target, sourceAnchorId, targetAnchorId }) {
+    if (target?.type === 'commit' && source?.type !== 'commit') {
+      const tx = x(targetAnchorId, target);
+      return { sx: clampToLifecycle(sourceAnchorId, source, tx), tx };
+    }
+    const sx = x(sourceAnchorId, source);
+    return { sx, tx: clampToLifecycle(targetAnchorId, target, sx) };
+  }
+
+  return { x, y, xAt, clampToLifecycle, endpoints, xOfTime: (t) => scales.x(t) };
 }

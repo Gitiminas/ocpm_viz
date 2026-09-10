@@ -10,7 +10,7 @@ server-side is in `DATA_LAYER.md`.
 Fixed stack: PostgreSQL → PostgREST → D3. No bundler, no framework, no TypeScript. Native ES
 modules loaded straight from `index.html`; D3 7.8.5 from a CDN as the global `d3`; `d3-force`
 3.0.0 vendored unmodified in `vendor/` because `layout/` must run in bare Node. `package.json`
-has no dependencies at all. Tests are `node --test` (`npm test`), 869 tests over 35 files.
+has no dependencies at all. Tests are `node --test` (`npm test`), 885 tests over 35 files.
 
 ```
 PostgreSQL  →  fe views  →  api.get_sublog  →  PostgREST  →  loadSubLog
@@ -176,9 +176,14 @@ commit lane is collision-only at 24 px, plus one extra row when a commit is obse
 
 `anchors.js` decides where a link lands: commit links attach to the drawn commit node, issue and
 PR links to the object's band row at `xAt(object, time)` — the exact node x if a node sits at
-that instant, otherwise the scale — clamped to the lifecycle. It is its own file so that the
-formula is asserted in tests rather than checked by eye: the anchor and the lifecycle bar must
-agree on which row an object occupies. Gaps over 24 hours are annotated on the discrete axis
+that instant, otherwise the scale — clamped to the lifecycle. `endpoints` fixes one end and slides
+the other: a commit is fixed at its node, so a PR → commit link's PR end slides to the commit's
+moment; otherwise the source is fixed at its opening and the target slides. The slide runs over
+**every** interval of the object (since 2026-09-10): inside the interval that contains the other
+end's moment, else to the nearest close or reopen, so a PR opened during an issue's reopen meets
+the reopen bar and one opened after the final close meets the final close mark (vscode #188934;
+F15). It is its own file so that the formula is asserted in tests rather than checked by eye: the
+anchor and the lifecycle bar must agree on which row an object occupies. Gaps over 24 hours are annotated on the discrete axis
 (`findLargeGaps`), adjacent labels merged as `≈ N (k gaps)`.
 
 ### The structural mode

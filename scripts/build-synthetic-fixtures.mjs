@@ -1,5 +1,5 @@
 /**
- * Build the synthesized property fixtures F2–F14.
+ * Build the synthesized property fixtures F2–F15.
  *
  *   node scripts/build-synthetic-fixtures.mjs
  *   node scripts/build-synthetic-fixtures.mjs --check
@@ -473,6 +473,85 @@ FIXTURES.F14 = () => {
       'One PR merged on GitHub beside one merged off-platform (closed, then its commits ' +
       'pushed): two kinds of landmark ring, and a PR outcome of its own.',
     seed: [{ id: 'issue:14', type: 'issue' }],
+    objects,
+    events,
+    links,
+  });
+};
+
+/**
+ * F15 — vscode #188934 in miniature: a reopened issue with a PR in each lifecycle and one
+ * after the final close, plus a reopened PR with a commit in each of its lifecycles and one
+ * after. Expect: every link meets the interval the other end falls in, or the nearest
+ * close or reopen — never the first interval by default (`layout/anchors.js`).
+ */
+FIXTURES.F15 = () => {
+  eventSeq = 0;
+  const reopenedIssue = {
+    ...issue(15, { from: t(1), to: t(4) }),
+    intervals: [
+      { start: t(1), end: t(4) },
+      { start: t(9), end: t(14) },
+    ],
+  };
+  const reopenedPr = {
+    ...pr(1504, { from: t(5), to: t(6) }),
+    intervals: [
+      { start: t(5), end: t(6) },
+      { start: t(11), end: t(13) },
+    ],
+  };
+  const early = 'f15early000000001';   // between the issue's intervals, inside the PR's first
+  const during = 'f15during00000001';  // inside the issue's reopen and the PR's reopen
+  const late = 'f15late0000000001';    // after both objects' final close
+  const objects = [
+    reopenedIssue,
+    pr(1501, { from: t(2), to: t(3) }),
+    pr(1502, { from: t(10), to: t(12) }),
+    pr(1503, { from: t(16), to: t(18) }),
+    reopenedPr,
+    commit(early, { at: t(5, 12), pushId: 15001 }),
+    commit(during, { at: t(12), pushId: 15002 }),
+    commit(late, { at: t(20), pushId: 15003 }),
+    actor('alice'),
+  ];
+  const events = [
+    event('IssueOpened', t(1), 'issue:15'),
+    event('PullRequestOpened', t(2), 'pr:1501'),
+    event('PullRequestMerged', t(3), 'pr:1501'),
+    event('IssueClosed', t(4), 'issue:15'),
+    event('PullRequestOpened', t(5), 'pr:1504'),
+    event('CommitObserved', t(5, 12), `commit:${early}`),
+    event('PullRequestClosed', t(6), 'pr:1504'),
+    event('IssueReopened', t(9), 'issue:15'),
+    event('PullRequestOpened', t(10), 'pr:1502'),
+    event('PullRequestReopened', t(11), 'pr:1504'),
+    event('CommitObserved', t(12), `commit:${during}`),
+    event('PullRequestMerged', t(12), 'pr:1502'),
+    event('PullRequestMerged', t(13), 'pr:1504'),
+    event('IssueClosed', t(14), 'issue:15'),
+    event('PullRequestOpened', t(16), 'pr:1503'),
+    event('PullRequestMerged', t(18), 'pr:1503'),
+    event('CommitObserved', t(20), `commit:${late}`),
+  ];
+  const links = [
+    link('pr:1501', 'issue:15', 'resolves', 'pr_body'),
+    link('pr:1502', 'issue:15', 'resolves', 'pr_title'),
+    link('pr:1503', 'issue:15', 'resolves', 'pr_title'),
+    link('pr:1504', `commit:${early}`, 'contains_commit', 'ref_match'),
+    link('pr:1504', `commit:${during}`, 'contains_commit', 'head_sha'),
+    link('pr:1504', `commit:${late}`, 'contains_commit', 'merge_commit_sha'),
+    link(`commit:${early}`, 'issue:15', 'references_issue', 'commit_message'),
+    link(`commit:${during}`, 'issue:15', 'references_issue', 'commit_message'),
+    link(`commit:${late}`, 'issue:15', 'references_issue', 'commit_message'),
+  ];
+  return graph({
+    id: 'F15',
+    property:
+      'Links meet the lifecycle interval the other end falls in, or the nearest close or ' +
+      'reopen: a reopened issue with a PR per lifecycle and one after, a reopened PR with a ' +
+      'commit per lifecycle and one after.',
+    seed: [{ id: 'issue:15', type: 'issue' }],
     objects,
     events,
     links,

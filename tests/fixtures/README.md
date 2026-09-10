@@ -17,6 +17,7 @@ named below, is the superseded hand-built prototype this tool replaced.
 | F9 | An issue opened, closed, reopened, closed | two bars on one row | built |
 | F13 | Two concurrent PRs, several commits each, one commit shared | many links into one lane stay individually readable | built |
 | F14 | One PR merged on GitHub beside one merged off-platform (closed, then its commits pushed) | two kinds of landmark ring; a PR outcome of its own | built |
+| F15 | A reopened issue with a PR in each lifecycle and one after; a reopened PR with a commit in each and one after (vscode #188934 in miniature) | a link meets the interval the other end falls in, or the nearest close or reopen | built |
 | F10 | 1 issue, 3 PRs, 300 commits in pushes of varying size | density behaviour at a scale F1 cannot reach | built |
 | F11 | Four PRs, one per issue↔PR detection method | each per-method toggle is independently observable | built |
 | F12 | A 3-method link, both evidence classes on one pair, and the corpus's only `merge_commit` | multi-method agreement (`n_methods > 1`); the fourth qualifier | built |
@@ -39,13 +40,13 @@ fixtures source declares `dfgAvailable: false`), and the only assertion against 
 that it passes the validator — its shape, never a count. Not in the catalogue, which maps seeds
 to sub-logs and a DFG has no seed.
 
-### F2–F14 are synthetic — never cite them
+### F2–F15 are synthetic — never cite them
 
 ```
-npm run build:fixtures      # regenerate F1 and F2–F14
+npm run build:fixtures      # regenerate F1 and F2–F15
 ```
 
-**F1 is the only fixture built from real GitHub data.** Everything else — F2 through F14, which is
+**F1 is the only fixture built from real GitHub data.** Everything else — F2 through F15, which is
 every other row in the table above — is synthesized. That includes F10, F11, F12 and F13, which
 sit in the same table and are built by the same script. F10 carries a "300 commits" figure and F11
 "one PR per detection method": exactly the shape of number that could be quoted as a real

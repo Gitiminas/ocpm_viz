@@ -19,7 +19,7 @@ describe('committed fixtures are reproducible from their source', () => {
     );
   });
 
-  test('F2–F14 are exactly what build-synthetic-fixtures.mjs produces today', async () => {
+  test('F2–F15 are exactly what build-synthetic-fixtures.mjs produces today', async () => {
     await assert.doesNotReject(
       run(process.execPath, ['scripts/build-synthetic-fixtures.mjs', '--check'], { cwd: ROOT }),
       /stale|missing/,
