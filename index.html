@@ -354,6 +354,15 @@ html,body{height:100%;margin:0;overflow:hidden}
 <div id="dfgRange" style="display:flex;flex-direction:column;gap:2px"></div>
 </div>
 <div>
+<!-- Open at boot (data-open), unlike its neighbours: the list a node card's tile fills
+     needs a place that is visibly there before anything is in it. -->
+<div class="collapseHeader" data-target="dfgArtifacts" data-open="true" data-tip="section.artifacts" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
+<span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Artifacts</span>
+<span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>
+</div>
+<div id="dfgArtifacts" style="display:flex;flex-direction:column;gap:4px"></div>
+</div>
+<div>
 <div class="collapseHeader" data-target="dfgLegend" data-tip="section.legend" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);cursor:pointer">
 <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-500)">Legend</span>
 <span class="chev" style="display:inline-flex;transition:transform .15s ease;color:var(--color-neutral-500)"><svg fill="none" height="12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M6 9l6 6 6-6"></path></svg></span>

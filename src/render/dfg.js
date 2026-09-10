@@ -265,6 +265,9 @@ export function createDfgView({ container, tooltip, handlers = {} }) {
         .append('g')
         .attr('transform', `translate(${node.x},${node.y})`)
         .attr('data-legend', 'dfg-activity')
+        // The node's key on the mark, so a probe or a test can find "issue/IssueClosed"
+        // without reading the label layer.
+        .attr('data-activity', key)
         .attr('opacity', dim)
         .style('cursor', 'pointer')
         .on('click', () => handlers.onNodeClick?.(key));

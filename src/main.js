@@ -10,7 +10,7 @@
 
 import { summarizeSubLog, seedObjects } from './data/loadSubLog.js';
 import { createSource, resolveQuery } from './data/source.js';
-import { TRAVERSAL_DEGREE } from './data/api.js';
+import { TRAVERSAL_DEGREE, SEQUENCE_OBJECTS_LIMIT } from './data/api.js';
 import { describeSeedRef, parseSeedRef, seedDisplayLabel } from './data/seedQuery.js';
 import { indexSubLog } from './model/subLog.js';
 import { LANE_TYPES, activityShortLabel } from './model/activities.js';
@@ -57,6 +57,7 @@ import {
   renderActorRows,
   renderBurstControls,
   renderDfgControls,
+  renderDfgArtifacts,
   setupCombo,
   setupSearchCombo,
 } from './render/sidebar.js';
@@ -78,6 +79,7 @@ const elements = {
   dfgLanes: el('dfgLanes'),
   dfgRelationships: el('dfgRelationships'),
   dfgRange: el('dfgRange'),
+  dfgArtifacts: el('dfgArtifacts'),
   subLogQuery: el('subLogQuery'),
   dfgQueryNote: el('dfgQueryNote'),
   dfgFocusInfo: el('dfgFocusInfo'),
@@ -868,7 +870,7 @@ function setSectionOpen(header, open) {
   header.querySelector('.chev').style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
 }
 for (const header of document.querySelectorAll('.collapseHeader')) {
-  setSectionOpen(header, false);
+  setSectionOpen(header, header.dataset.open === 'true');
   header.addEventListener('click', () => {
     setSectionOpen(header, el(header.dataset.target).style.display === 'none');
   });
@@ -958,6 +960,11 @@ const dfgChart = createDfgView({
       dfgView.focus = dfgView.focus === key ? null : key;
       renderDfg();
     },
+    // A tile on a pinned node card: close the card, fill the Artifacts section.
+    onSequenceRequest(request) {
+      tooltip.unpin();
+      requestSequenceObjects(request);
+    },
     onBackgroundClick() {
       if (!dfgView.focus) return;
       dfgView.focus = null;
@@ -987,6 +994,65 @@ let currentDfgToggles = null;
 /** Loaded DFGs, one per repository. */
 const dfgCache = new Map();
 let currentDfg = null;
+
+/*
+ * The Artifacts section's state: which tile was clicked and what came back. Kept beside
+ * the map's own cache, keyed the same way plus the tile, because the data is historical:
+ * a list fetched once is right until the layer is refreshed, and Refresh re-asks.
+ */
+const dfgArtifactCache = new Map();
+let dfgArtifacts = null;
+
+function renderDfgArtifactsSection() {
+  renderDfgArtifacts({
+    container: elements.dfgArtifacts,
+    listing: dfgArtifacts,
+    onRefresh: (request) => requestSequenceObjects(request, { force: true }),
+    // A row is a seed: load its sub-log on the Trace page. The map and its list stay as
+    // they are (both are cached), so coming back is one click.
+    onSelect: (row) => {
+      showPage('timeline');
+      reload({ repo: dfgArtifacts?.repo || dfgRepoName(), seed: row.id });
+    },
+  });
+}
+
+async function requestSequenceObjects(request, { force = false } = {}) {
+  const repo = dfgRepoName();
+  if (!repo || !source.listSequenceObjects) return;
+  const key = `${source.name}:${repo}:${request.objectType}/${request.activity}/${request.edge}`;
+  if (force) dfgArtifactCache.delete(key);
+  if (dfgArtifactCache.has(key)) {
+    dfgArtifacts = dfgArtifactCache.get(key);
+    renderDfgArtifactsSection();
+    return;
+  }
+  dfgArtifacts = { repo, request, status: 'loading', rows: [] };
+  renderDfgArtifactsSection();
+  try {
+    const payload = await source.listSequenceObjects({
+      repo,
+      objectType: request.objectType,
+      activity: request.activity,
+      edge: request.edge,
+      limit: SEQUENCE_OBJECTS_LIMIT,
+    });
+    // The whole count from the same relation the map counted; the tile's figure and
+    // the list's total are one number, and dfg-check asserts it.
+    dfgArtifacts = {
+      repo,
+      request: { ...request, total: payload.meta.total },
+      status: 'ready',
+      rows: payload.rows,
+      fetchedAt: new Date(),
+    };
+    dfgArtifactCache.set(key, dfgArtifacts);
+  } catch (error) {
+    console.error(error);
+    dfgArtifacts = { repo, request, status: 'error', rows: [], error };
+  }
+  renderDfgArtifactsSection();
+}
 
 /** Which repository the process map should describe right now. */
 function dfgRepoName() {
@@ -1039,6 +1105,8 @@ async function refreshDfg() {
       // clears, range re-derives to this artifact's default.
       dfgView.focus = null;
       dfgView.range = [...currentDfgToggles.defaultRange];
+      // The list belonged to the previous repository's map.
+      dfgArtifacts = null;
       renderDfgSidebar();
     }
     dfgSurface.hide();
@@ -1072,6 +1140,7 @@ function renderDfgSidebar() {
     view: dfgView,
     onChange: renderDfg,
   });
+  renderDfgArtifactsSection();
 }
 
 function renderDfg() {

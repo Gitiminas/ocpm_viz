@@ -6,7 +6,7 @@ D3 correctness cannot be established by reading a diff. Every claim below is bac
 that runs in `npm test`, by a check that ran against the database, or by a render someone looked at.
 Where none of the three was possible, §5 says so rather than implying coverage that does not exist.
 
-**885 tests in 35 files, 0 failures, ~1 s — run 2026-09-09.** None needs a browser, a network or a
+**891 tests in 35 files, 0 failures, ~1 s — run 2026-09-09.** None needs a browser, a network or a
 database.
 
 ---
@@ -305,6 +305,26 @@ was not pulled today. Checked after: both gates pass, `npm test` 836 / 0 (four n
 `tests/excerpt.test.js`: the rows appear when the payload carries them, the comment mark keeps
 the comment text, nothing is emitted when vmap has neither, the heading is per row). Not verified
 in a browser: the Description block's clamp and fade on a real card.
+
+### From a node card's tile to a sub-log, 2026-09-10
+
+The Process page's activity card shows its sequence figures as two tiles, and on issue open
+and close the tiles are buttons: on a pinned card, a click lists in the sidebar's Artifacts
+section the most recent objects whose sequence starts or ends there, and a listed row opens its
+sub-log on the Trace page. Branch `feat/dfg-sequence-artifacts`, six commits: the pin hint, the
+tiles, the data layer (`fe.dfg_sequence_mat`, `api.list_sequence_objects`), the transport, the
+sidebar and wiring. DOM-free assertions: the listable set (`dfg`), the transport's request
+shape and refusals and the payload's shape check (`api`, 5). The gate `dfg-check` asserts, per
+node, that the sequence table's counts equal the map's `starts`/`ends`, that the RPC's `total`
+matches, that rows are seeds most recent first, and that `web_anon` reaches it. Driven once in
+a headless browser through the same-origin iframe probe (§4's method; scaffolding, deleted),
+against the live database on vscode: the unpinned card reads "right-click to pin"; pinned, the
+hint is gone and the tiles read "Sequence · starts with · 7" and "Sequence · ends with · 79,018";
+the end tile is an action; clicking it closes the card and the section reads "Issue · ends
+with close — 100 of 79,018, most recent first" with 100 rows; clicking the first row shows the
+Trace page with the seed box at "issue #1230" and its marks drawn. Not verified: the look of the
+tiles and the section (no screenshot carries a pinned card), and any activity outside the two
+listable ones, which the set excludes on purpose until measured.
 
 ### Links meet the interval they belong to, 2026-09-10
 

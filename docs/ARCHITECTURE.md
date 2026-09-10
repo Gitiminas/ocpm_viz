@@ -10,7 +10,7 @@ server-side is in `DATA_LAYER.md`.
 Fixed stack: PostgreSQL → PostgREST → D3. No bundler, no framework, no TypeScript. Native ES
 modules loaded straight from `index.html`; D3 7.8.5 from a CDN as the global `d3`; `d3-force`
 3.0.0 vendored unmodified in `vendor/` because `layout/` must run in bare Node. `package.json`
-has no dependencies at all. Tests are `node --test` (`npm test`), 885 tests over 35 files.
+has no dependencies at all. Tests are `node --test` (`npm test`), 891 tests over 35 files.
 
 ```
 PostgreSQL  →  fe views  →  api.get_sublog  →  PostgREST  →  loadSubLog
@@ -77,7 +77,7 @@ this table is the responsibility map.
 | `render/loading.js` | The loading overlay: what a page says while a sub-log is in flight. Waits before appearing, so a fast source never flashes one. |
 | `render/minimap.js` `pan.js` `motion.js` | Overview and scroll; background pan when zoomed; settle and idle drift. |
 | `render/legend.js` | `LEGEND_SECTIONS` as exported data, plus presence dimming. |
-| `render/sidebar.js` `controls.js` `actorCard.js` `subLogCard.js` `stats.js` | The panels: lane and relationship rows, `renderDfgControls` (the Process page's masters, count range and activity rows), presets and the hidden-state banner, actor profile, sub-log card, statistics page. |
+| `render/sidebar.js` `controls.js` `actorCard.js` `subLogCard.js` `stats.js` | The panels: lane and relationship rows, `renderDfgControls` (the Process page's masters, count range and activity rows), `renderDfgArtifacts` (the list a node card's tile fills: a sample of `total`, most recent first, each row a seed), presets and the hidden-state banner, actor profile, sub-log card, statistics page. |
 | `render/theme.js` | Colours, shapes, glyphs, evidence styles. Every renderer reads them from here. |
 | `render/format.js` | The one place a timestamp becomes text. All UTC. |
 | `render/tooltip.js` `message.js` `helpStrip.js` | Tooltips, the "why it cannot draw" surface, the header help strip. |

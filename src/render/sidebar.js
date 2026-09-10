@@ -23,7 +23,7 @@
 
 import { glyph, typeColor, TYPE, chevron } from './theme.js';
 import { DFG_TYPE_LABELS } from '../state/labels.js';
-import { escapeHtml } from './format.js';
+import { escapeHtml, formatInstant } from './format.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
 import { dfgRangeScale, dfgControlAvailability } from '../model/dfg.js';
 import { relControlAvailability } from '../state/state.js';
@@ -1147,4 +1147,110 @@ export function renderDfgControls({
   // ---- per-activity rows, grouped by lane ------------------------------------------
   sync();
   return sync;
+}
+
+// ---------------------------------------------------------------------------
+// the Process page's Artifacts section
+// ---------------------------------------------------------------------------
+
+/**
+ * The list a node card's "starts with" / "ends with" tile fills: the most recent objects
+ * whose own sequence begins or ends with that activity, each a seed the sub-log page can
+ * load with one click. A permanent section — it is on the page before anything is in it,
+ * and says what fills it — so a reader never has to guess where the tile's answer went.
+ *
+ * `listing` is null (nothing asked yet) or `{ request: {objectType, activity, edge, total},
+ * status: 'loading'|'ready'|'error', rows, error, fetchedAt }`. The rows are a SAMPLE of
+ * `total`, most recent first, and the header says so: "100 of 79,018" is the rule that
+ * nothing hidden goes undeclared, applied to a list that cannot hold everything.
+ * The database is historical, so a fetched list is kept until Refresh is clicked or the
+ * repository changes — there is nothing to poll for.
+ */
+export function renderDfgArtifacts({ container, listing, onSelect, onRefresh }) {
+  container.innerHTML = '';
+
+  const note = (html) => {
+    const el = document.createElement('div');
+    el.className = 'mono';
+    el.style.cssText = 'font-size:11px;line-height:1.5;color:var(--color-neutral-500);padding:4px 8px';
+    el.innerHTML = html;
+    return el;
+  };
+
+  if (!listing) {
+    container.appendChild(
+      note(
+        'Nothing listed yet. Pin an activity card on the map (right-click), then click its ' +
+          '<span style="color:var(--color-neutral-300)">starts with</span> or ' +
+          '<span style="color:var(--color-neutral-300)">ends with</span> tile to list the ' +
+          'artifacts whose sequence begins or ends there. Available on issue open and close.',
+      ),
+    );
+    return;
+  }
+
+  const { request, status, rows = [], error } = listing;
+  const typeSpec = TYPE[request.objectType];
+  const edgeWord = request.edge === 'start' ? 'starts with' : 'ends with';
+  const shown = status === 'ready' ? rows.length : null;
+
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 8px';
+  head.innerHTML =
+    `<span style="display:inline-flex;flex:0 0 auto">${glyph(typeSpec.shape, typeSpec.color)}</span>` +
+    `<span class="mono" style="font-size:11px;flex:1;min-width:0;color:var(--color-neutral-300)">` +
+    `${escapeHtml(typeSpec.label)} · ${edgeWord} ` +
+    `<span style="color:var(--color-text)">${escapeHtml(activityShortLabel(request.activity))}</span>` +
+    `</span>` +
+    `<button type="button" class="artifactsRefresh" data-tip="artifacts.refresh" style="flex:0 0 auto;` +
+    `font-family:inherit;font-size:10px;letter-spacing:.05em;text-transform:uppercase;` +
+    `color:var(--color-neutral-400);background:var(--color-neutral-900);border:1px solid var(--color-neutral-700);` +
+    `border-radius:4px;padding:2px 7px;cursor:pointer">Refresh</button>`;
+  head.querySelector('.artifactsRefresh').addEventListener('click', () => onRefresh(request));
+  container.appendChild(head);
+
+  const summary = document.createElement('div');
+  summary.className = 'mono';
+  summary.dataset.tip = 'artifacts.summary';
+  summary.style.cssText = 'font-size:10.5px;color:var(--color-neutral-500);padding:0 8px 4px';
+  if (status === 'loading') summary.textContent = `Loading… of ${request.total.toLocaleString('en-US')}`;
+  else if (status === 'error') summary.textContent = `Could not load the list.`;
+  else {
+    summary.textContent =
+      `${shown.toLocaleString('en-US')} of ${request.total.toLocaleString('en-US')}` +
+      (shown < request.total ? ', most recent first' : '');
+  }
+  container.appendChild(summary);
+
+  if (status === 'error') {
+    container.appendChild(note(escapeHtml(String(error?.message || error || 'unknown error'))));
+    return;
+  }
+  if (status !== 'ready') return;
+  if (!rows.length) {
+    container.appendChild(note('No artifact\u2019s sequence ' + edgeWord + ' this activity.'));
+    return;
+  }
+
+  for (const row of rows) {
+    const el = document.createElement('div');
+    el.className = 'sideRow';
+    el.dataset.tip = 'artifacts.row';
+    el.dataset.tipArg = row.title ? `${row.label} — ${row.title}` : row.label;
+    el.style.cssText =
+      'display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:var(--radius-sm)';
+    el.innerHTML =
+      `<span style="width:8px;height:8px;border-radius:2px;flex:0 0 auto;background:${typeSpec.color}"></span>` +
+      `<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">` +
+      `<span class="mono" style="font-size:11.5px;color:var(--color-text)">${escapeHtml(row.label)}</span>` +
+      (row.title
+        ? `<span style="font-size:10.5px;color:var(--color-neutral-500);overflow:hidden;text-overflow:ellipsis;` +
+          `white-space:nowrap">${escapeHtml(row.title)}</span>`
+        : '') +
+      `</span>` +
+      `<span class="mono" style="font-size:9.5px;color:var(--color-neutral-600);flex:0 0 auto">` +
+      `${escapeHtml(formatInstant(new Date(row.at)))}</span>`;
+    el.addEventListener('click', () => onSelect(row));
+    container.appendChild(el);
+  }
 }
