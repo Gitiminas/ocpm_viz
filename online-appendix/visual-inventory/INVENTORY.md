@@ -9,7 +9,7 @@ Captured **2026-08-23** from the working tree, running `npm start` on `http://lo
 against the **fixtures** source (plus three shots from the live database, marked `DB*`).
 
 Nothing in the repository was modified to produce this. The only files written are
-`visual-inventory-appendix/INVENTORY.md` and `visual-inventory-appendix/shots/*.png`.
+`online-appendix/visual-inventory/INVENTORY.md` and `online-appendix/visual-inventory/shots/*.png`.
 
 The checklist of what *should* exist came from `docs/_ground_truth.md` §6–§8,
 `src/render/theme.js` and `src/render/legend.js`. Where the picture and those documents
@@ -23,7 +23,7 @@ disagree, the picture is recorded here and the disagreement is noted in
 `scripts/shot.mjs` takes one screenshot per process and writes to `.shots/`, so it could
 not be used: this inventory needs *interaction* (hovering a mark, opening a sidebar
 disclosure, dragging a node, pinning a tooltip) and it must not write outside
-`visual-inventory-appendix/`. Instead the shots were driven over the Chrome DevTools Protocol.
+`online-appendix/visual-inventory/`. Instead the shots were driven over the Chrome DevTools Protocol.
 
 The mechanics, because they were not obvious:
 

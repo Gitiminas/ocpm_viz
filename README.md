@@ -216,6 +216,7 @@ compare fill between shots and never against the box.
 | `_ds/` | Nocturne design tokens. Consume via `var(--token)`; do not restyle |
 | `ocel-data.json` | The original data blob. Never edit — F1 is built from it by script |
 | `docs/` | The written record. See below |
+| `online-appendix/` | Thesis material beside the code: the visual inventory, screenshots of every mark with notes. Read by nothing |
 | `./ocpm.sh` | Starts both servers and applies the data layer in the one order that works |
 
 ## Documents
