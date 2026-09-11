@@ -138,7 +138,7 @@ export function renderSubLogCard({ container, summary, total = summary, notes = 
     tile({
       value: String(summary.events),
       of: total.events,
-      label: plural('Artifact', total.events),
+      label: plural('Event', total.events),
       tip: { key: 'card.events' },
     }),
   );
