@@ -1,0 +1,171 @@
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Interactive dependency graph of 49 materialized views in 9 tiers; clicking a view distinguishes direct and transitive upstream dependencies and downstream consumers.</h2>
+<style>
+#mvdep,#mvdep *{box-sizing:border-box}
+#mvdep{max-width:700px;margin:0 auto;padding:8px 0;
+--g-p:#1a1a18;--g-s:#5F5E5A;--g-t:#888780;--g-bg:#ffffff;--g-b:#B4B2A9;
+--g-sel:#FAEEDA;--g-selB:#BA7517;--g-selT:#633806;
+--g-up:#9FE1CB;--g-upB:#085041;--g-upT:#04342C;
+--g-upIB:#1D9E75;--g-upIT:#0F6E56;
+--g-dn:#CECBF6;--g-dnB:#26215C;--g-dnT:#26215C;
+--g-dnIB:#7F77DD;--g-dnIT:#534AB7;
+--g-eUp:#1D9E75;--g-eDn:#7F77DD;
+font-family:ui-sans-serif,system-ui,sans-serif;color:var(--g-p);font-size:14px;line-height:1.5}
+@media (prefers-color-scheme: dark){
+#mvdep{--g-p:#e8e6dd;--g-s:#B4B2A9;--g-t:#888780;--g-bg:#2C2C2A;--g-b:#5F5E5A;
+--g-sel:#854F0B;--g-selB:#FAC775;--g-selT:#FAEEDA;
+--g-up:#085041;--g-upB:#9FE1CB;--g-upT:#E1F5EE;
+--g-upIB:#0F6E56;--g-upIT:#5DCAA5;
+--g-dn:#3C3489;--g-dnB:#CECBF6;--g-dnT:#EEEDFE;
+--g-dnIB:#534AB7;--g-dnIT:#AFA9EC;
+--g-eUp:#5DCAA5;--g-eDn:#AFA9EC}}
+#mvdep .lg{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;margin:0 0 10px;font-size:12px;color:var(--g-s)}
+#mvdep .sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid transparent;flex:none}
+#mvdep .lgi{display:inline-flex;align-items:center;gap:5px}
+#mvdep button{font-family:inherit;font-size:12px;line-height:1;height:28px;padding:0 14px;border-radius:8px;border:1px solid var(--g-b);background:transparent;color:var(--g-p);cursor:pointer}
+#mvdep button:hover{background:rgba(128,128,128,.1)}
+#mvdep #info{font-size:12px;color:var(--g-s);min-height:18px;margin:0 0 8px}
+#mvdep code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+#mvdep svg{display:block;width:100%;height:auto}
+</style>
+<div id="mvdep">
+<div class="lg">
+  <span class="lgi"><span class="sw" style="background:var(--g-sel);border-color:var(--g-selB)"></span>selected</span>
+  <span class="lgi"><span class="sw" style="background:var(--g-up);border-color:var(--g-upB)"></span>direct dependency</span>
+  <span class="lgi"><span class="sw" style="background:var(--g-bg);border:1px dashed var(--g-upIB)"></span>indirect dependency</span>
+  <span class="lgi"><span class="sw" style="background:var(--g-dn);border-color:var(--g-dnB)"></span>direct consumer</span>
+  <span class="lgi"><span class="sw" style="background:var(--g-bg);border:1px dashed var(--g-dnIB)"></span>indirect consumer</span>
+  <button id="resetBtn" style="margin-left:auto">Reset</button>
+</div>
+<div id="info">Click any view to trace its upstream and downstream chain.</div>
+<div id="graph"></div>
+</div>
+<script>
+const NAMES = ["issues_identity","mv_commit_comment_activities","mv_create_events_full","mv_delete_events_full","mv_fork_events_full","mv_issue_comments_full","mv_issue_pr_labels_full","mv_issues_full","mv_pr_review_comments_full","mv_pr_reviews_full","mv_pull_request_comments_full","mv_pull_request_events_full","mv_push_activities","mv_push_commits_full","ocel_repos","prs_identity","mv_commit_message_issue_links_all","mv_issue_and_issuecomment_activities_full","mv_issue_id_to_number","mv_issue_pr_label_membership","mv_issue_pr_links_branch_name","mv_issue_pr_links_issue_comment","mv_issue_pr_links_pr_body","mv_issue_pr_links_pr_title","mv_label_objects","mv_label_snapshots_per_event","mv_pr_head_provenance","mv_pr_offplatform_merges","mv_pr_review_activities","ocel_actors","ocel_commits","mv_label_lifecycle_events","mv_pull_request_and_comment_activities_full","ocel_events","mv_comment_classification","mv_commit_pr_links","mv_object_outcomes","mv_process_gaps","mv_process_labels","mv_issue_pr_links_closed_via_commit","mv_issue_pr_links_commit_message","ocel_c_events","mv_issue_pr_links_proximity","ocel_c_e2o","ocel_c_objects","mv_issue_to_pr_validated_all","mv_issue_pr_links_extended_conventions","ocel_c_e2o_references","ocel_c_o2o"];
+const DEPS = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[13],[5,7],[7],[6],[0,11,15],[0,5,11,15],[0,11,15],[0,11,15],[6],[6],[2,4,11],[11,13],[8,9],[13],[13],[25],[10,11,27],[2,3,5,7,8,9,10,11,27],[33],[11,13,33],[33],[29,33],[31],[0,11,15,35],[0,11,13,15,35],[4,25,29,31,33,38],[11,15,20,21,22,23,39,40],[4,11,13,31,38,41],[4,8,9,11,14,15,18,29,30,31,38,41],[20,21,22,23,39,40,42],[0,11,15,45],[0,5,13,15,16,33,35,45,46],[4,8,9,11,13,16,18,27,31,35,38,45,46]];
+const TIERS = [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],[16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],[31,32,33],[34,35,36,37,38],[39,40,41],[42,43,44],[45],[46],[47,48]];
+const CONSUMERS = NAMES.map(()=>[]);
+DEPS.forEach((ds,i)=>ds.forEach(d=>CONSUMERS[d].push(i)));
+
+const W=680, PAD=7, GAP=8, NH=24, ROWGAP=9, TIERGAP=32, LBL=18, FS=11, CW=6.4;
+const pos={};
+let y=8;
+const tierBands=[];
+TIERS.forEach((tier,t)=>{
+  const y0=y;
+  y+=LBL;
+  let x=10, rowY=y;
+  tier.forEach(i=>{
+    const w=Math.ceil(NAMES[i].length*CW)+2*PAD;
+    if(x+w>W-10){ x=10; rowY+=NH+ROWGAP; }
+    pos[i]={x,y:rowY,w,h:NH};
+    x+=w+GAP;
+  });
+  y=rowY+NH;
+  tierBands.push({t,y0});
+  y+=TIERGAP;
+});
+const H=y-TIERGAP+16;
+
+const svgNS='http://www.w3.org/2000/svg';
+const svg=document.createElementNS(svgNS,'svg');
+svg.setAttribute('viewBox','0 0 '+W+' '+H);
+svg.setAttribute('role','img');
+const ti=document.createElementNS(svgNS,'title');
+ti.textContent='Materialized view dependency graph, 49 views in 9 tiers';
+svg.appendChild(ti);
+
+const edgeLayer=document.createElementNS(svgNS,'g');
+svg.appendChild(edgeLayer);
+
+tierBands.forEach(b=>{
+  const t=document.createElementNS(svgNS,'text');
+  t.setAttribute('x',10); t.setAttribute('y',b.y0+11);
+  t.setAttribute('style','font-size:11px;fill:var(--g-t)');
+  t.textContent='Tier '+b.t;
+  svg.appendChild(t);
+});
+
+const edges=[];
+DEPS.forEach((ds,i)=>ds.forEach(d=>{
+  const p=document.createElementNS(svgNS,'path');
+  const a=pos[d], b=pos[i];
+  const x1=a.x+a.w/2, y1=a.y+a.h, x2=b.x+b.w/2, y2=b.y;
+  const my=(y1+y2)/2;
+  p.setAttribute('d','M'+x1+' '+y1+' C'+x1+' '+my+','+x2+' '+my+','+x2+' '+y2);
+  p.setAttribute('fill','none');
+  p.setAttribute('stroke','var(--g-t)');
+  p.setAttribute('stroke-width','0.7');
+  p.setAttribute('opacity','0.12');
+  edgeLayer.appendChild(p);
+  edges.push({from:d,to:i,el:p});
+}));
+
+const nodeEls={};
+NAMES.forEach((n,i)=>{
+  const g=document.createElementNS(svgNS,'g');
+  g.setAttribute('style','cursor:pointer');
+  const p=pos[i];
+  const r=document.createElementNS(svgNS,'rect');
+  r.setAttribute('x',p.x); r.setAttribute('y',p.y);
+  r.setAttribute('width',p.w); r.setAttribute('height',p.h);
+  r.setAttribute('rx',6);
+  r.setAttribute('fill','var(--g-bg)');
+  r.setAttribute('stroke','var(--g-b)');
+  r.setAttribute('stroke-width','0.6');
+  const t=document.createElementNS(svgNS,'text');
+  t.setAttribute('x',p.x+p.w/2); t.setAttribute('y',p.y+p.h/2);
+  t.setAttribute('text-anchor','middle');
+  t.setAttribute('dominant-baseline','central');
+  t.setAttribute('style','font-size:'+FS+'px;fill:var(--g-p);font-family:ui-monospace,Menlo,Consolas,monospace');
+  t.textContent=n;
+  g.appendChild(r); g.appendChild(t);
+  g.addEventListener('click',()=>select(i));
+  svg.appendChild(g);
+  nodeEls[i]={rect:r,text:t,g};
+});
+
+function ancestors(i,set){ DEPS[i].forEach(d=>{ if(!set.has(d)){ set.add(d); ancestors(d,set); } }); }
+function descendants(i,set){ CONSUMERS[i].forEach(c=>{ if(!set.has(c)){ set.add(c); descendants(c,set); } }); }
+
+const info=document.getElementById('info');
+function paint(j,fill,stroke,txt,op,dashed,sw){
+  const e=nodeEls[j];
+  e.rect.setAttribute('fill',fill);
+  e.rect.setAttribute('stroke',stroke);
+  e.rect.setAttribute('stroke-dasharray',dashed?'3 2':'');
+  e.rect.setAttribute('stroke-width',sw);
+  e.g.setAttribute('opacity',op);
+  e.text.setAttribute('style','font-size:'+FS+'px;fill:'+txt+';font-family:ui-monospace,Menlo,Consolas,monospace');
+}
+function reset(){
+  NAMES.forEach((n,i)=>paint(i,'var(--g-bg)','var(--g-b)','var(--g-p)','1',false,'0.6'));
+  edges.forEach(e=>{ e.el.setAttribute('stroke','var(--g-t)'); e.el.setAttribute('opacity','0.12'); e.el.setAttribute('stroke-width','0.7'); });
+  info.textContent='Click any view to trace its upstream and downstream chain.';
+}
+function select(i){
+  const allUp=new Set(); ancestors(i,allUp);
+  const allDn=new Set(); descendants(i,allDn);
+  const dirUp=new Set(DEPS[i]);
+  const dirDn=new Set(CONSUMERS[i]);
+  NAMES.forEach((n,j)=>{
+    if(j===i) paint(j,'var(--g-sel)','var(--g-selB)','var(--g-selT)','1',false,'1');
+    else if(dirUp.has(j)) paint(j,'var(--g-up)','var(--g-upB)','var(--g-upT)','1',false,'1');
+    else if(allUp.has(j)) paint(j,'var(--g-bg)','var(--g-upIB)','var(--g-upIT)','1',true,'1');
+    else if(dirDn.has(j)) paint(j,'var(--g-dn)','var(--g-dnB)','var(--g-dnT)','1',false,'1');
+    else if(allDn.has(j)) paint(j,'var(--g-bg)','var(--g-dnIB)','var(--g-dnIT)','1',true,'1');
+    else paint(j,'var(--g-bg)','var(--g-b)','var(--g-p)','0.22',false,'0.6');
+  });
+  edges.forEach(e=>{
+    const direct=(e.to===i&&dirUp.has(e.from))||(e.from===i&&dirDn.has(e.to));
+    const upChain=allUp.has(e.to)&&allUp.has(e.from);
+    const dnChain=allDn.has(e.from)&&allDn.has(e.to);
+    if(direct){ const up=e.to===i; e.el.setAttribute('stroke',up?'var(--g-eUp)':'var(--g-eDn)'); e.el.setAttribute('opacity','0.9'); e.el.setAttribute('stroke-width','1.4'); }
+    else if(upChain){ e.el.setAttribute('stroke','var(--g-eUp)'); e.el.setAttribute('opacity','0.3'); e.el.setAttribute('stroke-width','0.9'); }
+    else if(dnChain){ e.el.setAttribute('stroke','var(--g-eDn)'); e.el.setAttribute('opacity','0.3'); e.el.setAttribute('stroke-width','0.9'); }
+    else { e.el.setAttribute('stroke','var(--g-t)'); e.el.setAttribute('opacity','0.04'); e.el.setAttribute('stroke-width','0.7'); }
+  });
+  info.innerHTML='<code>'+NAMES[i]+'</code> — dependencies: '+dirUp.size+' direct, '+(allUp.size-dirUp.size)+' indirect · consumers: '+dirDn.size+' direct, '+(allDn.size-dirDn.size)+' indirect';
+}
+document.getElementById('resetBtn').addEventListener('click',reset);
+document.getElementById('graph').appendChild(svg);
+</script>

@@ -1,57 +1,108 @@
 # Visual inventory — every mark ocpm-viz can draw
 
-> Captured 2026-08-23, before the Process page. Its marks — activity nodes, succession arcs and
-> loops, dashed cross arrows, count labels, the process card, the Successions and Activities
-> sections and the legend's Process map section — are not inventoried here.
-
-A catalogue of the tool's visual vocabulary, from the single glyph to the whole canvas.
-Captured **2026-08-23** from the working tree, running `npm start` on `http://localhost:8000`
-against the **fixtures** source (plus three shots from the live database, marked `DB*`).
-
-Nothing in the repository was modified to produce this. The only files written are
-`online-appendix/visual-inventory/INVENTORY.md` and `online-appendix/visual-inventory/shots/*.png`.
-
-The checklist of what *should* exist came from `docs/_ground_truth.md` §6–§8,
-`src/render/theme.js` and `src/render/legend.js`. Where the picture and those documents
-disagree, the picture is recorded here and the disagreement is noted in
-[§J](#j-observations-the-capture-turned-up).
+A catalogue of the tool's visual vocabulary, from the single glyph to the whole canvas: one
+screenshot and a few lines per mark, control and card, driven on the running app against the
+fixtures source and, where marked, the live database (`microsoft/vscode`). Sections A to I were
+captured **2026-08-23**; K and L on **2026-09-11** from the current tree, covering the Process
+page and everything that changed since. The checklist comes first: what should exist, and the
+entry that shows it.
 
 ---
 
-## Method
+## Checklist
 
-`scripts/shot.mjs` takes one screenshot per process and writes to `.shots/`, so it could
-not be used: this inventory needs *interaction* (hovering a mark, opening a sidebar
-disclosure, dragging a node, pinning a tooltip) and it must not write outside
-`online-appendix/visual-inventory/`. Instead the shots were driven over the Chrome DevTools Protocol.
+**A. Object glyphs**
+- [x] Issue circle · PR diamond · commit square — A1, A2, A3
+- [x] Per-object shades — A5 (all 6 PR shades; 4 of 6 issue shades — *not captured: no fixture holds ≥ 6 issues*)
+- [x] Comment mark, hollow — A4
+- [x] Landmark ring — A6
+- [x] Heuristic landmark ring (F14) — A7
+- [x] Closed-unmerged ring (F14) — A8
+- [x] Repeat-observation marker — A9 (*from LIVE1, not F10*)
+- [x] Commit label text and thinning — A10
 
-The mechanics, because they were not obvious:
+**B. Folding / bursts**
+- [x] Folded push burst — B1
+- [x] Expanded burst and fold handle — B2
+- [x] Comment burst, folded and expanded, with handle — B3
+- [x] Burst node in relationships mode — B4
 
-- The only browser on this machine is Microsoft Edge on the Windows side, reached through
-  WSL interop. It binds its debug port to `127.0.0.1` and ignores
-  `--remote-debugging-address`, and Windows Firewall blocks inbound connections from the
-  WSL adapter — so a CDP client running inside WSL cannot reach it. A TCP relay on the
-  Windows side was tried and blocked at the same firewall.
-- So the driver runs **on the Windows side, over loopback**: a hand-rolled WebSocket +
-  CDP client in Python's standard library (no websocket package is installed and pip has
-  no network). It lives outside the repo, in `C:\temp\ocpm-vi\`.
-- Each capture is a *scene*: navigate, wait for a readiness predicate, run steps
-  (`hover`, `click`, `rclick`, `drag`, `key`, `js`, `scrollTo`), then screenshot with an
-  optional clip computed from a live element rectangle.
-- Interaction uses real `Input.dispatchMouseEvent` events, not synthetic DOM events,
-  because the tooltips and the drag simulation read pointer coordinates and button state.
-- Micro items are cropped to a fixed window centred on the element and magnified 2–6×.
-  A bare `getBoundingClientRect()` of an SVG group often spans a whole lane — one early
-  attempt at cropping a 9×9 marker produced a 630×13240 image — so crops are centred
-  windows, not bounding boxes.
-- Motion shots set `prefers-reduced-motion: no-preference`; every other shot forces
-  `reduce`, so nothing drifts between captures.
-- LIVE2 draws a 6482 px-tall canvas inside `#scroll`. Anything below the fold is scrolled
-  into the container before it is measured and cropped.
+**C. Lines and links**
+- [x] Lifecycle bar, reopened issue = two bars — C1
+- [x] Lifecycle bar in discrete mode — C2
+- [x] Sequence line with dashed comment segments — C3
+- [x] Validated vs extracted — C4
+- [x] Link gradient — C5
+- [x] Fanned links and ×N badge — C6
+- [x] Qualifier colouring — C7
+- [x] Relationships edges: evidence styling, 5 px offset, precedence arrow — C8
+- [x] Actor trail, rings, shared-ring dash — C9
+- [x] Out-of-focus and brushed-out dimming — C10, C11
 
-Fixtures were chosen by probing which `data-legend` keys each one actually renders,
-rather than by assuming. That probe is reproduced in [§J](#j-observations-the-capture-turned-up)
-because it corrects two fixture attributions.
+**D. Graph types**
+- [x] Absolute — D1
+- [x] Discrete with gap annotations — D2
+- [x] Relationships → Rows — D3
+- [x] Relationships → Clusters — D4
+- [x] Sub-lane bands — D5
+- [x] Commit lane with repeatRow — D6
+
+**E. Axis, navigation, overlays**
+- [x] Absolute and discrete axes, merged/staggered labels, UTC — E1, E2
+- [x] Minimap with viewport and grips — E3 (*mid-gesture grip state not captured*)
+- [x] Time brush and dimmed out-of-range marks — E4, C11
+- [x] Focus state, degree 1 vs 2, floating stepper, `#focusInfo` — E5, C10
+- [x] Drag-nudged node, before and after — E6
+
+**F. Sidebar, cards, panels**
+- [x] Sub-log card, normal and filtered — F1
+- [x] Views, built-ins and a saved view with rename/delete — F2
+- [x] Lanes: masters, comments, per-object hide, commit groups incl. unlinked — F3
+- [x] Relationships: masters, pairs, qualifiers, methods, counts — F4
+- [x] Folding: push label and comment window slider — F5
+- [x] Actors: search and rows — F6
+- [x] Legend: 17 rows, dimmed absent rows, hover highlight — F7
+- [x] Hidden banner with chips and Show everything — F8
+- [x] Help strip, default and resolved — F9, D1
+
+**G. Tooltips and cards**
+- [x] All 10 tooltip variants and the pinned state — G table, G11
+- [x] Actor card — G12
+
+**H. Stats page**
+- [x] Table, aggregates collapsed and expanded — H1, H2
+- [x] All six cards plus Landmarks — H3, H4
+- [x] Filtered notice — H5
+
+**I. Messages and motion**
+- [x] Seed prompt, error surface, toast — I1, I2, I3
+- [x] Burst expand FLIP — I4 (*start and settled only; intermediate frames not captured*)
+- [x] Structural settle / idle drift — I5
+
+**Beyond the task list**
+- [x] Database source, seed search dropdown, traversal degree stepper — I6
+
+**K. Process page** (2026-09-11)
+- [x] The whole page — K1
+- [x] Activity nodes with event counts, succession arcs, self-loops, dashed cross arrows, count labels — K2
+- [x] Activity card with the sequence tiles, and a card whose tiles are unavailable — K3, K4
+- [x] The pin hint on an unpinned card — K5
+- [x] Succession card, within a type and across a link with its class breakdown — K6, K7
+- [x] Focus dimming and the focus pill — K8
+- [x] The Artifacts box empty, filled from an issue tile, filled from the push tile with push groups — K9, K10, K11
+- [x] Sidebar: Lanes with a lane unfolded, Relationships, Successions range, Legend — K12, K13
+- [x] The hidden banner naming what the page's own view hides — K14
+
+**L. Changed since the first capture** (2026-09-11)
+- [x] Pin hint on the Trace page — L1
+- [x] Link card: `Link` kicker, qualifier row, every method named — L2
+- [x] Issue card: `Issue #N` object label, title and description — L3
+- [x] Derived opening: the dotted ring and the card's Source row — L4
+- [x] Links meet the lifecycle interval they belong to (#188934) — L5
+- [x] Inert relationship rows under a hidden lane — L6
+- [x] Folding box: `Commits`, `n folds` — L7
+- [x] Trace legend with `opened · from a later event` — L8
+- [ ] *Not captured:* a push group listing several of its commits in the browser (asserted in `tests/dfg.test.js`); the Artifacts box mid-load
 
 ---
 
@@ -545,7 +596,7 @@ button. Hovering a row previews that actor's trail; clicking pins it.
 
 ![Legend](shots/F07-legend-section.png)
 
-All 16 Trace keys in five sections — Objects, Marks, Links, Relationships mode, Lines — 17 rows,
+All 16 Trace keys as of the capture in five sections — Objects, Marks, Links, Relationships mode, Lines — 17 rows (18 since `opening-derived`, 2026-09-07; see L8),
 `comments` appearing under both Marks and Lines; the Process map section (3 keys) is dimmed on the
 Trace page and lives in the Process page's own legend. Rows for
 keys absent from the current render drop to 0.32 opacity rather than disappearing, because
@@ -581,7 +632,8 @@ has no key.
 ## G. Tooltips and cards
 
 Every variant below is one hovercard built by `createTooltip`. Hover shows and follows it;
-right-click pins it; Esc or the × closes it; clicking a row copies that value.
+right-click pins it; Esc or the × closes it; clicking a row copies that value. Since 2026-09-10
+every unpinned card carries a "right-click to pin" hint in the accent colour (L1).
 
 | Variant | Shot | What it carries |
 |---|---|---|
@@ -591,7 +643,7 @@ right-click pins it; Esc or the × closes it; clicking a row copies that value.
 | Bulk push | ![](shots/G04-tooltip-bulk-push.png) | member count, push id, span |
 | Comment burst | ![](shots/G05-tooltip-comment-burst.png) | how many comments, from/to |
 | Fold handle | ![](shots/G06-tooltip-fold-handle.png) | what folding back would do |
-| Timeline link | ![](shots/G07-tooltip-link.png) | qualifier, evidence badge, method, methods agreeing |
+| Timeline link | ![](shots/G07-tooltip-link.png) | qualifier, evidence badge, method, methods agreeing — since 2026-09-09 the kicker is `Link`, the qualifier a row and every method named; see L2 |
 | Relationships node | ![](shots/G08-tooltip-rel-node.png) | lifecycle rows, comments, actors |
 | Relationships edge | ![](shots/G09-tooltip-rel-edge.png) | qualifier and method per member, evidence, temporal order |
 | Repeat marker | ![](shots/G10-tooltip-repeat-marker.png) | which push re-observed the commit |
@@ -721,127 +773,179 @@ not the focus degree of E5.
 
 ---
 
-## J. Observations the capture turned up
+---
 
-Facts, recorded because the inventory is only as good as its checklist. Nothing here was
-changed.
+## K. Process page
 
-1. **`actor-trail` is never present until an actor is pinned.** Its legend row is dimmed in
-   every fixture on load. It is the only legend key that no data can produce on its own.
+The object-centric directly-follows graph over one repository's whole log, database only.
+Everything here is `microsoft/vscode`, captured 2026-09-11.
 
-2. **F10 has no repeat observations.** The task list attributed the `repeatRow` to F10;
-   probing all 14 fixtures for rendered `data-legend` keys shows `repeat-observation` only
-   in LIVE1 and LIVE2. F10's 300 commits are spread over 24 pushes, but none is pushed
-   twice. D6 was captured from LIVE1.
+### K1 · The page
 
-3. **LIVE2 has no *Not linked to a PR* group.** All 24 of its commit groups are PR groups;
-   every commit is attributed. F7 is the fixture that exercises the unlinked group.
+![Process page](shots/K01_process_page.png)
 
-4. **Focus degree 2 is indistinguishable from degree 1 when focusing F1's PR.** The two
-   renders were byte-identical, because everything in F1 is within one hop of the PR. The
-   degrees only diverge from the issue, which is what C10 shows.
+One lane per artifact type, one node per activity in lifecycle reading order, arcs for
+successions within a type (forward above the row, rework below), dashed arrows across links.
+The query block on the left holds the Artifacts box and the *currently displayed* card.
 
-5. **A URL-supplied `focusDegree` applies to the render but the stepper stays hidden.**
-   `updateDegreeStepper()` is called only from `showDegreeStepper()` — which needs pointer
-   coordinates — and from the ± handlers (`src/main.js:563, 580, 588`). With
-   `?focus=…&focusDegree=2` the dimming is correct and `state.focusDegree` is 2, while the
-   never-shown `#degVal` still reads its markup default of 1. Not visible to a user, but it
-   means E5 had to be captured by clicking a mark, not from a URL.
+### K2 · Nodes, arcs, loops, cross arrows, count labels
 
-6. **Copy link falls back to `window.prompt`.** When `navigator.clipboard.writeText`
-   rejects — as it does in a headless browser without clipboard permission —
-   `src/render/controls.js:242` opens a prompt instead of toasting. I3 was therefore
-   captured from *Save current view*, whose toast does not depend on the clipboard.
+![Map](shots/K02_activity_nodes.png)
 
-7. **Cluster layout overlaps badly at LIVE2's size.** Marks and labels overprint in D4's
-   second shot. `docs/RELATIONSHIPS_MODE.md` records the layout's weak points; this is a
-   picture of one.
+A node is its lane's shape with the activity's short label and event count beneath. Edge width
+grows with the square root of the succession count against the unfiltered maximum; a
+self-succession is a loop above its node; a cross-type arrow takes the colour of the lane it
+leaves and is dashed, because its count is a floor. Count labels sit on a halo and open the same
+card as their edge. `data-legend="dfg-activity"`, `dfg-succession`, `dfg-cross-succession`.
 
-### Not captured
+### K3 · Activity card, with the sequence tiles
 
-- **True intermediate FLIP frames.** Sampling at 40/110/190/280/380 ms produced only two
-  distinct images — the start pose and the settled pose. Each capture costs a CDP
-  round-trip before the screenshot, which is enough to overshoot a 450 ms transition that
-  is already most of the way done. The start and end states are in I4; the motion between
-  them is not.
-- **The two remaining issue shades.** `OBJECT_SHADES.issue` holds 6; no fixture has more
-  than 4 issues, so shades 5 and 6 cannot be drawn from fixture data. Their values are
-  quoted in A5.
-- **Minimap drag-to-zoom grips mid-gesture.** The grips are visible in E3 and the result of
-  a viewport drag is in E3b, but the transient state while a grip is held is not a distinct
-  rendering.
+![Activity card](shots/K03_activity_card_tiles.png)
+
+Events, event–object occurrences where they differ, objects, and two tiles: how many objects'
+sequences start and end with this activity. On a pinned card the tiles are buttons on every
+lifecycle activity and on push; the footer says so. The figures come from the same relation the
+Artifacts list is served from, so the tile and the list's total are one number.
+
+### K4 · Activity card, tiles unavailable
+
+![Unavailable tiles](shots/K04_activity_card_unavailable.png)
+
+The two comment activities keep their figures and say *currently unavailable*: dashed, dimmed,
+inert. The tile exists so the reader knows the figure does and the list does not, yet.
+
+### K5 · Pin hint
+
+![Pin hint](shots/K05_pin_hint.png)
+
+Every unpinned card carries the hint in the accent colour; pinning replaces it with the close
+button, and closing brings it back on the next hover.
+
+### K6 · Succession card, within a type
+
+![Succession card](shots/K06_succession_card.png)
+
+### K7 · Succession card, across a link
+
+![Cross succession card](shots/K07_cross_succession_card.png)
+
+One arrow per directed endpoint pair, summed over the link classes it rides on; the card breaks
+the count down by qualifier, evidence and method. Floors, and labelled as such.
+
+### K8 · Focus
+
+![Focus](shots/K08_focus_dimming.png)
+
+Click an activity: edges not touching it and nodes not adjacent to it dim, and the pill at the
+top right names the focus. A background click clears it.
+
+### K9 · Artifacts box, empty, and the currently-displayed card
+
+![Empty box](shots/K09_process_card_and_artifacts_empty.png)
+
+The box is on the page before anything is in it and says what fills it. Below it the card
+counts activities, within-type and across-link successions that are drawn, against the whole
+log's whenever the page's own filter hides something.
+
+### K10 · Artifacts box, from an issue tile
+
+![Issue close list](shots/K10_artifacts_issue_close.png)
+
+The 100 most recent issues whose sequence ends with a close, of 79,018, and it says so. Each
+row is a seed: click one and the Trace page opens its sub-log. Refresh re-asks the database.
+The rows scroll inside the box.
+
+### K11 · Artifacts box, from the push tile
+
+![Push list](shots/K11_artifacts_push_groups.png)
+
+Commits are grouped under the push their sequence edge belongs to; a header names the push and
+how many of its commits are listed against how many it carried.
+
+### K12 · Sidebar: Lanes and Relationships
+
+![Lanes and Relationships](shots/K12_sidebar_lanes_relationships.png)
+
+Lanes fold to their activities, each with its event count; Relationships holds *Within a type*
+and *Across links*, with the link evidence, qualifier and method rows under the latter. A row is
+inert while nothing it governs could be drawn.
+
+### K13 · Sidebar: Successions range and Legend
+
+![Range and legend](shots/K13_sidebar_successions_legend.png)
+
+The count range is logarithmic and opens with the rarest tenth of arrows hidden. The legend's
+Process map section is the only one shown on this page.
+
+### K14 · The hidden banner
+
+![Hidden banner](shots/K14_notice.png)
+
+What the page's own view hides, one chip per item with its restore, the Trace banner's twin.
+Here *Within a type* is switched off, so every lane's own successions are named.
 
 ---
 
-## Checklist
+## L. Changed since the first capture
 
-**A. Object glyphs**
-- [x] Issue circle · PR diamond · commit square — A1, A2, A3
-- [x] Per-object shades — A5 (all 6 PR shades; 4 of 6 issue shades — *not captured: no fixture holds ≥ 6 issues*)
-- [x] Comment mark, hollow — A4
-- [x] Landmark ring — A6
-- [x] Heuristic landmark ring (F14) — A7
-- [x] Closed-unmerged ring (F14) — A8
-- [x] Repeat-observation marker — A9 (*from LIVE1, not F10*)
-- [x] Commit label text and thinning — A10
+Captured 2026-09-11. Each entry supersedes the older shot it names.
 
-**B. Folding / bursts**
-- [x] Folded push burst — B1
-- [x] Expanded burst and fold handle — B2
-- [x] Comment burst, folded and expanded, with handle — B3
-- [x] Burst node in relationships mode — B4
+### L1 · Pin hint, Trace page
 
-**C. Lines and links**
-- [x] Lifecycle bar, reopened issue = two bars — C1
-- [x] Lifecycle bar in discrete mode — C2
-- [x] Sequence line with dashed comment segments — C3
-- [x] Validated vs extracted — C4
-- [x] Link gradient — C5
-- [x] Fanned links and ×N badge — C6
-- [x] Qualifier colouring — C7
-- [x] Relationships edges: evidence styling, 5 px offset, precedence arrow — C8
-- [x] Actor trail, rings, shared-ring dash — C9
-- [x] Out-of-focus and brushed-out dimming — C10, C11
+![Trace pin hint](shots/L01_trace_pin_hint.png)
 
-**D. Graph types**
-- [x] Absolute — D1
-- [x] Discrete with gap annotations — D2
-- [x] Relationships → Rows — D3
-- [x] Relationships → Clusters — D4
-- [x] Sub-lane bands — D5
-- [x] Commit lane with repeatRow — D6
+Supersedes the one-time hint noted at G11.
 
-**E. Axis, navigation, overlays**
-- [x] Absolute and discrete axes, merged/staggered labels, UTC — E1, E2
-- [x] Minimap with viewport and grips — E3 (*mid-gesture grip state not captured*)
-- [x] Time brush and dimmed out-of-range marks — E4, C11
-- [x] Focus state, degree 1 vs 2, floating stepper, `#focusInfo` — E5, C10
-- [x] Drag-nudged node, before and after — E6
+### L2 · Link card
 
-**F. Sidebar, cards, panels**
-- [x] Sub-log card, normal and filtered — F1
-- [x] Views, built-ins and a saved view with rename/delete — F2
-- [x] Lanes: masters, comments, per-object hide, commit groups incl. unlinked — F3
-- [x] Relationships: masters, pairs, qualifiers, methods, counts — F4
-- [x] Folding: push label and comment window slider — F5
-- [x] Actors: search and rows — F6
-- [x] Legend: 17 rows, dimmed absent rows, hover highlight — F7
-- [x] Hidden banner with chips and Show everything — F8
-- [x] Help strip, default and resolved — F9, D1
+![Link card](shots/L02_link_card_methods.png)
 
-**G. Tooltips and cards**
-- [x] All 10 tooltip variants and the pinned state — G table, G11
-- [x] Actor card — G12
+Kicker `Link`, the qualifier as a row, and every detection method by name, primary first. Three
+parses agreeing on F12's link stay `extracted`: since 2026-09-09 `pr_body` no longer validates.
+Supersedes G7.
 
-**H. Stats page**
-- [x] Table, aggregates collapsed and expanded — H1, H2
-- [x] All six cards plus Landmarks — H3, H4
-- [x] Filtered notice — H5
+### L3 · Issue card
 
-**I. Messages and motion**
-- [x] Seed prompt, error surface, toast — I1, I2, I3
-- [x] Burst expand FLIP — I4 (*start and settled only; intermediate frames not captured*)
-- [x] Structural settle / idle drift — I5
+![Issue card](shots/L03_issue_card_title_description.png)
 
-**Beyond the task list**
-- [x] Database source, seed search dropdown, traversal degree stepper — I6
+The object is named `Issue #N`, as a pull request is `PR #N`; the card carries the title and the
+description, capped at 500 characters like a comment excerpt. Live, #188934. Supersedes G1.
+
+### L4 · Derived opening
+
+![Derived opening card](shots/L04_derived_opening.png)
+
+![Derived opening ring](shots/L04b_derived_opening_ring.png)
+
+An issue whose `opened` event the corpus lacks gets its opening from a later event's payload:
+the dotted ring in the extracted colour (`data-legend="opening-derived"`) and a Source row on
+the card. Live, #214053. New mark since A6.
+
+### L5 · Links meet the interval they belong to
+
+![Reopened issue](shots/L05_reopened_issue_links.png)
+
+#188934, closed, reopened and closed again: the first PR meets the first bar, the PR opened
+during the reopen meets the reopen bar, and the PR opened after the final close meets the final
+close mark. Before 2026-09-10 all three met the first bar. Extends C1.
+
+### L6 · Inert relationship rows
+
+![Inert rows](shots/L06_inert_relationship_rows.png)
+
+F1 with the issue lane hidden: every pair, qualifier and method that needs an issue is dimmed
+and unclickable, and its master skips it. One rule for all three kinds of row. Supersedes F4.
+
+### L7 · Folding box
+
+![Folding](shots/L07_folding_box.png)
+
+The push box is titled *Commits* and counts folds, not folded marks. Supersedes F5.
+
+### L8 · Trace legend
+
+![Legend](shots/L08_legend_new_rows.png)
+
+Six sections and twenty keys in the whole legend; the Trace page shows five sections. New
+since the first capture: *opened · from a later event*. Rows dim when absent from the current
+picture. Supersedes F7.

@@ -23,7 +23,7 @@
 
 import { glyph, typeColor, TYPE, chevron } from './theme.js';
 import { DFG_TYPE_LABELS } from '../state/labels.js';
-import { escapeHtml, formatInstant } from './format.js';
+import { escapeHtml, formatDate, formatInstant } from './format.js';
 import { activityLabel, activityShortLabel } from '../model/activities.js';
 import { groupSequenceRows } from '../model/dfg.js';
 import { dfgRangeScale, dfgControlAvailability } from '../model/dfg.js';
@@ -1254,7 +1254,7 @@ export function renderDfgArtifacts({ container, countEl = null, listing, onSelec
     const el = document.createElement('div');
     el.className = 'sideRow';
     el.dataset.tip = 'artifacts.row';
-    el.dataset.tipArg = row.title ? `${row.label} — ${row.title}` : row.label;
+    el.dataset.tipArg = `${row.label}${row.title ? ` — ${row.title}` : ''} · ${formatInstant(new Date(row.at))}`;
     el.style.cssText =
       'display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:var(--radius-sm)';
     el.innerHTML =
@@ -1266,8 +1266,10 @@ export function renderDfgArtifacts({ container, countEl = null, listing, onSelec
           `white-space:nowrap">${escapeHtml(row.title)}</span>`
         : '') +
       `</span>` +
+      // The date only: the row's width is the title's, and the help strip carries the
+      // full instant while the row is hovered.
       `<span class="mono" style="font-size:9.5px;color:var(--color-neutral-600);flex:0 0 auto">` +
-      `${escapeHtml(formatInstant(new Date(row.at)))}</span>`;
+      `${escapeHtml(formatDate(new Date(row.at)))}</span>`;
     el.addEventListener('click', () => onSelect(row));
     return el;
   }

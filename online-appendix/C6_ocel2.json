@@ -1,0 +1,808 @@
+{
+ "objectTypes": [
+  {
+   "name": "actor",
+   "attributes": [
+    {
+     "name": "login",
+     "type": "string"
+    },
+    {
+     "name": "actor_id",
+     "type": "float"
+    },
+    {
+     "name": "label",
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "name": "commit",
+   "attributes": [
+    {
+     "name": "ref",
+     "type": "string"
+    },
+    {
+     "name": "push_id",
+     "type": "float"
+    },
+    {
+     "name": "commit_sha",
+     "type": "string"
+    },
+    {
+     "name": "commit_index",
+     "type": "float"
+    },
+    {
+     "name": "commit_message",
+     "type": "string"
+    },
+    {
+     "name": "commit_author_name",
+     "type": "string"
+    },
+    {
+     "name": "commit_author_email",
+     "type": "string"
+    },
+    {
+     "name": "label",
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "name": "issue",
+   "attributes": [
+    {
+     "name": "issue_id",
+     "type": "float"
+    },
+    {
+     "name": "issue_number",
+     "type": "float"
+    },
+    {
+     "name": "label",
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "name": "pull_request",
+   "attributes": [
+    {
+     "name": "title",
+     "type": "string"
+    },
+    {
+     "name": "base_ref",
+     "type": "string"
+    },
+    {
+     "name": "head_ref",
+     "type": "string"
+    },
+    {
+     "name": "pr_number",
+     "type": "float"
+    },
+    {
+     "name": "pull_request_id",
+     "type": "float"
+    },
+    {
+     "name": "label",
+     "type": "string"
+    }
+   ]
+  }
+ ],
+ "eventTypes": [
+  {
+   "name": "IssueOpened",
+   "attributes": [
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "name": "IssueCommented",
+   "attributes": [
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "name": "CommitObserved",
+   "attributes": [
+    {
+     "name": "ref",
+     "type": "string"
+    },
+    {
+     "name": "push_id",
+     "type": "float"
+    },
+    {
+     "name": "truncated",
+     "type": "boolean"
+    },
+    {
+     "name": "commit_count",
+     "type": "float"
+    },
+    {
+     "name": "distinct_commit_count",
+     "type": "float"
+    },
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "name": "PullRequestOpened",
+   "attributes": [
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "name": "PullRequestMerged",
+   "attributes": [
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "name": "IssueClosed",
+   "attributes": [
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  }
+ ],
+ "objects": [
+  {
+   "id": "actor:2230985",
+   "type": "actor",
+   "attributes": [
+    {
+     "name": "login",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "connor4312"
+    },
+    {
+     "name": "actor_id",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 2230985
+    },
+    {
+     "name": "label",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "@connor4312"
+    }
+   ]
+  },
+  {
+   "id": "actor:23246594",
+   "type": "actor",
+   "attributes": [
+    {
+     "name": "login",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "joshspicer"
+    },
+    {
+     "name": "actor_id",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 23246594
+    },
+    {
+     "name": "label",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "@joshspicer"
+    }
+   ]
+  },
+  {
+   "id": "actor:26178681",
+   "type": "actor",
+   "attributes": [
+    {
+     "name": "login",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "iwangbowen"
+    },
+    {
+     "name": "actor_id",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 26178681
+    },
+    {
+     "name": "label",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "@iwangbowen"
+    }
+   ]
+  },
+  {
+   "id": "actor:38270282",
+   "type": "actor",
+   "attributes": [
+    {
+     "name": "login",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "alexr00"
+    },
+    {
+     "name": "actor_id",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 38270282
+    },
+    {
+     "name": "label",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "@alexr00"
+    }
+   ]
+  },
+  {
+   "id": "actor:5327862",
+   "type": "actor",
+   "attributes": [
+    {
+     "name": "login",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "johnib"
+    },
+    {
+     "name": "actor_id",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 5327862
+    },
+    {
+     "name": "label",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "@johnib"
+    }
+   ]
+  },
+  {
+   "id": "actor:6989492",
+   "type": "actor",
+   "attributes": [
+    {
+     "name": "login",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "Tiberriver256"
+    },
+    {
+     "name": "actor_id",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 6989492
+    },
+    {
+     "name": "label",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "@Tiberriver256"
+    }
+   ]
+  },
+  {
+   "id": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
+   "type": "commit",
+   "attributes": [
+    {
+     "name": "ref",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "refs/heads/connor4312/mcp-1"
+    },
+    {
+     "name": "push_id",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 23069857921
+    },
+    {
+     "name": "commit_sha",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "eb700003ebf3797af1de1f9e222478d6d7f7eea3"
+    },
+    {
+     "name": "commit_index",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 1
+    },
+    {
+     "name": "commit_message",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "mcp: initial hacking\n\nThis is some basic work to get MCP hooked up. It's enough to discover\nand establish connections to MCP servers on the machine with very very\nbasic commands to manage them:\n\n![](https://memes.peet.io/img/25-03-2220f93e-3d1f-41ab-867e-0b9ba616ec6f.mp4)\n\nRefs #242864\n\nThe McpRegistry registers both collections of servers (from various\nconfig files) and 'delegates', which is currently _only_ the node\nextension host but is pretty generic and so could point at other\nprocesses in the future. SSE could even be served from the renderer when\nwe aren't on a remote.\n\nIt wraps into IMcpServerConnection's, which do some basic connection\nmanagement and expose the McpServerRequestHandler which speaks JSON-RPC\nto the MCP server. This is wrapped into the IMcpServer which is the\ncomplete, stateful representation of the server. It does stuff like\ncaching discovered tools such that they can be viewed and controlled\neven when the MCP server isn't running.\n\nThe IMcpService is the 'public' entry for other VS Code features. Its\nAPI is very simple right now, exposing an observable of the available\nservers, which should be easy for chat to consume.\n\nStill need to get some good tests going, add proper and more discovery,\nand excercise currently-untested API. SSE is also a stub right now."
+    },
+    {
+     "name": "commit_author_name",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "Connor Peet"
+    },
+    {
+     "name": "commit_author_email",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "connor@peet.io"
+    },
+    {
+     "name": "label",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "eb70000"
+    },
+    {
+     "name": "state",
+     "time": "2025-03-09T19:23:22+00:00",
+     "value": "open"
+    },
+    {
+     "name": "state",
+     "time": "2025-03-09T19:23:22+00:00",
+     "value": "closed"
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "issue:2902032454",
+     "qualifier": "references_issue"
+    }
+   ]
+  },
+  {
+   "id": "issue:2902032454",
+   "type": "issue",
+   "attributes": [
+    {
+     "name": "issue_id",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 2902032454
+    },
+    {
+     "name": "issue_number",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 242864
+    },
+    {
+     "name": "label",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "#242864"
+    },
+    {
+     "name": "state",
+     "time": "2025-03-07T05:15:54+00:00",
+     "value": "open"
+    },
+    {
+     "name": "state",
+     "time": "2025-03-11T21:47:52+00:00",
+     "value": "closed"
+    }
+   ]
+  },
+  {
+   "id": "pr:2385775323",
+   "type": "pull_request",
+   "attributes": [
+    {
+     "name": "title",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "mcp: initial mpc work"
+    },
+    {
+     "name": "base_ref",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "main"
+    },
+    {
+     "name": "head_ref",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "connor4312/mcp-1"
+    },
+    {
+     "name": "pr_number",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 243221
+    },
+    {
+     "name": "pull_request_id",
+     "time": "1970-01-01T00:00:00Z",
+     "value": 2385775323
+    },
+    {
+     "name": "label",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "PR #243221"
+    },
+    {
+     "name": "state",
+     "time": "2025-03-11T17:01:54+00:00",
+     "value": "open"
+    },
+    {
+     "name": "state",
+     "time": "2025-03-11T21:47:51+00:00",
+     "value": "closed"
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
+     "qualifier": "contains_commit"
+    }
+   ]
+  }
+ ],
+ "events": [
+  {
+   "id": "issue_act:47298596766",
+   "type": "IssueOpened",
+   "time": "2025-03-07T05:15:54+00:00",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": false
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "issue:2902032454",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:2230985",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "issue_act:47332699976",
+   "type": "IssueCommented",
+   "time": "2025-03-08T00:11:15+00:00",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": true
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "issue:2902032454",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:6989492",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "commit_obs:47359485384:1",
+   "type": "CommitObserved",
+   "time": "2025-03-09T19:23:22+00:00",
+   "attributes": [
+    {
+     "name": "ref",
+     "value": "refs/heads/connor4312/mcp-1"
+    },
+    {
+     "name": "push_id",
+     "value": 23069857921
+    },
+    {
+     "name": "truncated",
+     "value": false
+    },
+    {
+     "name": "commit_count",
+     "value": 1
+    },
+    {
+     "name": "distinct_commit_count",
+     "value": 1
+    },
+    {
+     "name": "comment",
+     "value": false
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:2230985",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "pr_act:47441540196",
+   "type": "PullRequestOpened",
+   "time": "2025-03-11T17:01:54+00:00",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": false
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "pr:2385775323",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:2230985",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "pr_act:47442487110",
+   "type": "IssueCommented",
+   "time": "2025-03-11T17:25:52+00:00",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": true
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "pr:2385775323",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:2230985",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "pr_act:47442839095",
+   "type": "IssueCommented",
+   "time": "2025-03-11T17:34:47+00:00",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": true
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "pr:2385775323",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:2230985",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "pr_act:47451211775",
+   "type": "PullRequestMerged",
+   "time": "2025-03-11T21:47:51+00:00",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": false
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "pr:2385775323",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:2230985",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "commit_obs:47451212050:1",
+   "type": "CommitObserved",
+   "time": "2025-03-11T21:47:52+00:00",
+   "attributes": [
+    {
+     "name": "ref",
+     "value": "refs/heads/main"
+    },
+    {
+     "name": "push_id",
+     "value": 23115366889
+    },
+    {
+     "name": "truncated",
+     "value": false
+    },
+    {
+     "name": "commit_count",
+     "value": 15
+    },
+    {
+     "name": "distinct_commit_count",
+     "value": 15
+    },
+    {
+     "name": "comment",
+     "value": false
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:2230985",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "issue_act:47451212131",
+   "type": "IssueClosed",
+   "time": "2025-03-11T21:47:52+00:00",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": false
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "issue:2902032454",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:2230985",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "commit_obs:47536649134:2",
+   "type": "CommitObserved",
+   "time": "2025-03-13T18:03:55+00:00",
+   "attributes": [
+    {
+     "name": "ref",
+     "value": "refs/heads/joshspicer/mac-policy"
+    },
+    {
+     "name": "push_id",
+     "value": 23157734568
+    },
+    {
+     "name": "truncated",
+     "value": true
+    },
+    {
+     "name": "commit_count",
+     "value": 180
+    },
+    {
+     "name": "distinct_commit_count",
+     "value": 11
+    },
+    {
+     "name": "comment",
+     "value": false
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:23246594",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "commit_obs:47648935486:3",
+   "type": "CommitObserved",
+   "time": "2025-03-17T16:53:04+00:00",
+   "attributes": [
+    {
+     "name": "ref",
+     "value": "refs/heads/alexr00/wipInjectedLanguages"
+    },
+    {
+     "name": "push_id",
+     "value": 23219370276
+    },
+    {
+     "name": "truncated",
+     "value": true
+    },
+    {
+     "name": "commit_count",
+     "value": 292
+    },
+    {
+     "name": "distinct_commit_count",
+     "value": 1
+    },
+    {
+     "name": "comment",
+     "value": false
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:38270282",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "pr_act:47717247625",
+   "type": "IssueCommented",
+   "time": "2025-03-19T06:55:11+00:00",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": true
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "pr:2385775323",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:26178681",
+     "qualifier": "performer"
+    }
+   ]
+  },
+  {
+   "id": "issue_act:47734622236",
+   "type": "IssueCommented",
+   "time": "2025-03-19T14:08:25+00:00",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": true
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "issue:2902032454",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:5327862",
+     "qualifier": "performer"
+    }
+   ]
+  }
+ ]
+}
