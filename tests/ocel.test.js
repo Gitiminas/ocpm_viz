@@ -59,7 +59,8 @@ describe('every sub-log exports as a well-formed OCEL 2.0 log', () => {
       assert.deepEqual(rows(o2o), rows(graph.links.map((l) => [l.source, l.target, l.qualifier])));
       assert.ok(!JSON.stringify(log).includes('"evidence"'));
 
-      // Object attributes: the vmap values at time zero, the label, and the lifecycle as `state`.
+      // Object attributes: the vmap values at time zero, the label, and — on an issue or PR
+      // only — the lifecycle as `state`. A commit's point interval is a sighting, not a state.
       for (const [i, object] of graph.objects.entries()) {
         const attrs = log.objects[i].attributes;
         for (const [name, value] of Object.entries(object.vmap ?? {})) {
@@ -67,7 +68,9 @@ describe('every sub-log exports as a well-formed OCEL 2.0 log', () => {
           assert.ok(attrs.some((a) => a.name === name && a.value === value && a.time === '1970-01-01T00:00:00Z'), `${object.id}.${name}`);
         }
         const states = attrs.filter((a) => a.name === 'state');
-        const expected = object.intervals.flatMap((iv) => [iv.start && 'open', iv.end && 'closed'].filter(Boolean));
+        const expected = ['issue', 'pull_request'].includes(object.type)
+          ? object.intervals.flatMap((iv) => [iv.start && 'open', iv.end && 'closed'].filter(Boolean))
+          : [];
         assert.deepEqual(states.map((s) => s.value), expected, `${object.id} lifecycle`);
       }
     });

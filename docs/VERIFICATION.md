@@ -507,6 +507,11 @@ degree 2 3.09–3.10 s.
   this file had been truncated to zero lines in the export commit by a scripted edit that
   opened it for writing before reading it; restored from the fixtures commit and the two
   bullets above re-applied.
+- **Correction, same day**: the export gave a commit `state: open` and `state: closed` at the
+  same instant, restating its point interval as a lifecycle — copied from the appendix sample,
+  and wrong: a commit's interval is its first sighting. `state` is now written for issues and
+  pull requests only; the commit type declares no `state`. F1 re-exported and re-read by pm4py,
+  every count still equal. `npm test` 938 / 0.
 
 ---
 

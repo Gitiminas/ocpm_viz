@@ -18,9 +18,12 @@
  * Two conventions the standard leaves to the writer:
  *   - Object attributes are timestamped. Everything in `vmap`, plus the display `label`, is
  *     a static value and is stamped `1970-01-01T00:00:00Z` (the standard's "time 0"). The
- *     lifecycle is the one dynamic attribute: `state` becomes `open` at each interval's
- *     start and `closed` at its end, so the change history OCEL 2.0 asks for is the
- *     intervals restated.
+ *     lifecycle is the one dynamic attribute: on an issue or pull request, `state` becomes
+ *     `open` at each interval's start and `closed` at its end, so the change history OCEL 2.0
+ *     asks for is the intervals restated. A commit's one point interval is its first sighting,
+ *     not a lifecycle (`docs/DATA_LAYER.md`, "Objects, activities, intervals"), so a commit
+ *     carries no `state` — the sample export gave it `open` and `closed` at the same instant,
+ *     which asserts a change that never happened.
  *   - Attribute types are inferred from the values (`string`, `float`, `boolean`), the
  *     three the sample uses. The standard's formal model asks attribute names to be
  *     disjoint across types; `comment` on every event type, `label` on every object type
@@ -31,6 +34,8 @@
 import { isActorRole } from './activities.js';
 
 const TIME_ZERO = '1970-01-01T00:00:00Z';
+/** The object types whose intervals are a lifecycle; a commit's is a point, an actor has none. */
+const LIFECYCLE_TYPES = new Set(['issue', 'pull_request']);
 
 const iso = (t) => (t instanceof Date ? t.toISOString() : t);
 
@@ -59,6 +64,7 @@ function objectAttributes(object) {
     attributes.push({ name, time: TIME_ZERO, value });
   }
   if (object.label != null) attributes.push({ name: 'label', time: TIME_ZERO, value: object.label });
+  if (!LIFECYCLE_TYPES.has(object.type)) return attributes;
   for (const interval of object.intervals ?? []) {
     if (interval.start) attributes.push({ name: 'state', time: iso(interval.start), value: 'open' });
     if (interval.end) attributes.push({ name: 'state', time: iso(interval.end), value: 'closed' });

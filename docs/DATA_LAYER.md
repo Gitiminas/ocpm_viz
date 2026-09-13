@@ -540,9 +540,10 @@ exchange format — the shape of `online-appendix/C6_ocel2.json`: `objectTypes` 
 with their attribute declarations, `objects` with timestamped attributes and their outgoing O2O
 `relationships`, `events` with attributes and E2O `relationships` as `{objectId, qualifier}`. It
 restates; it derives nothing. Object attributes are `vmap` and `label` at the standard's time
-zero (`1970-01-01T00:00:00Z`) plus the lifecycle as the one dynamic attribute, `state` `open` /
-`closed` at each interval's bounds; event attributes are `attrs` and `comment`; types are
-inferred from values (`string`, `float`, `boolean`).
+zero (`1970-01-01T00:00:00Z`) plus, on issues and pull requests, the lifecycle as the one
+dynamic attribute, `state` `open` / `closed` at each interval's bounds — a commit's point
+interval is a sighting, not a state, so it carries none; event attributes are `attrs` and
+`comment`; types are inferred from values (`string`, `float`, `boolean`).
 
 What does not travel, because the standard has no column for it: a link's `evidence`,
 `method`, `link_methods`, `n_methods` (an O2O row is source, target, qualifier), and `meta`.
