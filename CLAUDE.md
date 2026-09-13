@@ -28,9 +28,10 @@ diff, so verification matters more than usual.
 |---|---|---|
 | `index.html` | App shell: markup, CSS, the one `<script type="module">` entry | Work here for anything structural in the page |
 | `src/` | The application, as ES modules | Work here. Keep `model/`, `layout/`, `state/` and `stats/` DOM-free |
-| `sql/fe_layer.sql` | The data layer: schema `fe` (17 views, 8 materializations, 8 diagnostics) and the five `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
+| `sql/fe_layer.sql` | The data layer: schema `fe` (16 views, 8 materializations, 8 diagnostics) and the five `api` RPCs. Idempotent | Work here for anything about payload content. Read its header first — every convention listed there is a defect someone already shipped. `sql/postgrest_setup.sql` (roles, grants, verification query) is applied after it, never before |
 | `scripts/rpc-check.mjs`, `dfg-check.mjs` | Acceptance gates: a real payload through the real loader and layout, then one unauthenticated call as `web_anon` | Run both after any change to `sql/`. The validators must return `[]`. The HTTP probes skip if PostgREST is down |
 | `scripts/pull-sublog.mjs`, `pull-dfg.mjs` | Snapshot RPC output to `tests/fixtures/LIVE*.json` / `DFG1.json` | Samples, not fixtures — no test asserts a count against them |
+| `scripts/export-ocel.mjs`, `ocel-check.py` | A sub-log as an OCEL 2.0 JSON log; the same file read back by pm4py | The export is `src/model/ocel.js` and is tested; the Python check needs a venv the README describes |
 | `scripts/shot.mjs` | Headless screenshot of the running app | Writes to `.shots/`, gitignored. Headless lays out ~90px shorter than `--window-size`: compare fill between shots, not against the box |
 | `scripts/build-f1.mjs`, `build-synthetic-fixtures.mjs`, `build-catalogue.mjs` | Build the fixtures and the seed catalogue | Re-runnable. `--check` fails when a committed file is stale |
 | `scripts/serve.mjs` | Zero-dependency static server and `/rpc/*` proxy (`npm start`) | Needed: ES modules and `fetch` are blocked on `file://` |
@@ -66,8 +67,9 @@ diff, so verification matters more than usual.
   and in `DATA_CONTRACT.md`: the `push_order` branch of `mv_commit_pr_links`, and the fallbacks
   in `prs_identity` and `issues_identity` for objects whose `opened` event the corpus lacks (all
   2026-09-07). They are not a precedent — the next one needs the same approval.
-- **Out of scope, do not wire them in.** The `ocel_*` views, bot classification, OCEL 2.0 tables,
-  labels, forks, reviews, review comments, and branch and ref lifecycle.
+- **Out of scope, do not wire them in.** The upstream `ocel_*` views and OCEL 2.0 tables (the
+  payload's own event-to-object shape and the export in `src/model/ocel.js` are this project's),
+  bot classification, labels, forks, reviews, review comments, and branch and ref lifecycle.
 - **Never fabricate data.** No placeholder rows, no `Math.random()`, no mock UI. Fixtures live in
   `tests/fixtures/` and are labelled. If data is missing, say so and stop.
 - **Never change event-log semantics without asking**: object types, activity vocabulary,

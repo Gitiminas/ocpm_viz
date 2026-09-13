@@ -50,8 +50,9 @@ this table is the responsibility map.
 | `model/dfg.js` | DFG validation (closed vocabularies, nonnegative counts, `events ≤ occurrences`, per-type conservation in occurrences, no evidence on a succession), one-timestamp normalization, and the Process page's derivations: `deriveDfgToggles`, `filterDfg`, `dfgRangeScale`. |
 | `layout/dfg.js` | The process map's arrangement: lane rows, lifecycle reading order, forward arcs above / rework below, loops, fanned cross bundles, `dfgEdgeWidth` (√, clamped, pinned to the unfiltered maximum via the `maxSuccessions` override). |
 | `render/dfg.js` | The Process page's renderer: lane bands, activity marks, succession edges with widths and counts, hovercards (labels bound to the same card, hover targets in their own layer, thinnest topmost), focus dimming, and the notice carrying the filter's own arithmetic. |
-| `model/subLog.js` | Shape validation (`findGraphProblems`), normalization, indexing. |
-| `model/activities.js` | The closed vocabulary: 4 object types, 11 activities, 3 landmarks — plus `Push`, the process map's alone. |
+| `model/subLog.js` | Shape validation (`findGraphProblems`), normalization, indexing, and the three readers of an event's relationships (`objectsOf`, `subjectOf`, `actorOf`). |
+| `model/activities.js` | The closed vocabulary: 4 object types, 11 activities (`Push` among them, one event per PushEvent on both pages), 3 landmarks, and each activity's E2O qualifiers (`relation`, `role`). |
+| `model/ocel.js` | The OCEL 2.0 JSON export of a loaded sub-log (`toOcelJson`) and the format's structural rules (`findOcelProblems`). |
 | `model/evidence.js` | 17 link methods → `validated` / `extracted`. |
 | `model/graph.js` | Adjacency and focus BFS (focus degree, max 2). |
 | `model/bursts.js` | Commits grouped by `push_id`, size ≥ 2. |

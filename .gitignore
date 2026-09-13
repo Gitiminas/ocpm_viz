@@ -31,3 +31,6 @@ docs/_decisions_salvage.md
 
 # Runtime logs written by ocpm.sh
 .ocpm-logs/
+
+# The Python environment for scripts/ocel-check.py (README, "Scripts")
+.venv-ocel/

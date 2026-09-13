@@ -533,6 +533,30 @@ PostgREST URL, with `.unreachable = true`; a non-2xx becomes `body.message` plus
 `Details:` lines, with `.status`, `.code` and `.hint` attached. A missing `repo` or `seed`, or a
 degree out of range, throws before anything is fetched.
 
+## The OCEL 2.0 export
+
+`toOcelJson(graph)` (`src/model/ocel.js`) writes a loaded sub-log in the OCEL 2.0 JSON
+exchange format — the shape of `online-appendix/C6_ocel2.json`: `objectTypes` and `eventTypes`
+with their attribute declarations, `objects` with timestamped attributes and their outgoing O2O
+`relationships`, `events` with attributes and E2O `relationships` as `{objectId, qualifier}`. It
+restates; it derives nothing. Object attributes are `vmap` and `label` at the standard's time
+zero (`1970-01-01T00:00:00Z`) plus the lifecycle as the one dynamic attribute, `state` `open` /
+`closed` at each interval's bounds; event attributes are `attrs` and `comment`; types are
+inferred from values (`string`, `float`, `boolean`).
+
+What does not travel, because the standard has no column for it: a link's `evidence`,
+`method`, `link_methods`, `n_methods` (an O2O row is source, target, qualifier), and `meta`.
+The `SubLog` payload remains the record of those. One known deviation: the standard's formal
+model asks attribute names to be disjoint across types, and `comment` (every event type),
+`label` (every object type), `ref` and `push_id` (commits and pushes) are shared here on purpose.
+
+`findOcelProblems(log)` beside it states the format's structural rules — the four keys and no
+other, ids disjoint between events and objects, every relationship resolving, every attribute
+declared for its type, object attributes timed and event attributes not, every push about a
+commit — and `tests/ocel.test.js` holds every fixture and live sample to them and to the sub-log
+they came from. `scripts/export-ocel.mjs` writes a file; `scripts/ocel-check.py` reads it back
+with pm4py and compares counts (`VERIFICATION.md`, "OCEL 2.0 events", step D).
+
 ## Roles
 
 `authenticator` is the only role PostgREST connects as: LOGIN, NOINHERIT, member of `web_anon` and

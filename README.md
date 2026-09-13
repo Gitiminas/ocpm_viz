@@ -180,6 +180,7 @@ node scripts/build-f1.mjs --check          # fails if the committed fixture is s
 node scripts/rpc-check.mjs                 # the sub-log data-layer gate
 node scripts/dfg-check.mjs                 # the DFG data-layer gate
 node scripts/shot.mjs LIVE1                # headless screenshot → .shots/
+node scripts/export-ocel.mjs F1 --out F1.ocel.json   # a sub-log as an OCEL 2.0 JSON log
 ```
 
 Each build script takes `--check`, which rebuilds nothing and fails when the committed output no
@@ -197,20 +198,32 @@ that travels the path the `SECURITY INVOKER` reset breaks.
 gitignored. Headless lays out about 90 px shorter than the window size it captures at, so
 compare fill between shots and never against the box.
 
+`scripts/export-ocel.mjs` writes a sub-log — a fixture by name, or a live one with `--repo`,
+`--seed`, `--degree` through the running proxy — as an OCEL 2.0 JSON log (`src/model/ocel.js`;
+`docs/DATA_LAYER.md`, "The OCEL 2.0 export"), checked against the format's rules before it is
+written. `scripts/ocel-check.py` reads such a file back with pm4py, the reference library, and
+compares its counts to the file's — the conformance gate outside this codebase. It needs a
+Python environment the repo does not ship:
+
+```
+python3 -m venv .venv-ocel && .venv-ocel/bin/pip install pm4py     # once; .venv-ocel/ is gitignored
+.venv-ocel/bin/python scripts/ocel-check.py F1.ocel.json
+```
+
 ## Repository map
 
 | Path | What |
 |---|---|
 | `index.html` | The app shell: markup, CSS, one `<script type="module">` |
 | `src/data/` | `loadSubLog`, the two transports, source selection, seed parsing |
-| `src/model/` | Object graph validation and indexing, the closed vocabulary, evidence, bursts, groups |
+| `src/model/` | Object graph validation and indexing, the closed vocabulary, evidence, bursts, groups, the OCEL 2.0 export |
 | `src/state/` | The `st` object, every visibility predicate, presets |
 | `src/layout/` | Scales, packing, lanes, anchors; the two structural arrangements. DOM-free |
 | `src/render/` | The SVG renderers, sidebar, tooltips, stats page, theme |
 | `src/stats/metrics.js` | Durations, counts, gaps, outcomes as pure functions |
 | `src/help/tips.js` | Help texts as data: key → sentence |
 | `sql/` | `fe_layer.sql` (schema `fe` and the five RPCs), `postgrest_setup.sql` (roles and grants), and `matviews_scoped.sql` (the 23 upstream views, 14 of which the layer reads) |
-| `scripts/` | The dev server, fixture builders, the two gates (`rpc-check.mjs`, `dfg-check.mjs`), the two pullers (`pull-sublog.mjs`, `pull-dfg.mjs`), `shot.mjs` |
+| `scripts/` | The dev server, fixture builders, the two gates (`rpc-check.mjs`, `dfg-check.mjs`), the two pullers (`pull-sublog.mjs`, `pull-dfg.mjs`), `shot.mjs`, the OCEL 2.0 export (`export-ocel.mjs`) and its pm4py check (`ocel-check.py`) |
 | `tests/` | `node --test` suites and `tests/fixtures/` (F1–F14, LIVE1–LIVE2, `catalogue.json`) |
 | `vendor/` | d3-force 3.0.0, unmodified, because there is no bundler to resolve a bare import |
 | `_ds/` | Nocturne design tokens. Consume via `var(--token)`; do not restyle |
@@ -238,8 +251,6 @@ compare fill between shots and never against the box.
   kubernetes #47532, collapsing links by shared source folds nothing: no source has more than one
   link, while two targets have 6 and 7. And bundling cannot subsume the fan, because links may
   share a target while differing in evidence class.
-- **Events carry one object id, not many.** OCEL 2.0's event-to-object relation is
-  many-valued; convergence here is expressed through links between objects instead.
 - **Every link figure is a floor, never a point estimate.** Two admission rules added by this
   project narrow `ref_match`, so commit-link and issue↔PR counts undercount by an unmeasured
   amount. Say so wherever one is quoted.
