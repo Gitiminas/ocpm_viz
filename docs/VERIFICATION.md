@@ -119,9 +119,11 @@ there. It pulls one real payload with `psql -Atc "SELECT api.get_sublog(repo, se
 then asserts in order:
 
 - `findGraphProblems()` returns `[]` — the same validator every fixture passes.
-- The contract facts it has no opinion on: `contract_version === 2`; every event time and interval
+- The contract facts it has no opinion on: `contract_version === 3`; every event time and interval
   bound parseable by `Date.parse`; activities inside the closed vocabulary; qualifiers among the closed four; `link_methods` an array containing `method`; no `repo`-typed object; no
-  `is_bot`; no `CommitsPushed` event.
+  `is_bot`; no event in the contract-v2 shape (`object_id`, `actor_id`, `CommitObserved`), every
+  event about at least one object, every relationship resolving in the payload, every `Push` about
+  commits only with exactly one `pusher` and `attrs.ref`/`attrs.push_id`.
 - The same payload through `loadSubLog`, so the loader is exercised and not only the validator.
 - Both temporal modes through the real layout pipeline: finite x and y, every issue and PR in a band
   resolving to a finite y, one interval per commit, forward-going lifecycle extents, every link
@@ -140,8 +142,9 @@ beside the sub-log gate. It pulls `api.get_dfg` through psql and asserts: no `fe
 `findDfgProblems()` returns `[]`; per-node conservation (each node's occurrences = starts + inbound
 successions = ends + outbound, per-type edges only — a cross succession is not part of either
 object's own sequence arithmetic) and `events ≤ occurrences`; the commit lane's `Push`
-occurrences equal the repository's `CommitObserved` count in `fe.event`, so Trace and the map
-differ by name only; no `case` or `evidence` key anywhere in the raw text; the payload through
+occurrences and events equal the repository's `pushed_commit` rows and distinct pushes in
+`fe.e2o`, the relation the sub-log RPC emits as `relationships`, so Trace and the map count the
+same thing; no `case` or `evidence` key anywhere in the raw text; the payload through
 `loadDfg` and `layoutDfg` with every coordinate finite, in-box and non-coincident; and one
 unauthenticated `web_anon` POST to `/rpc/get_dfg` — the only probe that catches the `SECURITY
 INVOKER` reset on the new function. PASS on microsoft/vscode and facebook/react, 2026-09-02. The
@@ -450,6 +453,24 @@ degree 2 3.09–3.10 s.
   marks over events, once marks could outnumber events — `totalForMode` now states the total
   in marks there too. `scripts/rpc-check.mjs` validates the upgraded bundle while the RPC
   still emits v2. Not re-run: `./ocpm.sh db` (no SQL changed).
+- **B** (the data layer emits v3: `fe.event` one row per real event with `Push` from
+  `mv_push_activities`, `fe.e2o` the one E2O relation replacing the map's `fe.dfg_event` /
+  `fe.dfg_e2o`, `fe.actor_role`, `api.get_sublog` contract 3 with `relationships`): dry-run
+  first as one transaction rolled back, then `./ocpm.sh db` for real (both gates pass). The
+  oracles: `fe.dfg_mat` 670 rows, md5 `2e16c18635b2d2b4f15d4145d8a245e1`, and `fe.dfg_sequence_mat`
+  529,201 rows, `108ed1a59439fa431d0d80b6b5399f63` — both unchanged, so the map is counted over
+  the unified relation byte for byte; `fe.diag_sanity` all `expected`; `fe.diag_dropped_activities`
+  the two genuine drops. `api.get_sublog` warm: vscode `issue:2902032454` degree 2 1.16–1.35 s →
+  0.56 s, `pr:571599565` degree 2 3.09–3.10 s → 1.86–1.91 s (the per-request hash of all of
+  `mv_push_activities` is gone; the Push branch is one index scan, `EXPLAIN` verified inside the
+  function's plan). Selection unchanged: objects and links come from the same traversal, issue and
+  PR events from the same `subject_id = ANY` qual (LIVE2's seed: 20 in the view, 20 in the payload),
+  and a sub-log's push occurrences are exactly its commits' rows in `mv_push_commits_full` (36
+  rows in 27 pushes for the 35 commits; 0 commit rows belong to a push without an activity row).
+  Found while checking: the committed `LIVE1`/`LIVE2`/`DFG1` samples predate the 2026-09-07
+  patches (LIVE2 was 24 PRs and 86 commits; the same seed today is 1 PR and 35 commits, and
+  `DFG1`'s IssueOpened node lacks the derived openings), so they could not serve as the oracle
+  for this step — the database was. They are re-pulled in Step C. `npm test` 918 / 0.
 
 ---
 

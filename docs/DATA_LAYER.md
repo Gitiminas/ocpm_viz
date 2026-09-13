@@ -7,8 +7,8 @@ which this document explains rather than repeats.
 
 ## Schemas
 
-`fe` holds the derivations: 17 views, 8 materialized views, 8 diagnostic views, and six
-functions (`utc` and the five refreshers). `api` holds five `SECURITY DEFINER` functions and nothing else. Both are owned by
+`fe` holds the derivations: 16 views, 8 materialized views, 8 diagnostic views, and seven
+functions (`utc`, `actor_role` and the five refreshers). `api` holds five `SECURITY DEFINER` functions and nothing else. Both are owned by
 `fe_owner`. PostgREST is configured with `db-schemas = "api"`, so `api` is the entire HTTP
 surface and the frontend never reads a view directly.
 
@@ -213,19 +213,28 @@ refused on per-type edges). The attribution needs no rule: **no (source, target)
 every run, so the day an `fe.link` change breaks the fact, the gate says so before a payload
 ships with silently mixed attributions).
 
-### The E2O layer the map is counted over
+### The E2O relation both payloads read
 
-The map is built over an OCEL 2.0 event-to-object relation of its own (§12.0), read by nothing
-else: `fe.dfg_event` is one row per **real** event — the ten issue and pull-request activities
-straight from `fe.event`, plus `Push`, one per PushEvent from `mv_push_activities` — and
-`fe.dfg_e2o` is `(event_id, object_id, qualifier)`. `fe.event` carries one object per event and
-therefore takes a push apart into one synthetic `CommitObserved` per commit (§4); the map puts it
-back together, so a push of n commits is **one event with n occurrences**, one in each commit's
-sequence. `Push` is the map's only private activity: Trace never emits it, the map never emits
-`CommitObserved`, and `src/model/activities.js` carries both and says which page each belongs to.
-Trace and the map therefore differ by name on purpose — "commit observed" there, "push" here —
-and `scripts/dfg-check.mjs` asserts they differ by nothing else: the `Push` node's `occurrences`
-must equal the repository's `CommitObserved` count in `fe.event`.
+`fe.e2o` (§12.0) is the OCEL 2.0 event-to-object relation, `(repo_id, event_id, object_id,
+qualifier)`, and since 2026-09-13 it is the one relation behind both payloads: the sub-log RPC
+emits its rows as each event's `relationships`, and the map is counted over it. `fe.event` (§4)
+is one row per **real** event — the ten issue and pull-request activities, `Push` one per
+PushEvent from `mv_push_activities`, and the two derived openings — carrying its `subject_id`
+(the one issue or PR an activity is about; NULL on a push), its actor, and on a push the
+PushEvent id. `fe.e2o` relates each event to its subject, to its actor under
+`fe.actor_role(activity)`, and a push to every commit it carried (`mv_push_commits_full`), so a
+push of n commits is **one event with n occurrences**, one in each commit's sequence.
+Until then the map had a private pair (`fe.dfg_event`, `fe.dfg_e2o`) while `fe.event` took a
+push apart into one synthetic `CommitObserved` per commit; `scripts/dfg-check.mjs` now asserts
+the map against the relation itself — the `Push` node's `occurrences` and `events` must equal
+the repository's `pushed_commit` rows and distinct pushes in `fe.e2o`.
+
+The RPC does not read `fe.e2o` on the request path: a qual on a prefixed object id cannot use
+an index, and selecting one vscode issue's events through the view scanned 2.86 M rows (20.5 s,
+2026-09-13). It selects issue and PR events by `subject_id = ANY(…)` as before, finds the
+pushes through `mv_push_commits_full (repo_id, commit_sha)` (0.4 ms), and restates the
+relation's three branches on those keys (`rel`), keeping a push's `pushed_commit` rows to the
+commits the traversal reached — the same per-visible-relationship rule the client applies.
 
 | qualifier | relates | to |
 |---|---|---|
@@ -303,7 +312,7 @@ eleven; `Push` is in the JS table for the map and never passes `fe.event`'s whit
 activity names the object type it belongs to. Since 2026-09-13 the JS table also names each
 activity's two event-to-object qualifiers — `relation` (`subject`, or `pushed_commit` for a
 push) and `role` (what the activity makes of its actor: `opener`, `closer`, `reopener`,
-`commenter`, `merger`, `pusher`) — the twin of the CASE in `fe.dfg_e2o` (§12.0), read
+`commenter`, `merger`, `pusher`) — the twin of `fe.actor_role` (§1), read
 through `actorRoleOf` / `relationOf`. The sub-log payload does not carry them yet; the model's
 readers `objectsOf`, `subjectOf`, `actorOf` (`src/model/subLog.js`) are how every consumer
 asks which objects an event is about, whatever the payload's shape.
@@ -320,14 +329,14 @@ asks which objects an event is about, whatever the payload's shape.
 | `PullRequestMergedOffPlatform` | pull_request | yes, heuristic | |
 | `PullRequestClosed` | pull_request | | |
 | `PullRequestReopened` | pull_request | | |
-| `Push` | commit | | one per PushEvent, one occurrence per commit it carried (§12.0). `fe.event` still emits `CommitObserved`, one per commit, until the layer moves to v3; the client restates it |
+| `Push` | commit | | one per PushEvent, one occurrence per commit it carried (§12.0) |
 
 The two comment activities are the same act on GitHub, an `IssueCommentEvent`, and the tool
 treats them alike wherever a comment is folded, counted or toggled; they are kept apart in
 the vocabulary because the comment belongs to one object, and the activity names it.
 
 Three upstream activities are dropped by design, and `fe.diag_dropped_activities` reports them:
-`CommitsPushed` (144,556 rows on 2026-08-04, whose facts ride on each `CommitObserved` event's
+`CommitsPushed` (144,556 rows on 2026-08-04, carried as `Push` since 2026-09-13 and excluded from the drop count by name; before that its facts rode on each `CommitObserved` event's
 `attrs` instead; the process map reads the same rows as `Push`, §12.0), `IssueComment_` (1) and
 `IssueLabeled` (1). An unmapped activity throws in JS
 rather than rendering a raw enum string.
@@ -341,7 +350,7 @@ whose identity row came from the fallback (`DATA_CONTRACT.md` §2), with `attrs.
 are GitHub's record, read, not estimated; what is derived is only that an event stands for them.
 The actor is named only when the `actor` table has the account, because the layer keeps the
 contract that every actor an event names is an object: 3,764 opener accounts performed no event
-in the corpus and have no actor row, so their 3,947 openings carry `actor_id = null` and say who
+in the corpus and have no actor row, so their 3,947 openings name no actor and say who
 in `attrs.opened_by` / `opened_by_id`. An issue known only from comments has no creator in the
 comment payload and carries neither. The client: `isDerivedEvent` (`src/model/activities.js`)
 is the one place `attrs.source` is interpreted; the layout carries `derivedOpening` on the node

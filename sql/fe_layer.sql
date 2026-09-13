@@ -20,7 +20,7 @@
 --   §9  the RPC        api.search_seeds(...)
 --   §10 the RPC        api.list_repos()
 --   §11 refreshers     fe.refresh_all() and friends
---   §12.0 DFG events   fe.dfg_event / fe.dfg_e2o — the map's OCEL 2.0 E2O layer
+--   §12.0 E2O          fe.e2o — the OCEL 2.0 event-to-object relation both payloads read
 --   §12 the DFG        fe.dfg / fe.dfg_mat — the whole-log directly-follows graph
 --   §12.1 sequence ends fe.dfg_sequence / fe.dfg_sequence_mat — each object's first and last activity
 --   §13 the RPC        api.get_dfg(repo)
@@ -218,12 +218,15 @@ SELECT * FROM (VALUES
   ('PullRequestMergedOffPlatform', 'pull_request', true, false),
   ('PullRequestClosed',    'pull_request', false, false),
   ('PullRequestReopened',  'pull_request', false, false),
-  ('CommitObserved',       'commit',       false, false)
+  -- One per PushEvent, about every commit it carried (fe.e2o, §12.0). Upstream's name is
+  -- CommitsPushed; §4 emits it as Push. It replaced CommitObserved, the synthetic
+  -- one-event-per-commit flattening of a push (contract v2, retired 2026-09-13).
+  ('Push',                 'commit',       false, false)
 ) AS t(activity, object_type, landmark, is_comment);
 
 COMMENT ON VIEW fe.activity_vocabulary IS
   'The 11 activities this layer admits. Landmarks are IssueClosed, PullRequestMerged and '
-  'PullRequestMergedOffPlatform. CommitObserved is synthetic — no upstream MV emits it.';
+  'PullRequestMergedOffPlatform. Push is upstream''s CommitsPushed, one event per PushEvent.';
 
 -- The upstream activity names are admitted as they are. Verified against the live
 -- vocabularies (2026-08-04):
@@ -243,6 +246,28 @@ DROP FUNCTION IF EXISTS fe.remap_activity(text);
 CREATE OR REPLACE FUNCTION fe.utc(t timestamptz) RETURNS text
 LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
   SELECT to_char(t AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS+00:00');
+$$;
+
+-- The role an activity gives its actor: the qualifier of the event→actor row in fe.e2o
+-- (§12.0) and in the sub-log payload (§6). ONE definition, read by both; the JS table
+-- `ACTIVITIES[*].role` (src/model/activities.js) is its twin and the client validator
+-- rejects a payload that disagrees with it, so the two cannot drift silently. The
+-- off-platform merge is a close on GitHub: its actor is whoever closed.
+CREATE OR REPLACE FUNCTION fe.actor_role(activity text) RETURNS text
+LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+  SELECT CASE activity
+    WHEN 'IssueOpened'                  THEN 'opener'
+    WHEN 'PullRequestOpened'            THEN 'opener'
+    WHEN 'IssueClosed'                  THEN 'closer'
+    WHEN 'PullRequestClosed'            THEN 'closer'
+    WHEN 'PullRequestMergedOffPlatform' THEN 'closer'
+    WHEN 'IssueReopened'                THEN 'reopener'
+    WHEN 'PullRequestReopened'          THEN 'reopener'
+    WHEN 'IssueCommented'               THEN 'commenter'
+    WHEN 'PullRequestCommented'         THEN 'commenter'
+    WHEN 'PullRequestMerged'            THEN 'merger'
+    WHEN 'Push'                         THEN 'pusher'
+  END;
 $$;
 
 
@@ -721,23 +746,23 @@ COMMENT ON FUNCTION fe.refresh_objects() IS
 -- =====================================================================================
 -- §4 — Events
 --
--- Normalises three row shapes into one, then whitelists them.
--- Three branches, not six: reviews and commit comments are out of scope and their MVs
--- do not exist in this database anyway; `CommitsPushed` is not an activity — the push's
--- facts ride on each CommitObserved event's attrs instead.
+-- ONE row per real event, whitelisted. Five branches: issue activities, PR activities,
+-- pushes, and the two derived openings. Reviews and commit comments are out of scope and
+-- their MVs do not exist in this database anyway.
+--
+-- An event's objects are NOT here: fe.e2o (§12.0) is the event-to-object relation, and
+-- this view carries only what selects an event cheaply — `subject_id`, the one issue or
+-- PR an activity is about (NULL on a push, which is about its commits through fe.e2o),
+-- `actor_id`/`actor_num`, and `push_activity_id`, the PushEvent id a push row was built
+-- from. `subject_id` is an internal column: the payload never emits it, but a qual on it
+-- is what lets the RPC's `= ANY(array)` reach the indexes below the issue and PR branches
+-- (§6). Until 2026-09-13 this view took a push apart into one synthetic CommitObserved per
+-- commit (contract v2); the push facts that rode on each of those now sit on the one Push.
 -- =====================================================================================
 
 DROP VIEW IF EXISTS fe.event CASCADE;
 CREATE VIEW fe.event AS
-WITH push_facts AS (
-  -- The DECLARED size must come from the push event's own columns and
-  -- never from counting commit rows. GH Archive caps payload.commits at 20, so a push of
-  -- 347 yields 20 rows here and any count over them reads 20 — a silent wrong number.
-  SELECT activity_id, ref, commit_count, distinct_commit_count,
-         (activity_payload->>'truncated')::boolean AS truncated
-  FROM mv_push_activities
-),
-raw AS (
+WITH raw AS (
   ---------------------------------------------------------------------------------------
   -- 1. issue lifecycle + issue comments.
   --    `issue_id` is trustworthy on every row of this MV, so the object id is built
@@ -747,7 +772,7 @@ raw AS (
   SELECT 'issue_act:' || a.event_id::text          AS id,
          a.activity_type                           AS activity,
          a.activity_timestamp AT TIME ZONE 'UTC'   AS time,
-         'issue:' || a.issue_id::text              AS object_id,
+         'issue:' || a.issue_id::text              AS subject_id,
          'actor:' || a.actor_id::text              AS actor_id,
          a.actor_id                                AS actor_num,
          a.repo_id,
@@ -768,7 +793,8 @@ raw AS (
                      FROM mv_issue_comments_full ic
                      WHERE ic.event_id = a.event_id AND ic.comment_body IS NOT NULL
                      LIMIT 1), '{}'::jsonb)
-         ELSE '{}'::jsonb END                      AS attrs
+         ELSE '{}'::jsonb END                      AS attrs,
+         NULL::bigint                              AS push_activity_id
   FROM mv_issue_and_issuecomment_activities_full a
   WHERE a.issue_id IS NOT NULL
 
@@ -808,7 +834,8 @@ raw AS (
                      FROM mv_pull_request_comments_full pc
                      WHERE pc.event_id = a.event_id AND pc.comment_body IS NOT NULL
                      LIMIT 1), '{}'::jsonb)
-         ELSE '{}'::jsonb END
+         ELSE '{}'::jsonb END,
+         NULL::bigint
   FROM mv_pull_request_and_comment_activities_full a
   JOIN fe.object_pull_request_mat o          -- the copy: this join runs on every request
     ON o.repo_id = a.repo_id AND o.pr_number = a.pr_number
@@ -816,26 +843,33 @@ raw AS (
 
   UNION ALL
   ---------------------------------------------------------------------------------------
-  -- 3. CommitObserved — SYNTHETIC. One per commit row; no upstream MV emits this
-  --    activity. It carries the push's declared size so a burst can say
-  --    "20 shown of 347 pushed" instead of quietly claiming 20.
+  -- 3. Push — one per PushEvent, from mv_push_activities (upstream's CommitsPushed).
+  --    Keyed push:<activity_id>: activity_id is the PushEvent id and unique (144,556
+  --    rows); push_id has one duplicate and is not a key. The commits it carried are its
+  --    `pushed_commit` rows in fe.e2o, from mv_push_commits_full; 416 pushes (387 in
+  --    vscode) have no commit row there and so relate to no object — the RPC never
+  --    selects them (§6 reaches pushes through their commits) and the map drops them.
+  --
+  --    The DECLARED size comes from the push event's own columns and never from counting
+  --    commit rows: GH Archive caps payload.commits at 20, so a push of 347 yields 20
+  --    rows and any count over them reads 20 — a silent wrong number. `truncated` says
+  --    the rows are fewer than the push carried, so a burst can say "20 shown of 347".
   ---------------------------------------------------------------------------------------
-  SELECT 'commit_obs:' || pc.event_id::text || ':' || pc.commit_index::text,
-         'CommitObserved'::text,
-         pc.created_at AT TIME ZONE 'UTC',
-         'commit:' || pc.commit_sha,
-         'actor:' || pc.actor_id::text,
-         pc.actor_id,
-         pc.repo_id,
+  SELECT 'push:' || p.activity_id::text,
+         'Push'::text,
+         p.activity_timestamp AT TIME ZONE 'UTC',     -- naive upstream, lifted here (header)
+         NULL::text,                                  -- no subject: about its commits (fe.e2o)
+         'actor:' || p.actor_user_id::text,
+         p.actor_user_id,
+         p.repo_id,
          jsonb_strip_nulls(jsonb_build_object(
-           'commit_count',          pf.commit_count,
-           'distinct_commit_count', pf.distinct_commit_count,
-           'truncated',             pf.truncated,
-           'ref',                   COALESCE(pf.ref, pc.ref),
-           'push_id',               pc.push_id))
-  FROM mv_push_commits_full pc
-  LEFT JOIN push_facts pf ON pf.activity_id = pc.event_id
-  WHERE pc.commit_sha IS NOT NULL
+           'commit_count',          p.commit_count,
+           'distinct_commit_count', p.distinct_commit_count,
+           'truncated',             (p.activity_payload->>'truncated')::boolean,
+           'ref',                   p.ref,
+           'push_id',               p.push_id)),
+         p.activity_id
+  FROM mv_push_activities p
 
   UNION ALL
   ---------------------------------------------------------------------------------------
@@ -852,9 +886,10 @@ raw AS (
   --
   --    ⚠️ One correlated lookup per identity row, on ix_prev_repo_prid — the shape that
   --    lets the caller's object filter cut the work down (the RPC reads fe.event several
-  --    times per request with `object_id = ANY(...)`). A DISTINCT ON over the whole events
+  --    times per request with `subject_id = ANY(...)`). A DISTINCT ON over the whole events
   --    MV, hash-joined, was tried in between: fast for the whole-log fe.dfg_mat build, but
   --    it ran in full on every RPC call and put rpc-check at 6–7 s (measured 2026-09-07).
+  --    (The RPC's qual is now `subject_id = ANY(...)`; the shape argument is unchanged.)
   --    The lookup form needs the index; the issue twin below needs two (§0).
   ---------------------------------------------------------------------------------------
   --
@@ -876,7 +911,8 @@ raw AS (
            'source',        'payload',
            'derived_from',  src.event_id,
            'opened_by',     CASE WHEN ka.id IS NULL THEN src.author_login END,
-           'opened_by_id',  CASE WHEN ka.id IS NULL THEN src.author_id END))
+           'opened_by_id',  CASE WHEN ka.id IS NULL THEN src.author_id END)),
+         NULL::bigint
   FROM prs_identity i
   JOIN LATERAL (
     SELECT e.event_id, e.author_id, e.author_login
@@ -910,7 +946,8 @@ raw AS (
            'source',        'payload',
            'derived_from',  COALESCE(ie.event_id, ic.first_event_id),
            'opened_by',     CASE WHEN ka.id IS NULL THEN ie.issue_creator_login END,
-           'opened_by_id',  CASE WHEN ka.id IS NULL THEN ie.issue_creator_id END))
+           'opened_by_id',  CASE WHEN ka.id IS NULL THEN ie.issue_creator_id END)),
+         NULL::bigint
   FROM issues_identity i
   LEFT JOIN LATERAL (
     SELECT f.event_id, f.issue_creator_id, f.issue_creator_login
@@ -929,7 +966,7 @@ raw AS (
 SELECT r.id,
        r.activity,
        r.time,
-       r.object_id,
+       r.subject_id,
        NULLIF(r.actor_id, 'actor:') AS actor_id,   -- 'actor:' || NULL is NULL already; this
                                                    -- guards the literal-empty case too
        r.actor_num,                 -- the same actor, numerically. Carried so §6 can look
@@ -938,7 +975,8 @@ SELECT r.id,
        r.repo_id,
        v.is_comment AS comment,
        v.landmark,
-       r.attrs
+       r.attrs,
+       r.push_activity_id
 FROM raw r
 -- THE WHITELIST. Every activity outside fe.activity_vocabulary is dropped here, and
 -- §7.1 reports what that costs.
@@ -1385,6 +1423,7 @@ DECLARE
   _issue_ids bigint[];
   _pr_ids   bigint[];
   _shas     text[];
+  _push_ids bigint[];
   _payload  jsonb;
 BEGIN
   -- 0..2, and 1 when unstated. Mirrors TRAVERSAL_DEGREE in src/data/api.js, and is
@@ -1516,6 +1555,20 @@ BEGIN
   _shas      := COALESCE(_shas,      '{}');
 
   ------------------------------------------------------------------------------------
+  -- STEP 1b — the pushes that carried the sub-log's commits, by natural key.
+  --
+  -- A push is about its commits (fe.e2o, §12.0), so the pushes in a sub-log are the
+  -- ones whose commit rows name a sha the traversal reached. Read through
+  -- ix_pushc_repo_sha rather than through fe.e2o: a qual on the prefixed object id
+  -- cannot use an index, and going through the view scanned 2.86 M rows for one vscode
+  -- issue (20.5 s, measured 2026-09-13) against 0.4 ms here.
+  ------------------------------------------------------------------------------------
+  SELECT COALESCE(array_agg(DISTINCT pc.event_id), '{}')
+    INTO _push_ids
+  FROM mv_push_commits_full pc
+  WHERE pc.repo_id = _repo_id AND pc.commit_sha = ANY(_shas);
+
+  ------------------------------------------------------------------------------------
   -- STEP 2 — assembly. Every filter below is `= ANY(<array>)` on a natural key, so it
   -- reaches an index rather than building a view and discarding it.
   ------------------------------------------------------------------------------------
@@ -1533,9 +1586,17 @@ BEGIN
       FROM fe.object_commit o
      WHERE o.repo_id = _repo_id AND o.commit_sha = ANY(_shas)
   ),
+  -- The sub-log's events: issue and PR activities by their subject, pushes by the
+  -- PushEvent ids Step 1b found. Two SELECTs so each carries the qual its branches of
+  -- fe.event can use — `activity = 'Push'` folds the literal in branch 3 and prunes the
+  -- other four; `<> 'Push'` prunes branch 3 — rather than one predicate that forces every
+  -- branch to be built and filtered.
   ev AS MATERIALIZED (
     SELECT e.* FROM fe.event e
-    WHERE e.repo_id = _repo_id AND e.object_id = ANY(_obj_ids)
+    WHERE e.repo_id = _repo_id AND e.activity <> 'Push' AND e.subject_id = ANY(_obj_ids)
+    UNION ALL
+    SELECT e.* FROM fe.event e
+    WHERE e.repo_id = _repo_id AND e.activity = 'Push' AND e.push_activity_id = ANY(_push_ids)
   ),
   -- ACTORS ARE NOT TRAVERSED. They are pulled in by whichever events survive — which is
   -- what the sidebar and the actor card want, and is the only scope that makes sense now
@@ -1561,8 +1622,8 @@ BEGIN
     -- end = NULL, which the renderer reads as "still open" and metrics.js counts as an
     -- unfinished lifetime.
     --
-    -- ⚠️ ONE interval, from the object's own first-seen time — NOT one per CommitObserved
-    -- event. A commit re-pushed on a rebase or a merge is genuinely observed several
+    -- ⚠️ ONE interval, from the object's own first-seen time — NOT one per push that
+    -- carried it. A commit re-pushed on a rebase or a merge is genuinely observed several
     -- times and genuinely gets several events, but it is still one object with one
     -- birth. Deriving the interval from the events gave the vscode commit eb70000 FOUR
     -- point-intervals; since layout/nodes.js:136 positions a commit at intervals[0].start
@@ -1577,6 +1638,24 @@ BEGIN
     SELECT id, type, label, vmap, time_semantics FROM obj
     UNION ALL
     SELECT id, type, label, vmap, time_semantics FROM act
+  ),
+  -- The events' relationships (fe.e2o, §12.0), restated on the natural keys and kept to
+  -- the sub-log: a push relates only to the commits the traversal reached (per visible
+  -- relationship — the same rule the client applies to its toggles), while its actor and
+  -- every subject are in the payload by construction (`act`, `obj`). This is fe.e2o's
+  -- definition, not a second one: the same three sources, the same qualifiers.
+  rel AS MATERIALIZED (
+    SELECT e.id AS event_id, e.subject_id AS object_id, 'subject'::text AS qualifier
+      FROM ev e WHERE e.subject_id IS NOT NULL
+    UNION ALL
+    SELECT e.id, e.actor_id, fe.actor_role(e.activity)
+      FROM ev e WHERE e.actor_id IS NOT NULL
+    UNION ALL
+    SELECT 'push:' || pc.event_id::text, 'commit:' || pc.commit_sha, 'pushed_commit'::text
+      FROM mv_push_commits_full pc
+     WHERE pc.repo_id = _repo_id
+       AND pc.event_id = ANY(_push_ids)              -- ix_pushc_event
+       AND pc.commit_sha = ANY(_shas)
   ),
   -- The sub-log's links, computed ONCE and reused by `links` and `active_link_methods`.
   -- An earlier version selected from fe.link separately for each, rebuilding all 231,291
@@ -1598,7 +1677,7 @@ BEGIN
        'repo_ambiguous',   (_n_named > 1),
        -- Every payload source declares the contract it was built against, so a stale
        -- consumer fails loudly instead of rendering subtly wrong.
-       'contract_version', 2,
+       'contract_version', 3,
        'seed',             COALESCE((SELECT jsonb_agg(jsonb_build_object('id', o.id, 'type', o.type))
                                      FROM all_obj o WHERE o.id = seed), '[]'::jsonb),
        'traversal_degree', traversal_degree,
@@ -1618,12 +1697,12 @@ BEGIN
                           || 'attrs.truncated = true describe a push with more commits '
                           || 'than are drawn.',
           'commit_authorship', 'vmap.commit_author_name is a git identity string and is '
-                          || 'NOT joined to any GitHub account. The actor on '
-                          || 'a CommitObserved event is the PUSHER.',
+                          || 'NOT joined to any GitHub account. The actor a Push '
+                          || 'event names (its pusher relationship) is the PUSHER.',
           'derived_openings', 'An IssueOpened or PullRequestOpened with attrs.source = '
                           || '''payload'' was never recorded as an event: its time and '
                           || 'actor are read from a later event''s payload '
-                          || '(attrs.derived_from). actor_id is null when the account '
+                          || '(attrs.derived_from). It names no actor when the account '
                           || 'has no actor record; attrs.opened_by then names it.'),
        'source', jsonb_build_object(
           'rpc',          'api.get_sublog',
@@ -1642,9 +1721,15 @@ BEGIN
        FROM all_obj x), '[]'::jsonb),
     'events', COALESCE((
        SELECT jsonb_agg(jsonb_build_object(
-         'id', e.id, 'activity', e.activity, 'time', fe.utc(e.time),
-         'object_id', e.object_id, 'actor_id', e.actor_id, 'repo', _repo_nm,
-         'comment', e.comment, 'attrs', e.attrs) ORDER BY e.time, e.id)
+         'id', e.id, 'activity', e.activity, 'time', fe.utc(e.time), 'repo', _repo_nm,
+         'comment', e.comment, 'attrs', e.attrs,
+         -- The objects the event is about first, then its actor; deterministic within
+         -- each, so a pulled sample is byte-stable.
+         'relationships', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object('object_id', r.object_id, 'qualifier', r.qualifier)
+                             ORDER BY (r.qualifier NOT IN ('subject', 'pushed_commit')), r.object_id)
+            FROM rel r WHERE r.event_id = e.id), '[]'::jsonb)
+       ) ORDER BY e.time, e.id)
        FROM ev e), '[]'::jsonb),
     'links', COALESCE((
        SELECT jsonb_agg(jsonb_build_object(
@@ -1674,13 +1759,12 @@ COMMENT ON FUNCTION api.get_sublog(text, text, integer) IS
 
 -- §7.1 — what the vocabulary whitelist drops.
 --
--- Reading it, as of 2026-08-04. Three rows, and only one of them is large:
+-- Reading it, as of 2026-08-04 (two rows since 2026-09-13):
 --
---   CommitsPushed   144,556   EXPECTED, and not data loss. It is not an activity here;
---                             its facts — commit_count, distinct_commit_count,
---                             truncated, ref — ride on each CommitObserved event's attrs
---                             instead, so the information is carried, not dropped. This
---                             row will always be here and should not be "fixed".
+--   CommitsPushed   144,556   was here until 2026-09-13, when §4 began emitting it as
+--                             `Push`. It is excluded below by name rather than admitted to
+--                             the vocabulary under upstream's name, because the vocabulary
+--                             is the eleven activities the payload carries.
 --   IssueComment_         1   Upstream's name built with an empty action. Genuinely dropped.
 --   IssueLabeled          1   Out of scope. Genuinely dropped.
 --
@@ -1696,6 +1780,7 @@ FROM (
   UNION ALL SELECT activity_type FROM mv_push_activities
 ) s
 WHERE activity_type NOT IN (SELECT activity FROM fe.activity_vocabulary)
+  AND activity_type <> 'CommitsPushed'        -- carried as Push (§4 branch 3), not dropped
 GROUP BY 1 ORDER BY 2 DESC;
 
 -- §7.2 — PR comment events with no resolvable pull request (§2's 1,999 comment-only PRs).
@@ -1790,6 +1875,8 @@ LEFT JOIN fe.pr_head_ref h
 GROUP BY 1 ORDER BY 2 DESC;
 
 -- §7.6 — the six sanity checks that catch the SILENT failures. Every one must equal `expected`.
+-- (Not here: the 416 pushes with no commit row, §4 branch 3 — a fact of the corpus, not an
+-- invariant, and an upstream refresh may move it.)
 CREATE OR REPLACE VIEW fe.diag_sanity AS
 WITH all_objects AS (
   SELECT id FROM fe.object_issue
@@ -1797,14 +1884,21 @@ WITH all_objects AS (
   UNION ALL SELECT id FROM fe.object_commit
 )
 SELECT 'dangling event objects'      AS check_name,
+       -- Every non-actor row of the E2O relation names an object that exists: the
+       -- subjects, and the commits the pushes carried. Spelled on fe.e2o's two sources
+       -- rather than on fe.e2o itself, which §12.0 defines after this section.
        (SELECT count(*) FROM fe.event e
-         WHERE NOT EXISTS (SELECT 1 FROM all_objects o WHERE o.id = e.object_id)) AS n,
+         WHERE e.subject_id IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM all_objects o WHERE o.id = e.subject_id))
+       + (SELECT count(*) FROM mv_push_commits_full pc
+           WHERE pc.commit_sha IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM all_objects o WHERE o.id = 'commit:' || pc.commit_sha)) AS n,
        0 AS expected
 UNION ALL
 SELECT 'issue/PR objects with no events',
        (SELECT count(*) FROM (
           SELECT id FROM fe.object_issue UNION ALL SELECT id FROM fe.object_pull_request) o
-         WHERE NOT EXISTS (SELECT 1 FROM fe.event e WHERE e.object_id = o.id)), 0
+         WHERE NOT EXISTS (SELECT 1 FROM fe.event e WHERE e.subject_id = o.id)), 0
 UNION ALL
 SELECT 'actors named by an event with no actor object',
        (SELECT count(DISTINCT e.actor_id) FROM fe.event e
@@ -1904,101 +1998,68 @@ $$;
 
 
 -- =====================================================================================
--- §12.0 — The DFG's event layer, in OCEL 2.0 E2O shape: fe.dfg_event and fe.dfg_e2o
+-- §12.0 — The event-to-object relation, in OCEL 2.0 E2O shape: fe.e2o
 --
--- Read ONLY by fe.dfg (§12). Trace's fe.event, fe.link and api.get_sublog are
--- untouched, and so is every fixture.
+-- ONE relation, read by both payloads: the sub-log RPC (§6) emits its rows as each
+-- event's `relationships`, and the process map (§12) counts over it. Until 2026-09-13
+-- the map had its own pair (fe.dfg_event / fe.dfg_e2o) while fe.event carried one object
+-- per event and took a push apart into one CommitObserved per commit — the OCEL 2.0 E2O
+-- relation flattened to arity one, on one page only. Now fe.event has one row per real
+-- event (§4) and this view relates each to its objects:
 --
--- fe.event carries ONE object per event, so §4 takes a push apart into one synthetic
--- CommitObserved per commit row and drops the real `CommitsPushed` activity at the
--- whitelist (§7.1 counts them: 144,556). That is the OCEL 2.0 E2O relation flattened to
--- arity one. For the process map the push is put back together:
+--   (repo_id, event_id, object_id, qualifier)
+--     subject        an issue or PR activity → the issue or pull request it is about
+--     opener | closer | reopener | commenter | merger | pusher
+--                    any event → its actor, under the role the activity gives them
+--                    (fe.actor_role, §1; `closer` for the off-platform merge, a close on
+--                    GitHub). An actor-less event (§4, derived openings) has no such row.
+--     pushed_commit  a Push → each commit it carried (mv_push_commits_full)
 --
---   fe.dfg_event   one row per REAL event — the ten issue/PR activities straight from
---                  fe.event, plus `Push`, one per mv_push_activities row (upstream's
---                  name is CommitsPushed). Keyed `push:<activity_id>`: activity_id is the
---                  PushEvent id and unique (144,556 rows); push_id has one duplicate and
---                  is not a key.
---   fe.dfg_e2o     (event_id, object_id, qualifier) — every event to its SUBJECT (the
---                  issue or pull request it is about), to its actor under the role the
---                  activity gives them, and a push to every commit it carried
---                  (`pushed_commit`) and to its pusher. A push of n commits is ONE event
---                  with n commit occurrences — the shape §12 counts in.
+-- A push of n commits is ONE event with n commit occurrences — the shape §12 counts in
+-- and Trace draws in (one mark per occurrence). `repo_id` is carried so a per-repository
+-- figure can be read off the relation (dfg-check reads it); it is not what selects rows
+-- for a sub-log — prefixed ids defeat every index, so §6 reaches events through the
+-- natural keys and restates this relation's pushed_commit branch on them (measured
+-- 2026-09-13: 20.5 s through this view for one vscode issue against 0.4 ms on the keys).
 --
--- ⚠️ `Push` is the map's only private activity. fe.activity_vocabulary (§1) stays at eleven
--- and fe.event never emits it; the map in turn never emits CommitObserved. The JS
--- ACTIVITIES table carries both, one per page, and says so.
---
--- Measured 2026-09-02 (MVs refreshed 2026-08-02):
---   * (event_id, commit_sha) is unique in mv_push_commits_full, 0 NULL shas, so
---     fe.dfg_e2o is a set. On every joined row created_at = activity_timestamp,
---     actor_id = actor_user_id and repo_id agree (0 mismatches each), so the commit
---     lane keeps its order and its pusher. actor_user_id is never NULL.
---   * 416 pushes (387 in vscode) carry no commit row: events with only a `pusher` E2O
---     row, which §12 drops with the actors. No fe.event id and no fe.link_mat endpoint
+-- Measured 2026-09-02 (MVs refreshed 2026-08-02), still the facts this rests on:
+--   * (event_id, commit_sha) is unique in mv_push_commits_full, 0 NULL shas, so the
+--     pushed_commit branch is a set. On every joined row created_at = activity_timestamp,
+--     actor_id = actor_user_id and repo_id agree (0 mismatches each), so the commit lane
+--     keeps its order and its pusher. actor_user_id is never NULL.
+--   * 416 pushes (387 in vscode) carry no commit row: events with only a `pusher` row,
+--     which §12 drops with the actors and §6 never selects. No fe.link_mat endpoint
 --     starts with `push:`.
---   * fe.event is scanned ONCE per view, key columns only — the §12 attrs pruning
---     survives the UNION ALL and the join (0 SubPlans by EXPLAIN). dfg_e2o ⋈ dfg_event
---     returns 3,167,844 rows (exactly fe.event's count) in 14.8 s; §12's `typed` CTE
---     is referenced three times and so computed once per build.
+--   * fe.event is scanned ONCE by the first branch, key columns only — the §4 attrs
+--     subqueries stay pruned through the LATERAL VALUES (0 SubPlans by EXPLAIN).
 --
 -- NOT here: PullRequestMerged → merge-commit rows (85.5% of merges resolve to a commit
 -- object). That would put a PR activity on the commit lane; a separate modelling decision.
 -- =====================================================================================
 
+-- The map's former private pair; dropped so a database that has them matches this file.
 DROP VIEW IF EXISTS fe.dfg_event CASCADE;
-CREATE VIEW fe.dfg_event AS
-SELECT e.id, e.activity, e.time, e.actor_id, e.actor_num, e.repo_id
-FROM fe.event e
-WHERE e.activity <> 'CommitObserved'
-UNION ALL
-SELECT 'push:' || p.activity_id::text,
-       'Push'::text,
-       p.activity_timestamp AT TIME ZONE 'UTC',     -- naive upstream, lifted here (header)
-       'actor:' || p.actor_user_id::text,
-       p.actor_user_id,
-       p.repo_id
-FROM mv_push_activities p;
-
-COMMENT ON VIEW fe.dfg_event IS
-  'One row per real event, for the process map only: fe.event''s issue and PR activities '
-  'plus Push, one per PushEvent (mv_push_activities). Trace does not read this.';
-
 DROP VIEW IF EXISTS fe.dfg_e2o CASCADE;
-CREATE VIEW fe.dfg_e2o AS
+
+DROP VIEW IF EXISTS fe.e2o CASCADE;
+CREATE VIEW fe.e2o AS
 -- One fe.event scan yields both the subject and the actor row — a LATERAL VALUES, not a
 -- second UNION ALL branch, which would read the 2.8M-row view a third time per build.
-SELECT e.id AS event_id, v.object_id, v.qualifier
+SELECT e.repo_id, e.id AS event_id, v.object_id, v.qualifier
 FROM fe.event e
 CROSS JOIN LATERAL (VALUES
-  (e.object_id, 'subject'::text),
-  (e.actor_id, CASE e.activity
-     WHEN 'IssueOpened'                  THEN 'opener'
-     WHEN 'PullRequestOpened'            THEN 'opener'
-     WHEN 'IssueClosed'                  THEN 'closer'
-     WHEN 'PullRequestClosed'            THEN 'closer'
-     -- the off-platform merge is a close on GitHub; its actor is whoever closed
-     WHEN 'PullRequestMergedOffPlatform' THEN 'closer'
-     WHEN 'IssueReopened'                THEN 'reopener'
-     WHEN 'PullRequestReopened'          THEN 'reopener'
-     WHEN 'IssueCommented'               THEN 'commenter'
-     WHEN 'PullRequestCommented'         THEN 'commenter'
-     WHEN 'PullRequestMerged'            THEN 'merger'
-   END)) AS v(object_id, qualifier)
-WHERE e.activity <> 'CommitObserved'
-  AND v.object_id IS NOT NULL                       -- an actor-less event (§4) has no actor row
+  (e.subject_id, 'subject'::text),
+  (e.actor_id,   fe.actor_role(e.activity))) AS v(object_id, qualifier)
+WHERE v.object_id IS NOT NULL                       -- a push has no subject; an actor-less event no actor row
 UNION ALL
-SELECT 'push:' || pc.event_id::text, 'commit:' || pc.commit_sha, 'pushed_commit'::text
+SELECT pc.repo_id, 'push:' || pc.event_id::text, 'commit:' || pc.commit_sha, 'pushed_commit'::text
 FROM mv_push_commits_full pc
-WHERE pc.commit_sha IS NOT NULL
-UNION ALL
-SELECT 'push:' || p.activity_id::text, 'actor:' || p.actor_user_id::text, 'pusher'::text
-FROM mv_push_activities p;
+WHERE pc.commit_sha IS NOT NULL;
 
-COMMENT ON VIEW fe.dfg_e2o IS
-  'OCEL 2.0 event-to-object relation for the process map: (event_id, object_id, qualifier). '
+COMMENT ON VIEW fe.e2o IS
+  'OCEL 2.0 event-to-object relation: (repo_id, event_id, object_id, qualifier). '
   'Qualifiers: subject, pushed_commit, and the actor roles opener, closer, reopener, '
-  'commenter, merger, pusher. Read only by fe.dfg.';
+  'commenter, merger, pusher (fe.actor_role). Read by api.get_sublog and fe.dfg.';
 
 -- =====================================================================================
 -- §12 — fe.dfg: the object-centric directly-follows graph over the ENTIRE log
@@ -2010,7 +2071,7 @@ COMMENT ON VIEW fe.dfg_e2o IS
 -- anywhere in this: succession is counted per object, and across objects only through
 -- links.
 --
--- Built over the E2O layer (§12.0), so the unit is the event–object OCCURRENCE: a push
+-- Built over fe.e2o (§12.0), so the unit is the event–object OCCURRENCE: a push
 -- of n commits is one event with n occurrences, one in each commit's sequence. Nodes
 -- carry both counts; `events` (distinct) is below `occurrences` only on `Push`.
 --
@@ -2028,8 +2089,9 @@ COMMENT ON VIEW fe.dfg_e2o IS
 -- names. The build is a full-log scan and could never be a request path.
 --
 -- Measurements, 2026-09-02 (MVs refreshed 2026-08-02):
---   * `typed` = fe.dfg_e2o ⋈ fe.dfg_event, 3,167,844 rows — exactly fe.event's count,
---     because every CommitObserved row became one `pushed_commit` occurrence. The §4
+--   * `typed` = fe.e2o ⋈ fe.event, lane rows only, 3,167,844 rows (2026-09-02) — exactly the row
+--     count fe.event had under contract v2, because every CommitObserved row became one
+--     `pushed_commit` occurrence; the whole join including actor rows is 6,191,196 (2026-09-13). The §4
 --     attrs subqueries stay pruned through the views (0 SubPlans by EXPLAIN); the join
 --     costs 14.8 s against 6.6 s for the old key-only scan.
 --   * output 637 rows: 33 nodes, 103 per-type edges, 501 cross rows (one per link
@@ -2047,7 +2109,7 @@ COMMENT ON VIEW fe.dfg_e2o IS
 DROP VIEW IF EXISTS fe.dfg CASCADE;
 CREATE VIEW fe.dfg AS
 WITH typed AS (
-  -- The E2O layer (§12.0), one row per event–object occurrence, typed by the object-id
+  -- fe.e2o (§12.0), one row per event–object occurrence, typed by the object-id
   -- PREFIX. Only actor rows resolve to no lane type and the WHERE drops them, so actors
   -- stay out of the map as before. `push:` is an EVENT-id prefix and never reaches
   -- this CASE. Key columns only, still: attrs is never projected (§12.0 measurement).
@@ -2058,8 +2120,8 @@ WITH typed AS (
            WHEN 'commit' THEN 'commit'
          END AS object_type,
          e.activity, e.time, e.id
-  FROM fe.dfg_e2o o
-  JOIN fe.dfg_event e ON e.id = o.event_id
+  FROM fe.e2o o
+  JOIN fe.event e ON e.id = o.event_id
   WHERE split_part(o.object_id, ':', 1) IN ('issue', 'pr', 'commit')
 ),
 seq AS (
@@ -2190,8 +2252,8 @@ WITH typed AS (
            WHEN 'commit' THEN 'commit'
          END AS object_type,
          e.activity, e.time, e.id
-  FROM fe.dfg_e2o o
-  JOIN fe.dfg_event e ON e.id = o.event_id
+  FROM fe.e2o o
+  JOIN fe.event e ON e.id = o.event_id
   WHERE split_part(o.object_id, ':', 1) IN ('issue', 'pr', 'commit')
 ),
 seq AS (

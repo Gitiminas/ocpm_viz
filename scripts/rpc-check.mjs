@@ -29,7 +29,6 @@
 
 import { execFileSync } from 'node:child_process';
 import { loadSubLog, describeSubLog } from '../src/data/loadSubLog.js';
-import { upgradeLegacyGraph } from '../src/data/legacy.js';
 import { findGraphProblems, indexSubLog, collectInstants } from '../src/model/subLog.js';
 import { ACTIVITIES } from '../src/model/activities.js';
 import { deriveBursts } from '../src/model/bursts.js';
@@ -68,14 +67,15 @@ const raw = rpcTransport(query);
 const fetchMs = Date.now() - started;
 
 // ---- the gate -----------------------------------------------------------------------
-// The RPC still emits contract v2; the loader restates it as v3 before validating, and
-// so does the gate. The contract checks below read the RPC's own output.
-const problems = findGraphProblems(upgradeLegacyGraph(raw));
+const problems = findGraphProblems(raw);
 
 console.log(`RPC     api.get_sublog(${repo}, ${seed}, ${degree})`);
 console.log(`payload ${JSON.stringify(raw).length.toLocaleString()} bytes in ${fetchMs} ms`);
 console.log(
-  `counts  ${raw.objects.length} objects · ${raw.events.length} events · ${raw.links.length} links`,
+  `counts  ${raw.objects.length} objects · ${raw.events.length} events (${raw.events.reduce(
+    (n, e) => n + e.relationships.filter((r) => ['subject', 'pushed_commit'].includes(r.qualifier)).length,
+    0,
+  )} occurrences) · ${raw.links.length} links`,
 );
 
 if (problems.length) {
@@ -90,8 +90,8 @@ console.log('gate    findGraphProblems() === []   ✓');
 // each maps to something that would render wrongly rather than error.
 const fail = [];
 
-if (raw.meta.contract_version !== 2) {
-  fail.push(`meta.contract_version is ${raw.meta.contract_version}, expected 2`);
+if (raw.meta.contract_version !== 3) {
+  fail.push(`meta.contract_version is ${raw.meta.contract_version}, expected 3`);
 }
 
 // A timestamp the renderer cannot parse passes findGraphProblems, which only
@@ -110,10 +110,9 @@ for (const o of raw.objects) {
   }
 }
 
-// The vocabulary must be the ten closed activities — and a subset is fine (a small sub-log
-// need not exhibit all ten), an extra is not. `Push` is the process map's alone.
+// The vocabulary must be the eleven closed activities — and a subset is fine (a small
+// sub-log need not exhibit all eleven), an extra is not.
 const known = new Set(Object.keys(ACTIVITIES));
-known.delete('Push');
 for (const a of new Set(raw.events.map((e) => e.activity))) {
   if (!known.has(a)) fail.push(`activity "${a}" is outside the closed vocabulary`);
 }
@@ -139,9 +138,23 @@ for (const o of raw.objects) {
   if (o.vmap && 'is_bot' in o.vmap) fail.push(`object ${o.id} carries is_bot; vmap must not`);
 }
 
-// No CommitsPushed activity — the push facts ride on CommitObserved.
-if (raw.events.some((e) => e.activity === 'CommitsPushed')) {
-  fail.push('a CommitsPushed event is present; push facts ride on CommitObserved');
+// Contract v3 facts the validator states loosely: no retired shape, every event about
+// something, every push about its commits with one pusher, every relationship resolving.
+const objectIds = new Set(raw.objects.map((o) => o.id));
+for (const e of raw.events) {
+  if ('object_id' in e || 'actor_id' in e || e.activity === 'CommitObserved') {
+    fail.push(`event ${e.id} carries the contract-v2 shape`);
+    continue;
+  }
+  const about = e.relationships.filter((r) => !r.object_id.startsWith('actor:'));
+  if (!about.length) fail.push(`event ${e.id} is about no object`);
+  for (const r of e.relationships) {
+    if (!objectIds.has(r.object_id)) fail.push(`event ${e.id} relates to ${r.object_id}, not in the payload`);
+  }
+  if (e.activity !== 'Push') continue;
+  if (!about.every((r) => r.qualifier === 'pushed_commit')) fail.push(`push ${e.id} has a non-commit relationship`);
+  if (e.relationships.filter((r) => r.qualifier === 'pusher').length !== 1) fail.push(`push ${e.id} does not name exactly one pusher`);
+  for (const key of ['ref', 'push_id']) if (!(key in e.attrs)) fail.push(`push ${e.id} lacks attrs.${key}`);
 }
 
 if (fail.length) {

@@ -97,28 +97,33 @@ for (const type of LANE_TYPES) {
   }
 }
 
-// Trace and the map agree on the commit lane modulo naming: each CommitObserved event
-// Trace draws is one pushed_commit occurrence here. fe.dfg_e2o carries no repo_id (an
-// E2O row is not partitioned), so the per-repository figure is read off the payload —
-// which also proves the materialization, not only the view.
+// Trace and the map count the same relation: the map's commit/Push node has one
+// occurrence per pushed_commit row of fe.e2o for the repository, and one event per
+// distinct push among them — the rows the sub-log RPC emits as a push's relationships.
+// Read off the live view, so the materialization is checked against its definition.
 const push = raw.nodes.find((n) => n.object_type === 'commit' && n.activity === 'Push');
 if (push) {
-  const observed = execFileSync(
+  const [occurrences, events] = execFileSync(
     'psql',
     [
       '-d',
       DB,
       '-Atc',
-      `SELECT count(*) FROM fe.event WHERE repo_id = ${Number(raw.meta.repo_id)} ` +
-        `AND activity = 'CommitObserved'`,
+      `SELECT count(*) || '|' || count(DISTINCT event_id) FROM fe.e2o ` +
+        `WHERE repo_id = ${Number(raw.meta.repo_id)} AND qualifier = 'pushed_commit'`,
     ],
     { encoding: 'utf8' },
-  ).trim();
-  if (String(push.occurrences) !== observed) {
+  )
+    .trim()
+    .split('|');
+  if (String(push.occurrences) !== occurrences) {
     fail.push(
-      `commit/Push has ${push.occurrences} occurrences but Trace holds ${observed} ` +
-        `CommitObserved events for repo ${raw.meta.repo_id}`,
+      `commit/Push has ${push.occurrences} occurrences but fe.e2o holds ${occurrences} ` +
+        `pushed_commit rows for repo ${raw.meta.repo_id}`,
     );
+  }
+  if (String(push.events) !== events) {
+    fail.push(`commit/Push has ${push.events} events but fe.e2o holds ${events} pushes with commits`);
   }
 }
 
@@ -171,7 +176,7 @@ if (fail.length) {
   for (const line of fail.slice(0, 40)) console.error(`  - ${line}`);
   process.exit(1);
 }
-console.log('gate    validator, per-node conservation, Push = CommitObserved, sequence ends, vocabulary   ✓');
+console.log('gate    validator, per-node conservation, Push = fe.e2o pushed_commit, sequence ends, vocabulary   ✓');
 
 // ---- the sequence-objects RPC, on the listable activities ----------------------------
 for (const [type, activity, edge] of [
