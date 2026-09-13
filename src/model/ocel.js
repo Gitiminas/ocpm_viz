@@ -122,6 +122,19 @@ export function toOcelJson(graph) {
 }
 
 /**
+ * The file name a downloaded export gets: repository and seed, both already
+ * type-prefixed and unambiguous, `.ocel.json` so a reader knows the format before opening.
+ * Pure, so the button's label and the file's name are testable without a browser.
+ */
+export function ocelFileName(graph) {
+  const meta = graph.meta ?? {};
+  const repo = (meta.repo ?? 'sub-log').replace(/[^A-Za-z0-9._-]+/g, '-');
+  const seed = (meta.seed?.[0]?.id ?? meta.query?.fixture ?? 'seed').replace(/[^A-Za-z0-9._-]+/g, '-');
+  const degree = meta.traversal_degree ?? meta.query?.traversalDegree;
+  return `${repo}-${seed}${degree != null ? `-d${degree}` : ''}.ocel.json`;
+}
+
+/**
  * The structural rules of the format, checked on an export. Returns problems; empty means
  * clean. Kept beside the writer so a test and a script assert the same thing: the four
  * top-level keys and nothing else; every relationship resolving to an object; event and

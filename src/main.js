@@ -42,6 +42,7 @@ import { createMinimap } from './render/minimap.js';
 import { createActorCard } from './render/actorCard.js';
 import { createTimeline, MARGIN, STRUCTURAL_MARGIN } from './render/timeline.js';
 import { renderSubLogCard, renderProcessCard } from './render/subLogCard.js';
+import { toOcelJson, ocelFileName } from './model/ocel.js';
 import { scrollToKeepAnchor } from './render/pan.js';
 import { bindHelpStrip } from './render/helpStrip.js';
 import { renderLegend, legendKeysPresentIn } from './render/legend.js';
@@ -1601,7 +1602,25 @@ function updateSubLogCard({ previewActor = null } = {}) {
     summary: summaryForMode(summarizeSubLog(visible), visible, state, { previewActor }),
     total: totalForMode(summarizeSubLog(graph), state),
     notes,
+    onExport: () => downloadOcel(graph),
   });
+}
+
+/**
+ * Hand the reader the loaded sub-log as an OCEL 2.0 JSON file (`model/ocel.js`). The
+ * whole payload, whatever the toggles hide: the file is the record, the screen a view.
+ * A Blob and an object URL, revoked once the click has been dispatched.
+ */
+function downloadOcel(graph) {
+  const text = JSON.stringify(toOcelJson(graph), null, 1);
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = ocelFileName(graph);
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** Reload at a new degree, keeping the rest of the query. */

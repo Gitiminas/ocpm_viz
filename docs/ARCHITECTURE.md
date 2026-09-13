@@ -122,7 +122,9 @@ applies the same rules to produce a filtered graph for the statistics page and t
 per visible relationship: an event stays while one object it is about is drawn and keeps only
 its relationships to drawn objects, and a comment follows its subject's toggle (2026-09-13);
 `summaryForMode` beside it adjusts the card's summary to what is drawn: pinned actors, and in the
-relationships mode one mark per object. `relControlAvailability` is the same predicates read the
+relationships mode one mark per object, with `totalForMode` stating the total in the same unit. The
+card's export button hands the reader the whole loaded sub-log as an OCEL 2.0 JSON file
+(`model/ocel.js`; the Blob and the download link are `main.js`'s). `relControlAvailability` is the same predicates read the
 other way: which relationship rows still govern a link that could be drawn. A row is inert (dimmed,
 unclickable, skipped by its master) while nothing it governs would pass every *other* filter — a
 pair under a hidden lane, a qualifier whose every link sits on a switched-off pair, a method no

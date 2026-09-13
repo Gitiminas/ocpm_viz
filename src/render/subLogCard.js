@@ -58,6 +58,10 @@ const KICKER =
   'display:flex;justify-content:space-between;gap:8px;padding-bottom:6px;' +
   'border-bottom:1px solid var(--color-neutral-800);margin:0 -2px';
 const EMPTY = 'font-size:10.5px;color:var(--color-neutral-500);line-height:1.4;font-style:italic';
+const EXPORT_BUTTON =
+  'margin-top:6px;padding:5px 8px;font:inherit;font-size:10.5px;color:var(--color-accent-300);' +
+  'background:transparent;border:1px solid var(--color-neutral-800);border-radius:4px;cursor:pointer;' +
+  'text-align:left';
 const OF_TOTAL = 'font-size:10px;font-weight:400;color:var(--color-neutral-500);margin-left:3px';
 
 /**
@@ -67,10 +71,12 @@ const OF_TOTAL = 'font-size:10px;font-weight:400;color:var(--color-neutral-500);
  *   when no sub-log is loaded — the card stays, titled, and says so
  * @param {object} [options.total]         `summarizeSubLog` over the whole payload; where
  *   a count differs from the visible one, the tile shows both ("6 / 8")
+ * @param {() => void} [options.onExport]  when given, a button below the numbers that hands
+ *                                         the reader the whole sub-log as an OCEL 2.0 JSON file
  * @param {string[]} [options.notes]       plain sentences worth stating with the numbers —
  *   "no links from this seed", and the like
  */
-export function renderSubLogCard({ container, summary, total = summary, notes = [] }) {
+export function renderSubLogCard({ container, summary, total = summary, notes = [], onExport = null }) {
   container.innerHTML = '';
   container.style.cssText = CARD;
 
@@ -163,6 +169,19 @@ export function renderSubLogCard({ container, summary, total = summary, notes = 
     note.style.cssText = NOTE;
     note.textContent = text;
     container.appendChild(note);
+  }
+
+  // The whole sub-log, not the shown part: an export is the record, the toggles are a view
+  // of it. The click is the caller's (`main.js`), which is where a Blob and a download
+  // link belong; this renderer only states that the export exists and names its format.
+  if (onExport) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.tip = 'card.export';
+    button.textContent = 'Download as OCEL 2.0 JSON';
+    button.style.cssText = EXPORT_BUTTON;
+    button.addEventListener('click', onExport);
+    container.appendChild(button);
   }
 }
 

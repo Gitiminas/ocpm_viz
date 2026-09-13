@@ -12,7 +12,7 @@
  * the validator's per-type totals cannot see (each node's occurrences = starts + inbound
  * successions = ends + outbound, per-type edges only — a cross succession is not part
  * of either object's own sequence arithmetic); that the commit lane's Push occurrences
- * equal the CommitObserved events Trace draws for the repository, so the two pages
+ * equal the pushed_commit rows of fe.e2o for the repository, so the two pages
  * agree modulo naming; the vocabulary rules hold in the raw
  * JSON text; `loadDfg` accepts it; `layoutDfg` places it finitely inside its box; and
  * one unauthenticated HTTP call reaches `api.get_dfg` as `web_anon` — the only step

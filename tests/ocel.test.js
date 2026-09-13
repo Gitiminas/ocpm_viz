@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { loadSubLog } from '../src/data/loadSubLog.js';
-import { toOcelJson, findOcelProblems } from '../src/model/ocel.js';
+import { toOcelJson, findOcelProblems, ocelFileName } from '../src/model/ocel.js';
 import { objectsOf, actorOf } from '../src/model/subLog.js';
 
 const fileTransport = async (query) =>
@@ -72,6 +72,15 @@ describe('every sub-log exports as a well-formed OCEL 2.0 log', () => {
       }
     });
   }
+});
+
+describe('the download is named after the query', () => {
+  test('repository, seed and degree, sanitised, with the format in the extension', async () => {
+    const graph = await load('F1');
+    assert.equal(ocelFileName(graph), 'microsoft-vscode-issue-242864-d2.ocel.json');
+    assert.equal(ocelFileName({ meta: {} }), 'sub-log-seed.ocel.json');
+    assert.equal(ocelFileName({ meta: { repo: 'a/b', seed: [{ id: 'commit:abc' }], traversal_degree: 0 } }), 'a-b-commit-abc-d0.ocel.json');
+  });
 });
 
 describe('the format checker names what it rejects', () => {

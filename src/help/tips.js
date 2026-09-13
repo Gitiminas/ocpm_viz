@@ -55,6 +55,7 @@ export const TIPS = Object.freeze({
   'card.links': 'Links between artifacts that are shown. A link joins two artifacts, such as a PR and the issue it closes.',
   'card.events': 'Events that are shown: every event on an issue or PR, and every push carrying a shown commit, counted once. In the relationships view, one mark per issue, PR or commit.',
   'card.span': 'From the first shown event to the last, in UTC.',
+  'card.export': 'Save the whole sub-log as an OCEL 2.0 JSON log, toggles ignored. Link evidence does not travel: the format has no column for it.',
 
   // ---- sidebar sections ----------------------------------------------------------
   'section.views': 'Saved combinations of toggles. Apply one, save the current one, or copy a link that reproduces this screen.',

@@ -23,11 +23,13 @@ simple_*.md
 screenshots/
 docs/_archive/
 
-# Working notes compiled against the tree, not maintained as part of it. Both are
-# snapshots dated to the commit they were read at, so they go stale the moment the
-# code moves; the binding account lives in the tracked docs.
+# Working notes compiled against the tree, not maintained as part of it. Snapshots dated
+# to the commit they were read at, so they go stale the moment the code moves; the binding
+# account lives in the tracked docs. `_OCEL_MIGRATION.md` is the executive summary of the
+# 2026-09-13 data-model change; `_data_model.tex` its diagram.
 docs/_ground_truth.md
-docs/_decisions_salvage.md
+docs/_OCEL_MIGRATION.md
+online-appendix/_data_model.tex
 
 # Runtime logs written by ocpm.sh
 .ocpm-logs/

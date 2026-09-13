@@ -55,7 +55,7 @@ export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
 /*
  * `relation` and `role` are the event-to-object qualifiers (OCEL 2.0 E2O): `relation` is
  * how the activity relates to the object it is about, `role` is what it makes of its actor.
- * This table is the JS twin of the CASE in `fe.dfg_e2o` (`sql/fe_layer.sql` §12.0); the
+ * This table is the JS twin of `fe.actor_role` (`sql/fe_layer.sql` §1) and `fe.e2o` (§12.0); the
  * two must agree row for row, and the validator (`findActivityProblems`) rejects a payload
  * whose qualifiers drift from it.
  */
@@ -329,7 +329,7 @@ export function findActivityProblems(events, objectsById) {
      * types. An activity relates to the objects it is about under its `relation` —
      * exactly one `subject` for an issue or PR activity, one `pushed_commit` per commit
      * for a push, never none — and to its actor under its `role`. A payload whose roles
-     * drift from this table (the twin of fe.dfg_e2o's CASE) fails here, on load.
+     * drift from this table (the twin of fe.actor_role) fails here, on load.
      */
     let about = 0;
     for (const rel of event.relationships) {

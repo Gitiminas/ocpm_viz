@@ -130,7 +130,7 @@ path `M0 -s L s 0 L 0 s L -s 0 Z` with `s = size × 1.2` (`theme.js:203`).
 
 ![Commit mark](shots/A03-commit-mark.png)
 
-**Where:** commit lane. **Encodes:** one `CommitObserved` event — a commit seen in a push.
+**Where:** commit lane. **Encodes:** one commit, at the push that first carried it (since 2026-09-13 a `Push` event about every commit it carried; before that one `CommitObserved` event per commit — the mark is the same).
 Rounded rect, `rx 2`. `data-legend="commit"`.
 
 ### A4 · Comment mark — hollow lane shape

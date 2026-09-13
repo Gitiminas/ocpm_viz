@@ -47,8 +47,8 @@ export function createActorCard({ element, onHoverItem = () => {} }) {
      * There used to be a second pass keyed on `index.pusherByCommit`, which holds one
      * pusher per commit — so a commit pushed by six accounts appeared on one card and
      * was missing from the other five, and the time shown was the commit's first
-     * sighting rather than *this* actor's push. One item per `CommitObserved` event
-     * fixes both: an actor's card lists the pushes they made, when they made them.
+     * sighting rather than *this* actor's push. One item per push occurrence fixes
+     * both: an actor's card lists the pushes they made, when they made them.
      */
     for (const event of graph.events) {
       if (actorOf(event) !== actor.id) continue;

@@ -709,7 +709,7 @@ describe('event-to-object qualifiers (OCEL 2.0 E2O)', () => {
     }
     assert.deepEqual([...RELATION_QUALIFIERS].sort(), ['pushed_commit', 'subject']);
     assert.deepEqual([...ACTOR_ROLES].sort(), ['closer', 'commenter', 'merger', 'opener', 'pusher', 'reopener']);
-    // The twin of fe.dfg_e2o's CASE (sql/fe_layer.sql §12.0): the off-platform merge is a close on GitHub.
+    // The twin of fe.actor_role (sql/fe_layer.sql §1): the off-platform merge is a close on GitHub.
     assert.equal(actorRoleOf('PullRequestMergedOffPlatform'), 'closer');
     assert.equal(actorRoleOf('PullRequestMerged'), 'merger');
     assert.equal(relationOf('Push'), 'pushed_commit');
