@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { loadSubLog } from '../src/data/loadSubLog.js';
-import { indexSubLog, normalizeGraph } from '../src/model/subLog.js';
+import { subjectEvent, pushEvent } from './support/events.js';
+import { indexSubLog, normalizeGraph, actorOf } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { deriveCommentBursts } from '../src/model/commentBursts.js';
 import { isUnmergedClose } from '../src/model/activities.js';
@@ -101,12 +102,12 @@ describe('multiple issues and PRs all render — the singleton bug', () => {
         { id: 'pr:2', type: 'pull_request', label: 'PR #2', intervals: [{ start: '2025-01-03T12:00:00Z', end: '2025-01-05T00:00:00Z' }] },
       ],
       events: [
-        { id: 'e1', activity: 'IssueOpened', time: '2025-01-01T00:00:00Z', object_id: 'issue:1' },
-        { id: 'e2', activity: 'IssueOpened', time: '2025-01-02T00:00:00Z', object_id: 'issue:2' },
-        { id: 'e3', activity: 'IssueClosed', time: '2025-01-05T00:00:00Z', object_id: 'issue:1' },
-        { id: 'e4', activity: 'PullRequestOpened', time: '2025-01-03T00:00:00Z', object_id: 'pr:1' },
-        { id: 'e5', activity: 'PullRequestOpened', time: '2025-01-03T12:00:00Z', object_id: 'pr:2' },
-        { id: 'e6', activity: 'PullRequestMerged', time: '2025-01-04T00:00:00Z', object_id: 'pr:1' },
+        subjectEvent('e1', 'IssueOpened', '2025-01-01T00:00:00Z', 'issue:1'),
+        subjectEvent('e2', 'IssueOpened', '2025-01-02T00:00:00Z', 'issue:2'),
+        subjectEvent('e3', 'IssueClosed', '2025-01-05T00:00:00Z', 'issue:1'),
+        subjectEvent('e4', 'PullRequestOpened', '2025-01-03T00:00:00Z', 'pr:1'),
+        subjectEvent('e5', 'PullRequestOpened', '2025-01-03T12:00:00Z', 'pr:2'),
+        subjectEvent('e6', 'PullRequestMerged', '2025-01-04T00:00:00Z', 'pr:1'),
       ],
       links: [],
     });
@@ -135,7 +136,7 @@ describe('multiple issues and PRs all render — the singleton bug', () => {
     const graph = normalizeGraph({
       meta: {},
       objects: [{ id: 'pr:9', type: 'pull_request', label: 'PR #9', intervals: [{ start: '2025-01-01T00:00:00Z' }] }],
-      events: [{ id: 'e1', activity: 'PullRequestOpened', time: '2025-01-01T00:00:00Z', object_id: 'pr:9' }],
+      events: [subjectEvent('e1', 'PullRequestOpened', '2025-01-01T00:00:00Z', 'pr:9')],
       links: [],
     });
     const index = indexSubLog(graph);
@@ -261,7 +262,7 @@ describe('relationship toggles are derived, not enumerated', () => {
  * A commit observed in several pushes.
  *
  * The SHA reaches another branch and GitHub reports a new PushEvent, so one commit
- * object carries several `CommitObserved` events. It is common — 39.6% of vscode's
+ * object is carried by several `Push` events. It is common — 39.6% of vscode's
  * commits, 13.8% of react's — and it used to be dropped: the lane drew one glyph at
  * the first observation while the actor counts, the statistics and the axis range
  * all still included the rest. The complaint that found it was a one-commit sub-log
@@ -272,16 +273,8 @@ describe('relationship toggles are derived, not enumerated', () => {
  */
 function repeatedCommitGraph() {
   const sha = 'commit:0001036d35667864ab01e65ac70325a7090a2f51';
-  const at = (time, ref, pushId, i) => ({
-    id: `e_obs${i}`,
-    activity: 'CommitObserved',
-    time,
-    object_id: sha,
-    actor_id: 'actor:flarnie',
-    repo: 'facebook/react',
-    comment: false,
-    attrs: { ref, push_id: pushId },
-  });
+  const at = (time, ref, pushId, i) =>
+    pushEvent(`push:${i}`, time, [sha], { actorId: 'actor:flarnie', repo: 'facebook/react', attrs: { ref, push_id: pushId } });
   return normalizeGraph({
     meta: { repo: 'facebook/react', seed: [{ id: sha, type: 'commit' }], traversal_degree: 2 },
     objects: [
@@ -399,7 +392,7 @@ describe('repeat observations get their own row, and pushes are attributed per p
     const index = indexSubLog(graph);
     const commit = index.objectsOfType('commit')[0];
     const first = index.eventsOf(commit.id)[0];
-    assert.equal(index.pusherByCommit.get(commit.id), first.actor_id);
+    assert.equal(index.pusherByCommit.get(commit.id), actorOf(first));
   });
 
   test('an actor is attributed the pushes they made, not the commits they touched', () => {
@@ -541,12 +534,12 @@ describe('comments close together in time fold into one mark', () => {
           intervals: [{ start: at(0), end: at(400) }] },
       ],
       events: [
-        { id: 'e0', activity: 'IssueOpened', time: at(0), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: false },
+        subjectEvent('e0', 'IssueOpened', at(0), 'issue:1', { actorId: 'actor:a', repo: 'r', comment: false }),
         // three within an hour of each other, then one a fortnight later
-        { id: 'c1', activity: 'IssueCommented', time: at(1), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: true },
-        { id: 'c2', activity: 'IssueCommented', time: at(2), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: true },
-        { id: 'c3', activity: 'IssueCommented', time: at(3), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: true },
-        { id: 'c4', activity: 'IssueCommented', time: at(400), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: true },
+        subjectEvent('c1', 'IssueCommented', at(1), 'issue:1', { actorId: 'actor:a', repo: 'r', comment: true }),
+        subjectEvent('c2', 'IssueCommented', at(2), 'issue:1', { actorId: 'actor:a', repo: 'r', comment: true }),
+        subjectEvent('c3', 'IssueCommented', at(3), 'issue:1', { actorId: 'actor:a', repo: 'r', comment: true }),
+        subjectEvent('c4', 'IssueCommented', at(400), 'issue:1', { actorId: 'actor:a', repo: 'r', comment: true }),
       ],
       links: [],
     });
@@ -615,10 +608,9 @@ describe('a comment run never crosses a lifecycle boundary', () => {
         { id: 'actor:a', type: 'actor', label: '@a', repo: 'r', vmap: { login: 'a' }, intervals: [] },
         { id: 'issue:1', type: 'issue', label: '#1', repo: 'r', intervals },
       ],
-      events: commentHours.map((h, i) => ({
-        id: `c${i + 1}`, activity: 'IssueCommented', time: at(h), object_id: 'issue:1',
-        actor_id: 'actor:a', repo: 'r', comment: true,
-      })),
+      events: commentHours.map((h, i) =>
+        subjectEvent(`c${i + 1}`, 'IssueCommented', at(h), 'issue:1', { actorId: 'actor:a', repo: 'r', comment: true }),
+      ),
       links: [],
     });
     return deriveCommentBursts(indexSubLog(graph), ['issue'], { windowDays });
@@ -664,11 +656,10 @@ describe('an unfolded comment run can be folded back', () => {
         { id: 'issue:1', type: 'issue', label: '#1', repo: 'r', intervals: [{ start: at(0), end: at(9) }] },
       ],
       events: [
-        { id: 'e0', activity: 'IssueOpened', time: at(0), object_id: 'issue:1', actor_id: 'actor:a', repo: 'r', comment: false },
-        ...[1, 2, 3].map((h) => ({
-          id: `c${h}`, activity: 'IssueCommented', time: at(h), object_id: 'issue:1',
-          actor_id: 'actor:a', repo: 'r', comment: true,
-        })),
+        subjectEvent('e0', 'IssueOpened', at(0), 'issue:1', { actorId: 'actor:a', repo: 'r', comment: false }),
+        ...[1, 2, 3].map((h) =>
+          subjectEvent(`c${h}`, 'IssueCommented', at(h), 'issue:1', { actorId: 'actor:a', repo: 'r', comment: true }),
+        ),
       ],
       links: [],
     });
@@ -756,17 +747,17 @@ describe('an actor-card row finds its mark, through whatever fold carries it', (
   ];
 
   test('unfolded event → its own node; folded comment → the run; folded commit → the push', () => {
-    assert.equal(markForEvent(nodes, { id: 'e1', object_id: 'issue:1' }).id, 'n_e1');
-    assert.equal(markForEvent(nodes, { id: 'e3', object_id: 'issue:1' }).id, 'n_cb');
-    assert.equal(markForEvent(nodes, { id: 'e9', object_id: 'commit:b' }).id, 'n_burst');
+    assert.equal(markForEvent(nodes, subjectEvent('e1', 'IssueOpened', 't', 'issue:1')).id, 'n_e1');
+    assert.equal(markForEvent(nodes, subjectEvent('e3', 'IssueCommented', 't', 'issue:1')).id, 'n_cb');
+    assert.equal(markForEvent(nodes, pushEvent('e9', 't', ['commit:a', 'commit:b']), 'commit:b').id, 'n_burst');
   });
 
   test('relationships mode: the object mark stands for every one of its events', () => {
-    assert.equal(markForEvent(nodes, { id: 'e7', object_id: 'pr:9' }).id, 'n_obj');
+    assert.equal(markForEvent(nodes, subjectEvent('e7', 'PullRequestOpened', 't', 'pr:9')).id, 'n_obj');
   });
 
   test('an event whose mark is filtered out resolves to nothing, not to a wrong mark', () => {
-    assert.equal(markForEvent(nodes, { id: 'e8', object_id: 'commit:zz' }), null);
+    assert.equal(markForEvent(nodes, pushEvent('e8', 't', ['commit:zz'])), null);
     assert.equal(markForEvent(nodes, null), null);
   });
 });

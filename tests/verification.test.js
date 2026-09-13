@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { loadSubLog } from '../src/data/loadSubLog.js';
+import { upgradeLegacyGraph } from '../src/data/legacy.js';
 import { indexSubLog, collectInstants, findGraphProblems } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { deriveCommitGroups } from '../src/model/commitGroups.js';
@@ -83,8 +84,29 @@ async function pipeline(fixture, { mode = 'absolute', state } = {}) {
 describe('every fixture is a valid SubLog', () => {
   for (const fixture of ALL_FIXTURES) {
     test(`${fixture} passes shape validation`, async () => {
-      const raw = await fileTransport({ fixture });
+      // The committed fixtures are still contract v2; the loader restates them (Step C
+      // of the OCEL 2.0 migration rebuilds them natively and drops the upgrade).
+      const raw = upgradeLegacyGraph(await fileTransport({ fixture }));
       assert.deepEqual(findGraphProblems(raw), []);
+    });
+  }
+});
+
+describe('every loaded event relates to its objects the OCEL 2.0 way', () => {
+  for (const fixture of ALL_FIXTURES) {
+    test(`${fixture}: no object_id column, and every push is about its commits and its pusher`, async () => {
+      const graph = await load(fixture);
+      for (const event of graph.events) {
+        assert.equal('object_id' in event, false, `${event.id} carries object_id`);
+        assert.equal('actor_id' in event, false, `${event.id} carries actor_id`);
+        assert.ok(event.relationships.length >= 1, `${event.id} relates to nothing`);
+        if (event.activity !== 'Push') continue;
+        const commits = event.relationships.filter((r) => r.qualifier === 'pushed_commit');
+        const pushers = event.relationships.filter((r) => r.qualifier === 'pusher');
+        assert.ok(commits.length >= 1, `${event.id} carried no commit`);
+        assert.ok(pushers.length <= 1, `${event.id} names two pushers`);
+      }
+      assert.equal(graph.events.some((e) => e.activity === 'CommitObserved'), false, 'CommitObserved is retired');
     });
   }
 });

@@ -1,7 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { normalizeGraph, indexSubLog } from '../src/model/subLog.js';
+import { normalizeGraph, indexSubLog, actorOf } from '../src/model/subLog.js';
+import { subjectEvent } from './support/events.js';
 import { isDerivedEvent, isLandmark } from '../src/model/activities.js';
 import { buildNodes } from '../src/layout/nodes.js';
 import { buildStructuralNodes } from '../src/layout/structural.js';
@@ -35,19 +36,17 @@ function derivedOpeningGraph() {
     ],
     events: [
       // the derived issue opening: no actor, provenance in attrs
-      { id: 'issue_open_payload:1', activity: 'IssueOpened', time: '2024-01-01T00:00:00Z',
-        object_id: 'issue:1', actor_id: null, repo, comment: false,
-        attrs: { source: 'payload', derived_from: 900 } },
-      { id: 'issue_act:901', activity: 'IssueCommented', time: '2024-01-02T00:00:00Z',
-        object_id: 'issue:1', actor_id: 'actor:1', repo, comment: true, attrs: {} },
-      { id: 'issue_act:902', activity: 'IssueClosed', time: '2024-01-03T00:00:00Z',
-        object_id: 'issue:1', actor_id: 'actor:2', repo, comment: false, attrs: {} },
+      subjectEvent('issue_open_payload:1', 'IssueOpened', '2024-01-01T00:00:00Z', 'issue:1',
+        { repo, attrs: { source: 'payload', derived_from: 900 } }),
+      subjectEvent('issue_act:901', 'IssueCommented', '2024-01-02T00:00:00Z', 'issue:1',
+        { actorId: 'actor:1', repo, comment: true, attrs: {} }),
+      subjectEvent('issue_act:902', 'IssueClosed', '2024-01-03T00:00:00Z', 'issue:1',
+        { actorId: 'actor:2', repo, attrs: {} }),
       // the derived PR opening: the payload names the author
-      { id: 'pr_open_payload:2', activity: 'PullRequestOpened', time: '2024-01-02T00:00:00Z',
-        object_id: 'pr:2', actor_id: 'actor:1', repo, comment: false,
-        attrs: { source: 'payload', derived_from: 903 } },
-      { id: 'pr_act:903', activity: 'PullRequestMerged', time: '2024-01-04T00:00:00Z',
-        object_id: 'pr:2', actor_id: 'actor:2', repo, comment: false, attrs: {} },
+      subjectEvent('pr_open_payload:2', 'PullRequestOpened', '2024-01-02T00:00:00Z', 'pr:2',
+        { actorId: 'actor:1', repo, attrs: { source: 'payload', derived_from: 903 } }),
+      subjectEvent('pr_act:903', 'PullRequestMerged', '2024-01-04T00:00:00Z', 'pr:2',
+        { actorId: 'actor:2', repo, attrs: {} }),
     ],
     links: [{ source: 'pr:2', target: 'issue:1', qualifier: 'resolves', evidence: 'extracted',
               method: 'pr_body', n_methods: 1, link_methods: ['pr_body'] }],
@@ -67,7 +66,7 @@ describe('an opening derived from a later event\'s payload', () => {
     const graph = derivedOpeningGraph();
     const index = indexSubLog(graph);
     const opening = graph.events.find((e) => e.id === 'issue_open_payload:1');
-    assert.equal(opening.actor_id, null);
+    assert.equal(actorOf(opening), null);
     assert.ok(index.objectsOfType('issue').some((o) => o.id === 'issue:1'));
   });
 

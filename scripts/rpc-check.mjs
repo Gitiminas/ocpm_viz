@@ -29,6 +29,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { loadSubLog, describeSubLog } from '../src/data/loadSubLog.js';
+import { upgradeLegacyGraph } from '../src/data/legacy.js';
 import { findGraphProblems, indexSubLog, collectInstants } from '../src/model/subLog.js';
 import { ACTIVITIES } from '../src/model/activities.js';
 import { deriveBursts } from '../src/model/bursts.js';
@@ -67,7 +68,9 @@ const raw = rpcTransport(query);
 const fetchMs = Date.now() - started;
 
 // ---- the gate -----------------------------------------------------------------------
-const problems = findGraphProblems(raw);
+// The RPC still emits contract v2; the loader restates it as v3 before validating, and
+// so does the gate. The contract checks below read the RPC's own output.
+const problems = findGraphProblems(upgradeLegacyGraph(raw));
 
 console.log(`RPC     api.get_sublog(${repo}, ${seed}, ${degree})`);
 console.log(`payload ${JSON.stringify(raw).length.toLocaleString()} bytes in ${fetchMs} ms`);

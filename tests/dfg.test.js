@@ -512,7 +512,7 @@ describe('the sequence tiles are actions on a closed set of activities', () => {
     assert.equal(sequenceTileState({ object_type: 'commit', activity: 'Push' }), 'action');
     assert.equal(sequenceTileState({ object_type: 'issue', activity: 'IssueCommented' }), 'unavailable');
     assert.equal(sequenceTileState({ object_type: 'pull_request', activity: 'PullRequestCommented' }), 'unavailable');
-    assert.equal(sequenceTileState({ object_type: 'commit', activity: 'CommitObserved' }), 'plain');
+    assert.equal(sequenceTileState({ object_type: 'commit', activity: 'IssueOpened' }), 'plain');
     assert.equal(isSequenceListable(null), false);
     assert.equal(sequenceTileState(null), 'plain');
   });

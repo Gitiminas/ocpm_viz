@@ -79,15 +79,17 @@ one: compare it against the upstream refresh.
 
 ## The SubLog payload
 
-One RPC returns one bundle. `meta.contract_version` is `2`; a consumer that does not understand
+One RPC returns one bundle. `meta.contract_version` is `3` (since 2026-09-13; the client
+restates a `2` bundle on load, see **Contract v2** below); a consumer that does not understand
 it should fail rather than render something subtly wrong.
 
 ```
-meta:    { repo, repo_id, repo_ambiguous, contract_version: 2, seed: [{id, type}],
+meta:    { repo, repo_id, repo_ambiguous, contract_version: 3, seed: [{id, type}],
            traversal_degree, active_object_types, active_link_methods, generated_at,
            activity_scope, data_honesty: {…}, source: {rpc, layer, mv_refreshed} }
 objects: [ { id, type, label, repo, time_semantics, vmap: {…}, intervals: [{start, end|null}] } ]
-events:  [ { id, activity, time, object_id, actor_id|null, repo, comment, attrs: {…} } ]
+events:  [ { id, activity, time, repo, comment, attrs: {…},
+             relationships: [ { object_id, qualifier } ] } ]
 links:   [ { source, target, qualifier, evidence, method, n_methods, link_methods: [] } ]
 ```
 
@@ -95,9 +97,36 @@ Objects come ordered by `(type, id)`, events by `(time, id)`. `meta` records the
 produced the sub-log, for reproducibility. It is not an identity: there is no case notion, and
 the same event may legitimately belong to many sub-logs.
 
+**Events relate to objects the OCEL 2.0 way.** `relationships` is the event-to-object relation:
+every object the event touches, each under a qualifier. The ten issue and pull-request
+activities relate to the one object they are about as `subject`, and to their actor under the
+role the activity gives them — `opener`, `closer` (also the off-platform merge, a close on
+GitHub), `reopener`, `commenter`, `merger`. `Push` — one event per PushEvent, the same event the
+process map counts — relates to every commit it carried as `pushed_commit` and to its actor as
+`pusher`. Non-actor relationships come first, then the actor. An event names its actor at most
+once and may name none (a derived opening whose account has no actor row). The vocabulary is
+`src/model/activities.js` (`relation`, `role` per activity) and the validator rejects a payload
+whose qualifiers disagree with it. There is no `object_id` and no `actor_id`: `objectsOf`,
+`subjectOf` and `actorOf` (`src/model/subLog.js`) are how the client reads the relation.
+
+The unit Trace draws is the **occurrence**, one event–object pair — the unit the process map
+counts — so a push of three commits is three marks on the commit lane and one event. Every
+figure that says "events" counts events: the sub-log card, the actor rows, a statistics group
+(distinct events across its rows, `aggregateRows`). A per-object row counts the occurrences on
+that object. Toggles work **per visible relationship**: `selectVisible` keeps an event while at
+least one object it is about is drawn, trimmed to the relationships that are, and drops it when
+none is; a comment follows its subject's toggle.
+
+**Contract v2** (until 2026-09-13) carried `object_id` and `actor_id|null` on each event and took
+a push apart into one synthetic `CommitObserved` per commit (`commit_obs:<event_id>:<index>`,
+push facts on each). `src/data/legacy.js` restates such a bundle as v3 on load — commit
+observations that share push, instant and pusher become one `Push`, nothing invented — for as
+long as the RPC and the committed fixtures still emit it. It is a migration shim, to be deleted
+with them.
+
 **Ids are type-prefixed**. Objects: `issue:<issue_id>`, `pr:<pull_request_id>`,
 `commit:<sha>`, `actor:<actor_id>`. Events: `issue_act:<event_id>`, `pr_act:<event_id>`,
-`commit_obs:<event_id>:<commit_index>`. The prefix is load-bearing, not cosmetic: the bare
+`push:<activity_id>` (the PushEvent id; `push_id` is not unique, §12.0). The prefix is load-bearing, not cosmetic: the bare
 numeric ids collide. Measured 2026-08-04, 8 issue ids equal a pull request id, 11 equal an actor
 id, and 76 pull request ids equal an actor id. The id carries the database id, never the display
 number, so `issue:655615214` and not `issue:102358`.
@@ -116,7 +145,7 @@ time.
 
 `intervals` is the only lifecycle mechanism; there is no `t_start`/`t_end` pair anywhere. A
 commit gets exactly one point interval, `start = end`, from the object's own first-seen time and
-not one per `CommitObserved` event. Actors get `[]`.
+not one per push that carried it. Actors get `[]`.
 
 `meta.data_honesty` carries six strings: `commit_time`, `extracted_edges`, `validated_edges`,
 `truncation`, `commit_authorship`, `derived_openings`. **Nothing under `src/` reads it.** The equivalent caveats are
@@ -133,8 +162,10 @@ is all. The renderer cannot tell a fixture from a live payload.
 
 The validator is strict about structure and silent about content. It checks: the four top-level
 keys and that three of them are arrays; object `id` present and unique, `type` in the closed set
-of four, `intervals` an array whose members have a `start`; event `id`, `time`, and an
-`object_id` that resolves; activity known and allowed on that object type; both link endpoints
+of four, `intervals` an array whose members have a `start`; event `id`, `time`, and
+`relationships` whose every `object_id` resolves under a known qualifier; activity known, and
+its relationships as the vocabulary says (one `subject` of an allowed type, or ≥ 1
+`pushed_commit` on commits; the actor under the activity's role, at most once); both link endpoints
 resolving to **objects**, with an event id rejected by name; `evidence` exactly
 `validated` or `extracted`; `method` known if present. Everything else can be absent and will
 degrade at render time instead.
@@ -289,8 +320,7 @@ asks which objects an event is about, whatever the payload's shape.
 | `PullRequestMergedOffPlatform` | pull_request | yes, heuristic | |
 | `PullRequestClosed` | pull_request | | |
 | `PullRequestReopened` | pull_request | | |
-| `CommitObserved` | commit | | |
-| `Push` | commit | | DFG only (§12.0): one per PushEvent, one occurrence per commit it carried |
+| `Push` | commit | | one per PushEvent, one occurrence per commit it carried (§12.0). `fe.event` still emits `CommitObserved`, one per commit, until the layer moves to v3; the client restates it |
 
 The two comment activities are the same act on GitHub, an `IssueCommentEvent`, and the tool
 treats them alike wherever a comment is folded, counted or toggled; they are kept apart in
@@ -338,7 +368,7 @@ which now also covers an object whose only surviving events are comments.
 ## Links
 
 `fe.link` is a `UNION ALL` of four branches. Both endpoints are always objects; there are no
-actor links, because who performed an event is `event.actor_id` and nothing else.
+actor links, because who performed an event is the event's actor relationship and nothing else.
 
 | Branch | source → target | qualifier | method | Source |
 |---|---|---|---|---|

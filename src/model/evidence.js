@@ -28,7 +28,7 @@ export const EVIDENCE = {
  * (dropped with the off-platform heuristic) and `event_actor_id`. The last is the one
  * worth remembering, because it
  * was not wrong so much as redundant: it recorded which actor performed an event,
- * which `event.actor_id` already states on the event itself. Carrying it as a
+ * which the event's actor relationship already states on the event itself. Carrying it as a
  * *link* method meant every consumer of `links` had to exclude it by hand — ten
  * sites — to avoid counting attribution as traceability.
  */

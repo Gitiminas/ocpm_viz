@@ -18,6 +18,7 @@ import {
   restoreAll,
   selectVisible,
   summaryForMode,
+  totalForMode,
   nudgesFor,
   relControlAvailability,
 } from '../src/state/state.js';
@@ -575,7 +576,15 @@ describe('the sub-log card counts what is drawn: pinned actors, and marks in the
     const marks =
       (rel.counts.get('issue') ?? 0) + (rel.counts.get('pull_request') ?? 0) + (rel.counts.get('commit') ?? 0);
     assert.equal(rel.events, marks, 'one artifact per drawn mark');
-    assert.ok(rel.events < total.events, 'fewer than the payload’s events, so the tile reads n / total');
+    // Marks are objects, events are events; since a push is one event the two are
+    // unrelated in size (F10: 304 marks, 209 events), so the tile's total is marks too.
+    assert.notEqual(rel.events, total.events);
+    const relTotal = totalForMode(total, c.state);
+    assert.equal(relTotal.events, marks, 'nothing hidden: the total is the same marks');
+    assert.equal(relTotal.counts.get('actor'), total.counts.get('actor'), 'the total keeps every actor');
+    c.state.mode = 'absolute';
+    assert.equal(totalForMode(total, c.state), total, 'other modes keep the payload count');
+    c.state.mode = 'relationships';
     assert.equal(rel.counts.get('actor'), 0, 'no trail pinned: no actor drawn');
     assert.equal(rel.counts.get('issue'), total.counts.get('issue'), 'object counts are not touched');
 

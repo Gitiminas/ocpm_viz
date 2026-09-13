@@ -112,7 +112,7 @@ export function commentCounts(graph) {
  * Link totals by evidence class.
  *
  * Every link counted here is a traceability link between two objects. Attribution
- * lives on `event.actor_id` alone, never as a link, so it cannot inflate the split.
+ * lives on the event's actor relationship alone, never as a link, so it cannot inflate the split.
  * That matters: F1 carries 34 real links, and the 42 attribution links it would have
  * carried were all `validated` — enough to report 45/31 where the answer is 3/31.
  */
@@ -282,6 +282,9 @@ export function perObjectMetrics(graph) {
         complete: lifetime.complete,
         intervals: object.intervals.length,
         events: events.length,
+        // The ids behind `events`, so a group can count its events once: a push carried
+        // by five of its commits is one event, not five (`aggregateRows`).
+        eventIds: events.map((event) => event.id),
         comments: events.filter((event) => event.comment).length,
         actors: actors.size,
         first: events[0]?.time ?? object.intervals[0]?.start ?? null,
@@ -316,7 +319,12 @@ export function aggregateRows(rows) {
       : null,
     min: sorted.length ? sorted[0] : null,
     max: sorted.length ? sorted[sorted.length - 1] : null,
-    events: rows.reduce((sum, row) => sum + row.events, 0),
+    // Distinct events across the rows, not the sum of the rows' counts: one event can be
+    // about several objects of the type (a push of n commits), and a group's figure says
+    // how many events touched it. A row built without ids counts as before.
+    events: rows.every((row) => row.eventIds)
+      ? new Set(rows.flatMap((row) => row.eventIds)).size
+      : rows.reduce((sum, row) => sum + row.events, 0),
     comments: rows.reduce((sum, row) => sum + row.comments, 0),
     links: rows.reduce((sum, row) => sum + row.links, 0),
     handoffs: rows.reduce((sum, row) => sum + row.handoffs, 0),

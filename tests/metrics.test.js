@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 import { loadSubLog } from '../src/data/loadSubLog.js';
 import { normalizeGraph } from '../src/model/subLog.js';
+import { subjectEvent } from './support/events.js';
 import {
   objectLifetime,
   aggregateDuration,
@@ -182,8 +183,8 @@ describe('landmarks identify which object they belong to', () => {
         { id: 'issue:2', type: 'issue', label: '#2', intervals: [{ start: '2025-01-01T00:00:00Z', end: '2025-01-03T00:00:00Z' }] },
       ],
       events: [
-        { id: 'e1', activity: 'IssueClosed', time: '2025-01-02T00:00:00Z', object_id: 'issue:1' },
-        { id: 'e2', activity: 'IssueClosed', time: '2025-01-03T00:00:00Z', object_id: 'issue:2' },
+        subjectEvent('e1', 'IssueClosed', '2025-01-02T00:00:00Z', 'issue:1'),
+        subjectEvent('e2', 'IssueClosed', '2025-01-03T00:00:00Z', 'issue:2'),
       ],
       links: [],
     });
@@ -194,6 +195,13 @@ describe('landmarks identify which object they belong to', () => {
 });
 
 describe('gaps follow the events they are given', () => {
+  // A bare occurrence for `perObjectGaps`, which reads time, object and actor only.
+  const gapEvent = (id, time, actorId) => ({
+    id,
+    time: new Date(time),
+    relationships: [{ object_id: 'i:1', qualifier: 'subject' }, ...(actorId ? [{ object_id: actorId, qualifier: 'closer' }] : [])],
+  });
+
   test('hiding events changes the gaps, which is why this is not precomputed', async () => {
     const graph = await loadF1();
     const all = perObjectGaps(graph.events, 'issue:242864');
@@ -209,8 +217,8 @@ describe('gaps follow the events they are given', () => {
 
   test('an actor change across a gap is flagged', () => {
     const events = [
-      { id: 'a', object_id: 'i:1', time: new Date('2025-01-01T00:00:00Z'), actor_id: 'actor:1' },
-      { id: 'b', object_id: 'i:1', time: new Date('2025-01-02T00:00:00Z'), actor_id: 'actor:2' },
+      gapEvent('a', '2025-01-01T00:00:00Z', 'actor:1'),
+      gapEvent('b', '2025-01-02T00:00:00Z', 'actor:2'),
     ];
     const [gap] = perObjectGaps(events, 'i:1');
     assert.equal(gap.hours, 24);
@@ -221,10 +229,10 @@ describe('gaps follow the events they are given', () => {
   // only from comments). "Unknown → someone" is a gap in the record, not a handoff.
   test('a gap from or to an event without an actor is not a handoff', () => {
     const events = [
-      { id: 'a', object_id: 'i:1', time: new Date('2025-01-01T00:00:00Z'), actor_id: null },
-      { id: 'b', object_id: 'i:1', time: new Date('2025-01-02T00:00:00Z'), actor_id: 'actor:2' },
-      { id: 'c', object_id: 'i:1', time: new Date('2025-01-03T00:00:00Z'), actor_id: 'actor:2' },
-      { id: 'd', object_id: 'i:1', time: new Date('2025-01-04T00:00:00Z'), actor_id: 'actor:3' },
+      gapEvent('a', '2025-01-01T00:00:00Z', null),
+      gapEvent('b', '2025-01-02T00:00:00Z', 'actor:2'),
+      gapEvent('c', '2025-01-03T00:00:00Z', 'actor:2'),
+      gapEvent('d', '2025-01-04T00:00:00Z', 'actor:3'),
     ];
     const gaps = perObjectGaps(events, 'i:1');
     assert.deepEqual(

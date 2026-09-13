@@ -50,10 +50,7 @@ export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
  * tooltip kicker says "Pull request · event", the landmark list and the actor card both
  * render `${object.label} · ${label}` — so the old form repeated it: "PR #243221 · PR
  * merged" now reads "PR #243221 · Merge".
- *
- * ⚠️ `CommitObserved` keeps its own wording. It is a **synthetic** activity meaning
- * "this commit was seen in a push", not a GitHub action anyone performed; naming
- * it "Push" would claim an act the data does not record. Its oddness is honest.
+
  */
 /*
  * `relation` and `role` are the event-to-object qualifiers (OCEL 2.0 E2O): `relation` is
@@ -155,25 +152,11 @@ export const ACTIVITIES = {
     role: 'reopener',
   },
   /*
-   * ⚠️ Being retired. The Trace page's synthetic per-commit activity ("this commit was
-   * seen in a push"), the arity-one flattening of a push. The process map already draws
-   * the push as `Push`, and the sub-log payload is moving to the same shape
-   * (`docs/DATA_LAYER.md`, contract v3). Its qualifiers are the Push ones so the
-   * dual-read helpers treat the two alike while both shapes are loadable.
-   */
-  CommitObserved: {
-    label: 'Commit observed',
-    short: 'commit',
-    objectTypes: ['commit'],
-    landmark: false,
-    relation: 'pushed_commit',
-    role: 'pusher',
-  },
-  /*
-   * The commit-lane activity: one real event per PushEvent, related to every commit it
-   * carried, so a push of n commits is one event with n occurrences (the process map's
-   * E2O layer, sql/fe_layer.sql §12.0). Upstream calls it CommitsPushed. It IS a GitHub
-   * action, hence the verb.
+   * The commit-lane activity on both pages: one real event per PushEvent, related to
+   * every commit it carried, so a push of n commits is one event with n occurrences
+   * (the E2O layer, sql/fe_layer.sql §12.0). Upstream calls it CommitsPushed. It IS a
+   * GitHub action, hence the verb. It replaced `CommitObserved`, the Trace page's
+   * synthetic one-event-per-commit flattening of a push (contract v2, retired 2026-09-13).
    */
   Push: {
     label: 'Push',
@@ -227,7 +210,6 @@ export const READING_ORDER = [
   'PullRequestClosed',
   'IssueReopened',
   'PullRequestReopened',
-  'CommitObserved',
   'Push',
 ];
 for (const activity of Object.keys(ACTIVITIES)) {
@@ -340,19 +322,10 @@ export function findActivityProblems(events, objectsById) {
       continue;
     }
     const { objectTypes: allowed, relation, role } = ACTIVITIES[event.activity];
-
-    if (!event.relationships) {
-      // Contract v2: one object per event, the actor a column.
-      const object = objectsById[event.object_id];
-      if (!object) continue; // reported separately by subLog validation
-      if (!allowed.includes(object.type)) {
-        mismatched.add(`${event.activity} on a ${object.type} object (allowed: ${allowed.join(', ')})`);
-      }
-      continue;
-    }
+    if (!Array.isArray(event.relationships)) continue; // reported separately by subLog validation
 
     /*
-     * Contract v3: the qualifiers are checked against the activity, not only the
+     * The qualifiers are checked against the activity, not only the
      * types. An activity relates to the objects it is about under its `relation` —
      * exactly one `subject` for an issue or PR activity, one `pushed_commit` per commit
      * for a push, never none — and to its actor under its `role`. A payload whose roles

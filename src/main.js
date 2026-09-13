@@ -26,6 +26,7 @@ import {
   summarizeDfgHidden,
   selectVisible,
   summaryForMode,
+  totalForMode,
   nudgesFor,
   MIN_ZOOM,
   MAX_ZOOM,
@@ -1598,7 +1599,7 @@ function updateSubLogCard({ previewActor = null } = {}) {
     // An actor is drawn only when pinned, and the relationships mode folds events into
     // one mark per object; `summaryForMode` counts what is actually on screen.
     summary: summaryForMode(summarizeSubLog(visible), visible, state, { previewActor }),
-    total: summarizeSubLog(graph),
+    total: totalForMode(summarizeSubLog(graph), state),
     notes,
   });
 }

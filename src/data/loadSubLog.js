@@ -14,6 +14,7 @@
 
 import { assertValidGraph, normalizeGraph } from '../model/subLog.js';
 import { fixtureTransport } from './fixtures.js';
+import { upgradeLegacyGraph } from './legacy.js';
 import { seedDisplayLabel } from './seedQuery.js';
 
 /**
@@ -29,7 +30,9 @@ import { seedDisplayLabel } from './seedQuery.js';
  * @returns {Promise<object>} a validated, normalized `SubLog`
  */
 export async function loadSubLog(query = {}, { transport = fixtureTransport } = {}) {
-  const raw = await transport(query);
+  // A contract-v2 bundle is restated as v3 first (`legacy.js`, for the migration only),
+  // so validation and every error message speak the one shape the model understands.
+  const raw = upgradeLegacyGraph(await transport(query));
   assertValidGraph(raw);
   const graph = normalizeGraph(raw);
   // Record the query that produced this bundle alongside whatever the transport

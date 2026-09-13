@@ -14,6 +14,7 @@ import {
   MAX_FOCUS_DEGREE,
 } from '../src/model/graph.js';
 import { classifyMethod, classifyLink, describeMethods, LINK_METHOD, EVIDENCE } from '../src/model/evidence.js';
+import { subjectEvent } from './support/events.js';
 import {
   activityLabel,
   activityShortLabel,
@@ -46,7 +47,8 @@ describe('F1 loads and validates', () => {
   test('the fixture passes validation and keeps its census', async () => {
     const graph = await loadF1();
     assert.equal(graph.objects.length, 38);
-    assert.equal(graph.events.length, 42);
+    // 23, not 42: the 32 commit observations are 13 pushes (contract v3).
+    assert.equal(graph.events.length, 23);
     // 34, not 76: there are no event→actor attribution links, so every link left
     // is a traceability link between two objects and no consumer has to subtract
     // a class before counting.
@@ -65,12 +67,12 @@ describe('F1 loads and validates', () => {
   test('every actor is still reachable, from the events alone', async () => {
     const graph = await loadF1();
     const index = indexSubLog(graph);
-    const attributed = graph.events.filter((event) => event.actor_id);
+    const attributed = graph.events.filter((event) => actorOf(event));
 
-    assert.equal(attributed.length, 42, 'all 42 events must still name their actor');
+    assert.equal(attributed.length, 23, 'all 23 events must still name their actor');
     assert.equal(index.eventCountByActor.size, 4);
     for (const event of attributed) {
-      assert.ok(index.byId.has(event.actor_id), `${event.actor_id} resolves to an actor object`);
+      assert.ok(index.byId.has(actorOf(event)), `${actorOf(event)} resolves to an actor object`);
     }
   });
 
@@ -174,7 +176,7 @@ describe('validation fails loudly on a malformed bundle', () => {
   test('an event referencing an unknown object is rejected', () => {
     const bad = {
       ...valid,
-      events: [{ id: 'e1', activity: 'IssueOpened', time: '2025-01-01T00:00:00Z', object_id: 'nope' }],
+      events: [subjectEvent('e1', 'IssueOpened', '2025-01-01T00:00:00Z', 'nope')],
     };
     assert.match(findGraphProblems(bad).join('\n'), /unknown object/);
   });
@@ -233,7 +235,7 @@ describe('validation fails loudly on a malformed bundle', () => {
     const bad = {
       ...valid,
       events: [
-        { id: 'e1', activity: 'IssueLabelled', time: '2025-01-01T00:00:00Z', object_id: 'issue:1' },
+        subjectEvent('e1', 'IssueLabelled', '2025-01-01T00:00:00Z', 'issue:1'),
       ],
     };
     assert.match(findGraphProblems(bad).join('\n'), /unknown activities/);
@@ -247,7 +249,7 @@ describe('validation fails loudly on a malformed bundle', () => {
     const bad = {
       ...valid,
       events: [
-        { id: 'e1', activity: 'IssueOpened', time: '2025-01-01T00:00:00Z', object_id: 'issue:1' },
+        subjectEvent('e1', 'IssueOpened', '2025-01-01T00:00:00Z', 'issue:1'),
       ],
       objects: [
         { id: 'issue:1', type: 'issue', intervals: [] },
@@ -716,17 +718,14 @@ describe('event-to-object qualifiers (OCEL 2.0 E2O)', () => {
     assert.throws(() => actorRoleOf('Nope'), /Unknown activity/);
   });
 
-  test('the readers answer the same for the v2 columns and the v3 relationships', () => {
-    const v2 = { id: 'e1', activity: 'IssueClosed', time: '2025-01-01T00:00:00Z', object_id: 'issue:1', actor_id: 'actor:a' };
-    const v3 = {
+  test('the readers: subject, objects and actor of an event', () => {
+    const event = {
       id: 'e1', activity: 'IssueClosed', time: '2025-01-01T00:00:00Z',
       relationships: [{ object_id: 'issue:1', qualifier: 'subject' }, { object_id: 'actor:a', qualifier: 'closer' }],
     };
-    for (const event of [v2, v3]) {
-      assert.deepEqual(objectsOf(event), ['issue:1']);
-      assert.equal(subjectOf(event), 'issue:1');
-      assert.equal(actorOf(event), 'actor:a');
-    }
+    assert.deepEqual(objectsOf(event), ['issue:1']);
+    assert.equal(subjectOf(event), 'issue:1');
+    assert.equal(actorOf(event), 'actor:a');
     const push = {
       id: 'push:1', activity: 'Push', time: '2025-01-01T00:00:00Z',
       relationships: [
@@ -739,7 +738,6 @@ describe('event-to-object qualifiers (OCEL 2.0 E2O)', () => {
     assert.equal(subjectOf(push), null, 'a push has no single subject');
     assert.equal(actorOf(push), 'actor:a');
     // An actor-less record (a derived opening whose account has no actor row) names none.
-    assert.equal(actorOf({ object_id: 'issue:1', actor_id: null }), null);
     assert.equal(actorOf({ relationships: [{ object_id: 'issue:1', qualifier: 'subject' }] }), null);
     assert.deepEqual(objectsOf({ id: 'x' }), []);
   });

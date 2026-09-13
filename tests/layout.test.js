@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { loadSubLog } from '../src/data/loadSubLog.js';
-import { collectInstants } from '../src/model/subLog.js';
+import { collectInstants, objectsOf } from '../src/model/subLog.js';
 import { createScales, findLargeGaps, GAP_THRESHOLD_MS, MODES } from '../src/layout/scales.js';
 import { packRows, collisionThreshold, ROW_HEIGHT } from '../src/layout/packing.js';
 import { computeLaneGeometry, rowY } from '../src/layout/lanes.js';
@@ -165,13 +165,15 @@ describe('row packing', () => {
     const instants = collectInstants(graph);
     const scales = createScales({ instants, marginLeft: MARGIN_LEFT, plotWidth: PLOT_WIDTH, mode: 'absolute' });
 
-    const nodes = graph.events.map((e) => ({
-      id: e.id,
-      lane: graph.objects.find((o) => o.id === e.object_id).type,
-      t: +e.time,
-      x: scales.x(+e.time),
-      isComment: e.comment,
-    }));
+    const nodes = graph.events.flatMap((e) =>
+      objectsOf(e).map((objectId) => ({
+        id: `${e.id}|${objectId}`,
+        lane: graph.objects.find((o) => o.id === objectId).type,
+        t: +e.time,
+        x: scales.x(+e.time),
+        isComment: e.comment,
+      })),
+    );
     const lanes = ['issue', 'pull_request', 'commit'];
     packRows(nodes, lanes);
 

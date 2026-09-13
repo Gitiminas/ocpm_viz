@@ -436,6 +436,20 @@ degree 2 3.09–3.10 s.
   `npm test` 903 / 0; baseline diff over F1–F15, LIVE1, LIVE2: none. Guess flagged: the actor
   card's per-object rows (a push of three commits is three rows, as before) were chosen for
   picture parity; one row per push is the alternative.
+- **A3** (the shape flips: `relationships` on every event, `CommitObserved` retired, the
+  loader restates a contract-v2 bundle through `src/data/legacy.js` until the RPC and the
+  fixtures emit v3): `npm test` 918 / 0; baseline diff over F1–F15, LIVE1, LIVE2: layout,
+  structural layout, visible selections, per-object metrics and index maps identical; the
+  only deltas are the ones the decision makes — `summary.events` (F1 42 → 23, F7 20 → 6,
+  F10 308 → 209, LIVE2 575 → 299), `eventCountByActor` (pushes, not commits), the commit
+  group's aggregate `events` (F1 32 → 13, distinct pushes), and a new per-row `eventIds`.
+  Screenshots of F1, F7, F10, F15 and LIVE2 (timeline, relationships, stats) against the
+  Step 0 set: the canvas is pixel-identical in every one; the sub-log card's Events tile and
+  the Stats page's event figures differ as stated. One consequence found by the screenshots
+  and fixed in the same commit: in the relationships mode the tile read "19 / 6" for F7,
+  marks over events, once marks could outnumber events — `totalForMode` now states the total
+  in marks there too. `scripts/rpc-check.mjs` validates the upgraded bundle while the RPC
+  still emits v2. Not re-run: `./ocpm.sh db` (no SQL changed).
 
 ---
 

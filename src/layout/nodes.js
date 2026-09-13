@@ -187,9 +187,9 @@ function commitTime(commit) {
 /**
  * Every time this commit was observed, in order.
  *
- * **One commit object can carry many `CommitObserved` events.** The same SHA appears
+ * **One commit object can be carried by many `Push` events.** The same SHA appears
  * in a new push each time it reaches another branch — cherry-picked or merged across
- * release lines — and each push is its own event. This is not rare: measured on this
+ * release lines — and each push is its own event, about every commit it carried. This is not rare: measured on this
  * dataset, **39.6% of vscode's commits, 13.8% of react's and 5.2% of kubernetes'**
  * have more than one, and one vscode SHA has thirty.
  *

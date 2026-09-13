@@ -852,7 +852,7 @@ export function nodeTooltipSpec(node, actorLogin) {
     /*
      * ⚠️ **"Git author" and "Pushed by" are two different identity spaces and the labels
      * have to say so**. `commit_author_name` is the string inside the commit; the actor on
-     * a `CommitObserved` event is whoever *pushed* it, and they are never joined — the
+     * a `Push` event is whoever *pushed* it, and they are never joined — the
      * upstream author email is anonymised, so there is nothing to join on. The bare label
      * "Author" invited the obvious reading that the sidebar's actor was that author: on
      * react, @flarnie pushed 218 observations written by 27 different people and authored

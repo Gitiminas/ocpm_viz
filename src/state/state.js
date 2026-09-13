@@ -27,7 +27,7 @@ export const MAX_ZOOM = 14;
 
 /*
  * There is no `TOGGLEABLE_METHODS` constant. Actor attribution is single-sourced on
- * `event.actor_id` rather than being a link method, so there is no exception to carve
+ * the event's actor relationship (`actorOf`) rather than being a link method, so there is no exception to carve
  * out of the filter, and an alias for "all of them" is not worth a name. The toggles
  * are derived from the loaded sub-log by `deriveMethods` regardless.
  */
@@ -409,6 +409,19 @@ export function summaryForMode(summary, visible, state, { previewActor = null } 
   return { ...summary, counts, events };
 }
 
+/**
+ * The card's "of" side, matched to `summaryForMode`: in the relationships mode the shown
+ * figure is marks, so the total must be marks too — every issue, PR and commit the payload
+ * holds — or the tile reads "19 / 6" once a push is one event and marks outnumber events.
+ * Other modes keep the payload's event count. Actors are left alone: the total names how
+ * many the sub-log holds, whatever is pinned.
+ */
+export function totalForMode(summary, state) {
+  if (state.mode !== 'relationships') return summary;
+  const events = LANE_TYPES.reduce((n, type) => n + (summary.counts.get(type) ?? 0), 0);
+  return { ...summary, events };
+}
+
 export function selectVisible(graph, state, groupsByCommit = new Map()) {
   const objects = graph.objects.filter((object) => {
     // `actor` is the only laneless object type.
@@ -437,11 +450,6 @@ export function selectVisible(graph, state, groupsByCommit = new Map()) {
     if (event.comment) {
       const type = byId.get(subjectOf(event))?.type;
       if (state.showComments[type] === false) continue;
-    }
-    if (!event.relationships) {
-      // Contract v2: one object, one column.
-      if (visibleIds.has(event.object_id)) events.push(event);
-      continue;
     }
     const kept = event.relationships.filter(
       (rel) => isActorRole(rel.qualifier) || visibleIds.has(rel.object_id),

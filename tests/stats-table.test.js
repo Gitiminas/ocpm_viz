@@ -104,6 +104,11 @@ describe('aggregation on demand', () => {
       ['issue', 'pull_request', 'commit'],
     );
     assert.equal(groups[2].aggregate.n, 32);
+    // 32 commits, each with one push occurrence, in 13 pushes: the group's events are
+    // the 13 pushes, while each row still says 1.
+    assert.equal(groups[2].aggregate.events, 13);
+    assert.ok(groups[2].rows.every((row) => row.events === 1));
+    assert.equal(groups[2].rows.reduce((sum, row) => sum + row.events, 0), 32);
   });
 
   test('the aggregate reports a range, not just a midpoint', () => {

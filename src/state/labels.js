@@ -17,8 +17,8 @@ export { LANE_TYPES } from '../model/activities.js';
 
 /**
  * The process map's lane names. Its commit lane holds one activity, `Push`, one per
- * PushEvent (`DATA_LAYER.md` §12.0) — there is no `CommitObserved` on that page — so the
- * lane is called what it shows. The Trace page keeps "Commit / push" (`render/theme.js`).
+ * PushEvent (`DATA_LAYER.md` §12.0), so the lane is called what it shows. The Trace page
+ * draws the same pushes as marks on commits and keeps "Commit / push" (`render/theme.js`).
  */
 export const DFG_TYPE_LABELS = {
   issue: 'Issue',

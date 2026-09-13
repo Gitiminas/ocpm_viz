@@ -29,17 +29,12 @@ const RELATION_QUALIFIER_SET = new Set(RELATION_QUALIFIERS);
  * module's business. An event relates to the objects it is about (`subject`, or the
  * commits a push carried) and, under a role qualifier, to its actor — the OCEL 2.0
  * event-to-object relation, `docs/DATA_LAYER.md`.
- *
- * Dual-read, for the migration: a contract-v2 event carries `object_id` and `actor_id`
- * instead of `relationships`, and the helpers answer the same for both shapes.
+
  */
 
 /** The ids of the objects the event is about, in payload order — never the actor. */
 export function objectsOf(event) {
-  if (event.relationships) {
-    return event.relationships.filter((r) => !isActorRole(r.qualifier)).map((r) => r.object_id);
-  }
-  return event.object_id ? [event.object_id] : [];
+  return (event.relationships ?? []).filter((r) => !isActorRole(r.qualifier)).map((r) => r.object_id);
 }
 
 /**
@@ -48,18 +43,12 @@ export function objectsOf(event) {
  * a Push must ask `objectsOf` and say which one they mean.
  */
 export function subjectOf(event) {
-  if (event.relationships) {
-    return event.relationships.find((r) => r.qualifier === 'subject')?.object_id ?? null;
-  }
-  return event.object_id ?? null;
+  return event.relationships?.find((r) => r.qualifier === 'subject')?.object_id ?? null;
 }
 
 /** The actor's object id, or null when the record names none. */
 export function actorOf(event) {
-  if (event.relationships) {
-    return event.relationships.find((r) => isActorRole(r.qualifier))?.object_id ?? null;
-  }
-  return event.actor_id ?? null;
+  return event.relationships?.find((r) => isActorRole(r.qualifier))?.object_id ?? null;
 }
 
 /**
@@ -113,24 +102,25 @@ export function findGraphProblems(graph) {
   for (const event of graph.events) {
     if (!event.id) problems.push('an event has no id');
     if (!event.time) problems.push(`event "${event.id}" has no time`);
-    if (event.relationships) {
-      // Contract v3: every relationship names an object that is in the bundle, under a
-      // qualifier from the closed vocabulary; the activity-specific rules (which
-      // qualifier, how many) are `findActivityProblems`.
-      if (!Array.isArray(event.relationships)) {
-        problems.push(`event "${event.id}" has relationships that are not an array`);
-        continue;
+    // Every relationship names an object that is in the bundle, under a qualifier from
+    // the closed vocabulary; the activity-specific rules (which qualifier, how many) are
+    // `findActivityProblems`. An event carrying the retired `object_id` column is named
+    // as such, so a stale transport is diagnosed rather than drawn empty.
+    if (!Array.isArray(event.relationships)) {
+      problems.push(
+        'object_id' in event
+          ? `event "${event.id}" carries object_id (contract v2); the bundle must carry relationships`
+          : `event "${event.id}" has no relationships array`,
+      );
+      continue;
+    }
+    for (const rel of event.relationships) {
+      if (!rel || !byId[rel.object_id]) {
+        problems.push(`event "${event.id}" references unknown object "${rel?.object_id}"`);
       }
-      for (const rel of event.relationships) {
-        if (!rel || !byId[rel.object_id]) {
-          problems.push(`event "${event.id}" references unknown object "${rel?.object_id}"`);
-        }
-        if (!isActorRole(rel?.qualifier) && !RELATION_QUALIFIER_SET.has(rel?.qualifier)) {
-          problems.push(`event "${event.id}" has unknown qualifier "${rel?.qualifier}"`);
-        }
+      if (!isActorRole(rel?.qualifier) && !RELATION_QUALIFIER_SET.has(rel?.qualifier)) {
+        problems.push(`event "${event.id}" has unknown qualifier "${rel?.qualifier}"`);
       }
-    } else if (!byId[event.object_id]) {
-      problems.push(`event "${event.id}" references unknown object "${event.object_id}"`);
     }
   }
 
@@ -209,7 +199,7 @@ export function normalizeGraph(graph) {
     events: graph.events.map((event) => ({
       ...event,
       time: new Date(event.time),
-      ...(event.relationships ? { relationships: event.relationships.map((r) => ({ ...r })) } : {}),
+      relationships: (event.relationships ?? []).map((r) => ({ ...r })),
     })),
     links: graph.links.map((link) => ({ ...link })),
   };
