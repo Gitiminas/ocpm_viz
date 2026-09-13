@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { loadSubLog, describeSubLog, summarizeSubLog } from '../src/data/loadSubLog.js';
-import { indexSubLog, findGraphProblems, collectInstants } from '../src/model/subLog.js';
+import { indexSubLog, findGraphProblems, collectInstants, objectsOf, subjectOf, actorOf } from '../src/model/subLog.js';
 import { deriveBursts, indexBurstsByCommit, MIN_BURST } from '../src/model/bursts.js';
 import {
   buildAdjacency,
@@ -25,6 +25,11 @@ import {
   LANDMARK_ACTIVITIES,
   LANE_TYPES,
   OBJECT_TYPES,
+  RELATION_QUALIFIERS,
+  ACTOR_ROLES,
+  isActorRole,
+  actorRoleOf,
+  relationOf,
 } from '../src/model/activities.js';
 
 /** Read fixtures from disk, standing in for the browser's fetch transport. */
@@ -639,5 +644,53 @@ describe('describeMethods lists a link’s methods by name, primary first', () =
     const graph = await loadSubLog({ fixture: 'F12' }, { transport: fileTransport });
     const multi = graph.links.find((l) => l.n_methods > 1);
     assert.deepEqual(describeMethods(multi).sort(), ['branch_name', 'pr_body', 'pr_title']);
+  });
+});
+
+describe('event-to-object qualifiers (OCEL 2.0 E2O)', () => {
+  test('every activity assigns a relation and an actor role, and the vocabularies are closed', () => {
+    for (const [activity, entry] of Object.entries(ACTIVITIES)) {
+      assert.equal(relationOf(activity), entry.relation);
+      assert.equal(actorRoleOf(activity), entry.role);
+      assert.ok(RELATION_QUALIFIERS.includes(entry.relation), `${activity}: relation ${entry.relation}`);
+      assert.ok(ACTOR_ROLES.includes(entry.role), `${activity}: role ${entry.role}`);
+    }
+    assert.deepEqual([...RELATION_QUALIFIERS].sort(), ['pushed_commit', 'subject']);
+    assert.deepEqual([...ACTOR_ROLES].sort(), ['closer', 'commenter', 'merger', 'opener', 'pusher', 'reopener']);
+    // The twin of fe.dfg_e2o's CASE (sql/fe_layer.sql §12.0): the off-platform merge is a close on GitHub.
+    assert.equal(actorRoleOf('PullRequestMergedOffPlatform'), 'closer');
+    assert.equal(actorRoleOf('PullRequestMerged'), 'merger');
+    assert.equal(relationOf('Push'), 'pushed_commit');
+    assert.equal(isActorRole('subject'), false);
+    assert.equal(isActorRole('pusher'), true);
+    assert.throws(() => actorRoleOf('Nope'), /Unknown activity/);
+  });
+
+  test('the readers answer the same for the v2 columns and the v3 relationships', () => {
+    const v2 = { id: 'e1', activity: 'IssueClosed', time: '2025-01-01T00:00:00Z', object_id: 'issue:1', actor_id: 'actor:a' };
+    const v3 = {
+      id: 'e1', activity: 'IssueClosed', time: '2025-01-01T00:00:00Z',
+      relationships: [{ object_id: 'issue:1', qualifier: 'subject' }, { object_id: 'actor:a', qualifier: 'closer' }],
+    };
+    for (const event of [v2, v3]) {
+      assert.deepEqual(objectsOf(event), ['issue:1']);
+      assert.equal(subjectOf(event), 'issue:1');
+      assert.equal(actorOf(event), 'actor:a');
+    }
+    const push = {
+      id: 'push:1', activity: 'Push', time: '2025-01-01T00:00:00Z',
+      relationships: [
+        { object_id: 'commit:a', qualifier: 'pushed_commit' },
+        { object_id: 'actor:a', qualifier: 'pusher' },
+        { object_id: 'commit:b', qualifier: 'pushed_commit' },
+      ],
+    };
+    assert.deepEqual(objectsOf(push), ['commit:a', 'commit:b'], 'payload order, actor excluded');
+    assert.equal(subjectOf(push), null, 'a push has no single subject');
+    assert.equal(actorOf(push), 'actor:a');
+    // An actor-less record (a derived opening whose account has no actor row) names none.
+    assert.equal(actorOf({ object_id: 'issue:1', actor_id: null }), null);
+    assert.equal(actorOf({ relationships: [{ object_id: 'issue:1', qualifier: 'subject' }] }), null);
+    assert.deepEqual(objectsOf({ id: 'x' }), []);
   });
 });

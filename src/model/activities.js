@@ -55,48 +55,69 @@ export const LANE_TYPES = ['issue', 'pull_request', 'commit'];
  * "this commit was seen in a push", not a GitHub action anyone performed; naming
  * it "Push" would claim an act the data does not record. Its oddness is honest.
  */
+/*
+ * `relation` and `role` are the event-to-object qualifiers (OCEL 2.0 E2O): `relation` is
+ * how the activity relates to the object it is about, `role` is what it makes of its actor.
+ * This table is the JS twin of the CASE in `fe.dfg_e2o` (`sql/fe_layer.sql` §12.0); the
+ * two must agree row for row, and the validator (`findActivityProblems`) rejects a payload
+ * whose qualifiers drift from it.
+ */
 export const ACTIVITIES = {
   IssueOpened: {
     label: 'Open',
     short: 'open',
     objectTypes: ['issue'],
     landmark: false,
+    relation: 'subject',
+    role: 'opener',
   },
   IssueClosed: {
     label: 'Close',
     short: 'close',
     objectTypes: ['issue'],
     landmark: true,
+    relation: 'subject',
+    role: 'closer',
   },
   IssueReopened: {
     label: 'Reopen',
     short: 'reopen',
     objectTypes: ['issue'],
     landmark: false,
+    relation: 'subject',
+    role: 'reopener',
   },
   IssueCommented: {
     label: 'Comment',
     short: 'comment',
     objectTypes: ['issue'],
     landmark: false,
+    relation: 'subject',
+    role: 'commenter',
   },
   PullRequestOpened: {
     label: 'Open',
     short: 'open',
     objectTypes: ['pull_request'],
     landmark: false,
+    relation: 'subject',
+    role: 'opener',
   },
   PullRequestCommented: {
     label: 'Comment',
     short: 'comment',
     objectTypes: ['pull_request'],
     landmark: false,
+    relation: 'subject',
+    role: 'commenter',
   },
   PullRequestMerged: {
     label: 'Merge',
     short: 'merge',
     objectTypes: ['pull_request'],
     landmark: true,
+    relation: 'subject',
+    role: 'merger',
   },
   /*
    * A merge GitHub did not perform: the PR was closed unmerged and its commits turned up
@@ -113,40 +134,68 @@ export const ACTIVITIES = {
     landmark: true,
     /** The only activity whose ring says "emphasised, but a heuristic". */
     heuristic: true,
+    relation: 'subject',
+    // On GitHub the off-platform merge is a close, so its actor is whoever closed.
+    role: 'closer',
   },
   PullRequestClosed: {
     label: 'Close',
     short: 'close',
     objectTypes: ['pull_request'],
     landmark: false,
+    relation: 'subject',
+    role: 'closer',
   },
   PullRequestReopened: {
     label: 'Reopen',
     short: 'reopen',
     objectTypes: ['pull_request'],
     landmark: false,
+    relation: 'subject',
+    role: 'reopener',
   },
+  /*
+   * ⚠️ Being retired. The Trace page's synthetic per-commit activity ("this commit was
+   * seen in a push"), the arity-one flattening of a push. The process map already draws
+   * the push as `Push`, and the sub-log payload is moving to the same shape
+   * (`docs/DATA_LAYER.md`, contract v3). Its qualifiers are the Push ones so the
+   * dual-read helpers treat the two alike while both shapes are loadable.
+   */
   CommitObserved: {
     label: 'Commit observed',
     short: 'commit',
     objectTypes: ['commit'],
     landmark: false,
+    relation: 'pushed_commit',
+    role: 'pusher',
   },
   /*
-   * The process map's commit-lane activity, and the map's only private one. Trace never
-   * emits it — fe.event's whitelist stays at ten and takes a push apart into one
-   * CommitObserved per commit — and the map never emits CommitObserved: its E2O layer
-   * (sql/fe_layer.sql §12.0) keeps one real event per push, related to every commit it
-   * carried, so a push of n commits is one event with n occurrences. Upstream calls it
-   * CommitsPushed. It IS a GitHub action, hence the verb.
+   * The commit-lane activity: one real event per PushEvent, related to every commit it
+   * carried, so a push of n commits is one event with n occurrences (the process map's
+   * E2O layer, sql/fe_layer.sql §12.0). Upstream calls it CommitsPushed. It IS a GitHub
+   * action, hence the verb.
    */
   Push: {
     label: 'Push',
     short: 'push',
     objectTypes: ['commit'],
     landmark: false,
+    relation: 'pushed_commit',
+    role: 'pusher',
   },
 };
+
+/**
+ * The E2O qualifier vocabulary, closed. `RELATION_QUALIFIERS` relate an event to the
+ * objects it is about; `ACTOR_ROLES` relate it to its actor. Both lists are derived from
+ * the table above so a role cannot exist without an activity that assigns it.
+ */
+export const RELATION_QUALIFIERS = [...new Set(Object.values(ACTIVITIES).map((a) => a.relation))];
+export const ACTOR_ROLES = [...new Set(Object.values(ACTIVITIES).map((a) => a.role))];
+
+export function isActorRole(qualifier) {
+  return ACTOR_ROLES.includes(qualifier);
+}
 
 /**
  * Activities rendered with emphasis (a halo ring) — the terminal outcomes.
@@ -225,6 +274,16 @@ export function activityShortLabel(activity) {
 /** Whether the activity is rendered with landmark emphasis. */
 export function isLandmark(activity) {
   return lookup(activity).landmark;
+}
+
+/** The qualifier under which the activity's actor relates to it, e.g. `merger`. Throws on unknown. */
+export function actorRoleOf(activity) {
+  return lookup(activity).role;
+}
+
+/** The qualifier relating the activity to the object it is about: `subject` or `pushed_commit`. */
+export function relationOf(activity) {
+  return lookup(activity).relation;
 }
 
 /**

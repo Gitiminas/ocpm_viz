@@ -269,7 +269,13 @@ and the actor card.
 Eleven activities, closed, plus one the process map alone emits. The SQL vocabulary
 (`fe.activity_vocabulary`) and the JS one (`src/model/activities.js`) agree row for row on the
 eleven; `Push` is in the JS table for the map and never passes `fe.event`'s whitelist. Every
-activity names the object type it belongs to.
+activity names the object type it belongs to. Since 2026-09-13 the JS table also names each
+activity's two event-to-object qualifiers — `relation` (`subject`, or `pushed_commit` for a
+push) and `role` (what the activity makes of its actor: `opener`, `closer`, `reopener`,
+`commenter`, `merger`, `pusher`) — the twin of the CASE in `fe.dfg_e2o` (§12.0), read
+through `actorRoleOf` / `relationOf`. The sub-log payload does not carry them yet; the model's
+readers `objectsOf`, `subjectOf`, `actorOf` (`src/model/subLog.js`) are how every consumer
+asks which objects an event is about, whatever the payload's shape.
 
 | activity | object type | landmark | comment |
 |---|---|---|---|

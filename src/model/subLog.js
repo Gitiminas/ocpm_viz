@@ -10,10 +10,49 @@
  * that produced the sub-log, for reproducibility; it is not an identity.
  */
 
-import { OBJECT_TYPES, findActivityProblems } from './activities.js';
+import { OBJECT_TYPES, findActivityProblems, isActorRole } from './activities.js';
 import { isKnownMethod } from './evidence.js';
 
 const OBJECT_TYPE_SET = new Set(OBJECT_TYPES);
+
+/*
+ * The three readers of an event's object relations. Everything above the model reads
+ * events through these and never through a field, so the shape of the relation is one
+ * module's business. An event relates to the objects it is about (`subject`, or the
+ * commits a push carried) and, under a role qualifier, to its actor — the OCEL 2.0
+ * event-to-object relation, `docs/DATA_LAYER.md`.
+ *
+ * Dual-read, for the migration: a contract-v2 event carries `object_id` and `actor_id`
+ * instead of `relationships`, and the helpers answer the same for both shapes.
+ */
+
+/** The ids of the objects the event is about, in payload order — never the actor. */
+export function objectsOf(event) {
+  if (event.relationships) {
+    return event.relationships.filter((r) => !isActorRole(r.qualifier)).map((r) => r.object_id);
+  }
+  return event.object_id ? [event.object_id] : [];
+}
+
+/**
+ * The one object an issue or pull-request activity is about, or null. A push has no
+ * subject — it is about every commit it carried — so callers that need "the" object of
+ * a Push must ask `objectsOf` and say which one they mean.
+ */
+export function subjectOf(event) {
+  if (event.relationships) {
+    return event.relationships.find((r) => r.qualifier === 'subject')?.object_id ?? null;
+  }
+  return event.object_id ?? null;
+}
+
+/** The actor's object id, or null when the record names none. */
+export function actorOf(event) {
+  if (event.relationships) {
+    return event.relationships.find((r) => isActorRole(r.qualifier))?.object_id ?? null;
+  }
+  return event.actor_id ?? null;
+}
 
 /**
  * Validate a raw bundle. Returns an array of problems; empty means valid.
