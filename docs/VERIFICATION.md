@@ -414,6 +414,29 @@ live and materialized counts equal. Measured in psql, warm: vscode `issue:290203
 836 / 0. Not verified: refresh time of the four copies on their own; they were built by
 `./ocpm.sh db`, not timed separately.
 
+### OCEL 2.0 events, 2026-09-13 — in progress, one dated line per step
+
+The sub-log's events are moving to the OCEL 2.0 event-to-object shape shared with the process
+map (`DATA_LAYER.md`, contract v3). The method: before the first change, every fixture's layout
+(both temporal modes, both structural arrangements), its `selectVisible` result under nine
+toggle states (as occurrence keys `activity|time|objectId|actorId`, which both shapes produce),
+its metrics and its index maps were dumped to the session scratchpad from `main` (`3b4888e`),
+with screenshots of F1, F7, F10, F15 and LIVE2 in every mode; each step is re-dumped and diffed
+against that record with an allowlist of the deltas the step is expected to make. SQL oracles
+recorded the same day: `fe.dfg_mat` 670 rows, md5 of its sorted rows `2e16c18635b2d2b4f15d4145d8a245e1`;
+`fe.dfg_sequence_mat` 529,201 rows, `108ed1a59439fa431d0d80b6b5399f63`; `fe.diag_sanity` all
+`expected`; `api.get_sublog` warm, vscode `issue:2902032454` degree 2 1.16–1.35 s, `pr:571599565`
+degree 2 3.09–3.10 s.
+
+- **A1** (activities name their qualifiers; `objectsOf`/`subjectOf`/`actorOf`): additive.
+  `npm test` 896 / 0; baseline diff: none.
+- **A2** (every consumer reads events through the three readers; `selectVisible` keeps an
+  event per visible relationship; `markForEvent(nodes, event, objectId)`; the actor card lists
+  one row per object an event is about): the payload is unchanged, so the picture is unchanged.
+  `npm test` 903 / 0; baseline diff over F1–F15, LIVE1, LIVE2: none. Guess flagged: the actor
+  card's per-object rows (a push of three commits is three rows, as before) were chosen for
+  picture parity; one row per push is the alternative.
+
 ---
 
 ## 5. Not verified

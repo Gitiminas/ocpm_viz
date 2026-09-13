@@ -24,6 +24,8 @@
  */
 
 /** Default window: comments within a day of each other read as one exchange. */
+import { actorOf } from './subLog.js';
+
 export const DEFAULT_COMMENT_WINDOW_DAYS = 1;
 
 export const MIN_COMMENT_BURST = 2;
@@ -80,7 +82,7 @@ export function deriveCommentBursts(index, laneTypes = ['issue', 'pull_request']
             eventIds: run.map((event) => event.id),
             // Who wrote them — what the actor trail needs to pass through a fold it
             // would otherwise skip, and to say whether the fold is one voice or several.
-            actorIds: [...new Set(run.map((event) => event.actor_id).filter(Boolean))],
+            actorIds: [...new Set(run.map(actorOf).filter(Boolean))],
             time: run[0].time,
             end: run[run.length - 1].time,
             size: run.length,

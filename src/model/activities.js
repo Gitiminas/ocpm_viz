@@ -339,11 +339,48 @@ export function findActivityProblems(events, objectsById) {
       unknown.add(event.activity);
       continue;
     }
-    const object = objectsById[event.object_id];
-    if (!object) continue; // reported separately by subLog validation
-    const allowed = ACTIVITIES[event.activity].objectTypes;
-    if (!allowed.includes(object.type)) {
-      mismatched.add(`${event.activity} on a ${object.type} object (allowed: ${allowed.join(', ')})`);
+    const { objectTypes: allowed, relation, role } = ACTIVITIES[event.activity];
+
+    if (!event.relationships) {
+      // Contract v2: one object per event, the actor a column.
+      const object = objectsById[event.object_id];
+      if (!object) continue; // reported separately by subLog validation
+      if (!allowed.includes(object.type)) {
+        mismatched.add(`${event.activity} on a ${object.type} object (allowed: ${allowed.join(', ')})`);
+      }
+      continue;
+    }
+
+    /*
+     * Contract v3: the qualifiers are checked against the activity, not only the
+     * types. An activity relates to the objects it is about under its `relation` —
+     * exactly one `subject` for an issue or PR activity, one `pushed_commit` per commit
+     * for a push, never none — and to its actor under its `role`. A payload whose roles
+     * drift from this table (the twin of fe.dfg_e2o's CASE) fails here, on load.
+     */
+    let about = 0;
+    for (const rel of event.relationships) {
+      const object = objectsById[rel?.object_id];
+      if (!object) continue; // reported separately by subLog validation
+      if (isActorRole(rel.qualifier)) {
+        if (object.type !== 'actor') {
+          mismatched.add(`${event.activity} names a ${object.type} object as its ${rel.qualifier}`);
+        } else if (rel.qualifier !== role) {
+          mismatched.add(`${event.activity} relates to its actor as ${rel.qualifier} (expected ${role})`);
+        }
+        continue;
+      }
+      about += 1;
+      if (!allowed.includes(object.type)) {
+        mismatched.add(`${event.activity} on a ${object.type} object (allowed: ${allowed.join(', ')})`);
+      }
+      if (rel.qualifier !== relation) {
+        mismatched.add(`${event.activity} relates to its object as ${rel.qualifier} (expected ${relation})`);
+      }
+    }
+    if (about === 0) mismatched.add(`${event.activity} event ${event.id} is about no object`);
+    if (relation === 'subject' && about > 1) {
+      mismatched.add(`${event.activity} event ${event.id} has ${about} subjects; it has exactly one`);
     }
   }
 

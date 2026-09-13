@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { loadSubLog, describeSubLog, summarizeSubLog } from '../src/data/loadSubLog.js';
-import { indexSubLog, findGraphProblems, collectInstants, objectsOf, subjectOf, actorOf } from '../src/model/subLog.js';
+import { indexSubLog, findGraphProblems, collectInstants, normalizeGraph, objectsOf, subjectOf, actorOf } from '../src/model/subLog.js';
 import { deriveBursts, indexBurstsByCommit, MIN_BURST } from '../src/model/bursts.js';
 import {
   buildAdjacency,
@@ -177,6 +177,56 @@ describe('validation fails loudly on a malformed bundle', () => {
       events: [{ id: 'e1', activity: 'IssueOpened', time: '2025-01-01T00:00:00Z', object_id: 'nope' }],
     };
     assert.match(findGraphProblems(bad).join('\n'), /unknown object/);
+  });
+
+  describe('the contract-v3 shape: relationships, checked against the activity', () => {
+    const objects = [
+      { id: 'issue:1', type: 'issue', intervals: [] },
+      { id: 'commit:a', type: 'commit', intervals: [] },
+      { id: 'commit:b', type: 'commit', intervals: [] },
+      { id: 'actor:x', type: 'actor', intervals: [] },
+    ];
+    const at = '2025-01-01T00:00:00Z';
+    const bundle = (events) => ({ meta: {}, objects, events, links: [] });
+
+    test('a subject and a role, and a push about two commits, are clean', () => {
+      const clean = bundle([
+        { id: 'e1', activity: 'IssueClosed', time: at, relationships: [{ object_id: 'issue:1', qualifier: 'subject' }, { object_id: 'actor:x', qualifier: 'closer' }] },
+        { id: 'push:1', activity: 'Push', time: at, relationships: [{ object_id: 'commit:a', qualifier: 'pushed_commit' }, { object_id: 'commit:b', qualifier: 'pushed_commit' }, { object_id: 'actor:x', qualifier: 'pusher' }] },
+        // A derived opening whose account has no actor row: subject only.
+        { id: 'e2', activity: 'IssueOpened', time: at, relationships: [{ object_id: 'issue:1', qualifier: 'subject' }] },
+      ]);
+      assert.deepEqual(findGraphProblems(clean), []);
+    });
+
+    test('an unknown object, an unknown qualifier, a wrong role and a wrong relation are each named', () => {
+      const problems = (events) => findGraphProblems(bundle(events)).join('\n');
+      assert.match(problems([{ id: 'e1', activity: 'IssueClosed', time: at, relationships: [{ object_id: 'issue:9', qualifier: 'subject' }] }]), /unknown object "issue:9"/);
+      assert.match(problems([{ id: 'e1', activity: 'IssueClosed', time: at, relationships: [{ object_id: 'issue:1', qualifier: 'about' }] }]), /unknown qualifier "about"/);
+      assert.match(problems([{ id: 'e1', activity: 'IssueClosed', time: at, relationships: [{ object_id: 'issue:1', qualifier: 'subject' }, { object_id: 'actor:x', qualifier: 'merger' }] }]), /as merger \(expected closer\)/);
+      assert.match(problems([{ id: 'e1', activity: 'IssueClosed', time: at, relationships: [{ object_id: 'issue:1', qualifier: 'pushed_commit' }] }]), /as pushed_commit \(expected subject\)/);
+    });
+
+    test('an event about no object, two subjects, or an actor in a non-actor role are rejected', () => {
+      const problems = (events) => findGraphProblems(bundle(events)).join('\n');
+      assert.match(problems([{ id: 'e1', activity: 'IssueClosed', time: at, relationships: [{ object_id: 'actor:x', qualifier: 'closer' }] }]), /about no object/);
+      assert.match(problems([{ id: 'e1', activity: 'IssueClosed', time: at, relationships: [{ object_id: 'issue:1', qualifier: 'subject' }, { object_id: 'issue:1', qualifier: 'subject' }] }]), /2 subjects/);
+      assert.match(problems([{ id: 'e1', activity: 'IssueClosed', time: at, relationships: [{ object_id: 'issue:1', qualifier: 'subject' }, { object_id: 'commit:a', qualifier: 'closer' }] }]), /names a commit object as its closer/);
+      assert.match(problems([{ id: 'push:1', activity: 'Push', time: at, relationships: [{ object_id: 'issue:1', qualifier: 'pushed_commit' }] }]), /Push on a issue object/);
+    });
+
+    test('the index and the readers agree: a push is in every commit it carried, once for its actor', () => {
+      const graph = normalizeGraph(bundle([
+        { id: 'push:1', activity: 'Push', time: at, relationships: [{ object_id: 'commit:a', qualifier: 'pushed_commit' }, { object_id: 'commit:b', qualifier: 'pushed_commit' }, { object_id: 'actor:x', qualifier: 'pusher' }] },
+        { id: 'e1', activity: 'IssueClosed', time: at, relationships: [{ object_id: 'issue:1', qualifier: 'subject' }, { object_id: 'actor:x', qualifier: 'closer' }] },
+      ]));
+      const index = indexSubLog(graph);
+      assert.equal(index.eventsOf('commit:a').length, 1);
+      assert.equal(index.eventsOf('commit:b').length, 1);
+      assert.equal(index.eventsOf('commit:a')[0].id, 'push:1');
+      assert.equal(index.pusherByCommit.get('commit:b'), 'actor:x');
+      assert.equal(index.eventCountByActor.get('actor:x'), 2, 'two events, not three occurrences');
+    });
   });
 
   test('an unknown activity is rejected rather than rendered raw', () => {

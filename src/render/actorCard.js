@@ -16,14 +16,16 @@
 import { formatInstant, escapeHtml } from './format.js';
 import { glyph, TYPE, typeColor } from './theme.js';
 import { activityLabel } from '../model/activities.js';
+import { objectsOf, actorOf } from '../model/subLog.js';
 
 /**
  * @param {object} options
  * @param {HTMLElement} options.element
- * @param {(event: object|null, options?: {color?: string}) => void} [options.onHoverItem]
- *   called with the activity row's EVENT and the actor's colour while the pointer is on
- *   it, null when it leaves or the card closes — what lets the chart ring exactly that
- *   mark, in the colour the actor wears everywhere else
+ * @param {(event: object|null, options?: {color?: string, objectId?: string}) => void} [options.onHoverItem]
+ *   called with the activity row's EVENT, the object the row is about (a push is about
+ *   several) and the actor's colour while the pointer is on it, null when it leaves or the
+ *   card closes — what lets the chart ring exactly that mark, in the colour the actor
+ *   wears everywhere else
  */
 export function createActorCard({ element, onHoverItem = () => {} }) {
   const hide = () => {
@@ -49,20 +51,26 @@ export function createActorCard({ element, onHoverItem = () => {} }) {
      * fixes both: an actor's card lists the pushes they made, when they made them.
      */
     for (const event of graph.events) {
-      if (event.actor_id !== actor.id) continue;
-      const object = index.byId.get(event.object_id);
-      if (!object) continue;
-      items.push({
-        event,
-        time: event.time,
-        type: object.type,
-        label:
-          object.type === 'commit'
-            ? `Pushed ${object.label}`
-            : event.comment
-              ? `Comment on ${object.label}`
-              : `${object.label} · ${activityLabel(event.activity)}`,
-      });
+      if (actorOf(event) !== actor.id) continue;
+      // One item per object the event is about — one per commit a push carried, so
+      // the card reads as before now that a push is one event (`objectsOf`), and each
+      // item names the object whose mark a hover rings.
+      for (const objectId of objectsOf(event)) {
+        const object = index.byId.get(objectId);
+        if (!object) continue;
+        items.push({
+          event,
+          objectId,
+          time: event.time,
+          type: object.type,
+          label:
+            object.type === 'commit'
+              ? `Pushed ${object.label}`
+              : event.comment
+                ? `Comment on ${object.label}`
+                : `${object.label} · ${activityLabel(event.activity)}`,
+        });
+      }
     }
 
     return items.filter((item) => item.time).sort((a, b) => +a.time - +b.time);
@@ -117,7 +125,7 @@ export function createActorCard({ element, onHoverItem = () => {} }) {
         `<span class="mono" style="color:var(--color-neutral-500);font-size:10.5px">${formatInstant(item.time)}</span>`;
       row.addEventListener('mouseenter', () => {
         row.style.background = 'color-mix(in srgb, var(--color-text) 6%, transparent)';
-        onHoverItem(item.event, { color });
+        onHoverItem(item.event, { color, objectId: item.objectId });
       });
       row.addEventListener('mouseleave', () => {
         row.style.background = '';

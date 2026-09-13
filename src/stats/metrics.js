@@ -15,6 +15,7 @@
  */
 
 import { isLandmark, activityLabel, LANE_TYPES } from '../model/activities.js';
+import { objectsOf, subjectOf, actorOf } from '../model/subLog.js';
 
 /**
  * Objects with a lane, i.e. with a lifecycle worth tabulating.
@@ -101,7 +102,7 @@ export function commentCounts(graph) {
   for (const event of graph.events) {
     if (!event.comment) continue;
     total += 1;
-    const type = byId.get(event.object_id)?.type;
+    const type = byId.get(subjectOf(event))?.type;
     if (type) byType.set(type, (byType.get(type) || 0) + 1);
   }
   return { total, byType };
@@ -176,12 +177,13 @@ export function landmarks(graph) {
 
   for (const event of graph.events) {
     if (!isLandmark(event.activity)) continue;
-    const object = byId.get(event.object_id);
+    const objectId = subjectOf(event);
+    const object = byId.get(objectId);
     entries.push({
-      label: `${object ? object.label : event.object_id} · ${activityLabel(event.activity)}`,
+      label: `${object ? object.label : objectId} · ${activityLabel(event.activity)}`,
       time: event.time,
       type: object?.type ?? 'issue',
-      objectId: event.object_id,
+      objectId,
     });
   }
 
@@ -200,7 +202,7 @@ export function landmarks(graph) {
  */
 export function perObjectGaps(events, objectId) {
   const mine = events
-    .filter((event) => event.object_id === objectId)
+    .filter((event) => objectsOf(event).includes(objectId))
     .sort((a, b) => +a.time - +b.time);
 
   const gaps = [];
@@ -213,9 +215,9 @@ export function perObjectGaps(events, objectId) {
       // (`attrs.source === 'payload'`) can carry none, and "unknown → someone" is not a
       // handoff, it is a gap in the record.
       actorChanged:
-        mine[i - 1].actor_id != null &&
-        mine[i].actor_id != null &&
-        mine[i - 1].actor_id !== mine[i].actor_id,
+        actorOf(mine[i - 1]) != null &&
+        actorOf(mine[i]) != null &&
+        actorOf(mine[i - 1]) !== actorOf(mine[i]),
     });
   }
   return gaps;
@@ -229,7 +231,7 @@ export function perObjectGaps(events, objectId) {
 export function prOutcome(object, events) {
   if (object.type !== 'pull_request') return null;
   const activities = new Set(
-    events.filter((event) => event.object_id === object.id).map((event) => event.activity),
+    events.filter((event) => objectsOf(event).includes(object.id)).map((event) => event.activity),
   );
   if (activities.has('PullRequestMerged')) return 'merged';
   // A merge of a different kind, counted on its own so the distribution
@@ -250,8 +252,11 @@ export function prOutcome(object, events) {
 export function perObjectMetrics(graph) {
   const eventsByObject = new Map();
   for (const event of graph.events) {
-    if (!eventsByObject.has(event.object_id)) eventsByObject.set(event.object_id, []);
-    eventsByObject.get(event.object_id).push(event);
+    // One entry per object the event is about: a push lands in every commit it carried.
+    for (const objectId of objectsOf(event)) {
+      if (!eventsByObject.has(objectId)) eventsByObject.set(objectId, []);
+      eventsByObject.get(objectId).push(event);
+    }
   }
 
   const linkCountByObject = new Map();
@@ -267,7 +272,7 @@ export function perObjectMetrics(graph) {
       const events = (eventsByObject.get(object.id) || []).slice().sort((a, b) => a.time - b.time);
       const gaps = perObjectGaps(graph.events, object.id);
       const lifetime = objectLifetime(object);
-      const actors = new Set(events.map((event) => event.actor_id).filter(Boolean));
+      const actors = new Set(events.map(actorOf).filter(Boolean));
 
       return {
         id: object.id,

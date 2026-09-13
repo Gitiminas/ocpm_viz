@@ -191,6 +191,54 @@ describe('link filters are independent and all must pass', () => {
   });
 });
 
+describe('selectVisible keeps an event per visible relationship (contract v3)', () => {
+  const at = '2025-01-01T00:00:00Z';
+  const graph = {
+    meta: {},
+    objects: [
+      { id: 'issue:1', type: 'issue', intervals: [] },
+      { id: 'commit:a', type: 'commit', intervals: [] },
+      { id: 'commit:b', type: 'commit', intervals: [] },
+      { id: 'actor:x', type: 'actor', intervals: [] },
+    ],
+    events: [
+      { id: 'push:1', activity: 'Push', time: at, comment: false, relationships: [
+        { object_id: 'commit:a', qualifier: 'pushed_commit' },
+        { object_id: 'commit:b', qualifier: 'pushed_commit' },
+        { object_id: 'actor:x', qualifier: 'pusher' },
+      ] },
+      { id: 'e1', activity: 'IssueCommented', time: at, comment: true, relationships: [
+        { object_id: 'issue:1', qualifier: 'subject' }, { object_id: 'actor:x', qualifier: 'commenter' },
+      ] },
+    ],
+    links: [],
+  };
+
+  test('hiding one of a push\'s commits trims the relationship and keeps the event', () => {
+    const state = resetToggles(createState());
+    state.hiddenObjects = new Set(['commit:b']);
+    const visible = selectVisible(graph, state);
+    const push = visible.events.find((e) => e.id === 'push:1');
+    assert.ok(push, 'the push is still about commit:a');
+    assert.deepEqual(push.relationships.map((r) => r.object_id), ['commit:a', 'actor:x']);
+    assert.equal(graph.events[0].relationships.length, 3, 'the graph is not mutated');
+  });
+
+  test('hiding every commit drops the push; hiding the comment lane drops the comment by its subject', () => {
+    const state = resetToggles(createState());
+    state.lanes.commit = false;
+    assert.equal(selectVisible(graph, state).events.some((e) => e.id === 'push:1'), false);
+    const s2 = resetToggles(createState());
+    s2.showComments.issue = false;
+    assert.deepEqual(selectVisible(graph, s2).events.map((e) => e.id), ['push:1']);
+  });
+
+  test('an untouched event is returned as the same object, not a copy', () => {
+    const visible = selectVisible(graph, resetToggles(createState()));
+    assert.equal(visible.events[0], graph.events[0]);
+  });
+});
+
 describe('the hidden summary reports every subtraction', () => {
   test('nothing hidden reports nothing', async () => {
     const c = await context('F1');

@@ -222,10 +222,10 @@ export function createTimeline({ elements, state, laneTypes, tooltip, minimap, h
    * actor hover trail, so it cannot outlive a redraw; resolving the event to a mark —
    * through whatever fold carries it — is `markForEvent`.
    */
-  function highlightEvent(event, { color } = {}) {
+  function highlightEvent(event, { color, objectId } = {}) {
     layers.preview.selectAll('*').remove();
     if (!event) return;
-    const node = markForEvent(lastNodes, event);
+    const node = markForEvent(lastNodes, event, objectId);
     if (!node) return;
     layers.preview
       .append('circle')

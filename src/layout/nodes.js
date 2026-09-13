@@ -25,6 +25,7 @@ import {
   isHeuristicLandmark,
   isDerivedEvent,
 } from '../model/activities.js';
+import { actorOf } from '../model/subLog.js';
 
 /**
  * Build the node list for one render pass.
@@ -91,7 +92,7 @@ export function buildNodes({
           object,
           event,
           t: event.time,
-          actorId: event.actor_id,
+          actorId: actorOf(event),
           title: activityLabel(event.activity),
           short: activityShortLabel(event.activity),
           isComment: !!event.comment,
@@ -208,6 +209,7 @@ function commitObservations(index, commit) {
   return index
     .eventsOf(commit.id)
     .map((event) => ({
+      eventId: event.id,
       time: event.time,
       ref: event.attrs?.ref ?? null,
       pushId: event.attrs?.push_id ?? null,
@@ -215,7 +217,7 @@ function commitObservations(index, commit) {
       // commit: 89% of vscode's repeatedly-observed commits were pushed by more than
       // one account, up to fifteen. `index.pusherByCommit` keeps only one of them, so
       // anything naming a pusher per observation has to read it from the event.
-      actorId: event.actor_id ?? null,
+      actorId: actorOf(event),
     }))
     .sort((a, b) => +a.time - +b.time);
 }

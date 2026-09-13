@@ -18,7 +18,8 @@
 import { DEFAULT_COMMENT_WINDOW_DAYS } from '../model/commentBursts.js';
 import { EVIDENCE, ISSUE_PR_METHODS } from '../model/evidence.js';
 import { isCommitInVisibleGroup } from '../model/commitGroups.js';
-import { activityShortLabel } from '../model/activities.js';
+import { activityShortLabel, isActorRole } from '../model/activities.js';
+import { subjectOf } from '../model/subLog.js';
 import { LANE_TYPES, TYPE_LABELS, DFG_TYPE_LABELS } from './labels.js';
 
 export const MIN_ZOOM = 0.55;
@@ -424,12 +425,30 @@ export function selectVisible(graph, state, groupsByCommit = new Map()) {
   const visibleIds = new Set(objects.map((object) => object.id));
   const byId = new Map(graph.objects.map((object) => [object.id, object]));
 
-  const events = graph.events.filter((event) => {
-    if (!visibleIds.has(event.object_id)) return false;
-    const type = byId.get(event.object_id)?.type;
-    if (event.comment && state.showComments[type] === false) return false;
-    return true;
-  });
+  /*
+   * Per visible relationship. An event stays while at least one object it is about is
+   * drawn, and keeps only the relationships to drawn objects (actors always) — so a push
+   * of three commits with one folded away is still one event, about two. An event none
+   * of whose objects survive drops. The comment toggle is keyed on the subject's type:
+   * a comment is about exactly one issue or pull request, never a push.
+   */
+  const events = [];
+  for (const event of graph.events) {
+    if (event.comment) {
+      const type = byId.get(subjectOf(event))?.type;
+      if (state.showComments[type] === false) continue;
+    }
+    if (!event.relationships) {
+      // Contract v2: one object, one column.
+      if (visibleIds.has(event.object_id)) events.push(event);
+      continue;
+    }
+    const kept = event.relationships.filter(
+      (rel) => isActorRole(rel.qualifier) || visibleIds.has(rel.object_id),
+    );
+    if (!kept.some((rel) => !isActorRole(rel.qualifier))) continue;
+    events.push(kept.length === event.relationships.length ? event : { ...event, relationships: kept });
+  }
 
   const links = graph.links.filter((link) => isLinkVisible(link, byId, state, groupsByCommit));
 

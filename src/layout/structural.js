@@ -36,6 +36,7 @@ import {
   isHeuristicLandmark,
   isDerivedEvent,
 } from '../model/activities.js';
+import { actorOf } from '../model/subLog.js';
 
 /**
  * Drawn radius by object type — issue > pull request > commit.
@@ -99,7 +100,7 @@ export function buildStructuralNodes({
         .map((event) => ({
           activity: event.activity,
           time: event.time,
-          actorId: event.actor_id ?? null,
+          actorId: actorOf(event),
           landmark: isLandmark(event.activity),
           heuristicLandmark: isHeuristicLandmark(event.activity),
           derivedOpening: isDerivedEvent(event),
@@ -116,7 +117,7 @@ export function buildStructuralNodes({
         // that "the hovercard still shows the real timestamp first" holds in every mode.
         t: firstInstant(object, events),
         tLast: lastInstant(object, events),
-        actorId: events[0]?.actor_id ?? null,
+        actorId: events[0] ? actorOf(events[0]) : null,
         title: object.label || object.id,
         // Never a comment node: comments are folded into the object they belong to. The
         // flag is carried because `isNodeVisible` reads it, and a comment toggle must
@@ -132,7 +133,7 @@ export function buildStructuralNodes({
         lifecycle,
         commentCount: events.length - lifecycle.length,
         eventCount: events.length,
-        actorIds: [...new Set(events.map((event) => event.actor_id).filter(Boolean))],
+        actorIds: [...new Set(events.map(actorOf).filter(Boolean))],
         radius: STRUCTURAL_RADIUS[laneType] ?? STRUCTURAL_RADIUS.commit,
       });
     }

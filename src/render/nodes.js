@@ -13,6 +13,7 @@
 import { formatInstant, formatDuration, escapeHtml } from './format.js';
 import { TYPE, COLORS, drawSymbol, typeColor } from './theme.js';
 import { objectOpacity } from '../model/graph.js';
+import { objectsOf, subjectOf } from '../model/subLog.js';
 import { ROW_HEIGHT } from '../layout/packing.js';
 import { rowY } from '../layout/lanes.js';
 import { GAP_THRESHOLD_MS } from '../layout/scales.js';
@@ -972,20 +973,22 @@ function shortRef(ref) {
 /**
  * The drawn mark that stands for one EVENT, whatever is folded.
  *
- * The actor card's rows are events; highlighting one means finding the mark that carries
- * it right now: the event's own node when it is drawn unfolded, the comment run it was
- * folded into, the push its commit was folded into, or — in relationships mode, where an
+ * The actor card's rows are events, one per object the event is about; highlighting one
+ * means finding the mark that carries it right now — `objectId` says which of a push's
+ * commits is meant, and defaults to the event's subject. The mark is the event's own node
+ * when it is drawn unfolded, the comment run it was folded into, the push its commit was folded into, or — in relationships mode, where an
  * object is one mark for its whole lifecycle — the object's mark. Returns null when the
  * event's mark is filtered out entirely, which is an honest answer: there is nothing on
  * screen to point at.
  */
-export function markForEvent(nodes, event) {
+export function markForEvent(nodes, event, objectId) {
   if (!event) return null;
+  objectId ??= subjectOf(event) ?? objectsOf(event)[0];
   return (
-    nodes.find((node) => node.event?.id === event.id) ??
+    nodes.find((node) => node.event?.id === event.id && node.objectId === objectId) ??
     nodes.find((node) => node.isCommentBurst && node.commentBurst?.eventIds?.includes(event.id)) ??
-    nodes.find((node) => node.isBurst && node.burst?.commitIds?.has(event.object_id)) ??
-    nodes.find((node) => node.objectId === event.object_id) ??
+    nodes.find((node) => node.isBurst && node.burst?.commitIds?.has(objectId)) ??
+    nodes.find((node) => node.objectId === objectId) ??
     null
   );
 }

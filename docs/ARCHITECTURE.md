@@ -117,7 +117,9 @@ renderers read `kind`, never `mode`.
 `isLinkVisible` (both endpoints visible, plus the relationship-pair, qualifier and method
 toggles). `layout/` receives a predicate, not the state object, so it never learns about lanes
 or hidden objects; `render/` calls the predicates rather than re-deriving them. `selectVisible`
-applies the same rules to produce a filtered graph for the statistics page and the sub-log card;
+applies the same rules to produce a filtered graph for the statistics page and the sub-log card —
+per visible relationship: an event stays while one object it is about is drawn and keeps only
+its relationships to drawn objects, and a comment follows its subject's toggle (2026-09-13);
 `summaryForMode` beside it adjusts the card's summary to what is drawn: pinned actors, and in the
 relationships mode one mark per object. `relControlAvailability` is the same predicates read the
 other way: which relationship rows still govern a link that could be drawn. A row is inert (dimmed,

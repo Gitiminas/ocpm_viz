@@ -10,10 +10,18 @@
  * that produced the sub-log, for reproducibility; it is not an identity.
  */
 
-import { OBJECT_TYPES, findActivityProblems, isActorRole } from './activities.js';
+import {
+  OBJECT_TYPES,
+  RELATION_QUALIFIERS,
+  findActivityProblems,
+  isActorRole,
+  relationOf,
+  isKnownActivity,
+} from './activities.js';
 import { isKnownMethod } from './evidence.js';
 
 const OBJECT_TYPE_SET = new Set(OBJECT_TYPES);
+const RELATION_QUALIFIER_SET = new Set(RELATION_QUALIFIERS);
 
 /*
  * The three readers of an event's object relations. Everything above the model reads
@@ -105,7 +113,23 @@ export function findGraphProblems(graph) {
   for (const event of graph.events) {
     if (!event.id) problems.push('an event has no id');
     if (!event.time) problems.push(`event "${event.id}" has no time`);
-    if (!byId[event.object_id]) {
+    if (event.relationships) {
+      // Contract v3: every relationship names an object that is in the bundle, under a
+      // qualifier from the closed vocabulary; the activity-specific rules (which
+      // qualifier, how many) are `findActivityProblems`.
+      if (!Array.isArray(event.relationships)) {
+        problems.push(`event "${event.id}" has relationships that are not an array`);
+        continue;
+      }
+      for (const rel of event.relationships) {
+        if (!rel || !byId[rel.object_id]) {
+          problems.push(`event "${event.id}" references unknown object "${rel?.object_id}"`);
+        }
+        if (!isActorRole(rel?.qualifier) && !RELATION_QUALIFIER_SET.has(rel?.qualifier)) {
+          problems.push(`event "${event.id}" has unknown qualifier "${rel?.qualifier}"`);
+        }
+      }
+    } else if (!byId[event.object_id]) {
       problems.push(`event "${event.id}" references unknown object "${event.object_id}"`);
     }
   }
@@ -182,7 +206,11 @@ export function normalizeGraph(graph) {
         end: interval.end ? new Date(interval.end) : null,
       })),
     })),
-    events: graph.events.map((event) => ({ ...event, time: new Date(event.time) })),
+    events: graph.events.map((event) => ({
+      ...event,
+      time: new Date(event.time),
+      ...(event.relationships ? { relationships: event.relationships.map((r) => ({ ...r })) } : {}),
+    })),
     links: graph.links.map((link) => ({ ...link })),
   };
 }
@@ -205,18 +233,23 @@ export function indexSubLog(graph) {
     objectsByType.get(object.type).push(object);
   }
 
+  // Every event an object is about, one entry per object the event relates to — so a
+  // push lands in the list of every commit it carried. Keyed on `objectsOf`, never on
+  // the actor: what an actor did is `eventCountByActor` and the actor card.
   const eventsByObject = new Map();
   for (const event of graph.events) {
-    if (!eventsByObject.has(event.object_id)) eventsByObject.set(event.object_id, []);
-    eventsByObject.get(event.object_id).push(event);
+    for (const objectId of objectsOf(event)) {
+      if (!eventsByObject.has(objectId)) eventsByObject.set(objectId, []);
+      eventsByObject.get(objectId).push(event);
+    }
   }
   for (const events of eventsByObject.values()) events.sort((a, b) => a.time - b.time);
 
   /*
    * The actor who pushed a commit **first**, and only that.
    *
-   * The actor on a `CommitObserved` event is the *pusher*, a different identity space
-   * from `vmap.commit_author_name` — no heuristic join between them.
+   * The actor on a push is the *pusher*, a different identity space from
+   * `vmap.commit_author_name` — no heuristic join between them.
    *
    * ⚠️ **This is not the answer to "who pushed this commit".** A commit is usually
    * pushed by several accounts — 89% of vscode's repeatedly-observed commits, up to
@@ -229,17 +262,22 @@ export function indexSubLog(graph) {
   const pusherByCommit = new Map();
   const firstPushAt = new Map();
   for (const event of graph.events) {
-    if (event.activity !== 'CommitObserved') continue;
-    const earliest = firstPushAt.get(event.object_id);
-    if (earliest != null && +earliest <= +event.time) continue;
-    firstPushAt.set(event.object_id, event.time);
-    pusherByCommit.set(event.object_id, event.actor_id);
+    if (!isKnownActivity(event.activity) || relationOf(event.activity) !== 'pushed_commit') continue;
+    for (const commitId of objectsOf(event)) {
+      const earliest = firstPushAt.get(commitId);
+      if (earliest != null && +earliest <= +event.time) continue;
+      firstPushAt.set(commitId, event.time);
+      pusherByCommit.set(commitId, actorOf(event));
+    }
   }
 
+  // Events per actor — events, not occurrences: a push of twenty commits is one thing
+  // the actor did.
   const eventCountByActor = new Map();
   for (const event of graph.events) {
-    if (!event.actor_id) continue;
-    eventCountByActor.set(event.actor_id, (eventCountByActor.get(event.actor_id) || 0) + 1);
+    const actorId = actorOf(event);
+    if (!actorId) continue;
+    eventCountByActor.set(actorId, (eventCountByActor.get(actorId) || 0) + 1);
   }
 
   return {
