@@ -34,6 +34,10 @@ the source, not the data. F1 and the LIVE samples are still real microsoft/vscod
 payload's `meta.repo` says so, each catalogue seed carries a `synthetic` flag, and the tests
 assert the flag agrees with the payload.
 
+The two `LIVE*` samples were re-pulled on 2026-09-13 (contract v3): the same seeds as before,
+but the layer's admission rules had narrowed since 2026-08-04, so LIVE2 is now 1 PR and 35
+commits where it was 24 and 86.
+
 `DFG1.json` is the process map's sample — a snapshot of `api.get_dfg('microsoft/vscode')`
 pulled by `scripts/pull-dfg.mjs` (contract v3, pulled 2026-09-02). Test-only: the process map itself is database-only (the
 fixtures source declares `dfgAvailable: false`), and the only assertion against the sample is
@@ -68,14 +72,16 @@ node scripts/build-f1.mjs            # regenerate
 node scripts/build-f1.mjs --check    # fail if the committed fixture is stale
 ```
 
-38 objects (1 issue, 1 PR, 32 commits, 4 actors) · 42 events · 34 links, all object→object.
+38 objects (1 issue, 1 PR, 32 commits, 4 actors) · 23 events (10 on the issue and the PR, 13
+pushes carrying the 32 commits) · 34 links, all object→object. Contract v3 (`docs/DATA_LAYER.md`):
+every event names its objects in `relationships`.
 
 The source also carries 42 event→actor links. They are **dropped**: each one restated the
-`actor_id` the event already carries, and the build refuses to run unless it can prove that —
+actor the event already names, and the build refuses to run unless it can prove that —
 see the third exception below.
 
 `ocel-data.json` stays in the repo unmodified as the source. The conversion makes **shape
-changes only, never value changes**, with three mandated exceptions noted below.
+changes only, never value changes**, with four mandated exceptions noted below.
 
 ### What the conversion does
 
@@ -87,10 +93,12 @@ changes only, never value changes**, with three mandated exceptions noted below.
 | `method` free-text prose | the `LINK_METHOD` enum, plus `link_methods` and `n_methods` |
 | `meta.case`, `meta.title`, `meta.orientation` | removed — there is no case notion, and the breadcrumb is derived from the query instead |
 | `meta.burst` | removed — bursts derive from `push_id` |
-| 42 `qualifier: "actor"` links | dropped — attribution is `event.actor_id` |
+| 42 `qualifier: "actor"` links | dropped — attribution is the event's actor relationship |
+| `object_id`, `actor_id` on each event | `relationships: [{object_id, qualifier}]` — the object as `subject`, the actor under the activity's role |
+| 32 `CommitObserved` events, one per commit | 13 `Push` events, one per `attrs.push_id`, each about every commit it carried (`pushed_commit`) and its `pusher` |
 | `meta` | gains `seed`, `traversal_degree`, `active_object_types`, `active_link_methods`, `generated_at` |
 
-### The three value changes, and why they are not freehand edits
+### The four value changes, and why they are not freehand edits
 
 **Evidence reclassification.** 29 `ref_match` links move from validated to extracted, so F1 goes
 from 32 solid / 2 dashed to **2 validated / 32 extracted**. The two survivors are the `head_sha`
@@ -108,7 +116,7 @@ deletion — normally forbidden outright by rule 2. It is admissible only becaus
 and the script establishes that rather than asserting it: `checkActorLinksAreRedundant` requires
 a **bijection in both directions** before the fixture is written.
 
-The two halves do different jobs. *Every dropped link is one (event, that event's own `actor_id`)
+The two halves do different jobs. *Every dropped link is one (event, that event's own actor)
 pair* is the loss check — a link naming an actor its event does not would take that attribution with
 it, and the actor would disappear from the trails and the actor card with no error anywhere.
 *Every event naming an actor had such a link* cannot prevent loss; it checks that the source is
@@ -116,6 +124,13 @@ still a strict bijection, which for a regression baseline is itself worth failin
 confirmed to fire against a deliberately corrupted copy of the source. Independently confirmed
 against the renderer as well: the node list feeding every actor trail is identical before and
 after, in all three time modes.
+
+**Commit observations folded into pushes (2026-09-13).** The source records a push as one
+`CommitObserved` row per commit, each naming its `push_id`; the contract records the push as one
+event about every commit it carried. The fold is a change of shape, and `checkPushFoldIsExact`
+establishes that: every row of a push shares one instant and one pusher, every observation is
+exactly one `pushed_commit` relationship, and 13 push ids give 13 pushes. A push's attrs are what
+the rows carried — `{push_id}` only; the blob has no ref or declared size, and none is invented.
 
 ### Quirks carried through unchanged
 

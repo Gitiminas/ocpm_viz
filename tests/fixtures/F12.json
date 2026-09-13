@@ -2,6 +2,7 @@
   "meta": {
     "repo": "synthetic/fixture",
     "repo_id": 1,
+    "contract_version": 3,
     "seed": [
       {
         "id": "issue:120",
@@ -127,61 +128,121 @@
       "id": "e1",
       "activity": "IssueOpened",
       "time": "2025-01-01T00:00:00Z",
-      "object_id": "issue:120",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "issue:120",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "opener"
+        }
+      ]
     },
     {
       "id": "e2",
       "activity": "PullRequestOpened",
       "time": "2025-01-02T00:00:00Z",
-      "object_id": "pr:1201",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "pr:1201",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "opener"
+        }
+      ]
+    },
+    {
+      "id": "push:12001",
+      "activity": "Push",
+      "time": "2025-01-05T00:00:00Z",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {
+        "ref": "refs/heads/main",
+        "push_id": 12001,
+        "commit_count": 1,
+        "distinct_commit_count": 1,
+        "truncated": false
+      },
+      "relationships": [
+        {
+          "object_id": "commit:mixedevidence0000",
+          "qualifier": "pushed_commit"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "pusher"
+        }
+      ]
+    },
+    {
+      "id": "push:12002",
+      "activity": "Push",
+      "time": "2025-01-10T00:00:00Z",
+      "repo": "synthetic/fixture",
+      "comment": false,
+      "attrs": {
+        "ref": "refs/heads/main",
+        "push_id": 12002,
+        "commit_count": 1,
+        "distinct_commit_count": 1,
+        "truncated": false
+      },
+      "relationships": [
+        {
+          "object_id": "commit:mergecommit000000",
+          "qualifier": "pushed_commit"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "pusher"
+        }
+      ]
     },
     {
       "id": "e3",
-      "activity": "CommitObserved",
-      "time": "2025-01-05T00:00:00Z",
-      "object_id": "commit:mixedevidence0000",
-      "actor_id": "actor:alice",
+      "activity": "PullRequestMerged",
+      "time": "2025-01-10T00:00:00Z",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "pr:1201",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "merger"
+        }
+      ]
     },
     {
       "id": "e4",
-      "activity": "CommitObserved",
-      "time": "2025-01-10T00:00:00Z",
-      "object_id": "commit:mergecommit000000",
-      "actor_id": "actor:alice",
-      "repo": "synthetic/fixture",
-      "comment": false,
-      "attrs": {}
-    },
-    {
-      "id": "e5",
-      "activity": "PullRequestMerged",
-      "time": "2025-01-10T00:00:00Z",
-      "object_id": "pr:1201",
-      "actor_id": "actor:alice",
-      "repo": "synthetic/fixture",
-      "comment": false,
-      "attrs": {}
-    },
-    {
-      "id": "e6",
       "activity": "IssueClosed",
       "time": "2025-01-12T00:00:00Z",
-      "object_id": "issue:120",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "issue:120",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "closer"
+        }
+      ]
     }
   ],
   "links": [

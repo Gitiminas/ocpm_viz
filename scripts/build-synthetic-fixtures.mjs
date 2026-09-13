@@ -16,6 +16,7 @@
  */
 
 import { writeFileSync, readFileSync, mkdirSync } from 'node:fs';
+import { actorRoleOf } from '../src/model/activities.js';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -83,18 +84,80 @@ function actor(login) {
 }
 
 let eventSeq = 0;
+/** An issue or PR event about one object, its actor under the activity's role (contract v3). */
 function event(activity, time, objectId, { actorId = 'actor:alice', comment = false } = {}) {
   eventSeq += 1;
+  const relationships = [{ object_id: objectId, qualifier: 'subject' }];
+  if (actorId) relationships.push({ object_id: actorId, qualifier: actorRoleOf(activity) });
   return {
     id: `e${eventSeq}`,
     activity,
     time,
-    object_id: objectId,
-    actor_id: actorId,
     repo,
     comment,
     attrs: {},
+    relationships,
   };
+}
+
+/*
+ * A commit seen in a push. Recorded per commit where the fixture builds it, and folded
+ * by `foldPushes` into one `Push` event per (push, instant, pusher) — the OCEL 2.0 shape,
+ * one event about every commit it carried. The instant is part of the key on purpose:
+ * F10 gives the commits of one push different hours by construction (so its 300 marks
+ * spread), and a push whose commits are hours apart is not one event; it is emitted as
+ * `push:<pushId>`, `push:<pushId>:1`, … with `commit_count` the whole push's size, which
+ * is what the real payload's `truncated`-style honesty reads as: more commits than this
+ * event lists. Flagged as a fixture quirk in tests/fixtures/README.md.
+ */
+function observe(time, commitId, { pushId, actorId = 'actor:alice', ref = 'refs/heads/main' } = {}) {
+  if (pushId == null) throw new Error(`observe(${commitId}): a push id is required`);
+  return { observed: true, time, commitId, pushId, actorId, ref };
+}
+
+function foldPushes(events) {
+  const sizeByPush = new Map();
+  for (const e of events) {
+    if (e.observed) sizeByPush.set(e.pushId, (sizeByPush.get(e.pushId) ?? 0) + 1);
+  }
+  const groups = new Map();
+  const groupsByPush = new Map();
+  const out = [];
+  for (const e of events) {
+    if (!e.observed) {
+      out.push(e);
+      continue;
+    }
+    const key = `${e.pushId}|${e.time}|${e.actorId}`;
+    let push = groups.get(key);
+    if (!push) {
+      const k = groupsByPush.get(e.pushId) ?? 0;
+      groupsByPush.set(e.pushId, k + 1);
+      push = {
+        id: k === 0 ? `push:${e.pushId}` : `push:${e.pushId}:${k}`,
+        activity: 'Push',
+        time: e.time,
+        repo,
+        comment: false,
+        attrs: {
+          ref: e.ref,
+          push_id: e.pushId,
+          commit_count: sizeByPush.get(e.pushId),
+          distinct_commit_count: sizeByPush.get(e.pushId),
+          truncated: false,
+        },
+        relationships: [],
+      };
+      groups.set(key, push);
+      out.push(push);
+    }
+    push.relationships.push({ object_id: e.commitId, qualifier: 'pushed_commit' });
+  }
+  for (const [key, push] of groups) {
+    const actorId = key.split('|')[2];
+    if (actorId) push.relationships.push({ object_id: actorId, qualifier: 'pusher' });
+  }
+  return out;
 }
 
 // Deliberately a literal list rather than an import from `src/model/evidence.js`:
@@ -126,6 +189,7 @@ function graph({ id, property, seed, objects, events, links }) {
     meta: {
       repo,
       repo_id: 1,
+      contract_version: 3,
       seed,
       traversal_degree: 2,
       active_object_types: [...new Set(objects.map((o) => o.type))].sort(),
@@ -141,7 +205,7 @@ function graph({ id, property, seed, objects, events, links }) {
       source: { fixture: id, built_by: 'scripts/build-synthetic-fixtures.mjs', property },
     },
     objects,
-    events,
+    events: foldPushes(events),
     links,
   };
 }
@@ -252,7 +316,7 @@ FIXTURES.F5 = () => {
   const events = [
     event('PullRequestOpened', t(1), 'pr:40'),
     event('PullRequestOpened', t(2), 'pr:41'),
-    event('CommitObserved', t(3), 'commit:aaaa111bbbb222ccc'),
+    observe(t(3), 'commit:aaaa111bbbb222ccc', { pushId: 5001 }),
     event('PullRequestMerged', t(6), 'pr:40'),
     event('PullRequestMerged', t(7), 'pr:41'),
   ];
@@ -301,13 +365,13 @@ FIXTURES.F7 = () => {
     for (let i = 0; i < 8; i++) {
       const sha = `burst${pushIndex}commit${i}`.padEnd(17, '0');
       objects.push(commit(sha, { at: t(5 + pushIndex * 5), pushId }));
-      events.push(event('CommitObserved', t(5 + pushIndex * 5), `commit:${sha}`));
+      events.push(observe(t(5 + pushIndex * 5), `commit:${sha}`, { pushId }));
     }
   }
   for (const [i, day] of [3, 18].entries()) {
     const sha = `loose${i}`.padEnd(17, '0');
     objects.push(commit(sha, { at: t(day), pushId: 7100 + i }));
-    events.push(event('CommitObserved', t(day), `commit:${sha}`));
+    events.push(observe(t(day), `commit:${sha}`, { pushId: 7100 + i }));
   }
   events.push(event('PullRequestMerged', t(20), 'pr:60'));
 
@@ -396,7 +460,8 @@ FIXTURES.F13 = () => {
       const day = 5 + i * 2 + prIndex;
       objects.push(commit(sha, { at: t(day), pushId: 8100 + prIndex * 10 + i }));
       events.push(
-        event('CommitObserved', t(day), `commit:${sha}`, {
+        observe(t(day), `commit:${sha}`, {
+          pushId: 8100 + prIndex * 10 + i,
           actorId: prIndex ? 'actor:bob' : 'actor:alice',
         }),
       );
@@ -408,7 +473,7 @@ FIXTURES.F13 = () => {
   // would otherwise be drawn exactly on top of each other.
   const shared = 'sharedcommit00000';
   objects.push(commit(shared, { at: t(9), pushId: 8199 }));
-  events.push(event('CommitObserved', t(9), `commit:${shared}`));
+  events.push(observe(t(9), `commit:${shared}`, { pushId: 8199 }));
   links.push(link('pr:80', `commit:${shared}`, 'contains_commit', 'head_sha'));
   links.push(link('pr:81', `commit:${shared}`, 'contains_commit', 'ref_match'));
 
@@ -453,11 +518,11 @@ FIXTURES.F14 = () => {
     event('IssueOpened', t(1), 'issue:14'),
     event('PullRequestOpened', t(2), 'pr:90'),
     event('PullRequestOpened', t(3), 'pr:91'),
-    event('CommitObserved', t(7), 'commit:onplat00000000001'),
+    observe(t(7), 'commit:onplat00000000001', { pushId: 9001 }),
     event('PullRequestMerged', t(8), 'pr:90'),
     // Closed on GitHub, then the commits land in a push — the heuristic's signature.
     event('PullRequestClosed', t(12), 'pr:91'),
-    event('CommitObserved', t(12), 'commit:offplat0000000001'),
+    observe(t(12), 'commit:offplat0000000001', { pushId: 9101 }),
     event('PullRequestMergedOffPlatform', t(12), 'pr:91'),
     event('IssueClosed', t(16), 'issue:14'),
   ];
@@ -521,18 +586,18 @@ FIXTURES.F15 = () => {
     event('PullRequestMerged', t(3), 'pr:1501'),
     event('IssueClosed', t(4), 'issue:15'),
     event('PullRequestOpened', t(5), 'pr:1504'),
-    event('CommitObserved', t(5, 12), `commit:${early}`),
+    observe(t(5, 12), `commit:${early}`, { pushId: 15001 }),
     event('PullRequestClosed', t(6), 'pr:1504'),
     event('IssueReopened', t(9), 'issue:15'),
     event('PullRequestOpened', t(10), 'pr:1502'),
     event('PullRequestReopened', t(11), 'pr:1504'),
-    event('CommitObserved', t(12), `commit:${during}`),
+    observe(t(12), `commit:${during}`, { pushId: 15002 }),
     event('PullRequestMerged', t(12), 'pr:1502'),
     event('PullRequestMerged', t(13), 'pr:1504'),
     event('IssueClosed', t(14), 'issue:15'),
     event('PullRequestOpened', t(16), 'pr:1503'),
     event('PullRequestMerged', t(18), 'pr:1503'),
-    event('CommitObserved', t(20), `commit:${late}`),
+    observe(t(20), `commit:${late}`, { pushId: 15003 }),
   ];
   const links = [
     link('pr:1501', 'issue:15', 'resolves', 'pr_body'),
@@ -599,7 +664,8 @@ FIXTURES.F10 = () => {
         const sha = `p${prIndex}c${String(commitNumber).padStart(3, '0')}`.padEnd(17, '0');
         objects.push(commit(sha, { at: t(day, (commitNumber % 20) + 1), pushId }));
         events.push(
-          event('CommitObserved', t(day, (commitNumber % 20) + 1), `commit:${sha}`, {
+          observe(t(day, (commitNumber % 20) + 1), `commit:${sha}`, {
+            pushId,
             actorId: commitNumber % 3 ? 'actor:alice' : 'actor:bob',
           }),
         );
@@ -687,8 +753,8 @@ FIXTURES.F12 = () => {
   const events = [
     event('IssueOpened', t(1), 'issue:120'),
     event('PullRequestOpened', t(2), 'pr:1201'),
-    event('CommitObserved', t(5), `commit:${sha}`),
-    event('CommitObserved', t(10), `commit:${mergeSha}`),
+    observe(t(5), `commit:${sha}`, { pushId: 12001 }),
+    observe(t(10), `commit:${mergeSha}`, { pushId: 12002 }),
     event('PullRequestMerged', t(10), 'pr:1201'),
     event('IssueClosed', t(12), 'issue:120'),
   ];

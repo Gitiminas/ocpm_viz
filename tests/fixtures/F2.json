@@ -2,6 +2,7 @@
   "meta": {
     "repo": "synthetic/fixture",
     "repo_id": 1,
+    "contract_version": 3,
     "seed": [
       {
         "id": "issue:1",
@@ -101,61 +102,109 @@
       "id": "e1",
       "activity": "IssueOpened",
       "time": "2025-01-01T00:00:00Z",
-      "object_id": "issue:1",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "issue:1",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "opener"
+        }
+      ]
     },
     {
       "id": "e2",
       "activity": "PullRequestOpened",
       "time": "2025-01-02T00:00:00Z",
-      "object_id": "pr:10",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "pr:10",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "opener"
+        }
+      ]
     },
     {
       "id": "e3",
       "activity": "PullRequestMerged",
       "time": "2025-01-05T00:00:00Z",
-      "object_id": "pr:10",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "pr:10",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "merger"
+        }
+      ]
     },
     {
       "id": "e4",
       "activity": "PullRequestOpened",
       "time": "2025-01-08T00:00:00Z",
-      "object_id": "pr:11",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "pr:11",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "opener"
+        }
+      ]
     },
     {
       "id": "e5",
       "activity": "PullRequestMerged",
       "time": "2025-01-12T00:00:00Z",
-      "object_id": "pr:11",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "pr:11",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "merger"
+        }
+      ]
     },
     {
       "id": "e6",
       "activity": "IssueClosed",
       "time": "2025-01-20T00:00:00Z",
-      "object_id": "issue:1",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "issue:1",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "closer"
+        }
+      ]
     }
   ],
   "links": [

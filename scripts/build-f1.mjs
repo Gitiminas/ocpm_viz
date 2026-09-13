@@ -17,9 +17,14 @@
  *      and documented in `tests/fixtures/README.md`, because an undetectable
  *      freehand edit would silently invalidate the regression baseline.
  *
- * The three mandated exceptions to rule 2, all settled rules rather than judgement
+ * The four mandated exceptions to rule 2, all settled rules rather than judgement
  * calls, are the `inferred` → `extracted` rename, the evidence reclassification that
- * follows from it, and the removal of the 42 event→actor attribution links.
+ * follows from it, the removal of the 42 event→actor attribution links, and (2026-09-13)
+ * the event shape: an event's objects are its `relationships` (contract v3), so the
+ * source's `object_id`/`actor_id` become a `subject` and a role, and its 32 per-commit
+ * `CommitObserved` rows fold into the 13 pushes they were, one `Push` about every commit
+ * it carried, keyed by the `push_id` each row already names. A fold, not a deletion:
+ * `selfCheck` proves every observation is exactly one `pushed_commit` relationship.
  *
  * The third is a *deletion*, which rule 2 would normally forbid outright, so it is
  * checked rather than trusted: `selfCheck` proves the dropped links are exactly
@@ -29,6 +34,7 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { actorRoleOf } from '../src/model/activities.js';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { classifyLink, LINK_METHOD, isKnownMethod } from '../src/model/evidence.js';
@@ -182,6 +188,8 @@ function buildMeta(sourceMeta, objects, sourceLinks) {
   return {
     repo: sourceMeta.repo,
     repo_id: sourceMeta.repo_id,
+    // The payload contract this fixture is built against (docs/DATA_LAYER.md).
+    contract_version: 3,
 
     // `meta` records the query that produced the sub-log, for reproducibility — it
     // is not an identity. There is deliberately no `case` key, and the UI derives
@@ -230,21 +238,90 @@ function build() {
   return {
     meta: buildMeta(source.meta, objects, kept),
     objects,
-    // Events carry `actor_id`, the only statement of who did what. The frozen blob
-    // names every comment `IssueCommented`; the contract names a comment after the
-    // object it is on, so a comment on a pull request becomes `PullRequestCommented`.
-    events: source.events.map((event) => convertEvent(event, objects)),
+    // The frozen blob names every comment `IssueCommented`; the contract names a comment
+    // after the object it is on, so a comment on a pull request becomes
+    // `PullRequestCommented`. Its `actor_id` is the only statement of who did what and
+    // becomes the actor relationship; its commit observations fold into pushes.
+    events: convertEvents(source.events, objects),
     links: kept.map(convertLink),
   };
 }
 
-/** A comment on a pull request is `PullRequestCommented`; everything else passes through. */
-function convertEvent(event, objects) {
-  const type = objects.find((object) => object.id === event.object_id)?.type;
-  if (event.activity === 'IssueCommented' && type === 'pull_request') {
-    return { ...event, activity: 'PullRequestCommented' };
+/**
+ * Contract v3 (`docs/DATA_LAYER.md`): every event about its objects through
+ * `relationships`. A comment on a pull request is `PullRequestCommented`. The
+ * `CommitObserved` rows fold by `attrs.push_id` into one `Push` per push — in the source
+ * every row of a push shares its instant and its actor, which `selfCheck` asserts — with
+ * the push's attrs being what the rows carried (`{push_id}`; the blob has no ref or size).
+ */
+function convertEvents(events, objects) {
+  const typeOf = (id) => objects.find((object) => object.id === id)?.type;
+  const out = [];
+  const pushes = new Map();
+  for (const event of events) {
+    const { object_id: objectId, actor_id: actorId, ...rest } = event;
+    if (event.activity === 'CommitObserved') {
+      const pushId = event.attrs?.push_id;
+      let push = pushes.get(pushId);
+      if (!push) {
+        push = {
+          ...rest,
+          id: `push:${pushId}`,
+          activity: 'Push',
+          relationships: [],
+        };
+        pushes.set(pushId, push);
+        out.push(push);
+      }
+      push.relationships.push({ object_id: objectId, qualifier: 'pushed_commit' });
+      continue;
+    }
+    const activity =
+      event.activity === 'IssueCommented' && typeOf(objectId) === 'pull_request'
+        ? 'PullRequestCommented'
+        : event.activity;
+    const relationships = [{ object_id: objectId, qualifier: 'subject' }];
+    if (actorId) relationships.push({ object_id: actorId, qualifier: actorRoleOf(activity) });
+    out.push({ ...rest, activity, relationships });
   }
-  return event;
+  for (const [pushId, push] of pushes) {
+    const first = events.find((e) => e.activity === 'CommitObserved' && e.attrs?.push_id === pushId);
+    if (first.actor_id) push.relationships.push({ object_id: first.actor_id, qualifier: 'pusher' });
+  }
+  return out;
+}
+
+/**
+ * The fold is exact: one `pushed_commit` per source observation, and every row of a push
+ * shares one instant and one pusher, so nothing about a commit's sighting is moved or
+ * re-attributed. Returns problems rather than throwing, like the check above.
+ */
+function checkPushFoldIsExact(graph, source) {
+  const problems = [];
+  const observations = source.events.filter((e) => e.activity === 'CommitObserved');
+  const byPush = new Map();
+  for (const o of observations) {
+    if (!byPush.has(o.attrs?.push_id)) byPush.set(o.attrs?.push_id, []);
+    byPush.get(o.attrs?.push_id).push(o);
+  }
+  if (byPush.has(undefined)) problems.push('a CommitObserved row names no push_id');
+  for (const [pushId, rows] of byPush) {
+    if (new Set(rows.map((r) => r.time)).size !== 1) problems.push(`push ${pushId}: its rows differ in time`);
+    if (new Set(rows.map((r) => r.actor_id)).size !== 1) problems.push(`push ${pushId}: its rows differ in actor`);
+    const push = graph.events.find((e) => e.id === `push:${pushId}`);
+    if (!push) {
+      problems.push(`push ${pushId} was not emitted`);
+      continue;
+    }
+    const carried = push.relationships.filter((r) => r.qualifier === 'pushed_commit').map((r) => r.object_id);
+    const expected = rows.map((r) => r.object_id);
+    if (JSON.stringify(carried) !== JSON.stringify(expected)) {
+      problems.push(`push ${pushId} carries ${carried.length} commits, the source observed ${expected.length}`);
+    }
+  }
+  const pushed = graph.events.filter((e) => e.activity === 'Push');
+  if (pushed.length !== byPush.size) problems.push(`${pushed.length} pushes emitted for ${byPush.size} push ids`);
+  return problems;
 }
 
 /**
@@ -317,8 +394,12 @@ function selfCheck(graph, source) {
 
   if (graph.objects.length !== source.objects.length)
     problems.push('object count changed during conversion');
-  if (graph.events.length !== source.events.length)
-    problems.push('event count changed during conversion');
+  // Every non-commit event survives one to one; the 32 observations are the 13 pushes.
+  const observations = source.events.filter((e) => e.activity === 'CommitObserved').length;
+  const pushIds = new Set(source.events.filter((e) => e.activity === 'CommitObserved').map((e) => e.attrs?.push_id)).size;
+  if (graph.events.length !== source.events.length - observations + pushIds)
+    problems.push('event count changed by something other than the push fold');
+  problems.push(...checkPushFoldIsExact(graph, source));
 
   // The link count *does* change now, by exactly the actor links and nothing else.
   if (dropped.length !== 42) problems.push(`expected 42 actor links to drop, found ${dropped.length}`);
@@ -375,6 +456,7 @@ if (process.argv.includes('--check')) {
       `(${graph.links.filter((l) => l.evidence === 'validated').length} validated, ` +
       `${graph.links.filter((l) => l.evidence === 'extracted').length} extracted). ` +
       `Dropped ${dropped.length} event→actor links, each verified redundant with ` +
-      `event.actor_id.`,
+      `the event's actor; folded ${source.events.filter((e) => e.activity === 'CommitObserved').length} ` +
+      `commit observations into ${graph.events.filter((e) => e.activity === 'Push').length} pushes.`,
   );
 }

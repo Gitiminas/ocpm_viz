@@ -119,10 +119,8 @@ none is; a comment follows its subject's toggle.
 
 **Contract v2** (until 2026-09-13) carried `object_id` and `actor_id|null` on each event and took
 a push apart into one synthetic `CommitObserved` per commit (`commit_obs:<event_id>:<index>`,
-push facts on each). `src/data/legacy.js` restates such a bundle as v3 on load — commit
-observations that share push, instant and pusher become one `Push`, nothing invented — for as
-long as the RPC and the committed fixtures still emit it. It is a migration shim, to be deleted
-with them.
+push facts on each). Nothing reads it any more: the validator names an event carrying `object_id`
+as the v2 shape and rejects it, and every fixture and the RPC emit v3.
 
 **Ids are type-prefixed**. Objects: `issue:<issue_id>`, `pr:<pull_request_id>`,
 `commit:<sha>`, `actor:<actor_id>`. Events: `issue_act:<event_id>`, `pr_act:<event_id>`,

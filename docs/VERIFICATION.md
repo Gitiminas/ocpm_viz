@@ -444,7 +444,7 @@ degree 2 3.09–3.10 s.
   fixtures emit v3): `npm test` 918 / 0; baseline diff over F1–F15, LIVE1, LIVE2: layout,
   structural layout, visible selections, per-object metrics and index maps identical; the
   only deltas are the ones the decision makes — `summary.events` (F1 42 → 23, F7 20 → 6,
-  F10 308 → 209, LIVE2 575 → 299), `eventCountByActor` (pushes, not commits), the commit
+  F10 308 → 275, LIVE2 575 → 299), `eventCountByActor` (pushes, not commits), the commit
   group's aggregate `events` (F1 32 → 13, distinct pushes), and a new per-row `eventIds`.
   Screenshots of F1, F7, F10, F15 and LIVE2 (timeline, relationships, stats) against the
   Step 0 set: the canvas is pixel-identical in every one; the sub-log card's Events tile and
@@ -471,6 +471,19 @@ degree 2 3.09–3.10 s.
   patches (LIVE2 was 24 PRs and 86 commits; the same seed today is 1 PR and 35 commits, and
   `DFG1`'s IssueOpened node lacks the derived openings), so they could not serve as the oracle
   for this step — the database was. They are re-pulled in Step C. `npm test` 918 / 0.
+- **C** (the fixtures emit v3 natively and the shim is gone): `build-f1.mjs` folds the 32
+  observations into 13 pushes and proves the fold exact (`checkPushFoldIsExact`);
+  `build-synthetic-fixtures.mjs` records observations and folds them by (push, instant, pusher),
+  so F10 — whose commits of one push sit at different hours by construction — yields 267 pushes
+  for 24 push ids (`push:<id>`, `push:<id>:1`, …), a fixture quirk flagged in
+  `tests/fixtures/README.md` rather than a re-timing of 300 glyphs. LIVE1/LIVE2 re-pulled
+  (same seeds, today's layer). `src/data/legacy.js` deleted; the validator rejects `object_id`
+  by name. `npm test` 918 / 0; all three `--check`s pass; baseline diff over F1–F15 against
+  Step 0: only the allowlisted deltas (the synthetic pushes now carry `ref`/`push_id`, which the
+  observation records show). Screenshots of F1, F7, F10, F15 in every mode against Step 0:
+  canvas pixel-identical; the Stats page's event figures differ as decided. LIVE2's picture is a
+  different sub-log now and was not compared. `DFG1.json` left as it was: the map is
+  database-only and the sample is a validator input, not a picture.
 
 ---
 

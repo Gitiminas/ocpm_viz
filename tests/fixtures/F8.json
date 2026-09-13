@@ -2,6 +2,7 @@
   "meta": {
     "repo": "synthetic/fixture",
     "repo_id": 1,
+    "contract_version": 3,
     "seed": [
       {
         "id": "pr:70",
@@ -62,21 +63,37 @@
       "id": "e1",
       "activity": "PullRequestOpened",
       "time": "2025-01-01T00:00:00Z",
-      "object_id": "pr:70",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "pr:70",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "opener"
+        }
+      ]
     },
     {
       "id": "e2",
       "activity": "PullRequestClosed",
       "time": "2025-01-03T00:00:00Z",
-      "object_id": "pr:70",
-      "actor_id": "actor:alice",
       "repo": "synthetic/fixture",
       "comment": false,
-      "attrs": {}
+      "attrs": {},
+      "relationships": [
+        {
+          "object_id": "pr:70",
+          "qualifier": "subject"
+        },
+        {
+          "object_id": "actor:alice",
+          "qualifier": "closer"
+        }
+      ]
     }
   ],
   "links": []

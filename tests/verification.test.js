@@ -12,7 +12,6 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { loadSubLog } from '../src/data/loadSubLog.js';
-import { upgradeLegacyGraph } from '../src/data/legacy.js';
 import { indexSubLog, collectInstants, findGraphProblems } from '../src/model/subLog.js';
 import { deriveBursts } from '../src/model/bursts.js';
 import { deriveCommitGroups } from '../src/model/commitGroups.js';
@@ -84,10 +83,9 @@ async function pipeline(fixture, { mode = 'absolute', state } = {}) {
 describe('every fixture is a valid SubLog', () => {
   for (const fixture of ALL_FIXTURES) {
     test(`${fixture} passes shape validation`, async () => {
-      // The committed fixtures are still contract v2; the loader restates them (Step C
-      // of the OCEL 2.0 migration rebuilds them natively and drops the upgrade).
-      const raw = upgradeLegacyGraph(await fileTransport({ fixture }));
+      const raw = await fileTransport({ fixture });
       assert.deepEqual(findGraphProblems(raw), []);
+      assert.equal(raw.meta.contract_version, 3, `${fixture} declares contract 3`);
     });
   }
 });
