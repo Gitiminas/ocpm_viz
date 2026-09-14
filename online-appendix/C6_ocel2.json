@@ -58,15 +58,31 @@
    "name": "issue",
    "attributes": [
     {
+     "name": "title",
+     "type": "string"
+    },
+    {
      "name": "issue_id",
      "type": "float"
+    },
+    {
+     "name": "body_excerpt",
+     "type": "string"
     },
     {
      "name": "issue_number",
      "type": "float"
     },
     {
+     "name": "body_truncated",
+     "type": "boolean"
+    },
+    {
      "name": "label",
+     "type": "string"
+    },
+    {
+     "name": "state",
      "type": "string"
     }
    ]
@@ -91,11 +107,23 @@
      "type": "float"
     },
     {
+     "name": "body_excerpt",
+     "type": "string"
+    },
+    {
+     "name": "body_truncated",
+     "type": "boolean"
+    },
+    {
      "name": "pull_request_id",
      "type": "float"
     },
     {
      "name": "label",
+     "type": "string"
+    },
+    {
+     "name": "state",
      "type": "string"
     }
    ]
@@ -103,7 +131,7 @@
  ],
  "eventTypes": [
   {
-   "name": "IssueOpened",
+   "name": "IssueClosed",
    "attributes": [
     {
      "name": "comment",
@@ -115,13 +143,65 @@
    "name": "IssueCommented",
    "attributes": [
     {
+     "name": "comment_excerpt",
+     "type": "string"
+    },
+    {
+     "name": "comment_truncated",
+     "type": "boolean"
+    },
+    {
      "name": "comment",
      "type": "boolean"
     }
    ]
   },
   {
-   "name": "CommitObserved",
+   "name": "IssueOpened",
+   "attributes": [
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "name": "PullRequestCommented",
+   "attributes": [
+    {
+     "name": "comment_excerpt",
+     "type": "string"
+    },
+    {
+     "name": "comment_truncated",
+     "type": "boolean"
+    },
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "name": "PullRequestMerged",
+   "attributes": [
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "name": "PullRequestOpened",
+   "attributes": [
+    {
+     "name": "comment",
+     "type": "boolean"
+    }
+   ]
+  },
+  {
+   "name": "Push",
    "attributes": [
     {
      "name": "ref",
@@ -143,33 +223,6 @@
      "name": "distinct_commit_count",
      "type": "float"
     },
-    {
-     "name": "comment",
-     "type": "boolean"
-    }
-   ]
-  },
-  {
-   "name": "PullRequestOpened",
-   "attributes": [
-    {
-     "name": "comment",
-     "type": "boolean"
-    }
-   ]
-  },
-  {
-   "name": "PullRequestMerged",
-   "attributes": [
-    {
-     "name": "comment",
-     "type": "boolean"
-    }
-   ]
-  },
-  {
-   "name": "IssueClosed",
-   "attributes": [
     {
      "name": "comment",
      "type": "boolean"
@@ -347,16 +400,6 @@
      "name": "label",
      "time": "1970-01-01T00:00:00Z",
      "value": "eb70000"
-    },
-    {
-     "name": "state",
-     "time": "2025-03-09T19:23:22+00:00",
-     "value": "open"
-    },
-    {
-     "name": "state",
-     "time": "2025-03-09T19:23:22+00:00",
-     "value": "closed"
     }
    ],
    "relationships": [
@@ -371,9 +414,19 @@
    "type": "issue",
    "attributes": [
     {
+     "name": "title",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "Discover and run MCP servers"
+    },
+    {
      "name": "issue_id",
      "time": "1970-01-01T00:00:00Z",
      "value": 2902032454
+    },
+    {
+     "name": "body_excerpt",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "> This issue is for tracking the initial work to support installing/discovering Model Context Protocol servers in VS Code. This does not involve much UI work yet. Other work around MCP should be tracked elsewhere under the [chat-mcp](https://github.com/microsoft/vscode/labels/chat-mcp) tag.\r\n\r\nLet's support MCP in VS Code. This issue tracks the following goals\r\n\r\n- [Allowing users to configure how those MCP servers are launched](#configuring)\r\n- [Discovering and installing servers](#discoveryins"
     },
     {
      "name": "issue_number",
@@ -381,18 +434,23 @@
      "value": 242864
     },
     {
+     "name": "body_truncated",
+     "time": "1970-01-01T00:00:00Z",
+     "value": true
+    },
+    {
      "name": "label",
      "time": "1970-01-01T00:00:00Z",
-     "value": "#242864"
+     "value": "Issue #242864"
     },
     {
      "name": "state",
-     "time": "2025-03-07T05:15:54+00:00",
+     "time": "2025-03-07T05:15:51.000Z",
      "value": "open"
     },
     {
      "name": "state",
-     "time": "2025-03-11T21:47:52+00:00",
+     "time": "2025-03-11T21:47:52.000Z",
      "value": "closed"
     }
    ]
@@ -422,6 +480,16 @@
      "value": 243221
     },
     {
+     "name": "body_excerpt",
+     "time": "1970-01-01T00:00:00Z",
+     "value": "This adds initial support for MCP discovery and connections in VS Code.\n\n- It finds servers installed in claude_desktop_config as a demo, and also supports `.vscode/mcp.json`\n- This works for both local and remotes.\n- There is a command `MCP: List Servers` that allows listing and manually starting/stopping servers\n- When MCP servers are started, they can be used as tools in chat.\n\nGranular changes can be found in commits within this PR. Closes #242864, more issues will come under the `chat-mcp` "
+    },
+    {
+     "name": "body_truncated",
+     "time": "1970-01-01T00:00:00Z",
+     "value": true
+    },
+    {
      "name": "pull_request_id",
      "time": "1970-01-01T00:00:00Z",
      "value": 2385775323
@@ -433,12 +501,12 @@
     },
     {
      "name": "state",
-     "time": "2025-03-11T17:01:54+00:00",
+     "time": "2025-03-11T17:01:52.000Z",
      "value": "open"
     },
     {
      "name": "state",
-     "time": "2025-03-11T21:47:51+00:00",
+     "time": "2025-03-11T21:47:51.000Z",
      "value": "closed"
     }
    ],
@@ -454,7 +522,7 @@
   {
    "id": "issue_act:47298596766",
    "type": "IssueOpened",
-   "time": "2025-03-07T05:15:54+00:00",
+   "time": "2025-03-07T05:15:54.000Z",
    "attributes": [
     {
      "name": "comment",
@@ -468,15 +536,23 @@
     },
     {
      "objectId": "actor:2230985",
-     "qualifier": "performer"
+     "qualifier": "opener"
     }
    ]
   },
   {
    "id": "issue_act:47332699976",
    "type": "IssueCommented",
-   "time": "2025-03-08T00:11:15+00:00",
+   "time": "2025-03-08T00:11:15.000Z",
    "attributes": [
+    {
+     "name": "comment_excerpt",
+     "value": "So excited 🎉\n\nCouple thoughts/comments:\n\n- Try out the MCP server installation method Cline uses. It's so seamless using the AI in agent mode to set up the JSON file, read the docs, verify the install by trying a command, etc. Much preferable over the Cursor MCP installation method where you basically have to figure it out on your own and no good way to verify it's actually working.\n- Config in the repo is good 👍. Config in my user settings would also be good 👍. I work in a wonderful world where"
+    },
+    {
+     "name": "comment_truncated",
+     "value": true
+    },
     {
      "name": "comment",
      "value": true
@@ -489,14 +565,14 @@
     },
     {
      "objectId": "actor:6989492",
-     "qualifier": "performer"
+     "qualifier": "commenter"
     }
    ]
   },
   {
-   "id": "commit_obs:47359485384:1",
-   "type": "CommitObserved",
-   "time": "2025-03-09T19:23:22+00:00",
+   "id": "push:47359485384",
+   "type": "Push",
+   "time": "2025-03-09T19:23:22.000Z",
    "attributes": [
     {
      "name": "ref",
@@ -526,18 +602,18 @@
    "relationships": [
     {
      "objectId": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
-     "qualifier": "subject"
+     "qualifier": "pushed_commit"
     },
     {
      "objectId": "actor:2230985",
-     "qualifier": "performer"
+     "qualifier": "pusher"
     }
    ]
   },
   {
    "id": "pr_act:47441540196",
    "type": "PullRequestOpened",
-   "time": "2025-03-11T17:01:54+00:00",
+   "time": "2025-03-11T17:01:54.000Z",
    "attributes": [
     {
      "name": "comment",
@@ -551,15 +627,23 @@
     },
     {
      "objectId": "actor:2230985",
-     "qualifier": "performer"
+     "qualifier": "opener"
     }
    ]
   },
   {
    "id": "pr_act:47442487110",
-   "type": "IssueCommented",
-   "time": "2025-03-11T17:25:52+00:00",
+   "type": "PullRequestCommented",
+   "time": "2025-03-11T17:25:52.000Z",
    "attributes": [
+    {
+     "name": "comment_excerpt",
+     "value": "> Curious, is there more things planned for the channel in the future that warrant it to be its own thing?\r\n\r\nNot right now. But I didn't see that we had other ways to get environment variables outside of the common ones from IEnvironmentService/IRemoteEnvironment. I'd be very happy to do away with the extra channel if there's something I missed. Or maybe we put APPDATA and the XDG_CONFIG_HOME directory in these two interfaces. What do you think?"
+    },
+    {
+     "name": "comment_truncated",
+     "value": false
+    },
     {
      "name": "comment",
      "value": true
@@ -572,15 +656,23 @@
     },
     {
      "objectId": "actor:2230985",
-     "qualifier": "performer"
+     "qualifier": "commenter"
     }
    ]
   },
   {
    "id": "pr_act:47442839095",
-   "type": "IssueCommented",
-   "time": "2025-03-11T17:34:47+00:00",
+   "type": "PullRequestCommented",
+   "time": "2025-03-11T17:34:47.000Z",
    "attributes": [
+    {
+     "name": "comment_excerpt",
+     "value": "actually, I suggest keeping the channel for now regardless since I might need to do more on-machine stuff for other configs over the next few days. But I'll move to ProxyChannel.fromService."
+    },
+    {
+     "name": "comment_truncated",
+     "value": false
+    },
     {
      "name": "comment",
      "value": true
@@ -593,14 +685,14 @@
     },
     {
      "objectId": "actor:2230985",
-     "qualifier": "performer"
+     "qualifier": "commenter"
     }
    ]
   },
   {
    "id": "pr_act:47451211775",
    "type": "PullRequestMerged",
-   "time": "2025-03-11T21:47:51+00:00",
+   "time": "2025-03-11T21:47:51.000Z",
    "attributes": [
     {
      "name": "comment",
@@ -614,14 +706,35 @@
     },
     {
      "objectId": "actor:2230985",
-     "qualifier": "performer"
+     "qualifier": "merger"
     }
    ]
   },
   {
-   "id": "commit_obs:47451212050:1",
-   "type": "CommitObserved",
-   "time": "2025-03-11T21:47:52+00:00",
+   "id": "issue_act:47451212131",
+   "type": "IssueClosed",
+   "time": "2025-03-11T21:47:52.000Z",
+   "attributes": [
+    {
+     "name": "comment",
+     "value": false
+    }
+   ],
+   "relationships": [
+    {
+     "objectId": "issue:2902032454",
+     "qualifier": "subject"
+    },
+    {
+     "objectId": "actor:2230985",
+     "qualifier": "closer"
+    }
+   ]
+  },
+  {
+   "id": "push:47451212050",
+   "type": "Push",
+   "time": "2025-03-11T21:47:52.000Z",
    "attributes": [
     {
      "name": "ref",
@@ -651,39 +764,18 @@
    "relationships": [
     {
      "objectId": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
-     "qualifier": "subject"
+     "qualifier": "pushed_commit"
     },
     {
      "objectId": "actor:2230985",
-     "qualifier": "performer"
+     "qualifier": "pusher"
     }
    ]
   },
   {
-   "id": "issue_act:47451212131",
-   "type": "IssueClosed",
-   "time": "2025-03-11T21:47:52+00:00",
-   "attributes": [
-    {
-     "name": "comment",
-     "value": false
-    }
-   ],
-   "relationships": [
-    {
-     "objectId": "issue:2902032454",
-     "qualifier": "subject"
-    },
-    {
-     "objectId": "actor:2230985",
-     "qualifier": "performer"
-    }
-   ]
-  },
-  {
-   "id": "commit_obs:47536649134:2",
-   "type": "CommitObserved",
-   "time": "2025-03-13T18:03:55+00:00",
+   "id": "push:47536649134",
+   "type": "Push",
+   "time": "2025-03-13T18:03:55.000Z",
    "attributes": [
     {
      "name": "ref",
@@ -713,18 +805,18 @@
    "relationships": [
     {
      "objectId": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
-     "qualifier": "subject"
+     "qualifier": "pushed_commit"
     },
     {
      "objectId": "actor:23246594",
-     "qualifier": "performer"
+     "qualifier": "pusher"
     }
    ]
   },
   {
-   "id": "commit_obs:47648935486:3",
-   "type": "CommitObserved",
-   "time": "2025-03-17T16:53:04+00:00",
+   "id": "push:47648935486",
+   "type": "Push",
+   "time": "2025-03-17T16:53:04.000Z",
    "attributes": [
     {
      "name": "ref",
@@ -754,19 +846,27 @@
    "relationships": [
     {
      "objectId": "commit:eb700003ebf3797af1de1f9e222478d6d7f7eea3",
-     "qualifier": "subject"
+     "qualifier": "pushed_commit"
     },
     {
      "objectId": "actor:38270282",
-     "qualifier": "performer"
+     "qualifier": "pusher"
     }
    ]
   },
   {
    "id": "pr_act:47717247625",
-   "type": "IssueCommented",
-   "time": "2025-03-19T06:55:11+00:00",
+   "type": "PullRequestCommented",
+   "time": "2025-03-19T06:55:11.000Z",
    "attributes": [
+    {
+     "name": "comment_excerpt",
+     "value": "Awesome"
+    },
+    {
+     "name": "comment_truncated",
+     "value": false
+    },
     {
      "name": "comment",
      "value": true
@@ -779,15 +879,23 @@
     },
     {
      "objectId": "actor:26178681",
-     "qualifier": "performer"
+     "qualifier": "commenter"
     }
    ]
   },
   {
    "id": "issue_act:47734622236",
    "type": "IssueCommented",
-   "time": "2025-03-19T14:08:25+00:00",
+   "time": "2025-03-19T14:08:25.000Z",
    "attributes": [
+    {
+     "name": "comment_excerpt",
+     "value": "@connor4312 this is amazing addition.\n\nWas this developed for helping users connect MCP servers to their 3rd party agent extensions (such as CLINE, Roo, Aider, etc.) ?\n\nAs a CLINE user, I am trying to figure out if I should keep using their own MCP Marketplace?\n\n![Image](https://github.com/user-attachments/assets/eac8ae69-85b8-411b-aed3-c8152e210588)"
+    },
+    {
+     "name": "comment_truncated",
+     "value": false
+    },
     {
      "name": "comment",
      "value": true
@@ -800,7 +908,7 @@
     },
     {
      "objectId": "actor:5327862",
-     "qualifier": "performer"
+     "qualifier": "commenter"
     }
    ]
   }
