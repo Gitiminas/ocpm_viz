@@ -21,6 +21,7 @@ diff, so verification matters more than usual.
 | `docs/DATA_LAYER.md` | Schemas `fe` and `api`, the five RPCs, the `SubLog` and DFG payloads, the adapters |
 | `docs/DATA_CONTRACT.md` | The written record of what exists upstream. The database itself is ground truth |
 | `docs/VERIFICATION.md` | What was checked and how. §5 is the not-verified list — read it before trusting a figure |
+| `docs/DOCKER.md` | The compose stack (`db`, `api`, `web`) and the dump it restores from |
 
 ## Repository map
 
@@ -38,6 +39,7 @@ diff, so verification matters more than usual.
 | `vendor/d3-force.js` | d3-force 3.0.0, ISC, unmodified | Never edit. Replace whole from the esm.sh bundled build, and re-read `vendor/README.md` |
 | `tests/` | `node --test` suites plus `tests/fixtures/` | `npm test`. See `tests/fixtures/README.md` |
 | `./ocpm.sh` | Clean start, and `./ocpm.sh db` to apply the data layer | Prefer `db` over running the SQL by hand: `fe_layer.sql` resets the `api` functions to `SECURITY INVOKER`, and the materializations go stale silently |
+| `compose.yaml`, `docker/` | The stack as containers: `db` restores a `pg_dump` on first start (`docker/db/initdb/`, three ordered steps), `api` is PostgREST, `web` is `serve.mjs` (`docker/web/Dockerfile`) | Secrets only via `.env` (gitignored; every variable declared in `.env.example`). A file the app newly needs at runtime goes into `.dockerignore` and the Dockerfile. `tests/docker-config.test.js` checks the files; `scripts/docker-smoke.sh` checks a running stack, `scripts/db-parity.sh` that a restore matches its source. The server `TimeZone` must equal the source cluster's (`docs/DOCKER.md`) |
 | `_ds/nocturne-*/` | Design system CSS tokens | Consume via `var(--token)`. Do not restyle |
 | `ocel-data.json` | The untouched original data blob | **Never edit.** F1 is built from it by script |
 

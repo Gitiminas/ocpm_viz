@@ -57,6 +57,21 @@ you. `docs/DATA_LAYER.md` has the rest.
 
 Switch source in the sidebar, or by URL: `http://localhost:8000/?source=database&repo=microsoft/vscode&seed=pr:448781946`.
 
+### Running it with Docker
+
+The whole stack — database, PostgREST and the app — also runs as three compose services, with
+the corpus supplied as a `pg_dump` that stays out of git:
+
+```
+cp .env.example .env       # two passwords, and OCPM_DUMP_DIR: where the dump is
+docker compose up -d       # the first start restores the dump, once; it takes a while
+scripts/docker-smoke.sh    # every service healthy, the full path, and both acceptance gates
+```
+
+`docs/DOCKER.md` covers making the dump, what the first start does and the traps it guards
+against — the server `TimeZone` among them, which must match the source cluster's — and how to
+apply a data-layer change to the container database.
+
 ## Using it
 
 **The query is a repository plus a seed object.** Pick the repository, then search for something
@@ -167,7 +182,7 @@ where hovering a row rings the corresponding mark.
 ## Testing
 
 ```
-npm test                  # 885 tests over 35 files, ~1 s, no browser
+npm test                  # 951 tests over 37 files, ~2 s, no browser
 npm run test:watch
 ```
 
@@ -231,6 +246,7 @@ python3 -m venv .venv-ocel && .venv-ocel/bin/pip install pm4py     # once; .venv
 | `docs/` | The written record. See below |
 | `online-appendix/` | Thesis material beside the code: the visual inventory, screenshots of every mark with notes. Read by nothing |
 | `./ocpm.sh` | Starts both servers and applies the data layer in the one order that works |
+| `compose.yaml`, `docker/`, `.env.example` | The same stack as three containers: `db` restored from a dump, `api`, `web`. `scripts/docker-smoke.sh` checks a running one, `scripts/db-parity.sh` that the restore matches its source |
 
 ## Documents
 
@@ -241,6 +257,7 @@ python3 -m venv .venv-ocel && .venv-ocel/bin/pip install pm4py     # once; .venv
 | `docs/DATA_LAYER.md` | Everything server-side: schemas, the payload, links, the RPCs, roles, diagnostics |
 | `docs/DATA_CONTRACT.md` | What exists upstream. A record of a read-only database that is itself the truth |
 | `docs/VERIFICATION.md` | What was checked, how, and what was not. §5 is the not-verified list; read it before quoting a figure |
+| `docs/DOCKER.md` | The compose stack: the four parts, making the dump, the first-start init steps and their traps |
 
 ## Known limits
 
