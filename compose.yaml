@@ -99,6 +99,20 @@ services:
     networks: [backend, frontend]
     restart: unless-stopped
 
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    image: ocpm-viz-web:local
+    # Its healthcheck is in the Dockerfile. It needs api only per request, but waiting
+    # means the first page load is not a 502.
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${OCPM_WEB_PORT:-8000}:8000"
+    networks: [frontend]
+    restart: unless-stopped
 
 volumes:
   pgdata:
