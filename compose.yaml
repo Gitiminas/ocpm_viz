@@ -1,0 +1,72 @@
+# The OCPM visualization tool as three services. docs/DOCKER.md is the full account.
+#
+#   db    PostgreSQL, restored once from a pg_dump on an empty volume
+#   api   PostgREST, serving the api schema's RPCs
+#   web   the app, plus a same-origin proxy of /rpc/* to api   → http://localhost:8000
+#
+# Configuration comes from .env (copy .env.example). Every port is bound to 127.0.0.1:
+# this is a local deployment, and the database holds raw event data.
+
+name: ocpm-viz
+
+services:
+  db:
+    # The major version matches the host cluster the dump was taken from (18). A dump
+    # restores into the same or a newer major, never an older one.
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${OCPM_DB_NAME:-gharchive_ocpm_viz_wsl}
+      AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD:?set AUTHENTICATOR_PASSWORD in .env}
+      OCPM_RESTORE_JOBS: ${OCPM_RESTORE_JOBS:-4}
+    volumes:
+      # The database itself. Survives `down`; `down -v` deletes it and the next `up`
+      # restores from the dump again.
+      - pgdata:/var/lib/postgresql
+      # The dump, read once by 20-restore.sh. Read-only: nothing here writes to it.
+      - ${OCPM_DUMP_DIR:-./dump}:/dump:ro
+      # The init steps (10 roles → 20 restore → 30 secure) and the SQL they apply.
+      - ./docker/db/initdb:/docker-entrypoint-initdb.d:ro
+      - ./sql:/sql:ro
+    # Docker's 64 MB default /dev/shm is too small for parallel hash joins during the
+    # matview refreshes; Postgres fails with "could not resize shared memory segment".
+    shm_size: 1g
+    command:
+      - postgres
+      # The restore writes gigabytes; at the 1 GB default, Postgres checkpoints every few
+      # seconds through it and logs "checkpoints are occurring too frequently".
+      - -c
+      - max_wal_size=8GB
+      # ⚠️ Load-bearing, not cosmetic. Upstream view definitions cast naive timestamps
+      # with `::timestamp with time zone`, which reads the session TimeZone, so the
+      # materialized views refreshed during the restore — and every unmaterialized fe
+      # view at request time — depend on it. It must equal the source cluster's setting
+      # or the restored copy computes different links (docs/DOCKER.md, "TimeZone").
+      - -c
+      - timezone=${OCPM_DB_TIMEZONE:-Europe/Berlin}
+    ports:
+      - "127.0.0.1:${OCPM_DB_PORT:-5433}:5432"
+    healthcheck:
+      # Two conditions, each closing a way to report healthy over half a database:
+      #   - the marker 30-secure.sh writes last. A failed init leaves the volume
+      #     non-empty, so the next start skips init entirely; without the marker that
+      #     container would be "ready". It stays unhealthy until `down -v`.
+      #   - ⚠️ pg_isready over TCP, not the socket: during init the entrypoint's
+      #     temporary server listens on the socket only.
+      test: ["CMD-SHELL", "test -f \"$${PGDATA}/ocpm-init.done\" && pg_isready -h 127.0.0.1 -U postgres -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # The first start restores the dump, which takes tens of minutes. Failures during
+      # this window do not count against `retries`.
+      start_period: 2h
+    networks: [backend]
+    restart: unless-stopped
+
+
+volumes:
+  pgdata:
+
+networks:
+  # db and api only: nothing on the frontend network can open a connection to the database.
+  backend:
