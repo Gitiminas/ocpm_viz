@@ -1,0 +1,12 @@
+# An allowlist: the build context is only the web image's needs (docker/web/Dockerfile).
+# Everything else — docs, the dump, .env, node_modules, the 36 KB original data blob —
+# stays out of the context, so it can never be copied into an image by accident.
+*
+!index.html
+!package.json
+!src/
+!_ds/
+!vendor/
+!tests/fixtures/
+!scripts/serve.mjs
+**/*:Zone.Identifier

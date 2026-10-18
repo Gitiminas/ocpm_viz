@@ -36,3 +36,7 @@ online-appendix/_data_model.tex
 
 # The Python environment for scripts/ocel-check.py (README, "Scripts")
 .venv-ocel/
+
+# The database dump the db container restores from (docs/DOCKER.md). Gigabytes of data,
+# and not ours to publish; .env (above) holds the passwords that go with it.
+dump/
